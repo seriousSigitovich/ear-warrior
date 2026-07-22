@@ -51,8 +51,9 @@ decisions the plan depends on. Each item follows: **Decision → Rationale → A
 
 - **Decision**: Convert frequency to the nearest note via `note = round(12·log2(f/440)) + 69` (MIDI),
   and compute cents deviation. A detected note **matches** a target note when it maps to the same MIDI
-  note number and the cents deviation is within **±40–50 cents** (final value tuned in the spike);
-  anything a semitone away is a non-match (FR-016). Octave is significant by default (assumption).
+  note number, i.e. within **±50 cents** (nearest-note quantization — fixed per the FR-016 clarification,
+  no longer tuned on-device); anything closer to an adjacent semitone is a non-match. Octave is
+  significant by default (assumption).
 - **Rationale**: Equal-temperament math is exact and standard. A sub-semitone cents window tolerates
   normal tuning error without ever accepting the wrong note.
 - **Alternatives considered**: Match on note name ignoring octave — rejected as default (spec assumption

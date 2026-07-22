@@ -64,8 +64,12 @@ Physical devices required (microphone + audio output).
   logging is deferred to an outbox when offline.
 - **Monophonic only**: single-note melodies matched to `react-native-pitchy`'s monophonic YIN output.
 - **Guitar range**: generated notes stay within standard 6-string range (~E2–E6).
-- **Note-match tolerance**: a note matches when detected pitch is the intended note within normal tuning
-  deviation (±~40–50 cents), never a different semitone (FR-016).
+- **Note-match tolerance**: a note matches when the detected pitch rounds to the target note within a
+  fixed **±50 cents** (nearest-note), never a different semitone (FR-016).
+- **Grading alignment**: best-fit sequence alignment (edit-distance/LCS) so a single inserted/omitted note
+  doesn't cascade following notes to wrong (FR-005).
+- **No consecutive identical pitches**: generated melodies never repeat a pitch back-to-back, so notes are
+  separable by pitch change without same-pitch onset detection (FR-001/FR-004).
 - **Pre-rendered samples**: per-note (and chord) audio files are produced out-of-band and bundled as
   assets; playback sequences them at runtime.
 - Microphone permission required; audio session configured so playback fully stops before capture

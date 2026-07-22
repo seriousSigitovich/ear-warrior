@@ -8,6 +8,16 @@
 
 **Input**: User description: "Build an application that can help me improve my ears in terms of playing music. I want to build an ability to quickly recognise musical phrases and be able to reproduce it on a guitar. The main idea is to play right after the short generated melody and app should check for the correctness through the feedback."
 
+## Clarifications
+
+### Session 2026-07-22
+
+- Q: Note-match tolerance — how close must a detected pitch be to count as the intended note? → A: Nearest-note within ±50 cents (a pitch that rounds to the target semitone matches; the adjacent semitone never matches; intonation inside that window is not itself graded).
+- Q: How is the played sequence aligned to the target when a note is inserted or omitted? → A: Best-fit sequence alignment (edit-distance/LCS) — one extra note is flagged `extra`, one skipped note `missed`, and surrounding correct notes still count as `matched` (no cascade to `wrong`).
+- Q: How are consecutive notes separated, especially same-pitch repeats? → A: Segment by pitch change or silence gap only; same-pitch re-attack detection is out of scope this phase, so generated melodies avoid consecutive identical pitches.
+- Q: What happens when input is not cleanly monophonic (a chord or overlapping ringing strings)? → A: Treat it as low-confidence and prompt retry (do not grade); reuses the FR-017 low-confidence path.
+- Q: When does an attempt end or time out? → A: Auto/silence-based — time out after ~8 s of no playing after the "your turn" cue; end a started attempt ~2 s after the last detected note (hands-free; values calibratable).
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Listen, Play Back, Get Feedback (Priority: P1)
@@ -90,8 +100,8 @@ confirm it shows accuracy trends, practice volume, and identified weak areas der
 
 ### Edge Cases
 
-- **No input / silence**: The learner does not play within the expected window → the app times out
-  gracefully and prompts to replay or retry rather than grading an empty attempt.
+- **No input / silence**: The learner does not start playing within ~8 seconds of the "your turn" cue →
+  the app times out gracefully and prompts to replay or retry rather than grading an empty attempt.
 - **Guitar out of tune**: Detected pitches deviate consistently from any expected note → the app warns
   the learner and offers a tuning reference before grading continues.
 - **Wrong count**: The learner plays fewer or more notes than the target → the app reports missed and/or
@@ -111,13 +121,19 @@ confirm it shows accuracy trends, practice volume, and identified weak areas der
 ### Functional Requirements
 
 - **FR-001**: System MUST generate short monophonic melodic phrases with a configurable number of notes
-  drawn from a defined pitch pool (scale/key and range).
+  drawn from a defined pitch pool (scale/key and range). Generated phrases MUST NOT place two identical
+  pitches consecutively, so every note is separable by a pitch change (see FR-004).
 - **FR-002**: System MUST play the generated melody audibly to the learner.
 - **FR-003**: System MUST clearly signal the transition from "listening" to "your turn to play".
 - **FR-004**: System MUST capture the learner's guitar performance and derive the ordered sequence of
-  notes played.
-- **FR-005**: System MUST compare the played sequence against the target melody and determine both
-  per-note results (matched, wrong, missed, extra) and an overall correct/incorrect verdict.
+  notes played by segmenting the pitch stream at **pitch changes and silence gaps**. Detecting a
+  re-articulated same-pitch note is out of scope this phase; consequently generated melodies contain no
+  consecutive identical pitches (see FR-001).
+- **FR-005**: System MUST compare the played sequence against the target melody using **best-fit sequence
+  alignment** (edit-distance / longest-common-subsequence), so that a single inserted note is flagged
+  `extra` and a single skipped note `missed` **without** cascading the surrounding correct notes to
+  `wrong`. From that alignment it MUST determine per-note results (matched, wrong, missed, extra) and an
+  overall correct/incorrect verdict.
 - **FR-006**: System MUST present feedback immediately after the attempt, showing the overall verdict and
   which notes were matched, wrong, missed, or extra.
 - **FR-007**: Learners MUST be able to replay the target melody, both before attempting and after
@@ -134,13 +150,16 @@ confirm it shows accuracy trends, practice volume, and identified weak areas der
   and identified weak areas over time.
 - **FR-014**: System MUST provide a pitch/tuning reference and MUST detect and warn when the guitar
   appears consistently out of tune before grading.
-- **FR-015**: System MUST handle no-input and timeout situations gracefully, prompting to replay or retry
-  instead of grading an empty attempt.
-- **FR-016**: System MUST define note-match tolerance so that a note counts as matched when its detected
-  pitch is the intended note within normal tuning deviation, and does not count a different semitone as a
-  match.
-- **FR-017**: System MUST flag low-confidence note detections (e.g., due to noise) and allow the learner
-  to retry rather than being graded on an unreliable capture.
+- **FR-015**: System MUST detect the end of input by silence — timing out with a replay/retry prompt
+  after **~8 seconds** of no playing following the "your turn" cue, and ending a started attempt
+  **~2 seconds** after the last detected note — rather than grading an empty attempt. These timing values
+  are calibratable.
+- **FR-016**: System MUST count a played note as matched when its detected pitch rounds to the target
+  note within **±50 cents** (nearest-note quantization); a pitch closer to an adjacent semitone MUST NOT
+  match. Intonation within that ±50-cent window is not itself graded (this is ear training, not a tuner).
+- **FR-017**: System MUST flag low-confidence note detections — including background noise and
+  **non-monophonic input** (a chord or overlapping ringing strings) — and prompt the learner to retry
+  rather than grading an unreliable capture.
 - **FR-018**: Learners MUST be able to start, pause, and end a practice session, and completed results
   MUST survive interruptions.
 

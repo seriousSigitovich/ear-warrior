@@ -11,19 +11,19 @@ This is a requirements-quality gate ("unit tests for the spec"), not an implemen
 
 - [ ] CHK001 Is the reference tuning standard (e.g., concert pitch A=440 Hz) explicitly specified for interpreting detected frequencies as notes? [Gap]
 - [ ] CHK002 Is the exact playable pitch range (concrete low/high note bounds) for generated melodies quantified rather than left as "standard guitar range"? [Clarity, Spec §FR-001 / §Assumptions]
-- [ ] CHK003 Are requirements defined for how a continuous guitar performance is divided into discrete notes (onset / note-boundary detection)? [Gap, Spec §FR-004]
+- [x] CHK003 Are requirements defined for how a continuous guitar performance is divided into discrete notes (onset / note-boundary detection)? [Gap, Spec §FR-004]
 - [ ] CHK004 Is the minimum sustained duration or signal strength for a sound to count as a played note specified? [Gap]
-- [ ] CHK005 Are requirements defined for detecting two consecutive same-pitch notes as separate notes rather than one sustained note? [Gap, Edge Case]
-- [ ] CHK006 Is the capture window specified — when note capture opens after playback ends and how long it stays open? [Gap, Spec §FR-015]
+- [x] CHK005 Are requirements defined for detecting two consecutive same-pitch notes as separate notes rather than one sustained note? [Gap, Edge Case]
+- [x] CHK006 Is the capture window specified — when note capture opens after playback ends and how long it stays open? [Gap, Spec §FR-015]
 - [ ] CHK007 Are the standard-tuning reference notes (E-A-D-G-B-E) that the tuning check compares against documented as requirements? [Gap, Spec §FR-014]
 
 ## Requirement Clarity & Measurability
 
-- [ ] CHK008 Is the note-match tolerance quantified with a specific cents value instead of "normal tuning deviation"? [Ambiguity, Spec §FR-016]
+- [x] CHK008 Is the note-match tolerance quantified with a specific cents value instead of "normal tuning deviation"? [Ambiguity, Spec §FR-016]
 - [ ] CHK009 Is the low-confidence threshold that triggers a retry defined with a measurable value? [Clarity, Spec §FR-017]
 - [ ] CHK010 Is "consistently out of tune" quantified (offset magnitude and how many notes) for triggering the tuning warning? [Ambiguity, Spec §FR-014]
 - [ ] CHK011 Is "reasonably quiet environment" defined with a measurable noise floor or signal-to-noise threshold? [Ambiguity, Spec §Assumptions / §SC-002]
-- [ ] CHK012 Is the no-input timeout expressed as a concrete duration? [Clarity, Spec §FR-015]
+- [x] CHK012 Is the no-input timeout expressed as a concrete duration? [Clarity, Spec §FR-015]
 - [ ] CHK013 Is the attempt-level confidence value's derivation from per-detection clarity specified measurably? [Clarity, Spec §FR-017]
 - [ ] CHK014 Can "the same notes in the same order" be objectively evaluated given the defined tolerance and alignment rules? [Measurability, Spec §US1 / §FR-005]
 
@@ -38,9 +38,9 @@ This is a requirements-quality gate ("unit tests for the spec"), not an implemen
 
 ## Scenario & Edge Case Coverage
 
-- [ ] CHK021 Are requirements defined for accidental polyphony (a chord or overlapping ringing strings) given the monophonic assumption? [Coverage, Gap, Spec §Assumptions]
+- [x] CHK021 Are requirements defined for accidental polyphony (a chord or overlapping ringing strings) given the monophonic assumption? [Coverage, Gap, Spec §Assumptions]
 - [ ] CHK022 Are requirements specified for pitch glides — bends, slides, vibrato — that move continuously between notes during a sustained sound? [Edge Case, Gap]
-- [ ] CHK023 Is sequence-alignment behavior defined when the learner inserts an extra note mid-phrase (does one insertion cascade following notes to "wrong")? [Ambiguity, Spec §FR-005]
+- [x] CHK023 Is sequence-alignment behavior defined when the learner inserts an extra note mid-phrase (does one insertion cascade following notes to "wrong")? [Ambiguity, Spec §FR-005]
 - [ ] CHK024 Are requirements defined to distinguish inter-note gaps (hesitant playing) from an end-of-attempt gap? [Coverage, Spec §Edge Cases]
 - [ ] CHK025 Is the post-tuning-warning state defined — is grading blocked until retune, or may the learner proceed? [Gap, Spec §FR-014]
 - [ ] CHK026 Are open-string ring-out and fret-buzz artifacts addressed in the input-handling / low-confidence requirements? [Edge Case, Gap, Spec §FR-017]
@@ -64,4 +64,5 @@ This is a requirements-quality gate ("unit tests for the spec"), not an implemen
 
 - Check items off as completed: `[x]`; add findings inline.
 - An unchecked item means the **requirement text** needs tightening (quantify, add, or reconcile) — it is not a code defect.
-- Highest-priority gaps to resolve before implementation: **CHK008** (match tolerance in cents), **CHK003/CHK005** (note segmentation & repeated notes), **CHK023** (alignment on extra/missing notes), and **CHK027** (measurable conditions for SC-002). Several are strong candidates for `/speckit.clarify`.
+- Resolved via `/speckit.clarify` (Session 2026-07-22): CHK003, CHK005, CHK006, CHK008, CHK012, CHK021, CHK023.
+- Remaining highest-priority gaps: **CHK027 / CHK028** (measurable conditions & human-evaluator ground truth for SC-002), **CHK010** (quantify "consistently out of tune"), **CHK013** (attempt confidence derivation), **CHK002** (exact pitch range bounds), **CHK001** (reference tuning A=440). Candidates for a follow-up clarify or resolution during `/speckit.plan`.

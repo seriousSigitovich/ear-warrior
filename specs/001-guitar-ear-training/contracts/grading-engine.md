@@ -12,11 +12,11 @@ verdict (FR-005, FR-006, FR-016). This is the correctness core of the product.
 // Stage 1 (src/lib): pitch stream → discrete notes (R3)
 function segmentFrames(frames: PitchFrame[], cfg: SegmentConfig): DetectedNote[];
 
-// Stage 2 (src/services/grading): align + grade (R4)
+// Stage 2 (src/services/grading): best-fit align (edit-distance/LCS) + grade (FR-005, R4)
 function gradeAttempt(target: Melody, detected: DetectedNote[], cfg: GradingConfig): AttemptGrade;
 
 interface GradingConfig {
-  centsTolerance: number;   // default ~40–50 (R4); a full semitone away never matches
+  centsTolerance: number;   // fixed 50 (FR-016); a pitch closer to an adjacent semitone never matches
   octaveSensitive: boolean; // default true (spec assumption)
 }
 
@@ -31,11 +31,14 @@ interface AttemptGrade {
 
 ## Behavioral contract
 
-- Alignment is positional over the ordered sequences; a played note counts as `matched` iff it maps to
-  the same MIDI note as the target at that position within `centsTolerance`.
-- A note one semitone (or more) from the target is `wrong`, never `matched` (FR-016).
-- Fewer detected than target → trailing targets are `missed`; more detected → surplus are `extra`
-  (wrong-count edge case).
+- Alignment uses **best-fit sequence alignment** (edit-distance / longest-common-subsequence) between the
+  played and target sequences (FR-005); a played note counts as `matched` iff it aligns to a target note
+  that maps to the same MIDI note within `centsTolerance`.
+- A note one semitone (or more) from the target is `wrong`, never `matched` (FR-016 — tolerance is a
+  fixed ±50 cents).
+- The alignment classifies unaligned notes locally: a target with no aligned played note is `missed`; a
+  played note with no aligned target is `extra`. A single inserted or omitted note MUST NOT cascade the
+  surrounding correctly-aligned notes to `wrong` (FR-005).
 - Correct pitch class in the wrong octave sets `octaveMismatch=true` and, when `octaveSensitive`,
   status `wrong` (edge case + assumption).
 - `verdict === 'correct'` **iff** all target positions are `matched` and there are no `extra` notes.
@@ -46,6 +49,6 @@ interface AttemptGrade {
 ## Test intent (required — test-first, highest-value)
 
 Table-driven unit tests are written **before** the implementation and cover: exact match, one wrong note,
-missing note, extra note, octave mismatch, the ±`centsTolerance` boundary (matched just inside, wrong
-just outside), timeout, and low-confidence. This is the highest-value suite in the project and the reason
-grading is kept pure.
+missing note, extra note, **a mid-phrase insertion/omission that must not cascade** (FR-005), octave
+mismatch, the ±50-cent boundary (matched just inside, wrong just outside), timeout, and low-confidence.
+This is the highest-value suite in the project and the reason grading is kept pure.
