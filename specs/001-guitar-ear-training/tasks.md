@@ -75,6 +75,7 @@ a correct/incorrect verdict identifying matched/wrong/missed/extra notes, and su
 - [ ] T019 [P] [US1] Table-driven unit tests for grading engine best-fit alignment (exact, one wrong, missed, extra, **mid-phrase insertion/omission must NOT cascade** per FR-005, octave mismatch, ±50-cent boundary, timeout, low-confidence) in `tests/unit/grading/grade.test.ts`
 - [ ] T020 [P] [US1] Contract test for the pitch-detection wrapper against a mocked `react-native-pitchy` (permission handling, silence/low-clarity pass-through, clean teardown) in `tests/contract/pitch.test.ts`
 - [ ] T021 [P] [US1] Contract test for audio playback against a mocked `expo-av` (correct sample per `midi`, `playMelody` resolves after last note, idempotent `stop`) in `tests/contract/playback.test.ts`
+- [ ] T021A [P] [US1] Unit tests for the pure tuning-detection rule (warn when median signed cents offset > threshold across ≥ min-count notes mostly the same direction; no warn on a single sharp/flat note or scattered offsets; thresholds calibratable) per FR-014 in `tests/unit/lib/tuning.test.ts`
 
 ### Implementation for User Story 1
 
@@ -86,12 +87,14 @@ a correct/incorrect verdict identifying matched/wrong/missed/extra notes, and su
 - [ ] T027 [US1] Implement audio playback (expo-av sample sequencing + reference tone) in `src/services/audio/playback.ts` to pass T021 (depends on T025)
 - [ ] T028 [US1] Implement practice-loop state machine (idle→playingMelody→awaitingInput→capturing→grading→feedback; replay/retry/next) in `src/features/practice/usePracticeLoop.ts` (depends on T022, T024, T026, T027)
 - [ ] T029 [US1] Implement no-input timeout (~8 s) + end-on-silence (~2 s) + low-confidence/polyphony retry handling (FR-015, FR-017) in `src/features/practice/capture.ts` (depends on T028)
-- [ ] T030 [US1] Implement tuning check + reference-tone warning (FR-014) in `src/features/practice/tuning.ts` (depends on T027)
+- [ ] T030 [US1] Implement the **pure** tuning-detection rule (median signed cents offset > threshold across ≥ min-count notes, same direction; calibratable) in `src/lib/tuning.ts` to pass T021A, then wire the reference-tone warning + **advisory (non-blocking)** behavior — learner may dismiss and proceed to grading (FR-014) — in `src/features/practice/tuning.ts` (depends on T021A, T027)
 - [ ] T031 [P] [US1] Build feedback UI (verdict banner + per-note matched/wrong/missed/extra chips) in `src/components/feedback/`
 - [ ] T032 [P] [US1] Build transport controls (Play / Replay / Retry / Next + "your turn" cue) in `src/components/controls/`
 - [ ] T033 [US1] Persist Session + Attempt on each graded attempt (FR-012, FR-018) in `src/features/practice/persist.ts` (depends on T012, T028)
 - [ ] T034 [US1] Wire the practice screen `app/practice.tsx` to the loop, controls, and feedback (depends on T028–T033)
 - [ ] T035 [US1] Implement start-session on `app/index.tsx` (create Session, launch practice) (depends on T011, T033)
+- [ ] T035A [P] [US1] Unit tests for session lifecycle transitions (`active→paused→active→ended`; `ended` terminal; completed attempts persist across pause and app interruption) per FR-018 in `tests/unit/practice/session.test.ts`
+- [ ] T035B [US1] Implement session pause/resume/end (state transitions + persist `endedAt`; survive interruption, FR-018) in `src/features/practice/session.ts`, and wire pause/end controls into `app/practice.tsx`, to pass T035A (depends on T012, T035)
 
 **Checkpoint**: US1 is fully functional and independently testable — this is the MVP.
 
@@ -170,7 +173,7 @@ shows accuracy trend, practice volume, and identified weak areas derived from re
 
 ### Key within-story dependencies
 
-- US1: T010 & T023 → T024 (grading); T014 → T026 (pitch); T025 → T027 (playback); T022/T024/T026/T027 → T028 (loop) → T029/T033 → T034 → T035.
+- US1: T010 & T023 → T024 (grading); T014 → T026 (pitch); T025 → T027 (playback); T021A → T030 (tuning: test before pure rule); T022/T024/T026/T027 → T028 (loop) → T029/T033 → T034 → T035; T035 → T035B (session lifecycle, after T035A).
 - US2: T038 → T039 → T040; T041 after T039.
 - US3: T043 → T044 → T046; T045 after T033.
 - Polish: T013 → T049 → T050; T048 before T049 (test-first).
@@ -179,7 +182,7 @@ shows accuracy trend, practice volume, and identified weak areas derived from re
 
 - Setup: T002–T006 in parallel.
 - Foundational: T008, T009, T012, T013, T014, T015, T016 in parallel (T010 after T009).
-- US1 tests (T017–T021) all in parallel; then pure impls T022 & T023 in parallel; UI T031 & T032 in parallel.
+- US1 tests (T017–T021, T021A, T035A) all in parallel; then pure impls T022 & T023 in parallel; UI T031 & T032 in parallel.
 - Different user stories can proceed in parallel once Foundational is done (separate developers).
 
 ---

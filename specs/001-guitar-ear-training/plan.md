@@ -112,6 +112,7 @@ specs/001-guitar-ear-training/
 │   ├── audio-playback.md
 │   ├── melody-generator.md
 │   ├── grading-engine.md
+│   ├── tuning-check.md
 │   └── supabase-attempt-log.md
 └── checklists/
     └── requirements.md
@@ -145,7 +146,7 @@ src/
 │   ├── storage/              # expo-sqlite repositories (source of truth)
 │   └── logging/              # Supabase anonymous outbox    → contracts/supabase-attempt-log.md
 ├── models/                   # Entity types (data-model.md)
-└── lib/                      # pitch↔note math, cents/tolerance, segmentation helpers (pure)
+└── lib/                      # pitch↔note math, cents/tolerance, segmentation, tuning-detune detection (pure)
 
 tests/                        # Jest (jest-expo) + React Native Testing Library
 ├── unit/                     # pure logic (grading, segmentation, pitch↔note, generator) — test-first

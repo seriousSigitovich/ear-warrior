@@ -23,8 +23,8 @@ interface GradingConfig {
 interface AttemptGrade {
   noteResults: NoteResult[]; // status: matched | wrong | missed | extra (+ octaveMismatch flag)
   verdict: 'correct' | 'incorrect';
-  confidence: number;        // derived from detected clarity
-  lowConfidence: boolean;
+  confidence: number;        // minimum per-note clarity (each note = median frame clarity over its window) (FR-017)
+  lowConfidence: boolean;    // true when confidence < calibratable threshold
   timedOut: boolean;
 }
 ```

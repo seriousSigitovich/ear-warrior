@@ -79,7 +79,7 @@ One captured reproduction of a melody and its grading (FR-005, FR-006, FR-012).
 | `detectedNotes` | Note[] | segmented from the pitch stream (R3) |
 | `noteResults` | NoteResult[] | per-position grading (below) |
 | `verdict` | enum `correct` \| `incorrect` | overall (FR-005) |
-| `confidence` | number 0–1 | min/mean detection clarity; low → offer retry (FR-017) |
+| `confidence` | number 0–1 | **minimum** per-note clarity (each note = median frame clarity over its window); low → offer retry (FR-017) |
 | `lowConfidence` | boolean | true when capture unreliable (FR-017) |
 | `timedOut` | boolean | no/insufficient input (FR-015) |
 | `createdAt` | ISO timestamp | |

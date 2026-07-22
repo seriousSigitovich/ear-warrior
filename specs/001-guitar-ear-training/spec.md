@@ -18,6 +18,13 @@
 - Q: What happens when input is not cleanly monophonic (a chord or overlapping ringing strings)? → A: Treat it as low-confidence and prompt retry (do not grade); reuses the FR-017 low-confidence path.
 - Q: When does an attempt end or time out? → A: Auto/silence-based — time out after ~8 s of no playing after the "your turn" cue; end a started attempt ~2 s after the last detected note (hands-free; values calibratable).
 
+### Session 2026-07-23
+
+- Q: How is attempt-level confidence derived and when is a capture flagged low-confidence? → A: Attempt confidence = the **minimum** per-note clarity (each note's clarity is the median frame clarity over its stable window); flag the attempt low-confidence and offer retry when that minimum falls below a calibratable threshold.
+- Q: What rule triggers the "consistently out of tune" warning (FR-014)? → A: Warn when the **median signed cents offset** across the attempt's detected notes exceeds a calibratable magnitude (default ~35 cents) with at least a minimum count of notes (default 3) offset **mostly in the same direction** — a systematic offset, not a single sharp note. Magnitude and count are calibratable.
+- Q: How is the end-of-attempt silence reconciled with hesitant pauses between notes? → A: Two distinct silence thresholds — a **short segmentation gap** (~150–300 ms) separates consecutive notes, while the **longer end-of-attempt gap** (~2 s) ends the attempt; any pause shorter than the end-of-attempt gap is still captured, so hesitant playing is not cut off. Both are calibratable.
+- Q: After the out-of-tune warning, may the learner proceed to grading? → A: **Advisory** — the app shows the warning and offers a tuning reference before grading, but the learner may dismiss it and continue; grading still runs (it is not blocked until retuning).
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Listen, Play Back, Get Feedback (Priority: P1)
@@ -121,14 +128,18 @@ confirm it shows accuracy trends, practice volume, and identified weak areas der
 ### Functional Requirements
 
 - **FR-001**: System MUST generate short monophonic melodic phrases with a configurable number of notes
-  drawn from a defined pitch pool (scale/key and range). Generated phrases MUST NOT place two identical
-  pitches consecutively, so every note is separable by a pitch change (see FR-004).
+  drawn from a defined pitch pool (scale/key and range). The generator's pitch pool MUST fall within the
+  standard guitar range **E2–E6 (MIDI 40–88)**; each difficulty level selects a low/high bound inside
+  that range. Generated phrases MUST NOT place two identical pitches consecutively, so every note is
+  separable by a pitch change (see FR-004).
 - **FR-002**: System MUST play the generated melody audibly to the learner.
 - **FR-003**: System MUST clearly signal the transition from "listening" to "your turn to play".
 - **FR-004**: System MUST capture the learner's guitar performance and derive the ordered sequence of
-  notes played by segmenting the pitch stream at **pitch changes and silence gaps**. Detecting a
-  re-articulated same-pitch note is out of scope this phase; consequently generated melodies contain no
-  consecutive identical pitches (see FR-001).
+  notes played by segmenting the pitch stream at **pitch changes and silence gaps**. A **short
+  segmentation gap** (default ~150–300 ms, calibratable) separates two consecutive notes; this is
+  distinct from and shorter than the end-of-attempt gap (FR-015), so inter-note pauses do not end the
+  attempt. Detecting a re-articulated same-pitch note is out of scope this phase; consequently generated
+  melodies contain no consecutive identical pitches (see FR-001).
 - **FR-005**: System MUST compare the played sequence against the target melody using **best-fit sequence
   alignment** (edit-distance / longest-common-subsequence), so that a single inserted note is flagged
   `extra` and a single skipped note `missed` **without** cascading the surrounding correct notes to
@@ -149,17 +160,27 @@ confirm it shows accuracy trends, practice volume, and identified weak areas der
 - **FR-013**: System MUST persist results across sessions and present accuracy trends, practice volume,
   and identified weak areas over time.
 - **FR-014**: System MUST provide a pitch/tuning reference and MUST detect and warn when the guitar
-  appears consistently out of tune before grading.
+  appears consistently out of tune before grading. "Consistently out of tune" MUST be evaluated as: the
+  **median signed cents offset** across the attempt's detected notes exceeds a calibratable magnitude
+  (default ~35 cents) with at least a minimum note count (default 3) offset **mostly in the same
+  direction** — a systematic offset, not a single sharp/flat note. The warning is **advisory**: the app
+  shows it and offers the tuning reference before grading, but the learner MAY dismiss it and continue;
+  grading is NOT blocked pending a retune.
 - **FR-015**: System MUST detect the end of input by silence — timing out with a replay/retry prompt
   after **~8 seconds** of no playing following the "your turn" cue, and ending a started attempt
-  **~2 seconds** after the last detected note — rather than grading an empty attempt. These timing values
-  are calibratable.
+  **~2 seconds** after the last detected note — rather than grading an empty attempt. This end-of-attempt
+  gap MUST be longer than the inter-note segmentation gap (FR-004): any pause shorter than the
+  end-of-attempt gap is captured as part of the attempt, so hesitant playing is not cut off. These timing
+  values are calibratable.
 - **FR-016**: System MUST count a played note as matched when its detected pitch rounds to the target
-  note within **±50 cents** (nearest-note quantization); a pitch closer to an adjacent semitone MUST NOT
-  match. Intonation within that ±50-cent window is not itself graded (this is ear training, not a tuner).
+  note within **±50 cents** (nearest-note quantization), where frequency-to-note mapping uses **concert
+  pitch A4 = 440 Hz** as the reference; a pitch closer to an adjacent semitone MUST NOT match. Intonation
+  within that ±50-cent window is not itself graded (this is ear training, not a tuner).
 - **FR-017**: System MUST flag low-confidence note detections — including background noise and
   **non-monophonic input** (a chord or overlapping ringing strings) — and prompt the learner to retry
-  rather than grading an unreliable capture.
+  rather than grading an unreliable capture. Attempt-level confidence MUST be derived as the **minimum**
+  per-note clarity across the attempt (each note's clarity being the median frame clarity over its stable
+  window); the attempt is flagged low-confidence when that minimum falls below a calibratable threshold.
 - **FR-018**: Learners MUST be able to start, pause, and end a practice session, and completed results
   MUST survive interruptions.
 
@@ -207,8 +228,11 @@ confirm it shows accuracy trends, practice volume, and identified weak areas der
 - **Audio capture**: The learner's playing is captured through the device's microphone (acoustic sound or
   amplified guitar) in a reasonably quiet environment; specialized hardware (e.g., MIDI pickups) is not
   required.
-- **Guitar-playable range**: Generated melodies fall within the standard guitar pitch range so every
-  target note is physically reproducible.
+- **Guitar-playable range**: Generated melodies fall within the standard guitar pitch range **E2–E6
+  (MIDI 40–88)** so every target note is physically reproducible; pitch detection guards against
+  frequencies outside this band (~80–1320 Hz).
+- **Reference tuning**: Detected frequencies are interpreted as notes relative to **concert pitch
+  A4 = 440 Hz** (equal temperament).
 - **Octave sensitivity**: By default, a correct note name played in the wrong octave is treated as
   incorrect; octave-tolerant matching may become a later option.
 - **Offline core loop**: Melody generation, playback, capture, and grading work without network
