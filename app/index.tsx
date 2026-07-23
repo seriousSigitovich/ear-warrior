@@ -1,30 +1,82 @@
 // Home screen (T035): start a practice session and navigate into the core loop.
+// Redesigned onto Nocturne — hero heading, waveform motif, quick stats, outlined actions.
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Screen } from '../src/components/common/Screen';
 import { Button } from '../src/components/common/Button';
+import { Card } from '../src/components/common/Card';
+import { Kicker } from '../src/components/common/Kicker';
+import { Waveform, HERO_BARS } from '../src/components/common/Waveform';
+import { colors, font, textAlpha } from '../src/theme/nocturne';
 
 export default function Home() {
   const router = useRouter();
   return (
-    <Screen title="Ear Warrior">
-      <View style={styles.body}>
-        <Text style={styles.blurb}>
-          Hear a short melody, then play it back on your guitar. We’ll tell you which notes you nailed.
-        </Text>
+    <Screen style={styles.screen}>
+      <Kicker>Ear Warrior</Kicker>
+      <Text style={styles.title}>Hear it.{'\n'}Play it back.{'\n'}Nail it.</Text>
+      <Text style={styles.blurb}>
+        A short melody plays. You reproduce it on guitar. We tell you exactly which notes landed.
+      </Text>
+
+      <Waveform bars={HERO_BARS} height={48} style={styles.wave} />
+
+      <View style={styles.spacer} />
+
+      <View style={styles.statRow}>
+        <Card style={styles.stat}>
+          <Text style={styles.statKicker}>Streak</Text>
+          <Text style={styles.statValue}>6 days</Text>
+        </Card>
+        <Card style={styles.stat}>
+          <Text style={styles.statKicker}>Level</Text>
+          <Text style={styles.statValue}>3 of 6</Text>
+        </Card>
       </View>
-      <View style={styles.actions}>
-        <Button label="Start practice" onPress={() => router.push('/practice')} />
-        <Button label="Difficulty" variant="secondary" onPress={() => router.push('/settings')} />
-        <Button label="Progress" variant="secondary" onPress={() => router.push('/progress')} />
+
+      <Button label="Start practice" glow onPress={() => router.push('/practice')} style={styles.cta} />
+      <View style={styles.secondaryRow}>
+        <Button
+          label="Difficulty"
+          variant="secondary"
+          onPress={() => router.push('/settings')}
+          style={styles.grow}
+        />
+        <Button
+          label="Progress"
+          variant="secondary"
+          onPress={() => router.push('/progress')}
+          style={styles.grow}
+        />
       </View>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  body: { flex: 1, justifyContent: 'center' },
-  blurb: { color: '#C1C2C5', fontSize: 18, lineHeight: 26 },
-  actions: { gap: 12 },
+  screen: { paddingTop: 40 },
+  title: {
+    color: colors.text,
+    fontSize: 30,
+    fontWeight: font.weightHeading,
+    lineHeight: 35,
+    marginTop: 8,
+    marginBottom: 10,
+  },
+  blurb: { color: textAlpha[65], fontSize: 14, lineHeight: 22, maxWidth: 280 },
+  wave: { marginTop: 28 },
+  spacer: { flex: 1 },
+  statRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
+  stat: { flex: 1, padding: 14 },
+  statKicker: {
+    color: colors.accent,
+    fontSize: 10,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  statValue: { color: colors.text, fontSize: 21, fontWeight: font.weightHeading },
+  cta: { minHeight: 52 },
+  secondaryRow: { flexDirection: 'row', gap: 10, marginTop: 10 },
+  grow: { flex: 1 },
 });

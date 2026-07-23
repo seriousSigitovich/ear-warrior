@@ -1,16 +1,21 @@
 // Shared accessible button (Constitution III: single source of shared UX, labeled controls).
+// Nocturne styling: outlined actions rather than filled — primary carries the accent as a
+// line (and optional glow), secondary a quiet divider border, ghost a bare accent link.
 import React from 'react';
-import { Pressable, StyleSheet, Text, ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, Text, TextStyle, ViewStyle } from 'react-native';
+import { colors, radius, withAlpha } from '../../theme/nocturne';
 
 export interface ButtonProps {
   label: string;
   onPress: () => void;
   disabled?: boolean;
-  variant?: 'primary' | 'secondary';
+  variant?: 'primary' | 'secondary' | 'ghost';
+  /** Adds the accent glow used on the hero "Start practice" call to action. */
+  glow?: boolean;
   style?: ViewStyle;
 }
 
-export function Button({ label, onPress, disabled, variant = 'primary', style }: ButtonProps) {
+export function Button({ label, onPress, disabled, variant = 'primary', glow, style }: ButtonProps) {
   return (
     <Pressable
       accessibilityRole="button"
@@ -20,21 +25,49 @@ export function Button({ label, onPress, disabled, variant = 'primary', style }:
       onPress={onPress}
       style={({ pressed }) => [
         styles.base,
-        variant === 'primary' ? styles.primary : styles.secondary,
-        (pressed || disabled) && styles.dim,
+        variant === 'primary' && styles.primary,
+        variant === 'secondary' && styles.secondary,
+        variant === 'ghost' && styles.ghost,
+        glow && styles.glow,
+        pressed && (variant === 'secondary' ? styles.pressedSecondary : styles.pressedAccent),
+        disabled && styles.dim,
         style,
       ]}
     >
-      <Text style={variant === 'primary' ? styles.primaryText : styles.secondaryText}>{label}</Text>
+      <Text style={[styles.label, variant === 'secondary' ? styles.labelNeutral : styles.labelAccent]}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  base: { paddingVertical: 14, paddingHorizontal: 20, borderRadius: 12, alignItems: 'center' },
-  primary: { backgroundColor: '#3B5BDB' },
-  secondary: { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#3B5BDB' },
-  dim: { opacity: 0.5 },
-  primaryText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  secondaryText: { color: '#3B5BDB', fontSize: 16, fontWeight: '600' },
+  base: {
+    minHeight: 44,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+  },
+  primary: { borderColor: colors.accent },
+  secondary: { borderColor: colors.divider },
+  ghost: { borderColor: 'transparent', minHeight: 0, paddingVertical: 4, paddingHorizontal: 6 },
+  glow: {
+    // stands in for the web box-shadow accent bloom
+    shadowColor: colors.accent,
+    shadowOpacity: 0.5,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 8,
+  },
+  pressedAccent: { backgroundColor: withAlpha(colors.accent, 0.18) },
+  pressedSecondary: { backgroundColor: withAlpha(colors.text, 0.1) },
+  dim: { opacity: 0.45 },
+  label: { fontSize: 15, fontWeight: '500' },
+  labelAccent: { color: colors.accent },
+  labelNeutral: { color: colors.text } as TextStyle,
 });

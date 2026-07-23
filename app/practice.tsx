@@ -1,17 +1,25 @@
 // Practice screen (T034): wires the practice loop to transport controls and feedback (US1).
+// Redesigned onto Nocturne: a Practice/Level header, a per-phase stage, and feedback rendered
+// as a verdict card + note chips (with a non-blocking tuning advisory) or a calm retry state.
 import React, { useMemo } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { GradingConfig, SegmentConfig } from '../src/models';
 import { L1 } from '../src/services/melody/levels';
+import { STANDARD_TUNING_MIDI } from '../src/features/practice/tuning';
 import { createAudioPlayback } from '../src/services/audio/playback';
 import { createPitchDetector, PitchDetectionConfig } from '../src/services/audio/pitch';
 import { createAudioSession } from '../src/services/audio/session';
 import { CaptureConfig } from '../src/features/practice/capture';
 import { usePracticeLoop } from '../src/features/practice/usePracticeLoop';
 import { Screen } from '../src/components/common/Screen';
+import { Kicker } from '../src/components/common/Kicker';
+import { Tag } from '../src/components/common/Tag';
 import { TransportControls } from '../src/components/controls/TransportControls';
+import { PracticeStage } from '../src/components/practice/PracticeStage';
 import { VerdictBanner } from '../src/components/feedback/VerdictBanner';
 import { NoteResultChips } from '../src/components/feedback/NoteResultChips';
+import { TuningAdvisory } from '../src/components/feedback/TuningAdvisory';
+import { RetryState } from '../src/components/feedback/RetryState';
 
 // Calibratable defaults (research.md — tuned on-device).
 const PITCH_CFG: PitchDetectionConfig = { minHz: 80, maxHz: 1320, clarityThreshold: 0.5 };
@@ -42,27 +50,40 @@ export default function Practice() {
 
   const loop = usePracticeLoop(L1, deps);
 
-  return (
-    <Screen title="Practice">
-      <ScrollView contentContainerStyle={styles.content}>
-        {loop.tuning?.outOfTune ? (
-          <Text style={styles.tuning}>
-            ⚠️ Guitar sounds {loop.tuning.direction}. Tap Replay to hear a reference — or keep going.
-          </Text>
-        ) : null}
+  const grade = loop.grade;
+  const showFeedback = loop.phase === 'feedback' && !!grade;
+  const retryOnly = !!grade && (grade.timedOut || grade.lowConfidence);
+  const showAdvisory = !!loop.tuning?.outOfTune && !retryOnly;
 
-        {loop.grade ? (
-          <View style={styles.feedback}>
-            <VerdictBanner grade={loop.grade} />
-            <NoteResultChips results={loop.grade.noteResults} />
-          </View>
+  return (
+    <Screen>
+      <View style={styles.header}>
+        <Kicker>Practice</Kicker>
+        <Tag label={`Level ${L1.rank}`} />
+      </View>
+
+      {showFeedback ? (
+        retryOnly ? (
+          <RetryState timedOut={grade!.timedOut} />
         ) : (
-          <Text style={styles.hint}>Press play, listen, then reproduce the melody.</Text>
-        )}
-      </ScrollView>
+          <ScrollView contentContainerStyle={styles.feedback} showsVerticalScrollIndicator={false}>
+            {showAdvisory ? (
+              <TuningAdvisory
+                direction={loop.tuning!.direction}
+                onTune={() => loop.tuning!.playReference(STANDARD_TUNING_MIDI[0])}
+              />
+            ) : null}
+            <VerdictBanner grade={grade!} />
+            <NoteResultChips results={grade!.noteResults} />
+          </ScrollView>
+        )
+      ) : (
+        <PracticeStage phase={loop.phase} />
+      )}
 
       <TransportControls
         phase={loop.phase}
+        retryOnly={retryOnly}
         onPlay={loop.next}
         onBeginAttempt={loop.beginAttempt}
         onReplay={loop.replay}
@@ -74,8 +95,11 @@ export default function Practice() {
 }
 
 const styles = StyleSheet.create({
-  content: { flexGrow: 1, justifyContent: 'center', gap: 16 },
-  feedback: { gap: 16 },
-  hint: { color: '#C1C2C5', fontSize: 16, textAlign: 'center' },
-  tuning: { color: '#FFD43B', fontSize: 15, textAlign: 'center' },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  feedback: { gap: 18, paddingVertical: 8 },
 });
