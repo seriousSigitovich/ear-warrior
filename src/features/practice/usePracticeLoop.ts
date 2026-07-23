@@ -1,9 +1,18 @@
 // Practice-loop state machine (T028, US1). Orchestrates the core loop:
 // idle → playingMelody → awaitingInput → capturing → grading → feedback, with replay/retry/next.
 // Pure logic (generate, schedule, segment, grade, tuning) is composed with the injected audio services.
-import { useCallback, useMemo, useRef, useState } from 'react';
-import { AttemptGrade, DifficultyLevel, GradingConfig, Melody, SegmentConfig } from '../../models';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  AttemptGrade,
+  DifficultySettings,
+  GradingConfig,
+  Melody,
+  SegmentConfig,
+} from '../../models';
 import { generateMelody } from '../../services/melody/generator';
+import { getLevelByRank } from '../../services/melody/levels';
+import { DEFAULT_DIFFICULTY_SETTINGS, applyAttempt, effectiveRank } from '../difficulty/adapt';
+import { DifficultySettingsRepository } from '../../services/storage/repositories';
 import { scheduleMelody } from '../../lib/schedule';
 import { segmentFrames } from '../../lib/segment';
 import { gradeAttempt } from '../../services/grading/grade';
@@ -31,6 +40,15 @@ export interface PracticeLoopDeps {
   gradingCfg: GradingConfig;
   captureCfg: CaptureConfig;
   seed: () => number;
+  /** Persisted difficulty state (FR-011b). */
+  difficulty: DifficultySettingsRepository;
+}
+
+/** A rank movement to surface in the feedback step, so difficulty never shifts silently. */
+export interface RankChange {
+  from: number;
+  to: number;
+  direction: 'up' | 'down';
 }
 
 /**
@@ -45,14 +63,58 @@ export interface CaptureProgress {
 
 const NO_PROGRESS: CaptureProgress = { notesHeard: 0, lastMidi: null };
 
-export function usePracticeLoop(level: DifficultyLevel, deps: PracticeLoopDeps) {
+export function usePracticeLoop(deps: PracticeLoopDeps) {
   const [phase, setPhase] = useState<LoopPhase>('idle');
   const [melody, setMelody] = useState<Melody | null>(null);
   const [grade, setGrade] = useState<AttemptGrade | null>(null);
   const [tuning, setTuning] = useState<TuningCheck | null>(null);
   const [progress, setProgress] = useState<CaptureProgress>(NO_PROGRESS);
+  const [settings, setSettings] = useState<DifficultySettings>(DEFAULT_DIFFICULTY_SETTINGS);
+  const [rankChange, setRankChange] = useState<RankChange | null>(null);
   const handleRef = useRef<CaptureHandle | null>(null);
   const lastVoicedMsRef = useRef<number | null>(null);
+  // Adaptation counts only the FIRST graded attempt per melody (FR-011a). A timed-out or
+  // low-confidence attempt is not graded, so the following attempt is still the first graded one.
+  const gradedThisMelodyRef = useRef(false);
+  // Settings are read through a ref inside callbacks so adaptation always folds into the freshest
+  // value, without every callback re-creating when the rank moves.
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
+
+  const level = useMemo(() => getLevelByRank(effectiveRank(settings)), [settings]);
+
+  useEffect(() => {
+    let cancelled = false;
+    deps.difficulty.load().then((loaded) => {
+      if (!cancelled) setSettings(loaded);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [deps.difficulty]);
+
+  /** Fold a finished attempt into difficulty state and persist the result (FR-011/011a). */
+  const adapt = useCallback(
+    async (result: AttemptGrade) => {
+      const before = settingsRef.current;
+      const next = applyAttempt(before, {
+        verdict: result.verdict,
+        graded: !result.timedOut && !result.lowConfidence,
+        isFirstAttemptOnMelody: !gradedThisMelodyRef.current,
+      });
+      if (!result.timedOut && !result.lowConfidence) {
+        gradedThisMelodyRef.current = true;
+      }
+      if (next === before) return;
+
+      const from = effectiveRank(before);
+      const to = effectiveRank(next);
+      setSettings(next);
+      setRankChange(to === from ? null : { from, to, direction: to > from ? 'up' : 'down' });
+      await deps.difficulty.save(next);
+    },
+    [deps.difficulty],
+  );
 
   const playMelody = useCallback(
     async (m: Melody) => {
@@ -68,6 +130,7 @@ export function usePracticeLoop(level: DifficultyLevel, deps: PracticeLoopDeps) 
     async (m: Melody) => {
       setPhase('capturing');
       setProgress(NO_PROGRESS);
+      setRankChange(null); // each attempt's feedback reflects only that attempt
       lastVoicedMsRef.current = null;
       // Microphone access is required to hear the attempt; requesting here triggers the OS prompt
       // on first use. Without it, capture silently records nothing. On denial, fall through to an
@@ -75,8 +138,10 @@ export function usePracticeLoop(level: DifficultyLevel, deps: PracticeLoopDeps) 
       const micGranted = await deps.session.ensureMicPermission();
       if (!micGranted) {
         setTuning(null);
-        setGrade(gradeAttempt(m, [], deps.gradingCfg));
+        const denied = gradeAttempt(m, [], deps.gradingCfg);
+        setGrade(denied);
         setPhase('feedback');
+        await adapt(denied); // ungraded → no-op, but keeps one adaptation path
         return;
       }
       await deps.session.enterRecording();
@@ -109,8 +174,9 @@ export function usePracticeLoop(level: DifficultyLevel, deps: PracticeLoopDeps) 
         : gradeAttempt(m, detected, deps.gradingCfg);
       setGrade(result);
       setPhase('feedback');
+      await adapt(result);
     },
-    [deps],
+    [deps, adapt],
   );
 
   const next = useCallback(async () => {
@@ -119,6 +185,8 @@ export function usePracticeLoop(level: DifficultyLevel, deps: PracticeLoopDeps) 
     setGrade(null);
     setTuning(null);
     setProgress(NO_PROGRESS);
+    setRankChange(null);
+    gradedThisMelodyRef.current = false; // a new melody restarts first-attempt eligibility
     await playMelody(m);
   }, [deps, level, playMelody]);
 
@@ -140,7 +208,35 @@ export function usePracticeLoop(level: DifficultyLevel, deps: PracticeLoopDeps) 
   }, []);
 
   return useMemo(
-    () => ({ phase, melody, grade, tuning, progress, next, replay, retry, beginAttempt, stopAttempt }),
-    [phase, melody, grade, tuning, progress, next, replay, retry, beginAttempt, stopAttempt],
+    () => ({
+      phase,
+      melody,
+      grade,
+      tuning,
+      progress,
+      level,
+      settings,
+      rankChange,
+      next,
+      replay,
+      retry,
+      beginAttempt,
+      stopAttempt,
+    }),
+    [
+      phase,
+      melody,
+      grade,
+      tuning,
+      progress,
+      level,
+      settings,
+      rankChange,
+      next,
+      replay,
+      retry,
+      beginAttempt,
+      stopAttempt,
+    ],
   );
 }

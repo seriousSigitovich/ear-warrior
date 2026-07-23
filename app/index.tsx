@@ -1,8 +1,12 @@
 // Home screen (T035): start a practice session and navigate into the core loop.
 // Redesigned onto Nocturne — hero heading, waveform motif, quick stats, outlined actions.
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { MAX_RANK } from '../src/services/melody/levels';
+import { DEFAULT_DIFFICULTY_SETTINGS, effectiveRank } from '../src/features/difficulty/adapt';
+import { defaultRowStore } from '../src/services/storage/db';
+import { createDifficultySettingsRepository } from '../src/services/storage/repositories';
 import { Screen } from '../src/components/common/Screen';
 import { Button } from '../src/components/common/Button';
 import { Card } from '../src/components/common/Card';
@@ -12,6 +16,20 @@ import { colors, font, textAlpha } from '../src/theme/nocturne';
 
 export default function Home() {
   const router = useRouter();
+  const [rank, setRank] = useState(effectiveRank(DEFAULT_DIFFICULTY_SETTINGS));
+
+  useEffect(() => {
+    let cancelled = false;
+    createDifficultySettingsRepository(defaultRowStore())
+      .load()
+      .then((s) => {
+        if (!cancelled) setRank(effectiveRank(s));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <Screen style={styles.screen}>
       <Kicker>Ear Warrior</Kicker>
@@ -31,7 +49,9 @@ export default function Home() {
         </Card>
         <Card style={styles.stat}>
           <Text style={styles.statKicker}>Level</Text>
-          <Text style={styles.statValue}>3 of 6</Text>
+          <Text style={styles.statValue}>
+            {rank} of {MAX_RANK}
+          </Text>
         </Card>
       </View>
 

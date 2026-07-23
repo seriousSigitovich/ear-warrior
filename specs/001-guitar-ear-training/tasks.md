@@ -104,25 +104,42 @@ a correct/incorrect verdict identifying matched/wrong/missed/extra notes, and su
 
 ## Phase 4: User Story 2 - Adjustable & Adaptive Difficulty (Priority: P2)
 
-**Goal**: Difficulty matches ability — generated melodies reflect the level's note count/range/tempo, and
-difficulty auto-adjusts on win/loss streaks or stays fixed when the learner chooses.
+**Goal**: Difficulty matches ability — 7 ranks differing in melody length only (`noteCount = rank + 1`,
+2→8), auto-adjusting on asymmetric streaks (3 correct → +1, 2 incorrect → −1) or held fixed when the
+learner chooses, with mode and both rank values persisted across restarts.
 
-**Independent Test**: Select a fixed level and confirm melodies match its parameters; in adaptive mode,
-confirm several correct answers raise difficulty and several failures lower it.
+**Independent Test**: Select a fixed rank and confirm every melody has `rank + 1` notes and never moves;
+in adaptive mode, confirm 3 correct first attempts raise the rank by one and 2 incorrect first attempts
+lower it by one, while retries and low-confidence captures leave it untouched.
+
+**Design refs**: `contracts/difficulty-adaptation.md`, `data-model.md` (DifficultyLevel,
+DifficultySettings), spec FR-010/FR-011/FR-011a/FR-011b, research R11/R13.
+
+> **Note on IDs**: T036–T041 were re-scoped after the 2026-07-23 clarifications (the old ladder varied
+> range/scale/tempo and had no persistence). T058–T062 are the additional work those decisions introduced;
+> they belong to this phase and run in the order listed, not after Phase 6.
 
 ### Tests for User Story 2 (REQUIRED per constitution — write FIRST, ensure they FAIL) ⚠️
 
-- [ ] T036 [P] [US2] Unit tests for adaptive difficulty (raise after win streak, lower after loss streak, fixed mode never adjusts) in `tests/unit/difficulty/adapt.test.ts`
-- [ ] T037 [P] [US2] Unit tests: generator honors each level's params (noteCount / range / scale / tempo) in `tests/unit/melody/levels.test.ts`
+- [X] T036 [P] [US2] Unit tests for the difficulty reducer in `tests/unit/difficulty/adapt.test.ts` covering the full transition table from `contracts/difficulty-adaptation.md`: `effectiveRank` per mode; 3 consecutive eligible correct → +1 (2 do not); 2 consecutive eligible incorrect → −1 (1 does not); a correct attempt mid-incorrect-streak restarts the count at 1; counter resets after every rank change so a 4th correct does not double-promote; each ineligible outcome (`graded: false`, `isFirstAttemptOnMelody: false`) leaves settings byte-identical; fixed mode never touches `adaptiveRank`; clamping at ranks 1 and 7; `setFixedRank` preserves `adaptiveRank` and the adaptive→fixed→adaptive round-trip restores the effective rank; invalid rank throws
+- [X] T037 [P] [US2] Unit tests for the level ladder in `tests/unit/melody/levels.test.ts`: exactly 7 levels with contiguous ranks 1–7; `noteCount === rank + 1` (2→8); `scale`, `rangeLowMidi`, `rangeHighMidi`, and `tempoBpm` identical across every rank; the fixed pool resolves to 8 distinct pitches so the no-consecutive-repeats rule holds at rank 7
+- [X] T058 [P] [US2] Contract test for the DifficultySettings repository in `tests/contract/difficultySettings.test.ts`: first launch returns the documented defaults (`adaptive`, both ranks 1, empty streak); a round-trip save/load preserves every field; writing `fixedRank` leaves `adaptiveRank` unchanged on disk (FR-011b)
 
 ### Implementation for User Story 2
 
-- [ ] T038 [US2] Define the full DifficultyLevel set (2→8 notes, ranges, tempos, ranks) in `src/services/melody/levels.ts` (extends T016) to pass T037
-- [ ] T039 [US2] Implement adaptive-difficulty engine + manual fixed mode in `src/features/difficulty/adapt.ts` to pass T036 (depends on T038)
-- [ ] T040 [US2] Wire difficulty selection (adaptive/fixed) into session + generator in `src/features/practice/usePracticeLoop.ts` (depends on T039, T028)
-- [ ] T041 [P] [US2] Build settings screen `app/settings.tsx` (choose fixed level or adaptive) (depends on T039)
+- [X] T059 [US2] Add the `DifficultySettings` entity to `src/models/index.ts` (mode, adaptiveRank, fixedRank, streakKind, streakCount) per `data-model.md`
+- [X] T038 [US2] Replace the seeded single level with the full 7-rank ladder in `src/services/melody/levels.ts` to pass T037 — ranks 1–7, `noteCount = rank + 1`, and the fixed pool `C_major` / MIDI 60–72 / 60 BPM at every rank. **This changes the existing `L1` from `C_major_pentatonic` to `C_major`**; keep `getLevel`/`allLevels` working and add a `getLevelByRank` lookup for the reducer
+- [X] T060 [US2] Add the DifficultySettings table + repository (singleton row, defaults on first launch) in `src/services/storage/repositories.ts` and its migration in `src/services/storage/db.ts` to pass T058 (depends on T059)
+- [X] T039 [US2] Implement the pure reducer (`effectiveRank`, `applyAttempt`, `setFixedRank`, `setMode`) in `src/features/difficulty/adapt.ts` to pass T036 — no IO, no clock, no randomness (depends on T059)
+- [X] T040 [US2] Wire difficulty into `src/features/practice/usePracticeLoop.ts`: load settings on mount, generate from `effectiveRank`, and after each attempt call `applyAttempt` with the correct `AttemptOutcome` — the loop MUST track `isFirstAttemptOnMelody` (false once the learner has retried) and set `graded: false` for timed-out or low-confidence captures, then persist the returned settings (depends on T038, T039, T060, T028)
+- [X] T061 [US2] Announce rank changes in the feedback step via a shared component in `src/components/feedback/` (e.g. "Level up — 4 notes"), carrying an accessible label so screen readers report it, so difficulty never shifts silently (Constitution III, SC-009) (depends on T040)
+- [X] T041 [US2] Rebuild `app/settings.tsx` against real persisted state: mode toggle and rank picker write through the repository, the ladder shows **7** levels (the current `TOTAL_LEVELS = 6` is wrong), and the current-level card reads the effective level instead of the hardcoded `L1` import (depends on T039, T060). Supersedes T057
+- [X] T062 [US2] Replace the hardcoded `L1` import and `Level {L1.rank}` tag in `app/practice.tsx` with the effective rank from the loop, and the fabricated "Level 3 of 6" stat in `app/index.tsx` with the real current rank out of 7 (depends on T040)
+- [X] T063 [P] [US2] Update the stale `C_major_pentatonic` fixtures in `tests/unit/melody/generator.test.ts`, `tests/unit/lib/schedule.test.ts`, `tests/contract/logging.test.ts`, and `tests/contract/playback.test.ts` to the shipped `C_major` pool so fixtures match the real ladder (these construct their own level objects, so they pass either way — the risk is silent drift, not a red suite)
 
-**Checkpoint**: US1 and US2 both work independently.
+**Checkpoint**: US1 and US2 both work independently. Validate with quickstart US2 scenarios 1–8 —
+scenario 5 (two low-confidence captures must NOT demote) is the one most likely to fail if `graded` is
+threaded incorrectly through T040.
 
 ---
 
@@ -176,7 +193,7 @@ shows accuracy trend, practice volume, and identified weak areas derived from re
 ### Key within-story dependencies
 
 - US1: T010 & T023 → T024 (grading); T014 → T026 (pitch); T021B → T025 (synth: test before pure impl); T025 → T027 (playback); T021A → T030 (tuning: test before pure rule); T022/T024/T026/T027 → T028 (loop) → T029/T033 → T034 → T035; T035 → T035B (session lifecycle, after T035A). T021C is a retroactive regression test for the already-built T029 capture logic (C1).
-- US2: T038 → T039 → T040; T041 after T039.
+- US2: T059 (model) → T038 (ladder) & T060 (persistence) & T039 (reducer) → T040 (loop wiring) → T061 (announcement) & T062 (screens); T041 after T039 + T060. T063 is independent of all of them. Tests T036/T037/T058 are written first and must fail.
 - US3: T043 → T044 → T046; T045 after T033.
 - Polish: T013 → T049 → T050; T048 before T049 (test-first).
 
@@ -185,6 +202,7 @@ shows accuracy trend, practice volume, and identified weak areas derived from re
 - Setup: T002–T006 in parallel.
 - Foundational: T008, T009, T012, T013, T014, T015, T016 in parallel (T010 after T009).
 - US1 tests (T017–T021, T021A, T021B, T021C, T035A) all in parallel; then pure impls T022 & T023 in parallel; UI T031 & T032 in parallel.
+- US2 tests T036, T037, T058 in parallel; then T038 (ladder), T060 (persistence), and T039 (reducer) in parallel once T059 lands — they touch different files. T063 can run at any point.
 - Different user stories can proceed in parallel once Foundational is done (separate developers).
 
 ---
@@ -236,4 +254,4 @@ T051–T054, capture regression in T021C), which converge does not duplicate.
 
 - [ ] T055 [US1] Add a regression test for the real `react-native-pitchy` adapter `defaultNativePitch()` in `src/services/audio/pitch.ts`: assert it resolves the library's **default export** (so `init`/`start`/`addListener`/`stop` are invoked on the real surface, not the module namespace) and maps `confidence`/`tCaptureMs` correctly — the existing `tests/contract/pitch.test.ts` only exercises the injected fake `NativePitchModule` and so missed the default-export defect that crashed on-device capture. Align the pitch mock to the real module shape per `Constitution II` (bug fixes MUST include a regression test) and `contracts/pitch-detection.md` (partial)
 - [ ] T056 [US3] Gate or label the illustrative statistics in `app/progress.tsx` (82% accuracy, "+6% this week", 6-day streak, 142 attempts, the hardcoded 7-session trend) as placeholder — or hide the figures — until US3 aggregation (T043–T046) supplies real values, so the screen never presents fabricated data as real per FR-013 / US3 (contradicts)
-- [ ] T057 [US2] Mark the difficulty mode toggle and level ladder in `app/settings.tsx` as not-yet-active (disabled/"coming soon"), since the current controls are local-only state that neither persists nor changes generation (always L1), so the UI does not imply a functional effect it lacks — until wired under T038–T041 per FR-011 / US2 (contradicts)
+- [X] T057 [US2] ~~Mark the difficulty mode toggle and level ladder in `app/settings.tsx` as not-yet-active (disabled/"coming soon")~~ — **obsolete, not performed.** This was a stopgap for shipping before US2. T041 rebuilt the screen against real persisted state, so the controls now do what they claim and there is nothing to disable

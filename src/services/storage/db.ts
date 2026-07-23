@@ -4,6 +4,11 @@
 
 export const SESSIONS_TABLE = 'sessions';
 export const ATTEMPTS_TABLE = 'attempts';
+/** Singleton row holding the learner's difficulty state (FR-011b). */
+export const DIFFICULTY_SETTINGS_TABLE = 'difficulty_settings';
+
+/** Every table the app creates on open. */
+export const ALL_TABLES = [SESSIONS_TABLE, ATTEMPTS_TABLE, DIFFICULTY_SETTINGS_TABLE];
 
 /** Minimal document store keyed by string id. The SQLite adapter serializes rows as JSON docs. */
 export interface RowStore {
@@ -53,7 +58,7 @@ export function defaultRowStore(): RowStore {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const SQLite = require('expo-sqlite');
   const dbPromise = SQLite.openDatabaseAsync('ear-warrior.db').then(async (db: any) => {
-    for (const table of [SESSIONS_TABLE, ATTEMPTS_TABLE]) {
+    for (const table of ALL_TABLES) {
       await db.execAsync(`CREATE TABLE IF NOT EXISTS ${table} (id TEXT PRIMARY KEY, data TEXT);`);
     }
     return db;

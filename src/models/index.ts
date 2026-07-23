@@ -69,13 +69,17 @@ export interface AttemptGrade {
   timedOut: boolean;
 }
 
-/** Named generation configuration (FR-010). */
+/**
+ * Named generation configuration (FR-010). Levels differ in melody length **only** — `scale`,
+ * the range bounds, and `tempoBpm` hold the same constant at every rank this phase.
+ */
 export interface DifficultyLevel {
   id: string;
+  /** 1–7; `noteCount` is always `rank + 1`. */
   rank: number;
-  /** 2 at easiest … up to 8 (SC-005). */
+  /** 2 at rank 1 … 8 at rank 7 (SC-005). */
   noteCount: number;
-  /** Scale name, e.g. "C_major_pentatonic". */
+  /** Scale name; constant "C_major" at every rank this phase. */
   scale: string;
   rangeLowMidi: number;
   rangeHighMidi: number;
@@ -107,6 +111,36 @@ export interface Attempt {
 }
 
 export type DifficultyMode = 'adaptive' | 'fixed';
+
+/** Which run of consecutive qualifying attempts is currently accumulating. */
+export type StreakKind = 'correct' | 'incorrect' | 'none';
+
+/**
+ * The learner's persisted difficulty state (FR-011, FR-011a, FR-011b). Singleton per install.
+ * `adaptiveRank` and `fixedRank` are deliberately independent: selecting a fixed level for a warm-up
+ * must not erase adaptive progress.
+ */
+export interface DifficultySettings {
+  mode: DifficultyMode;
+  /** Rank adaptive mode last held (1–7). */
+  adaptiveRank: number;
+  /** Manually selected rank (1–7); no unlock gating. */
+  fixedRank: number;
+  streakKind: StreakKind;
+  /** Consecutive qualifying attempts of `streakKind`. */
+  streakCount: number;
+}
+
+/**
+ * One finished attempt as the practice loop observes it, for difficulty adaptation only.
+ * `graded` is false for a timed-out or low-confidence capture; `isFirstAttemptOnMelody` is false
+ * once the learner has retried. Both false cases are excluded from the streak (FR-011a).
+ */
+export interface AttemptOutcome {
+  verdict: Verdict;
+  graded: boolean;
+  isFirstAttemptOnMelody: boolean;
+}
 
 /** A continuous practice run containing multiple attempts (FR-018). */
 export interface Session {

@@ -72,6 +72,20 @@ Physical devices required (microphone + audio output).
   doesn't cascade following notes to wrong (FR-005).
 - **No consecutive identical pitches**: generated melodies never repeat a pitch back-to-back, so notes are
   separable by pitch change without same-pitch onset detection (FR-001/FR-004).
+- **Difficulty ladder (US2)**: exactly **7 ranks differing in melody length only** — `noteCount = rank + 1`
+  (2→8). All ranks share one fixed pitch pool, **C major C4–C5 (MIDI 60–72)**, and a fixed **60 BPM** tempo
+  (FR-010). The one-octave pool means generated targets can never produce an octave-mismatch failure.
+- **Adaptation rule (US2)**: asymmetric consecutive streaks — 3 correct → +1 rank, 2 incorrect → −1 rank,
+  steps always ±1, counter resets on every rank change (this is the anti-thrash hysteresis), rank clamps at
+  1 and 7. Only the **first graded attempt per new melody** counts; retries, low-confidence captures, and
+  timeouts are excluded entirely and leave the streak untouched (FR-011a). Mode, adaptive rank, and fixed
+  selection are three independently persisted values (FR-011b). Implemented as a **pure reducer** in
+  `src/features/difficulty/` — see `contracts/difficulty-adaptation.md`.
+- **Difficulty defaults & disclosure** (design decisions taken at plan time, not spec clarifications): a
+  brand-new learner starts in `adaptive` mode at **rank 1**, which is also the rank the US1-only build runs
+  at. When adaptation moves the rank, the app **announces the change in the feedback step** ("Level up —
+  4 notes"), so difficulty never shifts silently (Constitution III: predictable behavior). The announcement
+  is a shared feedback component carrying an accessible label so screen readers report it too (SC-009).
 - **Runtime tone synthesis**: per-note plucked-string tones are synthesized at runtime (Karplus–Strong),
   encoded as WAV, and cached on device; no audio samples are bundled. Any MIDI note in range can be
   produced on demand, so the generator is not constrained to a pre-rendered asset set.
@@ -108,6 +122,16 @@ pure and unit-tested, with only the cache-write and playback native and injected
 The FR-019 on-device-audio boundary and the concrete SC-009 accessibility baseline introduce no gate
 deviation. No violations introduced by the design. ✅
 
+**Post-clarification re-check (2026-07-24, US2 difficulty design)**: The adaptation rule is specified as a
+**pure reducer** with no IO, clock, or randomness (`contracts/difficulty-adaptation.md`), so Principle II is
+satisfied by table-driven unit tests covering every transition, including the exclusion and clamping cases —
+no on-device validation is required for the rule itself. Principle IV: the decision is O(1) arithmetic over a
+5-field record on an already-persisted row, so it cannot threaten the 15 s cycle budget (SC-001); no
+additional performance target is warranted beyond the existing budgets. Principle III: the ladder collapses
+to a single varying dimension and manual mode exposes all 7 ranks ungated, keeping the settings surface
+simple and predictable. Principle I: difficulty logic stays a single-responsibility pure module, separate
+from the storage that persists it. No new gate deviations. ✅
+
 ## Project Structure
 
 ### Documentation (this feature)
@@ -124,10 +148,13 @@ specs/001-guitar-ear-training/
 │   ├── audio-playback.md
 │   ├── melody-generator.md
 │   ├── grading-engine.md
+│   ├── difficulty-adaptation.md
 │   ├── tuning-check.md
 │   └── supabase-attempt-log.md
 └── checklists/
-    └── requirements.md
+    ├── requirements.md
+    ├── audio.md
+    └── difficulty.md
 ```
 
 ### Source Code (repository root)
@@ -147,7 +174,8 @@ src/
 │   └── common/               # Buttons, layout, accessible primitives
 ├── features/
 │   ├── practice/             # US1 orchestration (state machine, hooks)
-│   ├── difficulty/           # US2 adaptive + manual difficulty
+│   ├── difficulty/           # US2 adaptive + manual difficulty (pure reducer)
+│   │                         #   → contracts/difficulty-adaptation.md
 │   └── progress/             # US3 aggregation + views
 ├── services/
 │   ├── audio/

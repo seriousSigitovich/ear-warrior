@@ -4,11 +4,13 @@
 import React, { useMemo } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { GradingConfig, SegmentConfig } from '../src/models';
-import { L1 } from '../src/services/melody/levels';
+import { MAX_RANK } from '../src/services/melody/levels';
 import { STANDARD_TUNING_MIDI } from '../src/features/practice/tuning';
 import { createAudioPlayback } from '../src/services/audio/playback';
 import { createPitchDetector, PitchDetectionConfig } from '../src/services/audio/pitch';
 import { createAudioSession } from '../src/services/audio/session';
+import { defaultRowStore } from '../src/services/storage/db';
+import { createDifficultySettingsRepository } from '../src/services/storage/repositories';
 import { CaptureConfig } from '../src/features/practice/capture';
 import { usePracticeLoop } from '../src/features/practice/usePracticeLoop';
 import { Screen } from '../src/components/common/Screen';
@@ -19,6 +21,7 @@ import { PracticeStage } from '../src/components/practice/PracticeStage';
 import { VerdictBanner } from '../src/components/feedback/VerdictBanner';
 import { NoteResultChips } from '../src/components/feedback/NoteResultChips';
 import { TuningAdvisory } from '../src/components/feedback/TuningAdvisory';
+import { RankChangeBanner } from '../src/components/feedback/RankChangeBanner';
 import { RetryState } from '../src/components/feedback/RetryState';
 
 // Calibratable defaults (research.md — tuned on-device).
@@ -44,11 +47,12 @@ export default function Practice() {
       gradingCfg: GRADING_CFG,
       captureCfg: CAPTURE_CFG,
       seed: () => Math.floor(Math.random() * 1e9),
+      difficulty: createDifficultySettingsRepository(defaultRowStore()),
     }),
     [],
   );
 
-  const loop = usePracticeLoop(L1, deps);
+  const loop = usePracticeLoop(deps);
 
   const grade = loop.grade;
   const showFeedback = loop.phase === 'feedback' && !!grade;
@@ -59,7 +63,7 @@ export default function Practice() {
     <Screen>
       <View style={styles.header}>
         <Kicker>Practice</Kicker>
-        <Tag label={`Level ${L1.rank}`} />
+        <Tag label={`Level ${loop.level.rank} of ${MAX_RANK}`} />
       </View>
 
       {showFeedback ? (
@@ -74,13 +78,14 @@ export default function Practice() {
               />
             ) : null}
             <VerdictBanner grade={grade!} />
+            {loop.rankChange ? <RankChangeBanner change={loop.rankChange} /> : null}
             <NoteResultChips results={grade!.noteResults} />
           </ScrollView>
         )
       ) : (
         <PracticeStage
           phase={loop.phase}
-          noteCount={loop.melody?.notes.length ?? L1.noteCount}
+          noteCount={loop.melody?.notes.length ?? loop.level.noteCount}
           progress={loop.progress}
         />
       )}

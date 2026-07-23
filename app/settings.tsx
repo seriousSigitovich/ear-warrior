@@ -1,60 +1,113 @@
-// Difficulty settings screen (US2 surface, T041). The adaptive/fixed ladder lands with
-// User Story 2; this redesign brings the screen onto Nocturne now — a working mode toggle,
-// a six-step level ladder, and a current-level card driven by the seeded L1 configuration.
-import React, { useState } from 'react';
+// Difficulty settings screen (T041, US2). Backed by the persisted DifficultySettings row, so the
+// mode toggle and the level picker take real effect and survive restart (FR-011b). In fixed mode the
+// ladder is tappable and every rank is selectable — there is no unlock gating.
+import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { DifficultyMode } from '../src/models';
-import { L1 } from '../src/services/melody/levels';
+import { DifficultyMode, DifficultySettings } from '../src/models';
+import { MAX_RANK, MIN_RANK, getLevelByRank } from '../src/services/melody/levels';
+import {
+  DEFAULT_DIFFICULTY_SETTINGS,
+  effectiveRank,
+  setFixedRank,
+  setMode,
+} from '../src/features/difficulty/adapt';
+import { defaultRowStore } from '../src/services/storage/db';
+import { createDifficultySettingsRepository } from '../src/services/storage/repositories';
 import { noteName } from '../src/lib/pitchNote';
 import { Screen } from '../src/components/common/Screen';
 import { Kicker } from '../src/components/common/Kicker';
 import { Card } from '../src/components/common/Card';
 import { colors, font, radius, textAlpha } from '../src/theme/nocturne';
 
-const TOTAL_LEVELS = 6;
+const RANKS = Array.from({ length: MAX_RANK - MIN_RANK + 1 }, (_, i) => MIN_RANK + i);
 
 function humanScale(scale: string): string {
   return scale.replace(/_/g, ' ');
 }
 
 export default function Settings() {
-  const [mode, setMode] = useState<DifficultyMode>('adaptive');
-  const rank = L1.rank; // current level (1-based)
+  const [repo] = useState(() => createDifficultySettingsRepository(defaultRowStore()));
+  const [settings, setSettings] = useState<DifficultySettings>(DEFAULT_DIFFICULTY_SETTINGS);
+
+  useEffect(() => {
+    let cancelled = false;
+    repo.load().then((loaded) => {
+      if (!cancelled) setSettings(loaded);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [repo]);
+
+  /** Apply a pure transition, show it immediately, and persist it. */
+  const commit = useCallback(
+    (next: DifficultySettings) => {
+      setSettings(next);
+      void repo.save(next);
+    },
+    [repo],
+  );
+
+  const rank = effectiveRank(settings);
+  const level = getLevelByRank(rank);
+  const fixed = settings.mode === 'fixed';
 
   return (
     <Screen>
       <Kicker>Settings</Kicker>
       <Text style={styles.title}>Difficulty</Text>
 
-      <View style={styles.seg}>
-        <SegOption label="Adaptive" active={mode === 'adaptive'} onPress={() => setMode('adaptive')} />
-        <SegOption label="Fixed" active={mode === 'fixed'} onPress={() => setMode('fixed')} last />
+      <View style={styles.seg} accessibilityRole="radiogroup">
+        <SegOption
+          label="Adaptive"
+          active={!fixed}
+          onPress={() => commit(setMode(settings, 'adaptive' as DifficultyMode))}
+        />
+        <SegOption
+          label="Fixed"
+          active={fixed}
+          onPress={() => commit(setMode(settings, 'fixed' as DifficultyMode))}
+          last
+        />
       </View>
 
-      <View style={styles.dots}>
-        {Array.from({ length: TOTAL_LEVELS }, (_, i) => (
-          <LevelDot key={i} state={i + 1 < rank ? 'done' : i + 1 === rank ? 'current' : 'todo'} />
+      <View style={styles.dots} accessibilityRole="radiogroup">
+        {RANKS.map((r) => (
+          <LevelDot
+            key={r}
+            rank={r}
+            state={r < rank ? 'done' : r === rank ? 'current' : 'todo'}
+            selectable={fixed}
+            onPress={() => commit(setFixedRank(settings, r))}
+          />
         ))}
       </View>
       <Text style={styles.ladderCaption}>
-        Level {rank} of {TOTAL_LEVELS} — where you’re starting
+        {fixed
+          ? `Level ${rank} of ${MAX_RANK} — tap to change`
+          : `Level ${rank} of ${MAX_RANK} — adjusts as you practice`}
       </Text>
 
       <Card style={styles.levelCard}>
         <Text style={styles.cardKicker}>Current level</Text>
         <Text style={styles.cardTitle}>
-          Level {rank} · Getting started
+          Level {rank} · {level.noteCount} notes
         </Text>
         <View style={styles.hr} />
-        <Row label="Notes per melody" value={`${L1.noteCount}`} />
-        <Row label="Pitch range" value={`${noteName(L1.rangeLowMidi)}–${noteName(L1.rangeHighMidi)}`} />
-        <Row label="Tempo" value={`${L1.tempoBpm} BPM`} />
-        <Row label="Scale" value={humanScale(L1.scale)} />
+        <Row label="Notes per melody" value={`${level.noteCount}`} />
+        <Row
+          label="Pitch range"
+          value={`${noteName(level.rangeLowMidi)}–${noteName(level.rangeHighMidi)}`}
+        />
+        <Row label="Tempo" value={`${level.tempoBpm} BPM`} />
+        <Row label="Scale" value={humanScale(level.scale)} />
       </Card>
 
       <View style={styles.spacer} />
       <Text style={styles.footnote}>
-        Adaptive mode raises or lowers the level after a run of correct or incorrect attempts.
+        {fixed
+          ? 'Fixed mode keeps this level until you change it. Your adaptive level is remembered separately.'
+          : 'Adaptive mode raises the level after 3 correct melodies in a row and lowers it after 2 missed. Retries and unclear recordings don’t count.'}
       </Text>
     </Screen>
   );
@@ -83,10 +136,34 @@ function SegOption({
   );
 }
 
-function LevelDot({ state }: { state: 'done' | 'current' | 'todo' }) {
-  if (state === 'current') return <View style={styles.dotCurrent} />;
-  if (state === 'done') return <View style={styles.dotDone} />;
-  return <View style={styles.dotTodo} />;
+function LevelDot({
+  rank,
+  state,
+  selectable,
+  onPress,
+}: {
+  rank: number;
+  state: 'done' | 'current' | 'todo';
+  selectable: boolean;
+  onPress: () => void;
+}) {
+  const dot =
+    state === 'current' ? styles.dotCurrent : state === 'done' ? styles.dotDone : styles.dotTodo;
+  // The dots are 22–26pt, below the 44pt minimum, so the tap target is padded out around them
+  // rather than the visual being enlarged (SC-009).
+  return (
+    <Pressable
+      accessibilityRole="radio"
+      accessibilityState={{ selected: state === 'current', disabled: !selectable }}
+      accessibilityLabel={`Level ${rank} of ${MAX_RANK}`}
+      accessibilityHint={selectable ? 'Sets the fixed difficulty level' : undefined}
+      disabled={!selectable}
+      onPress={onPress}
+      style={styles.dotTarget}
+    >
+      <View style={dot} />
+    </Pressable>
+  );
 }
 
 function Row({ label, value }: { label: string; value: string }) {
@@ -116,7 +193,8 @@ const styles = StyleSheet.create({
   segText: { color: colors.text, fontSize: 13 },
   segTextActive: { color: colors.accent },
 
-  dots: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+  dots: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, marginLeft: -8 },
+  dotTarget: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   dotDone: { width: 22, height: 22, borderRadius: 11, backgroundColor: colors.neutral[600] },
   dotCurrent: {
     width: 26,

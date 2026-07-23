@@ -6,7 +6,7 @@ const LEVEL: DifficultyLevel = {
   id: 'TST',
   rank: 2,
   noteCount: 5,
-  scale: 'C_major_pentatonic',
+  scale: 'C_major',
   rangeLowMidi: 60, // C4
   rangeHighMidi: 84, // C6
   tempoBpm: 90,

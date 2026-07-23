@@ -143,14 +143,20 @@ Alternatives considered**.
 
 ## R11. Melody generation parameters
 
-- **Decision**: Generator takes a Difficulty Level (note count, pitch pool = scale + range, tempo) and
-  produces a monophonic sequence within guitar range. Defaults: easiest = 2 notes from a small
-  diatonic set at slow tempo; hardest (this phase) up to 8 notes across a wider range/faster tempo
-  (SC-005). Adaptation nudges level after configurable win/loss streaks (US2).
-- **Rationale**: Deterministic, pure, and directly parameterized by the Difficulty entity; easy to tune
-  and unit-test (test-first).
-- **Alternatives considered**: ML/generative melody models — rejected, unnecessary complexity for
-  short ear-training phrases.
+- **Decision**: Generator takes a Difficulty Level and produces a monophonic sequence. Per the 2026-07-23
+  clarifications, levels differ in **melody length only**: 7 ranks with `noteCount = rank + 1` (2→8 notes,
+  SC-005). All ranks share one **fixed pitch pool — C major diatonic, C4–C5 (MIDI 60–72)** — and a fixed
+  **60 BPM** tempo (FR-001, FR-010).
+- **Rationale**: A single varying dimension makes the difficulty curve diagnosable — when a learner starts
+  failing, length is the only variable that changed. The one-octave pool is deliberate: it contains no
+  duplicate note names, so the default octave-sensitive matching cannot produce octave-mismatch failures
+  from generated targets. Its 8 distinct pitches (C D E F G A B C) also comfortably satisfy the
+  no-consecutive-repeats rule at the 8-note top rank.
+- **Alternatives considered**: Advancing range/scale/tempo together — rejected, confounds the difficulty
+  signal and makes adaptation coarse. Staged advancement (length, then range, then scale) — deferred to a
+  later phase as unnecessary for the first ladder. Varying tempo — rejected outright: rhythm is not graded
+  (pitch-first grading), so tempo changes memorization load without changing what is measured. ML/generative
+  melody models — rejected, unnecessary complexity for short ear-training phrases.
 
 ## R12. Accessibility baseline (SC-009)
 
@@ -167,6 +173,29 @@ Alternatives considered**.
   closed-tester build needs.
 - **Note**: Contrast, label/role, and target-size checks are validated in the T051 accessibility pass and
   a VoiceOver/TalkBack walkthrough in `quickstart.md`.
+
+## R13. Difficulty adaptation rule (US2, FR-011/011a/011b)
+
+- **Decision**: **Asymmetric consecutive-streak** adaptation. 3 consecutive correct → rank +1; 2
+  consecutive incorrect → rank −1; steps are always ±1; the streak counter resets to 0 on any rank change;
+  the rank clamps at 1 and 7. Only the **first graded attempt on each newly generated melody** feeds the
+  streak — retries (FR-008), low-confidence ungraded captures (FR-017), and no-input timeouts (FR-015) are
+  excluded and leave the counter untouched. Mode (`adaptive`/`fixed`), the adaptive rank, and the fixed
+  selection are **three independently persisted values** surviving app restart.
+- **Rationale**: Streaks are trivially explainable in the UI and directly unit-testable as a pure
+  reducer, unlike a rolling accuracy window which needs history and is harder to justify to a learner.
+  The asymmetry (slower to promote than to demote) drops a learner out of a too-hard rank quickly while
+  requiring real evidence to advance. Excluding ungraded captures is the critical choice: counting them
+  would demote a learner for room noise rather than for ability, and since retries are unlimited,
+  counting retries would let a learner grind one melody into a promotion. Separating the adaptive rank
+  from the fixed selection means dipping into fixed mode for a warm-up does not erase adaptive progress.
+- **Alternatives considered**: Symmetric 3/3 thresholds — rejected, three consecutive failures at a
+  too-hard rank is three consecutive discouraging minutes. Rolling 5-attempt accuracy window (≥80% up,
+  ≤40% down) — rejected, needs persisted history and explains poorly. Treating a retry as an admission
+  of failure — rejected, it punishes the learner for wanting to practice. A single shared level for both
+  modes — rejected, a brief fixed-mode excursion would silently reset adaptive progress.
+- **Note**: The counter reset on rank change supplies the hysteresis that prevents raise/lower thrashing —
+  after any adjustment a fresh full streak is required before the next one.
 
 ---
 

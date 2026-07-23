@@ -17,8 +17,12 @@ function generateMelody(level: DifficultyLevel, seed?: number): Melody;
 - Every note's `midi` is within `[level.rangeLowMidi, level.rangeHighMidi]` **and** a member of
   `level.scale`, and within guitar range (~40–88).
 - Deterministic given the same `(level, seed)` — enables reproducible replay and future tests.
-- Monophonic only (no simultaneous notes); durations derived from `level.tempoBpm`.
-- MUST NOT emit a note lacking a bundled playback sample (generator and asset set share the note pool).
+- Monophonic only (no simultaneous notes); durations derived from `level.tempoBpm` (constant 60 BPM).
+- Never emits two identical pitches back-to-back (FR-001), so notes stay separable by pitch change.
+- Any in-range MIDI note is playable — tones are synthesized at runtime (Karplus–Strong), so the generator
+  is **not** constrained to a pre-rendered asset set.
+- With the fixed C major C4–C5 pool every level draws from the same 8 pitches; only `noteCount` differs
+  (`rank + 1`, 2→8).
 
 ## Error modes
 

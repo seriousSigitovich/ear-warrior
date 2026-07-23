@@ -1,7 +1,8 @@
 // Session & Attempt repositories (T012, FR-012/FR-018). Typed CRUD over the RowStore port; completed
 // records survive app restarts because the store is durable (SQLite on device).
-import { Attempt, Session } from '../../models';
-import { ATTEMPTS_TABLE, RowStore, SESSIONS_TABLE } from './db';
+import { Attempt, DifficultySettings, Session } from '../../models';
+import { DEFAULT_DIFFICULTY_SETTINGS } from '../../features/difficulty/adapt';
+import { ATTEMPTS_TABLE, DIFFICULTY_SETTINGS_TABLE, RowStore, SESSIONS_TABLE } from './db';
 
 export interface SessionRepository {
   create(session: Session): Promise<Session>;
@@ -15,6 +16,13 @@ export interface AttemptRepository {
   get(id: string): Promise<Attempt | null>;
   forSession(sessionId: string): Promise<Attempt[]>;
   all(): Promise<Attempt[]>;
+}
+
+/** Persisted difficulty state — a single row, so difficulty outlives any session (FR-011b). */
+export interface DifficultySettingsRepository {
+  /** Returns the stored settings, or the documented defaults on first launch. */
+  load(): Promise<DifficultySettings>;
+  save(settings: DifficultySettings): Promise<void>;
 }
 
 export function createSessionRepository(store: RowStore): SessionRepository {
@@ -41,5 +49,28 @@ export function createAttemptRepository(store: RowStore): AttemptRepository {
       return all.filter((a) => a.sessionId === sessionId);
     },
     all: () => store.all<Attempt>(ATTEMPTS_TABLE),
+  };
+}
+
+/** Fixed key for the singleton settings row — insert-or-replace keeps exactly one. */
+const SETTINGS_ID = 'singleton';
+
+export function createDifficultySettingsRepository(store: RowStore): DifficultySettingsRepository {
+  return {
+    async load() {
+      const stored = await store.getById<DifficultySettings>(
+        DIFFICULTY_SETTINGS_TABLE,
+        SETTINGS_ID,
+      );
+      // Merge over the defaults so a row written by an older build that lacks a field still loads.
+      return stored ? { ...DEFAULT_DIFFICULTY_SETTINGS, ...stored } : DEFAULT_DIFFICULTY_SETTINGS;
+    },
+    async save(settings) {
+      await store.insert(
+        DIFFICULTY_SETTINGS_TABLE,
+        SETTINGS_ID,
+        settings as unknown as Record<string, unknown>,
+      );
+    },
   };
 }
