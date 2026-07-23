@@ -12,16 +12,23 @@ const config: ExpoConfig = {
   ios: {
     bundleIdentifier: 'com.earwarrior.app',
     supportsTablet: true,
-    infoPlist: {
-      NSMicrophoneUsageDescription:
-        'Ear Warrior listens through your microphone to detect the notes you play on the guitar.',
-    },
   },
   android: {
     package: 'com.earwarrior.app',
     permissions: ['RECORD_AUDIO'],
   },
-  plugins: ['expo-router'],
+  plugins: [
+    'expo-router',
+    // expo-audio config plugin sets the microphone permission strings (FR-004).
+    [
+      'expo-audio',
+      {
+        microphonePermission:
+          'Ear Warrior listens through your microphone to detect the notes you play on the guitar.',
+        enableBackgroundPlayback: false,
+      },
+    ],
+  ],
   extra: {
     supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
     supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,

@@ -16,7 +16,7 @@
     "@supabase/supabase-js": "^2.43.0",
     "expo": "^57.0.8",
     "expo-asset": "~57.0.7",
-    "expo-audio": "~1.0.13",
+    "expo-audio": "~57.0.3",
     "expo-file-system": "~57.0.1",
     "expo-router": "~57.0.8",
     "expo-sqlite": "~57.0.1",
