@@ -45,7 +45,10 @@ export function defaultNativePitch(): NativePitchModule {
   const pitchy = () => {
     if (!cached) {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
-      cached = require('react-native-pitchy');
+      const mod = require('react-native-pitchy');
+      // The library ships `Pitchy` as a default export, so under CommonJS interop
+      // init/start/stop/addListener live on `.default`, not the module top level.
+      cached = mod.default ?? mod;
     }
     return cached;
   };
