@@ -24,6 +24,8 @@
 - Q: What rule triggers the "consistently out of tune" warning (FR-014)? → A: Warn when the **median signed cents offset** across the attempt's detected notes exceeds a calibratable magnitude (default ~35 cents) with at least a minimum count of notes (default 3) offset **mostly in the same direction** — a systematic offset, not a single sharp note. Magnitude and count are calibratable.
 - Q: How is the end-of-attempt silence reconciled with hesitant pauses between notes? → A: Two distinct silence thresholds — a **short segmentation gap** (~150–300 ms) separates consecutive notes, while the **longer end-of-attempt gap** (~2 s) ends the attempt; any pause shorter than the end-of-attempt gap is still captured, so hesitant playing is not cut off. Both are calibratable.
 - Q: After the out-of-tune warning, may the learner proceed to grading? → A: **Advisory** — the app shows the warning and offers a tuning reference before grading, but the learner may dismiss it and continue; grading still runs (it is not blocked until retuning).
+- Q: What may leave the device — microphone audio and the remote-telemetry data-handling boundary? → A: Raw and derived audio (pitch frames) **never leave the device**; only **anonymized attempt metadata** (verdict, per-note outcome, difficulty level, timestamps, and an anonymous per-install device id) may be sent to remote telemetry — no PII, no accounts, best-effort and non-blocking.
+- Q: What is the accessibility baseline for the mobile UI (Constitution III)? → A: **WCAG 2.1 AA, mobile-adapted** — all interactive controls carry accessible labels/roles, text contrast ≥ 4.5:1, the UI is fully operable via VoiceOver/TalkBack, touch targets are ≥ 44pt (iOS) / 48dp (Android), and the UI respects OS font-scaling.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -183,6 +185,12 @@ confirm it shows accuracy trends, practice volume, and identified weak areas der
   window); the attempt is flagged low-confidence when that minimum falls below a calibratable threshold.
 - **FR-018**: Learners MUST be able to start, pause, and end a practice session, and completed results
   MUST survive interruptions.
+- **FR-019**: System MUST keep captured microphone audio — both raw audio and derived pitch frames — on
+  the device and MUST NOT transmit it off-device. Any remote telemetry MUST be limited to **anonymized
+  attempt metadata** (overall verdict, per-note outcome, difficulty level, timestamps, and an anonymous
+  per-install device id), MUST contain no personally identifying information, and MUST require no user
+  account. Remote logging is best-effort and non-blocking; the core loop functions fully offline (see the
+  offline-core-loop assumption).
 
 ### Key Entities *(include if feature involves data)*
 
@@ -214,6 +222,13 @@ confirm it shows accuracy trends, practice volume, and identified weak areas der
 - **SC-006**: After two weeks of regular practice (e.g., 4+ sessions per week), a returning learner shows
   a measurable improvement in recognition accuracy of at least 25% over their first-session baseline.
 - **SC-007**: At least 90% of learners report the feedback clearly tells them which notes they got wrong.
+- **SC-008**: No microphone audio or PII is ever transmitted off-device; inspection of all outbound
+  network traffic shows only the anonymized attempt-metadata payload defined in FR-019, and the full
+  listen → play → feedback loop completes with networking disabled.
+- **SC-009**: The UI meets a **WCAG 2.1 AA, mobile-adapted** baseline — every interactive control exposes
+  an accessible label/role, text contrast is ≥ 4.5:1, all core flows are operable end-to-end with
+  VoiceOver and TalkBack, touch targets are ≥ 44pt (iOS) / 48dp (Android), and layouts remain usable at
+  the OS's largest standard font-scaling setting.
 
 ## Assumptions
 

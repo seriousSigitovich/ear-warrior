@@ -56,7 +56,8 @@ create policy "anon insert only" on attempt_log
 
 - Insert-only; the client uses the **anon** key and MUST NOT attempt reads/updates/deletes.
 - Payload MUST NOT contain audio, raw frames, note-by-note pitches, timestamps of play, location, or any
-  PII — only the aggregate fields above (privacy note, R9).
+  PII — only the aggregate fields above (privacy note, R9). This bound is the spec-level requirement
+  **FR-019** and is verified by **SC-008** (captured audio never leaves the device).
 - Logging is **best-effort**: on failure/offline, records queue in the local outbox and flush later;
   loss of a log MUST NOT affect the learner-facing experience or local progress.
 - `device_id` is generated once per install and stored locally; it is not tied to any identity.

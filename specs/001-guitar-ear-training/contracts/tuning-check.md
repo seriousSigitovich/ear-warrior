@@ -45,4 +45,4 @@ Table-driven unit tests are written **before** the implementation (T021A) and co
 offset above threshold (warns), a systematic flat offset (warns), a single sharp note among in-tune notes
 (no warn), scattered offsets that cancel (no warn), just under threshold (no warn), and fewer than
 `minNotes` notes (no warn). The reference-tone playback and advisory dismissal are exercised through the
-practice-loop wiring against the mocked `expo-av` playback boundary.
+practice-loop wiring against the mocked native player (`expo-audio`) playback boundary.

@@ -34,8 +34,11 @@ interface PitchDetector {
 - `start` MUST reject if microphone permission is denied (surface to UI, not a grading failure).
 - Frames arrive at the library's native cadence; `hz===0` or `clarity < clarityThreshold` MUST be
   reported as-is (silence classification is the caller's/segmenter's job, kept pure).
-- `stop` MUST fully release the audio input so subsequent `expo-av` playback is unaffected (R7).
+- `stop` MUST fully release the audio input so subsequent `expo-audio` playback is unaffected (R7).
 - No frame buffering beyond what the native module provides; the caller collects frames per attempt.
+- The wrapper maps the installed `react-native-pitchy` event (`{ pitch, confidence, tCaptureMs }`) onto
+  `PitchFrame` — `confidence` → `clarity`, `tCaptureMs` → `timestampMs` (R2). Microphone permission is
+  owned by the audio session (`configureForRecording` requests it), not by pitchy.
 
 ## Error modes
 

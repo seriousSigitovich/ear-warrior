@@ -16,8 +16,8 @@ scenarios on a physical device.
 - Node LTS, and an Expo account with EAS access (`npx eas login`).
 - A Supabase project with the `attempt_log` table + insert-only RLS applied
   (see [contracts/supabase-attempt-log.md](./contracts/supabase-attempt-log.md)).
-- Pre-rendered note/chord samples present in `assets/samples/` covering each difficulty level's note
-  pool.
+- No audio assets to prepare — playback tones are **synthesized at runtime** (Karplus–Strong) and cached
+  on first use (R6).
 - Env: `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` configured.
 
 ## Setup
@@ -88,9 +88,22 @@ Each maps to acceptance criteria in [spec.md](./spec.md). Mark pass/fail per dev
    PII/audio. *(contracts/supabase-attempt-log.md)*
 2. **Offline core loop**: Enable airplane mode → the full listen→play→feedback loop still works; logs
    queue locally and flush after reconnecting. *(offline-core-loop constraint, R9)*
+3. **No audio / PII egress**: with a network proxy or device traffic inspector, confirm outbound traffic
+   carries only the anonymized `attempt_log` payload — no audio, raw frames, note-by-note pitches, or
+   PII. *(SC-008, FR-019)*
+
+### Accessibility (SC-009)
+
+1. **Screen reader**: with VoiceOver (iOS) / TalkBack (Android) enabled, complete the full US1 loop using
+   the screen reader only — every control announces a meaningful label + role and focus order is logical.
+2. **Contrast & targets**: verify text/icon contrast ≥ 4.5:1 and touch targets ≥ 44pt (iOS)/48dp
+   (Android) on the core controls.
+3. **Font scaling**: set the OS to its largest standard text size → all screens stay usable, with no
+   clipped or overlapping controls. *(SC-009)*
 
 ## Expected outcome
 
 All US1 scenarios pass on both an iOS and an Android tester device, with verdicts matching a human
-listener on the introductory difficulty (SC-002), and the offline loop fully functional. US2/US3 pass
-once those stories are implemented. Record failures against the specific FR/SC for follow-up.
+listener on the introductory difficulty (SC-002), the offline loop fully functional, no audio/PII leaving
+the device (SC-008), and the accessibility baseline met (SC-009). US2/US3 pass once those stories are
+implemented. Record failures against the specific FR/SC for follow-up.

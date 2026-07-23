@@ -3,8 +3,9 @@
 **Feature**: 001-guitar-ear-training | **Date**: 2026-07-22
 
 This document resolves the technical unknowns implied by the chosen stack (React Native + Expo dev
-client, react-native-pitchy/YIN, expo-av, Supabase, EAS distribution) and records the key algorithmic
-decisions the plan depends on. Each item follows: **Decision → Rationale → Alternatives considered**.
+client, react-native-pitchy/YIN, expo-audio with runtime tone synthesis, Supabase, EAS distribution) and
+records the key algorithmic decisions the plan depends on. Each item follows: **Decision → Rationale →
+Alternatives considered**.
 
 ---
 
@@ -24,6 +25,11 @@ decisions the plan depends on. Each item follows: **Decision → Rationale → A
 - **Rationale**: YIN is a well-proven monophonic pitch estimator suited to a single guitar note; it
   matches the monophonic-melody assumption. Confidence/clarity gating is the standard way to reject
   noise and unvoiced frames.
+- **Installed API (react-native-pitchy 1.3.1)**: the streaming event is `{ pitch, confidence, volume,
+  tCaptureMs }`. Map `confidence` → the frame's `clarity`, treat `pitch <= 0` as unvoiced, and stamp
+  frames with `tCaptureMs` (the sample's true capture-clock time, immune to bridge backlog) rather than
+  receipt-time `Date.now()`. `init()` is synchronous and takes a library config (`minVolume` in dBFS,
+  `algorithm`, `minConfidence`); the app owns mic permission via the audio session, not pitchy.
 - **Open items to confirm on-device (feasibility spike)**: exact sample rate / buffer size / callback
   cadence, minimum stable-note duration, and clarity-threshold value that best separates a plucked note
   from string noise and decay. These are tuning constants, resolved empirically during the spike, not
@@ -63,26 +69,29 @@ decisions the plan depends on. Each item follows: **Decision → Rationale → A
 ## R5. Tuning check (FR-014)
 
 - **Decision**: Before/around grading, if detected notes show a **consistent** cents offset from their
-  nearest notes across a short reference play, warn the learner and offer a reference tone (bundled
-  sample) to retune. Provide a standard-tuning reference (E-A-D-G-B-E) using the same sample assets.
+  nearest notes across a short reference play, warn the learner and offer a reference tone (synthesized on
+  the fly) to retune. Provide a standard-tuning reference (E-A-D-G-B-E) using the same runtime synthesis.
 - **Rationale**: A systematic offset indicates an out-of-tune instrument rather than a wrong note;
-  detecting it prevents unfair grading. Reuses existing sample playback, no extra dependency.
+  detecting it prevents unfair grading. Reuses the existing tone playback, no extra dependency.
 - **Alternatives considered**: A full chromatic tuner UI — deferred (more than the core loop needs now).
 
-## R6. Melody playback — expo-av sequencing of pre-rendered samples
+## R6. Melody playback — expo-audio playing runtime-synthesized tones
 
-- **Decision**: Bundle one **pre-rendered audio sample per note** across the guitar range (plus chord
-  samples where needed), and sequence them at runtime with `expo-av`, scheduling each note's start by
-  the melody's tempo/durations. Preload sample objects for the active difficulty's note pool to avoid
-  first-play latency.
-- **Rationale**: Per-note samples give correct guitar timbre with a small asset set and let the
-  generator compose arbitrary melodies without pre-rendering every phrase. Preloading avoids audible
-  gaps.
-- **Consideration / risk**: `expo-av` is on a deprecation path in favor of `expo-audio` in newer Expo
-  SDKs. We follow the **explicit stack choice (expo-av)** for this phase; migrating to `expo-audio` is a
-  low-risk follow-up because playback is isolated behind `contracts/audio-playback.md`.
-- **Alternatives considered**: Pre-render each full melody — rejected, combinatorial asset explosion.
-  Runtime synthesis (synth/oscillator) — rejected, worse timbre and more complexity than the phase needs.
+- **Decision**: Synthesize a **plucked-string tone (Karplus–Strong)** for each MIDI note at runtime,
+  encode it as a 16-bit mono WAV, cache it in the app's cache directory (`expo-file-system`), and play it
+  with **expo-audio**, scheduling each note's start by the melody's tempo/durations. Pre-generate
+  (preload) the active difficulty's note pool so the first note starts without a synthesis hitch.
+- **Rationale**: Runtime synthesis needs **no bundled audio assets** and can produce **any** in-range
+  MIDI note on demand, so the generator is not coupled to a rendered sample set and the app stays small.
+  The synth (KS render + WAV encoding, in `src/services/audio/synth.ts`) is pure and fully
+  unit-testable; only the cache write + `expo-audio` playback are native. `expo-audio` is the current,
+  non-deprecated Expo audio API (it replaces `expo-av`).
+- **Supersedes**: an earlier draft chose `expo-av` sequencing of one pre-rendered sample per note. That
+  was replaced because bundling a sample for every note across E2–E6 added asset weight and coupled the
+  generator to the rendered set, whereas runtime synthesis removes both. Playback stays isolated behind
+  `contracts/audio-playback.md`, so the swap did not ripple beyond the audio service.
+- **Alternatives considered**: Pre-rendered samples + `expo-av` — rejected (asset weight, generator
+  coupling, deprecated API). Pre-render each full melody — rejected, combinatorial asset explosion.
 
 ## R7. Audio session (playback then capture)
 
@@ -116,8 +125,10 @@ decisions the plan depends on. Each item follows: **Decision → Rationale → A
   preserving offline operation and avoiding any personal data.
 - **Alternatives considered**: Supabase Auth anonymous sessions — rejected as heavier than needed;
   insert-only RLS with an anon device id is sufficient. Storing progress in Supabase — rejected (see R8).
-- **Privacy note**: log only melody characteristics, verdict, per-note outcome summary, difficulty, app
-  version, timestamp, and the anonymous device id — never audio or PII.
+- **Privacy note (codified as FR-019; verified by SC-008)**: captured microphone audio and derived pitch
+  frames never leave the device. Remote telemetry logs only melody characteristics, verdict, per-note
+  outcome summary, difficulty, app version, timestamp, and the anonymous device id — never audio, raw
+  frames, note-by-note pitches, location, or PII.
 
 ## R10. Distribution — EAS internal / TestFlight ad-hoc
 
@@ -140,6 +151,22 @@ decisions the plan depends on. Each item follows: **Decision → Rationale → A
   and unit-test (test-first).
 - **Alternatives considered**: ML/generative melody models — rejected, unnecessary complexity for
   short ear-training phrases.
+
+## R12. Accessibility baseline (SC-009)
+
+- **Decision**: Target **WCAG 2.1 AA, mobile-adapted**: every interactive control exposes an accessible
+  label + role; text/icon contrast is ≥ 4.5:1 against the Nocturne dark ground; all core flows are
+  operable end-to-end with **VoiceOver** (iOS) and **TalkBack** (Android); touch targets are ≥ 44pt /
+  48dp; layouts remain usable at the OS's largest standard font scale. Shared primitives in
+  `src/components/common` carry the labels/roles so every screen inherits them (Principle III).
+- **Rationale**: The constitution mandates a *stated* accessibility baseline; WCAG 2.1 AA is the
+  standard, objectively testable bar, and the mobile analog of "keyboard operability" is screen-reader
+  operability. Centralizing accessibility in shared components keeps it consistent as surface area grows.
+- **Alternatives considered**: The constitution's literal minimum (labels + contrast only) — rejected,
+  leaves screen-reader operability unverified. WCAG AAA (≥ 7:1 contrast) — deferred as stricter than a
+  closed-tester build needs.
+- **Note**: Contrast, label/role, and target-size checks are validated in the T051 accessibility pass and
+  a VoiceOver/TalkBack walkthrough in `quickstart.md`.
 
 ---
 

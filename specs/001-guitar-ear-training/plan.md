@@ -7,14 +7,15 @@
 ## Summary
 
 A cross-platform mobile app that trains ear-to-guitar recall through a tight loop: the app plays a
-short generated melody from pre-rendered note samples, then captures the learner's guitar reproduction
+short generated melody from runtime-synthesized note tones, then captures the learner's guitar reproduction
 via the microphone, detects the played notes with monophonic pitch detection, grades them note-by-note,
 and shows immediate feedback. Adaptive difficulty (US2) and cross-session progress (US3) build on that
 loop.
 
 **Technical approach**: React Native + Expo with a **custom dev client** (not Expo Go, because native
 modules are required). Monophonic pitch detection uses **react-native-pitchy** (YIN). Melody playback
-uses **expo-av** to sequence **pre-rendered note/chord audio samples** bundled as assets. **Local
+uses **expo-audio**, synthesizing a plucked-string tone (Karplus–Strong) per note at runtime and playing
+it from a cached WAV — **no bundled audio samples**. **Local
 SQLite is the source of truth** for sessions/attempts/progress (satisfying the offline-core-loop and
 cross-session-persistence requirements), while **Supabase** is a best-effort, account-less, insert-only
 sink for anonymous attempt logs. Distribution is via **EAS** — internal distribution on Android and
@@ -25,12 +26,13 @@ additionally validated on real devices.
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.x on React Native (Expo SDK 52+), targeting Hermes.
+**Language/Version**: TypeScript 5.3.x on React Native 0.86 (Expo SDK 57), targeting Hermes.
 
 **Primary Dependencies**: Expo (custom dev client), `react-native-pitchy` (YIN monophonic pitch
-detection), `expo-av` (audio playback of pre-rendered samples), `@supabase/supabase-js` (anonymous
+detection), `expo-audio` (playback of runtime-synthesized tones), `@supabase/supabase-js` (anonymous
 attempt logging), `expo-sqlite` (local persistence, source of truth), `expo-router` (navigation),
-`expo-asset`/`expo-file-system` (bundled sample assets). ESLint + Prettier + TypeScript `strict`.
+`expo-file-system` (writes/reads the cached synthesized-tone WAVs). ESLint + Prettier + TypeScript
+`strict`.
 
 **Storage**:
 - **Local (source of truth)**: `expo-sqlite` for Sessions, Attempts, and derived Progress — works fully
@@ -41,7 +43,7 @@ attempt logging), `expo-sqlite` (local persistence, source of truth), `expo-rout
 **Testing**: **Jest** with the **`jest-expo`** preset + **React Native Testing Library**. Pure logic
 (grading engine, frame segmentation, pitch↔note math, melody generator) is written **test-first** with
 table-driven unit tests; each service boundary in `contracts/` has contract tests run against mocked
-native modules (`react-native-pitchy`, `expo-av`, Supabase client) and recorded pitch-frame fixtures.
+native modules (`react-native-pitchy`, `expo-audio`, Supabase client) and recorded pitch-frame fixtures.
 Native pitch-detection accuracy and audio fidelity — which cannot be unit-tested — are validated on real
 devices via `quickstart.md`.
 
@@ -70,10 +72,17 @@ Physical devices required (microphone + audio output).
   doesn't cascade following notes to wrong (FR-005).
 - **No consecutive identical pitches**: generated melodies never repeat a pitch back-to-back, so notes are
   separable by pitch change without same-pitch onset detection (FR-001/FR-004).
-- **Pre-rendered samples**: per-note (and chord) audio files are produced out-of-band and bundled as
-  assets; playback sequences them at runtime.
+- **Runtime tone synthesis**: per-note plucked-string tones are synthesized at runtime (Karplus–Strong),
+  encoded as WAV, and cached on device; no audio samples are bundled. Any MIDI note in range can be
+  produced on demand, so the generator is not constrained to a pre-rendered asset set.
 - Microphone permission required; audio session configured so playback fully stops before capture
   begins (listen-then-play, not simultaneous).
+- **On-device audio / privacy (FR-019)**: captured microphone audio and derived pitch frames never leave
+  the device; remote telemetry is limited to anonymized attempt metadata (no PII, no accounts),
+  best-effort and non-blocking. Verified by SC-008.
+- **Accessibility (SC-009)**: the UI meets a WCAG 2.1 AA, mobile-adapted baseline — labeled controls and
+  roles, text contrast ≥ 4.5:1, full VoiceOver/TalkBack operability, touch targets ≥ 44pt (iOS)/48dp
+  (Android), and layouts usable at the OS's largest standard font-scaling.
 
 **Scale/Scope**: 10–15 closed testers; single local learner per install; small data volume
 (hundreds–thousands of attempts). ~6–8 screens/flows.
@@ -86,7 +95,7 @@ Physical devices required (microphone + audio output).
 |-----------|------|--------|
 | **I. Code Quality & Maintainability** | ESLint + Prettier enforced in CI-equivalent local checks; TypeScript `strict`; single-responsibility services; no dead code | ✅ PASS — committed in Project Structure; tooling is a merge prerequisite |
 | **II. Test-First & Comprehensive Coverage (NON-NEGOTIABLE)** | New behavior has failing tests first; contracts have tests | ✅ PASS — Jest/`jest-expo` + RNTL; pure logic (grading, segmentation, pitch↔note, generator) is test-first; each contract has boundary tests against mocked natives + frame fixtures. Native detector accuracy validated on-device (not unit-testable). |
-| **III. User Experience Consistency** | Shared component library, consistent feedback/error patterns, accessibility baseline | ✅ PASS — `src/components/` is the single source for shared UX; unified feedback and error states; accessible controls planned |
+| **III. User Experience Consistency** | Shared component library, consistent feedback/error patterns, accessibility baseline | ✅ PASS — `src/components/` is the single source for shared UX; unified feedback and error states; accessibility baseline made concrete as **WCAG 2.1 AA, mobile-adapted (SC-009)** — labeled controls, ≥ 4.5:1 contrast, VoiceOver/TalkBack, ≥ 44pt/48dp targets |
 | **IV. Performance by Design** | Measurable targets declared before implementation; evidence-driven optimization | ✅ PASS — targets declared above; pitch-detection latency and grading time are budgeted and will be measured on-device |
 
 **Initial gate result**: PASS — no exceptions. All four principles are satisfied by the plan.
@@ -94,7 +103,10 @@ Physical devices required (microphone + audio output).
 **Post-Design re-check**: Design keeps grading (`src/services/grading`), pitch↔note math (`src/lib`), and
 melody generation (`src/services/melody`) as pure functions with explicit contracts, making them directly
 unit-testable; native IO is isolated behind mockable service wrappers so boundaries are contract-tested.
-No violations introduced by the design. ✅
+The audio design (expo-audio + runtime Karplus–Strong synthesis) keeps the synth (`src/services/audio/synth.ts`)
+pure and unit-tested, with only the cache-write and playback native and injected behind a `NativePlayer`.
+The FR-019 on-device-audio boundary and the concrete SC-009 accessibility baseline introduce no gate
+deviation. No violations introduced by the design. ✅
 
 ## Project Structure
 
@@ -139,7 +151,8 @@ src/
 │   └── progress/             # US3 aggregation + views
 ├── services/
 │   ├── audio/
-│   │   ├── playback.ts       # expo-av sample sequencing  → contracts/audio-playback.md
+│   │   ├── playback.ts       # expo-audio synthesized-tone playback → contracts/audio-playback.md
+│   │   ├── synth.ts          # runtime Karplus–Strong tone synth → WAV (pure)
 │   │   └── pitch.ts          # react-native-pitchy wrapper → contracts/pitch-detection.md
 │   ├── melody/               # generator (pure)            → contracts/melody-generator.md
 │   ├── grading/              # grading engine (pure)       → contracts/grading-engine.md
@@ -150,11 +163,11 @@ src/
 
 tests/                        # Jest (jest-expo) + React Native Testing Library
 ├── unit/                     # pure logic (grading, segmentation, pitch↔note, generator) — test-first
-├── contract/                 # boundary tests vs mocked react-native-pitchy / expo-av / supabase
+├── contract/                 # boundary tests vs mocked react-native-pitchy / expo-audio / supabase
 └── fixtures/                 # recorded pitch-frame arrays for deterministic grading tests
 
 assets/
-└── samples/                  # Pre-rendered note/chord audio files (bundled)
+└── samples/                  # (legacy scaffold) note-range guard only — no bundled audio; tones synth'd at runtime
 
 supabase/
 └── migrations/               # attempt_log table + insert-only RLS policy
