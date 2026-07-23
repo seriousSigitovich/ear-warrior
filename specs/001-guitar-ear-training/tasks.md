@@ -29,7 +29,7 @@ pitch-detection accuracy and audio fidelity are validated on-device via `quickst
 **Purpose**: Initialize the Expo dev-client project and tooling.
 
 - [X] T001 Initialize Expo + TypeScript app with expo-router at repo root (`package.json`, `tsconfig.json`, `app/`)
-- [X] T002 [P] Install runtime deps (`react-native-pitchy`, `expo-av`, `expo-sqlite`, `@supabase/supabase-js`, `expo-asset`, `expo-file-system`) in `package.json`
+- [X] T002 [P] Install runtime deps (`react-native-pitchy`, `expo-audio`, `expo-sqlite`, `@supabase/supabase-js`, `expo-asset`, `expo-file-system`) in `package.json`
 - [X] T003 [P] Configure TypeScript `strict` + ESLint + Prettier (`tsconfig.json`, `.eslintrc.js`, `.prettierrc`)
 - [X] T004 [P] Configure Jest with `jest-expo` preset + React Native Testing Library (`jest.config.js`, `jest.setup.ts`, `test` script in `package.json`)
 - [X] T005 [P] Create `eas.json` with a `development` (dev client) profile and an internal/ad-hoc distribution profile for iOS + Android
@@ -74,17 +74,19 @@ a correct/incorrect verdict identifying matched/wrong/missed/extra notes, and su
 - [X] T018 [P] [US1] Unit tests for pitch-stream segmentation (pitch-change + silence-gap → note sequence; low-clarity treated as silence) using recorded fixtures in `tests/unit/lib/segment.test.ts` (+ fixtures in `tests/fixtures/`)
 - [X] T019 [P] [US1] Table-driven unit tests for grading engine best-fit alignment (exact, one wrong, missed, extra, **mid-phrase insertion/omission must NOT cascade** per FR-005, octave mismatch, ±50-cent boundary, timeout, low-confidence) in `tests/unit/grading/grade.test.ts`
 - [X] T020 [P] [US1] Contract test for the pitch-detection wrapper against a mocked `react-native-pitchy` (permission handling, silence/low-clarity pass-through, clean teardown) in `tests/contract/pitch.test.ts`
-- [X] T021 [P] [US1] Contract test for audio playback against a mocked `expo-av` (correct sample per `midi`, `playMelody` resolves after last note, idempotent `stop`) in `tests/contract/playback.test.ts`
+- [X] T021 [P] [US1] Contract test for audio playback against a mocked `NativePlayer` (expo-audio boundary): correct note per `midi`, notes in order, `playMelody` resolves after last note, idempotent `stop`, in `tests/contract/playback.test.ts`
 - [X] T021A [P] [US1] Unit tests for the pure tuning-detection rule (warn when median signed cents offset > threshold across ≥ min-count notes mostly the same direction; no warn on a single sharp/flat note or scattered offsets; thresholds calibratable) per FR-014 in `tests/unit/lib/tuning.test.ts`
+- [X] T021B [P] [US1] Unit tests for the pure tone synth + note-range guard (deterministic Karplus–Strong render by seed, canonical 16-bit mono WAV encoding, E2–E6 range guard throws) in `tests/unit/audio/synth.test.ts` and `tests/unit/audio/samples.test.ts`
+- [ ] T021C [P] [US1] Unit tests for the capture window (FR-015): times out when no voiced frame arrives within `noInputTimeoutMs`; a voiced frame starts the attempt and (re)arms the `endSilenceMs` end-timer; timers cleared on finish — in `tests/unit/practice/capture.test.ts` (regression test for the already-implemented `src/features/practice/capture.ts`; closes analyze finding C1)
 
 ### Implementation for User Story 1
 
 - [X] T022 [P] [US1] Implement melody generator (pure) in `src/services/melody/generator.ts` to pass T017
 - [X] T023 [P] [US1] Implement pitch-stream segmentation (pure) in `src/lib/segment.ts` to pass T018
 - [X] T024 [US1] Implement grading engine with best-fit (edit-distance/LCS) alignment + ±50-cent nearest-note match + octave sensitivity in `src/services/grading/grade.ts` to pass T019 (depends on T010, T023)
-- [X] T025 [P] [US1] Add pre-rendered note-sample assets for the L1 note pool + manifest loader in `assets/samples/` and `src/services/audio/samples.ts`
-- [X] T026 [US1] Implement pitch-detection wrapper over `react-native-pitchy` in `src/services/audio/pitch.ts` to pass T020 (depends on T014)
-- [X] T027 [US1] Implement audio playback (expo-av sample sequencing + reference tone) in `src/services/audio/playback.ts` to pass T021 (depends on T025)
+- [X] T025 [P] [US1] Implement runtime tone synthesis (Karplus–Strong render → 16-bit mono WAV, pure) in `src/services/audio/synth.ts` and the note-range guard in `src/services/audio/samples.ts` to pass T021B — no bundled samples; supersedes the earlier pre-rendered-asset approach (R6)
+- [X] T026 [US1] Implement pitch-detection wrapper over `react-native-pitchy` (1.3.1 event mapping: `confidence`→clarity, `tCaptureMs`→timestamp; mic permission owned by the audio session, not pitchy) in `src/services/audio/pitch.ts` to pass T020 (depends on T014)
+- [X] T027 [US1] Implement audio playback (expo-audio synthesized-tone playback via an injected `NativePlayer`, sequenced by `startMs`, + reference tone) in `src/services/audio/playback.ts` to pass T021 (depends on T025)
 - [X] T028 [US1] Implement practice-loop state machine (idle→playingMelody→awaitingInput→capturing→grading→feedback; replay/retry/next) in `src/features/practice/usePracticeLoop.ts` (depends on T022, T024, T026, T027)
 - [X] T029 [US1] Implement no-input timeout (~8 s) + end-on-silence (~2 s) + low-confidence/polyphony retry handling (FR-015, FR-017) in `src/features/practice/capture.ts` (depends on T028)
 - [X] T030 [US1] Implement the **pure** tuning-detection rule (median signed cents offset > threshold across ≥ min-count notes, same direction; calibratable) in `src/lib/tuning.ts` to pass T021A, then wire the reference-tone warning + **advisory (non-blocking)** behavior — learner may dismiss and proceed to grading (FR-014) — in `src/features/practice/tuning.ts` (depends on T021A, T027)
@@ -152,12 +154,12 @@ shows accuracy trend, practice volume, and identified weak areas derived from re
 **Purpose**: Anonymous telemetry, accessibility, performance validation, and distribution.
 
 - [X] T047 [P] Add Supabase migration (`attempt_log` table + insert-only RLS policy) in `supabase/migrations/0001_attempt_log.sql` per `contracts/supabase-attempt-log.md`
-- [X] T048 [P] Unit test for the anonymous logging outbox against a mocked Supabase client (best-effort insert, queue on failure, flush on reconnect, never blocks the loop) in `tests/contract/logging.test.ts`
+- [X] T048 [P] Unit test for the anonymous logging outbox against a mocked Supabase client (best-effort insert, queue on failure, flush on reconnect, never blocks the loop) **and** an assertion that the payload carries only the allowed anonymized aggregate fields — no audio, raw frames, note-by-note pitches, or PII (FR-019, SC-008) — in `tests/contract/logging.test.ts`
 - [X] T049 Implement the Supabase attempt-log outbox service (anon insert, offline queue, non-blocking flush; anonymized payload only) in `src/services/logging/attemptLog.ts` to pass T048 (depends on T013)
 - [X] T050 Wire non-blocking attempt logging into attempt completion in `src/features/practice/persist.ts` (depends on T033, T049)
-- [ ] T051 [P] Accessibility pass on interactive controls + feedback (labels, contrast, focus order) across `src/components/` (Constitution Principle III)
+- [ ] T051 [P] Accessibility pass to the **WCAG 2.1 AA, mobile-adapted** baseline (SC-009): accessible label + role on every interactive control, text/icon contrast ≥ 4.5:1, logical focus/announcement order, touch targets ≥ 44pt (iOS)/48dp (Android), and layouts intact at the largest OS font scale — across `src/components/` (Constitution Principle III)
 - [ ] T052 [P] On-device performance validation vs budgets (detection < 100 ms/frame, feedback < 2 s, full cycle < 15 s) — record results (SC-001/002/003)
-- [ ] T053 Run `quickstart.md` manual validation (US1 core loop on an iOS and an Android device; offline loop; telemetry row appears)
+- [ ] T053 Run `quickstart.md` manual validation (US1 core loop on an iOS and an Android device; offline loop; telemetry row appears; **no audio/PII egress** per SC-008; **VoiceOver/TalkBack screen-reader walkthrough** per SC-009)
 - [ ] T054 [P] Build & distribute via EAS (development dev client + internal/TestFlight) to 10–15 testers
 
 ---
@@ -173,7 +175,7 @@ shows accuracy trend, practice volume, and identified weak areas derived from re
 
 ### Key within-story dependencies
 
-- US1: T010 & T023 → T024 (grading); T014 → T026 (pitch); T025 → T027 (playback); T021A → T030 (tuning: test before pure rule); T022/T024/T026/T027 → T028 (loop) → T029/T033 → T034 → T035; T035 → T035B (session lifecycle, after T035A).
+- US1: T010 & T023 → T024 (grading); T014 → T026 (pitch); T021B → T025 (synth: test before pure impl); T025 → T027 (playback); T021A → T030 (tuning: test before pure rule); T022/T024/T026/T027 → T028 (loop) → T029/T033 → T034 → T035; T035 → T035B (session lifecycle, after T035A). T021C is a retroactive regression test for the already-built T029 capture logic (C1).
 - US2: T038 → T039 → T040; T041 after T039.
 - US3: T043 → T044 → T046; T045 after T033.
 - Polish: T013 → T049 → T050; T048 before T049 (test-first).
@@ -182,7 +184,7 @@ shows accuracy trend, practice volume, and identified weak areas derived from re
 
 - Setup: T002–T006 in parallel.
 - Foundational: T008, T009, T012, T013, T014, T015, T016 in parallel (T010 after T009).
-- US1 tests (T017–T021, T021A, T035A) all in parallel; then pure impls T022 & T023 in parallel; UI T031 & T032 in parallel.
+- US1 tests (T017–T021, T021A, T021B, T021C, T035A) all in parallel; then pure impls T022 & T023 in parallel; UI T031 & T032 in parallel.
 - Different user stories can proceed in parallel once Foundational is done (separate developers).
 
 ---
