@@ -11,6 +11,7 @@
     "test": "jest",
     "lint": "eslint app src tests --ext .ts,.tsx",
     "format": "prettier --check app src tests",
+    "format:fix": "prettier --write app src tests",
     "typecheck": "tsc --noEmit -p tsconfig.jest.json",
     "typecheck:app": "tsc --noEmit -p tsconfig.app.json"
   },

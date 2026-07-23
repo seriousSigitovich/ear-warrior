@@ -2,7 +2,11 @@ import { DetectedNote, GradingConfig, Melody } from '../../../src/models';
 import { hzFromMidi, noteName } from '../../../src/lib/pitchNote';
 import { gradeAttempt } from '../../../src/services/grading/grade';
 
-const CFG: GradingConfig = { centsTolerance: 50, octaveSensitive: true, lowConfidenceThreshold: 0.6 };
+const CFG: GradingConfig = {
+  centsTolerance: 50,
+  octaveSensitive: true,
+  lowConfidenceThreshold: 0.6,
+};
 
 function melody(midis: number[]): Melody {
   return {

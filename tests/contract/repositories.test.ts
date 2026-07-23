@@ -44,7 +44,11 @@ describe('session & attempt repositories (T012, FR-012/FR-018)', () => {
     const store = createInMemoryRowStore();
     const repo = createSessionRepository(store);
     await repo.create(session('s1'));
-    await repo.update('s1', { attemptCount: 3, accuracyPct: 66.6, endedAt: '2026-07-23T00:10:00Z' });
+    await repo.update('s1', {
+      attemptCount: 3,
+      accuracyPct: 66.6,
+      endedAt: '2026-07-23T00:10:00Z',
+    });
     const s = await repo.get('s1');
     expect(s?.attemptCount).toBe(3);
     expect(s?.endedAt).toBe('2026-07-23T00:10:00Z');

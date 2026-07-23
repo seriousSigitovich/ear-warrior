@@ -50,7 +50,12 @@ export function TrendLine({ values, height, strokeWidth = 2.5, style }: TrendLin
                 key={`w${i}`}
                 style={[
                   styles.wash,
-                  { left: x, top: y, width: Math.min(COLUMN_WIDTH + 1, width - x), height: height - y },
+                  {
+                    left: x,
+                    top: y,
+                    width: Math.min(COLUMN_WIDTH + 1, width - x),
+                    height: height - y,
+                  },
                 ]}
               />
             );
@@ -81,12 +86,7 @@ export function TrendLine({ values, height, strokeWidth = 2.5, style }: TrendLin
             );
           })}
 
-          <View
-            style={[
-              styles.endDot,
-              { left: lastX - 4, top: lastY - 4 },
-            ]}
-          />
+          <View style={[styles.endDot, { left: lastX - 4, top: lastY - 4 }]} />
         </>
       ) : null}
     </View>
@@ -97,5 +97,11 @@ const styles = StyleSheet.create({
   box: { width: '100%' },
   wash: { position: 'absolute', backgroundColor: withAlpha(colors.accent, 0.12) },
   segment: { position: 'absolute', backgroundColor: colors.accent },
-  endDot: { position: 'absolute', width: 8, height: 8, borderRadius: 4, backgroundColor: colors.accent },
+  endDot: {
+    position: 'absolute',
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.accent,
+  },
 });

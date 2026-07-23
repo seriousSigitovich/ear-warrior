@@ -3,7 +3,10 @@
 // and enqueue exactly one anonymized payload, without letting telemetry failure break the loop.
 import { Attempt, DifficultyLevel, Melody } from '../../src/models';
 import { createInMemoryRowStore } from '../../src/services/storage/db';
-import { createAttemptRepository, createMelodyRepository } from '../../src/services/storage/repositories';
+import {
+  createAttemptRepository,
+  createMelodyRepository,
+} from '../../src/services/storage/repositories';
 import { AttemptLogOutbox, AttemptLogPayload } from '../../src/services/logging/attemptLog';
 import { persistGradedAttempt } from '../../src/features/practice/persist';
 import { getLevelByRank } from '../../src/services/melody/levels';
@@ -35,7 +38,9 @@ function attempt(patch: Partial<Attempt> = {}): Attempt {
 }
 
 /** Outbox spy that records what it was handed. */
-function spyOutbox(onLog?: () => Promise<void>): AttemptLogOutbox & { logged: AttemptLogPayload[] } {
+function spyOutbox(
+  onLog?: () => Promise<void>,
+): AttemptLogOutbox & { logged: AttemptLogPayload[] } {
   const logged: AttemptLogPayload[] = [];
   return {
     logged,

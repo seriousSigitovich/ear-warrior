@@ -100,7 +100,13 @@ describe('streak switching', () => {
   });
 
   test('an alternating sequence never moves the rank', () => {
-    const s = feed(settings({ adaptiveRank: 4 }), [CORRECT, INCORRECT, CORRECT, INCORRECT, CORRECT]);
+    const s = feed(settings({ adaptiveRank: 4 }), [
+      CORRECT,
+      INCORRECT,
+      CORRECT,
+      INCORRECT,
+      CORRECT,
+    ]);
     expect(s.adaptiveRank).toBe(4);
   });
 });
@@ -190,7 +196,12 @@ describe('manual selection preserves adaptive progress (FR-011b)', () => {
   });
 
   test('setMode changes only the mode', () => {
-    const before = settings({ adaptiveRank: 4, fixedRank: 6, streakCount: 1, streakKind: 'correct' });
+    const before = settings({
+      adaptiveRank: 4,
+      fixedRank: 6,
+      streakCount: 1,
+      streakKind: 'correct',
+    });
     expect(setMode(before, 'fixed')).toEqual({ ...before, mode: 'fixed' });
   });
 });

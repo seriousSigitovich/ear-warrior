@@ -9,10 +9,7 @@ function median(values: number[]): number {
   return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
 }
 
-export function detectConsistentDetune(
-  detected: DetectedNote[],
-  cfg: TuningConfig,
-): TuningWarning {
+export function detectConsistentDetune(detected: DetectedNote[], cfg: TuningConfig): TuningWarning {
   if (detected.length < cfg.minNotes) {
     return { outOfTune: false, medianCents: 0, direction: 'none' };
   }
@@ -23,8 +20,7 @@ export function detectConsistentDetune(
   const sameDirection = offsets.filter((c) => Math.sign(c) === sign && sign !== 0).length;
   const majoritySameDirection = sameDirection > detected.length / 2;
 
-  const outOfTune =
-    Math.abs(medianCents) > cfg.centsThreshold && majoritySameDirection;
+  const outOfTune = Math.abs(medianCents) > cfg.centsThreshold && majoritySameDirection;
 
   return {
     outOfTune,

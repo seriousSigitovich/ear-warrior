@@ -15,7 +15,14 @@ export interface ButtonProps {
   style?: StyleProp<ViewStyle>;
 }
 
-export function Button({ label, onPress, disabled, variant = 'primary', glow, style }: ButtonProps) {
+export function Button({
+  label,
+  onPress,
+  disabled,
+  variant = 'primary',
+  glow,
+  style,
+}: ButtonProps) {
   return (
     <Pressable
       accessibilityRole="button"
@@ -34,7 +41,9 @@ export function Button({ label, onPress, disabled, variant = 'primary', glow, st
         style,
       ]}
     >
-      <Text style={[styles.label, variant === 'secondary' ? styles.labelNeutral : styles.labelAccent]}>
+      <Text
+        style={[styles.label, variant === 'secondary' ? styles.labelNeutral : styles.labelAccent]}
+      >
         {label}
       </Text>
     </Pressable>

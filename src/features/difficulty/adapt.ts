@@ -73,8 +73,7 @@ export function applyAttempt(
     throw new Error(`Corrupt difficulty state: streakCount ${settings.streakCount}.`);
   }
 
-  const eligible =
-    settings.mode === 'adaptive' && outcome.graded && outcome.isFirstAttemptOnMelody;
+  const eligible = settings.mode === 'adaptive' && outcome.graded && outcome.isFirstAttemptOnMelody;
   if (!eligible) {
     return settings;
   }

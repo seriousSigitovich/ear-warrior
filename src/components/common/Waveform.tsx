@@ -35,7 +35,13 @@ export function Waveform({
     <View style={[styles.row, { height, gap, alignItems: align }, style]}>
       {bars.map((b, i) =>
         animated ? (
-          <AnimatedBar key={i} height={height} barWidth={barWidth} color={b.color} delay={i * 120} />
+          <AnimatedBar
+            key={i}
+            height={height}
+            barWidth={barWidth}
+            color={b.color}
+            delay={i * 120}
+          />
         ) : (
           <View
             key={i}

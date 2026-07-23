@@ -33,7 +33,9 @@ export default function Home() {
   return (
     <Screen style={styles.screen}>
       <Kicker>Ear Warrior</Kicker>
-      <Text style={styles.title}>Hear it.{'\n'}Play it back.{'\n'}Nail it.</Text>
+      <Text style={styles.title}>
+        Hear it.{'\n'}Play it back.{'\n'}Nail it.
+      </Text>
       <Text style={styles.blurb}>
         A short melody plays. You reproduce it on guitar. We tell you exactly which notes landed.
       </Text>
@@ -57,7 +59,12 @@ export default function Home() {
         </Card>
       </View>
 
-      <Button label="Start practice" glow onPress={() => router.push('/practice')} style={styles.cta} />
+      <Button
+        label="Start practice"
+        glow
+        onPress={() => router.push('/practice')}
+        style={styles.cta}
+      />
       <View style={styles.secondaryRow}>
         <Button
           label="Difficulty"

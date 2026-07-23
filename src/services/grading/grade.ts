@@ -2,14 +2,7 @@
 // best-fit sequence alignment (edit distance / LCS), classify each note (matched | wrong | missed |
 // extra) without cascading a single insertion/omission, and derive verdict + confidence.
 // Pure and deterministic — no IO. This is the correctness core of the product.
-import {
-  AttemptGrade,
-  DetectedNote,
-  GradingConfig,
-  Melody,
-  Note,
-  NoteResult,
-} from '../../models';
+import { AttemptGrade, DetectedNote, GradingConfig, Melody, Note, NoteResult } from '../../models';
 import { pitchClass } from '../../lib/pitchNote';
 
 type Move = 'diag' | 'up' | 'left';
@@ -76,7 +69,9 @@ export function gradeAttempt(
         expectedMidi: target.midi,
         detectedMidi: played.midi,
         octaveMismatch:
-          !matched && pitchClass(target.midi) === pitchClass(played.midi) && target.midi !== played.midi,
+          !matched &&
+          pitchClass(target.midi) === pitchClass(played.midi) &&
+          target.midi !== played.midi,
       });
       i--;
       j--;

@@ -31,8 +31,20 @@ export function VerdictBanner({ grade }: { grade: AttemptGrade }) {
 }
 
 const styles = StyleSheet.create({
-  card: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 16 },
-  badge: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  badge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   glyph: { fontSize: 16, fontWeight: '700', lineHeight: 20 },
   title: { color: colors.text, fontSize: 15, fontWeight: font.weightHeading },
   subtitle: { color: textAlpha[55], fontSize: 12, marginTop: 2 },

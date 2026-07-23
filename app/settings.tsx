@@ -176,7 +176,13 @@ function Row({ label, value }: { label: string; value: string }) {
 }
 
 const styles = StyleSheet.create({
-  title: { color: colors.text, fontSize: 26, fontWeight: font.weightHeading, marginTop: 6, marginBottom: 22 },
+  title: {
+    color: colors.text,
+    fontSize: 26,
+    fontWeight: font.weightHeading,
+    marginTop: 6,
+    marginBottom: 22,
+  },
 
   seg: {
     flexDirection: 'row',
@@ -207,7 +213,13 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
     elevation: 6,
   },
-  dotTodo: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: colors.divider },
+  dotTodo: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1.5,
+    borderColor: colors.divider,
+  },
   ladderCaption: { color: textAlpha[60], fontSize: 13, marginBottom: 24 },
 
   levelCard: { padding: 16, gap: 10 },

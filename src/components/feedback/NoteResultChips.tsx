@@ -49,7 +49,10 @@ const CHIP: Record<NoteStatus, { chip: ViewStyle; text: TextStyle }> = {
     text: { color: colors.neutral[500] },
   },
   extra: {
-    chip: { borderColor: colors.accent2Ramp[700], backgroundColor: withAlpha(colors.accent2, 0.08) },
+    chip: {
+      borderColor: colors.accent2Ramp[700],
+      backgroundColor: withAlpha(colors.accent2, 0.08),
+    },
     text: { color: colors.accent2Ramp[300] },
   },
 };

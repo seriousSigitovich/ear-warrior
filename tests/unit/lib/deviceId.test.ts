@@ -6,7 +6,9 @@ function seededRand(seq: number[]): () => number {
   return () => seq[i++ % seq.length];
 }
 
-function fakeStore(initial: Record<string, string> = {}): KeyValueStore & { data: Record<string, string> } {
+function fakeStore(
+  initial: Record<string, string> = {},
+): KeyValueStore & { data: Record<string, string> } {
   const data = { ...initial };
   return {
     data,

@@ -5,11 +5,7 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
 import { CaptureProgress, LoopPhase } from '../../features/practice/usePracticeLoop';
 import { noteName } from '../../lib/pitchNote';
-import {
-  Waveform,
-  IDLE_BARS,
-  LISTENING_BARS,
-} from '../common/Waveform';
+import { Waveform, IDLE_BARS, LISTENING_BARS } from '../common/Waveform';
 import { colors, font, textAlpha, withAlpha } from '../../theme/nocturne';
 
 export interface PracticeStageProps {
@@ -83,7 +79,10 @@ function YourTurn({
 
       <View style={styles.ladder}>
         {Array.from({ length: noteCount }, (_, i) => (
-          <NoteMark key={i} state={i < settled ? 'settled' : i === current ? 'current' : 'pending'} />
+          <NoteMark
+            key={i}
+            state={i < settled ? 'settled' : i === current ? 'current' : 'pending'}
+          />
         ))}
       </View>
 
@@ -161,7 +160,9 @@ function Dot({ filled }: { filled?: boolean }) {
     <View
       style={[
         styles.dot,
-        filled ? { backgroundColor: colors.accent } : { borderWidth: 1.5, borderColor: colors.divider },
+        filled
+          ? { backgroundColor: colors.accent }
+          : { borderWidth: 1.5, borderColor: colors.divider },
       ]}
     />
   );

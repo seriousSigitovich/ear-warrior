@@ -32,12 +32,7 @@ import { TuningCheck, evaluateTuning } from './tuning';
 import { midiFromHz } from '../../lib/pitchNote';
 
 export type LoopPhase =
-  | 'idle'
-  | 'playingMelody'
-  | 'awaitingInput'
-  | 'capturing'
-  | 'grading'
-  | 'feedback';
+  'idle' | 'playingMelody' | 'awaitingInput' | 'capturing' | 'grading' | 'feedback';
 
 export interface PracticeLoopDeps {
   playback: AudioPlayback;

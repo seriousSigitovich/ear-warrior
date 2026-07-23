@@ -11,7 +11,11 @@ import {
 } from '../../lib/sessionState';
 import { SessionRepository } from '../../services/storage/repositories';
 
-export function useSession(sessionId: string, repo: SessionRepository, nowMs: () => number = Date.now) {
+export function useSession(
+  sessionId: string,
+  repo: SessionRepository,
+  nowMs: () => number = Date.now,
+) {
   const [state, rawDispatch] = useReducer(sessionReducer, startSession(nowMs()));
 
   const persist = useCallback(

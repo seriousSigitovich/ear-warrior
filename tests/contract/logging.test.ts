@@ -20,7 +20,13 @@ const MELODY = { notes: [{}, {}] } as unknown as Melody; // only notes.length is
 
 const GRADE: AttemptGrade = {
   noteResults: [
-    { targetIndex: 0, status: 'matched', expectedMidi: 60, detectedMidi: 60, octaveMismatch: false },
+    {
+      targetIndex: 0,
+      status: 'matched',
+      expectedMidi: 60,
+      detectedMidi: 60,
+      octaveMismatch: false,
+    },
     { targetIndex: 1, status: 'wrong', expectedMidi: 62, detectedMidi: 74, octaveMismatch: true },
   ],
   verdict: 'incorrect',

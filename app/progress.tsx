@@ -43,13 +43,24 @@ export default function Progress() {
       </View>
 
       <View style={styles.spacer} />
-      <Button label="Continue practicing" glow onPress={() => router.push('/practice')} style={styles.cta} />
+      <Button
+        label="Continue practicing"
+        glow
+        onPress={() => router.push('/practice')}
+        style={styles.cta}
+      />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  title: { color: colors.text, fontSize: 26, fontWeight: font.weightHeading, marginTop: 6, marginBottom: 22 },
+  title: {
+    color: colors.text,
+    fontSize: 26,
+    fontWeight: font.weightHeading,
+    marginTop: 6,
+    marginBottom: 22,
+  },
   headline: { flexDirection: 'row', alignItems: 'baseline', gap: 10, marginBottom: 6 },
   big: { color: colors.text, fontSize: 40, fontWeight: font.weightHeading },
   delta: { color: colors.accentRamp[300], fontSize: 13 },

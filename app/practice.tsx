@@ -46,7 +46,11 @@ const SEGMENT_CFG: SegmentConfig = {
   minHz: 80,
   maxHz: 1320,
 };
-const GRADING_CFG: GradingConfig = { centsTolerance: 50, octaveSensitive: true, lowConfidenceThreshold: 0.6 };
+const GRADING_CFG: GradingConfig = {
+  centsTolerance: 50,
+  octaveSensitive: true,
+  lowConfidenceThreshold: 0.6,
+};
 const CAPTURE_CFG: CaptureConfig = { noInputTimeoutMs: 8000, endSilenceMs: 2000 };
 
 const APP_VERSION = '0.1.0';
@@ -65,12 +69,13 @@ export default function Practice() {
   );
   const sessionId = useMemo(() => `s_${Date.now()}`, []);
   const outbox = useMemo(
-    () => createAttemptLogOutbox(
-      defaultAttemptLogClient(
-        process.env.EXPO_PUBLIC_SUPABASE_URL,
-        process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
-      ) ?? createNullAttemptLogClient(),
-    ),
+    () =>
+      createAttemptLogOutbox(
+        defaultAttemptLogClient(
+          process.env.EXPO_PUBLIC_SUPABASE_URL,
+          process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+        ) ?? createNullAttemptLogClient(),
+      ),
     [],
   );
   const [deviceId, setDeviceId] = useState<string | null>(null);

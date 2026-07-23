@@ -87,7 +87,10 @@ export function defaultRowStore(): RowStore {
       const current = await db.getFirstAsync(`SELECT data FROM ${table} WHERE id = ?`, [id]);
       if (current) {
         const merged = { ...JSON.parse(current.data), ...patch };
-        await db.runAsync(`UPDATE ${table} SET data = ? WHERE id = ?`, [JSON.stringify(merged), id]);
+        await db.runAsync(`UPDATE ${table} SET data = ? WHERE id = ?`, [
+          JSON.stringify(merged),
+          id,
+        ]);
       }
     },
     async getById<T>(table: string, id: string) {
