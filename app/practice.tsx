@@ -1,18 +1,31 @@
 // Practice screen (T034): wires the practice loop to transport controls and feedback (US1).
 // Redesigned onto Nocturne: a Practice/Level header, a per-phase stage, and feedback rendered
 // as a verdict card + note chips (with a non-blocking tuning advisory) or a calm retry state.
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { GradingConfig, SegmentConfig } from '../src/models';
+import { GradingConfig, SegmentConfig, Session } from '../src/models';
 import { MAX_RANK } from '../src/services/melody/levels';
 import { STANDARD_TUNING_MIDI } from '../src/features/practice/tuning';
 import { createAudioPlayback } from '../src/services/audio/playback';
 import { createPitchDetector, PitchDetectionConfig } from '../src/services/audio/pitch';
 import { createAudioSession } from '../src/services/audio/session';
-import { defaultRowStore } from '../src/services/storage/db';
-import { createDifficultySettingsRepository } from '../src/services/storage/repositories';
+import { KEY_VALUE_TABLE, defaultRowStore } from '../src/services/storage/db';
+import {
+  createAttemptRepository,
+  createDifficultySettingsRepository,
+  createMelodyRepository,
+  createSessionRepository,
+} from '../src/services/storage/repositories';
+import {
+  createAttemptLogOutbox,
+  createNullAttemptLogClient,
+  defaultAttemptLogClient,
+} from '../src/services/logging/attemptLog';
+import { getOrCreateDeviceId, keyValueOverRowStore } from '../src/lib/deviceId';
 import { CaptureConfig } from '../src/features/practice/capture';
-import { usePracticeLoop } from '../src/features/practice/usePracticeLoop';
+import { PracticeLoopDeps, usePracticeLoop } from '../src/features/practice/usePracticeLoop';
+import { persistGradedAttempt } from '../src/features/practice/persist';
+import { useSession } from '../src/features/practice/session';
 import { Screen } from '../src/components/common/Screen';
 import { Kicker } from '../src/components/common/Kicker';
 import { Tag } from '../src/components/common/Tag';
@@ -36,8 +49,53 @@ const SEGMENT_CFG: SegmentConfig = {
 const GRADING_CFG: GradingConfig = { centsTolerance: 50, octaveSensitive: true, lowConfidenceThreshold: 0.6 };
 const CAPTURE_CFG: CaptureConfig = { noInputTimeoutMs: 8000, endSilenceMs: 2000 };
 
+const APP_VERSION = '0.1.0';
+
 export default function Practice() {
-  const deps = useMemo(
+  // One durable store shared by every repository, and one session per visit to this screen.
+  const store = useMemo(() => defaultRowStore(), []);
+  const repos = useMemo(
+    () => ({
+      sessions: createSessionRepository(store),
+      attempts: createAttemptRepository(store),
+      melodies: createMelodyRepository(store),
+      difficulty: createDifficultySettingsRepository(store),
+    }),
+    [store],
+  );
+  const sessionId = useMemo(() => `s_${Date.now()}`, []);
+  const outbox = useMemo(
+    () => createAttemptLogOutbox(
+      defaultAttemptLogClient(
+        process.env.EXPO_PUBLIC_SUPABASE_URL,
+        process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+      ) ?? createNullAttemptLogClient(),
+    ),
+    [],
+  );
+  const [deviceId, setDeviceId] = useState<string | null>(null);
+
+  // Create the Session row up front so attempts always have a parent (FR-018).
+  useEffect(() => {
+    const session: Session = {
+      id: sessionId,
+      startedAt: new Date().toISOString(),
+      endedAt: null,
+      difficultyMode: 'adaptive',
+      currentDifficultyId: '',
+      attemptCount: 0,
+      accuracyPct: 0,
+    };
+    void repos.sessions.create(session);
+    void getOrCreateDeviceId(keyValueOverRowStore(store, KEY_VALUE_TABLE)).then(setDeviceId);
+  }, [repos.sessions, sessionId, store]);
+
+  const session = useSession(sessionId, repos.sessions);
+  // `end` is stable enough to run on unmount; ending is idempotent (`ended` is terminal).
+  const endSession = session.end;
+  useEffect(() => () => endSession(), [endSession]);
+
+  const deps = useMemo<PracticeLoopDeps>(
     () => ({
       playback: createAudioPlayback(),
       detector: createPitchDetector(),
@@ -47,9 +105,23 @@ export default function Practice() {
       gradingCfg: GRADING_CFG,
       captureCfg: CAPTURE_CFG,
       seed: () => Math.floor(Math.random() * 1e9),
-      difficulty: createDifficultySettingsRepository(defaultRowStore()),
+      difficulty: repos.difficulty,
+      sessionId,
+      onAttemptGraded: (attempt, melody, level) => {
+        // Every attempt is recorded (FR-012); only graded ones move the session tally.
+        void persistGradedAttempt(attempt, melody, level, {
+          attempts: repos.attempts,
+          melodies: repos.melodies,
+          outbox,
+          appVersion: APP_VERSION,
+          deviceId: deviceId ?? 'dev_pending',
+        });
+        if (!attempt.timedOut && !attempt.lowConfidence) {
+          session.recordAttempt(attempt.verdict === 'correct');
+        }
+      },
     }),
-    [],
+    [repos, sessionId, outbox, deviceId, session],
   );
 
   const loop = usePracticeLoop(deps);

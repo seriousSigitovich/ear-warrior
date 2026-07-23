@@ -1,7 +1,7 @@
 // Difficulty adaptation (contracts/difficulty-adaptation.md; FR-011, FR-011a, FR-011b).
 // A pure reducer: no IO, no clock, no randomness — every transition is table-testable. Persistence
 // lives in services/storage; this module only computes the next settings value.
-import { AttemptOutcome, DifficultySettings, DifficultyMode } from '../../models';
+import { AttemptGrade, AttemptOutcome, DifficultySettings, DifficultyMode } from '../../models';
 import { MAX_RANK, MIN_RANK } from '../../services/melody/levels';
 
 export { MAX_RANK, MIN_RANK };
@@ -31,6 +31,25 @@ function assertRank(rank: number): void {
 
 function clampRank(rank: number): number {
   return Math.min(MAX_RANK, Math.max(MIN_RANK, rank));
+}
+
+/**
+ * Derive the adaptation input from a finished grade (FR-011a).
+ *
+ * `hasGradedThisMelody` must be set by the caller only after a **graded** attempt on the current
+ * melody: a timed-out or low-confidence capture is not graded, so it must not consume the learner's
+ * one first-attempt chance. Keeping this pure is what makes the exclusion rule testable — it is the
+ * logic behind "background noise must never demote a learner".
+ */
+export function toAttemptOutcome(
+  grade: AttemptGrade,
+  hasGradedThisMelody: boolean,
+): AttemptOutcome {
+  return {
+    verdict: grade.verdict,
+    graded: !grade.timedOut && !grade.lowConfidence,
+    isFirstAttemptOnMelody: !hasGradedThisMelody,
+  };
 }
 
 /** The rank the generator should use right now. */

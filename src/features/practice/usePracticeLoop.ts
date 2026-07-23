@@ -3,7 +3,10 @@
 // Pure logic (generate, schedule, segment, grade, tuning) is composed with the injected audio services.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Attempt,
   AttemptGrade,
+  DetectedNote,
+  DifficultyLevel,
   DifficultySettings,
   GradingConfig,
   Melody,
@@ -11,7 +14,12 @@ import {
 } from '../../models';
 import { generateMelody } from '../../services/melody/generator';
 import { getLevelByRank } from '../../services/melody/levels';
-import { DEFAULT_DIFFICULTY_SETTINGS, applyAttempt, effectiveRank } from '../difficulty/adapt';
+import {
+  DEFAULT_DIFFICULTY_SETTINGS,
+  applyAttempt,
+  effectiveRank,
+  toAttemptOutcome,
+} from '../difficulty/adapt';
 import { DifficultySettingsRepository } from '../../services/storage/repositories';
 import { scheduleMelody } from '../../lib/schedule';
 import { segmentFrames } from '../../lib/segment';
@@ -42,6 +50,16 @@ export interface PracticeLoopDeps {
   seed: () => number;
   /** Persisted difficulty state (FR-011b). */
   difficulty: DifficultySettingsRepository;
+  /**
+   * Record a finished attempt (FR-012). Called for **every** attempt, including timed-out and
+   * low-confidence ones — FR-011a excludes those from difficulty adaptation only, not from the
+   * record. Supplied by the screen, which owns the session and the repositories.
+   */
+  onAttemptGraded?: (attempt: Attempt, melody: Melody, level: DifficultyLevel) => void;
+  /** Id for the session these attempts belong to. */
+  sessionId: string;
+  /** Injected for testability; defaults to wall-clock time. */
+  now?: () => Date;
 }
 
 /** A rank movement to surface in the feedback step, so difficulty never shifts silently. */
@@ -82,6 +100,9 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
   settingsRef.current = settings;
 
   const level = useMemo(() => getLevelByRank(effectiveRank(settings)), [settings]);
+  // Same reason as settingsRef: callbacks read the level in effect at the moment they run.
+  const levelRef = useRef(level);
+  levelRef.current = level;
 
   useEffect(() => {
     let cancelled = false;
@@ -93,16 +114,37 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
     };
   }, [deps.difficulty]);
 
+  // Monotonic within a session; combined with the unique session id this yields a unique attempt id.
+  const attemptSeqRef = useRef(0);
+
+  /** Record the attempt (FR-012) and fold it into difficulty state (FR-011/011a). */
+  const completeAttempt = useCallback(
+    (m: Melody, result: AttemptGrade, detected: DetectedNote[]) => {
+      attemptSeqRef.current += 1;
+      const attempt: Attempt = {
+        id: `${deps.sessionId}-${attemptSeqRef.current}`,
+        sessionId: deps.sessionId,
+        melodyId: m.id,
+        detectedNotes: detected,
+        noteResults: result.noteResults,
+        verdict: result.verdict,
+        confidence: result.confidence,
+        lowConfidence: result.lowConfidence,
+        timedOut: result.timedOut,
+        createdAt: (deps.now?.() ?? new Date()).toISOString(),
+      };
+      deps.onAttemptGraded?.(attempt, m, levelRef.current);
+    },
+    [deps],
+  );
+
   /** Fold a finished attempt into difficulty state and persist the result (FR-011/011a). */
   const adapt = useCallback(
     async (result: AttemptGrade) => {
       const before = settingsRef.current;
-      const next = applyAttempt(before, {
-        verdict: result.verdict,
-        graded: !result.timedOut && !result.lowConfidence,
-        isFirstAttemptOnMelody: !gradedThisMelodyRef.current,
-      });
-      if (!result.timedOut && !result.lowConfidence) {
+      const outcome = toAttemptOutcome(result, gradedThisMelodyRef.current);
+      const next = applyAttempt(before, outcome);
+      if (outcome.graded) {
         gradedThisMelodyRef.current = true;
       }
       if (next === before) return;
@@ -141,6 +183,7 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
         const denied = gradeAttempt(m, [], deps.gradingCfg);
         setGrade(denied);
         setPhase('feedback');
+        completeAttempt(m, denied, []);
         await adapt(denied); // ungraded → no-op, but keeps one adaptation path
         return;
       }
@@ -174,9 +217,10 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
         : gradeAttempt(m, detected, deps.gradingCfg);
       setGrade(result);
       setPhase('feedback');
+      completeAttempt(m, result, detected);
       await adapt(result);
     },
-    [deps, adapt],
+    [deps, adapt, completeAttempt],
   );
 
   const next = useCallback(async () => {

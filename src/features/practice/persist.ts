@@ -1,42 +1,34 @@
-// Attempt/session persistence + anonymous logging on each graded attempt (T033, FR-012/FR-018).
+// Attempt persistence + anonymous logging on each graded attempt (T033, FR-012, FR-019).
 // Local SQLite is the source of truth; the anonymous log is best-effort and never blocks the loop (R9).
-import { Attempt, DifficultyLevel, Melody, Session } from '../../models';
-import { accuracyPct } from '../../lib/sessionState';
-import { AttemptRepository, SessionRepository } from '../../services/storage/repositories';
-import {
-  AttemptLogOutbox,
-  buildAttemptLogPayload,
-} from '../../services/logging/attemptLog';
+//
+// Session summary state (attemptCount / accuracyPct / endedAt) is deliberately NOT written here —
+// `useSession` (./session.ts) owns every Session mutation, driven by the pure reducer in
+// lib/sessionState. Having both write the summary produced conflicting tallies.
+import { Attempt, DifficultyLevel, Melody } from '../../models';
+import { AttemptRepository, MelodyRepository } from '../../services/storage/repositories';
+import { AttemptLogOutbox, buildAttemptLogPayload } from '../../services/logging/attemptLog';
 
 export interface PersistDeps {
   attempts: AttemptRepository;
-  sessions: SessionRepository;
+  melodies: MelodyRepository;
   outbox: AttemptLogOutbox;
   appVersion: string;
   deviceId: string;
 }
 
 /**
- * Persist a graded attempt, update the session summary, and enqueue an anonymous log.
+ * Persist a graded attempt and enqueue an anonymous log.
  * The log call is fire-and-forget so telemetry never delays feedback.
  */
 export async function persistGradedAttempt(
   attempt: Attempt,
-  session: Session,
   melody: Melody,
   level: DifficultyLevel,
   deps: PersistDeps,
 ): Promise<void> {
+  // Upsert the melody first so the attempt's `melodyId` never dangles; a retry re-saves the same row.
+  await deps.melodies.save(melody);
   await deps.attempts.create(attempt);
-
-  const attemptCount = session.attemptCount + 1;
-  const correctSoFar =
-    Math.round((session.accuracyPct / 100) * session.attemptCount) + (attempt.verdict === 'correct' ? 1 : 0);
-  const updated: Partial<Session> = {
-    attemptCount,
-    accuracyPct: accuracyPct({ ...session, attemptCount, correctCount: correctSoFar } as never),
-  };
-  await deps.sessions.update(session.id, updated);
 
   // Best-effort, non-blocking telemetry.
   void deps.outbox.log(

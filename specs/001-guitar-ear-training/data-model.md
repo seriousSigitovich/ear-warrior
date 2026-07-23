@@ -183,7 +183,10 @@ capturing ─(lowConfidence)→ feedback(offer retry)
 ## Relationships & integrity
 
 - `Melody.difficultyId → DifficultyLevel.id`
-- `Attempt.melodyId → Melody.id`, `Attempt.sessionId → Session.id`
+- `Attempt.melodyId → Melody.id`, `Attempt.sessionId → Session.id`. Melodies are stored in their own
+  `melodies` table, upserted by id alongside each attempt, so a retry re-saves the same row and a stored
+  `melodyId` always resolves. `Session` mutations (tally, `endedAt`) are written **only** by `useSession`;
+  attempt persistence never touches the Session row.
 - `Session.currentDifficultyId → DifficultyLevel.id`
 - `DifficultySettings.adaptiveRank` / `.fixedRank → DifficultyLevel.rank` (singleton row, no session FK)
 - Deleting a Session cascades its Attempts (local only). Supabase logs are independent and immutable.

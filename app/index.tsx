@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { MAX_RANK } from '../src/services/melody/levels';
+import { MAX_RANK, getLevelByRank } from '../src/services/melody/levels';
 import { DEFAULT_DIFFICULTY_SETTINGS, effectiveRank } from '../src/features/difficulty/adapt';
 import { defaultRowStore } from '../src/services/storage/db';
 import { createDifficultySettingsRepository } from '../src/services/storage/repositories';
@@ -42,16 +42,18 @@ export default function Home() {
 
       <View style={styles.spacer} />
 
+      {/* Both stats read from persisted difficulty state. A practice streak would need the US3
+          aggregation (T043) — showing an invented one alongside a real level reads as genuine. */}
       <View style={styles.statRow}>
-        <Card style={styles.stat}>
-          <Text style={styles.statKicker}>Streak</Text>
-          <Text style={styles.statValue}>6 days</Text>
-        </Card>
         <Card style={styles.stat}>
           <Text style={styles.statKicker}>Level</Text>
           <Text style={styles.statValue}>
             {rank} of {MAX_RANK}
           </Text>
+        </Card>
+        <Card style={styles.stat}>
+          <Text style={styles.statKicker}>Melody</Text>
+          <Text style={styles.statValue}>{getLevelByRank(rank).noteCount} notes</Text>
         </Card>
       </View>
 

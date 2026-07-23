@@ -44,7 +44,6 @@ export function runCapture(
     const frames: PitchFrame[] = [];
     let started = false;
     let settled = false;
-    let noInputTimer: ReturnType<typeof setTimeout>;
     let endTimer: ReturnType<typeof setTimeout> | undefined;
 
     const finish = async (timedOut: boolean) => {
@@ -59,7 +58,9 @@ export function runCapture(
     const isVoiced = (f: PitchFrame) =>
       f.hz >= pitchCfg.minHz && f.hz <= pitchCfg.maxHz && f.clarity >= pitchCfg.clarityThreshold;
 
-    noInputTimer = setTimeout(() => {
+    // Declared after `finish` closes over it: every caller of `finish` runs from a timer or an async
+    // callback, so this assignment has always executed by then.
+    const noInputTimer = setTimeout(() => {
       if (!started) void finish(true); // never started playing → timeout (FR-015)
     }, cfg.noInputTimeoutMs);
 

@@ -28,8 +28,10 @@ const TONE_RENDER_MS = 2200;
 
 /** Real adapter: synthesize each note to a cached WAV and play it through expo-audio. */
 export function defaultNativePlayer(): NativePlayer {
+  /* eslint-disable @typescript-eslint/no-explicit-any -- untyped native module handles */
   let audioMod: any;
   let fsMod: any;
+  /* eslint-enable @typescript-eslint/no-explicit-any */
   const audio = () => (audioMod ??= require('expo-audio'));
   const fs = () => (fsMod ??= require('expo-file-system'));
   const uriCache = new Map<number, string>();

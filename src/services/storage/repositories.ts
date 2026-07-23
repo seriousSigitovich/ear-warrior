@@ -1,8 +1,14 @@
 // Session & Attempt repositories (T012, FR-012/FR-018). Typed CRUD over the RowStore port; completed
 // records survive app restarts because the store is durable (SQLite on device).
-import { Attempt, DifficultySettings, Session } from '../../models';
+import { Attempt, DifficultySettings, Melody, Session } from '../../models';
 import { DEFAULT_DIFFICULTY_SETTINGS } from '../../features/difficulty/adapt';
-import { ATTEMPTS_TABLE, DIFFICULTY_SETTINGS_TABLE, RowStore, SESSIONS_TABLE } from './db';
+import {
+  ATTEMPTS_TABLE,
+  DIFFICULTY_SETTINGS_TABLE,
+  MELODIES_TABLE,
+  RowStore,
+  SESSIONS_TABLE,
+} from './db';
 
 export interface SessionRepository {
   create(session: Session): Promise<Session>;
@@ -16,6 +22,14 @@ export interface AttemptRepository {
   get(id: string): Promise<Attempt | null>;
   forSession(sessionId: string): Promise<Attempt[]>;
   all(): Promise<Attempt[]>;
+}
+
+/** Target melodies — keeps `Attempt.melodyId` resolvable and feeds US3's weak-area grouping. */
+export interface MelodyRepository {
+  /** Insert or replace; a retry re-saves the same melody rather than duplicating it. */
+  save(melody: Melody): Promise<void>;
+  get(id: string): Promise<Melody | null>;
+  all(): Promise<Melody[]>;
 }
 
 /** Persisted difficulty state — a single row, so difficulty outlives any session (FR-011b). */
@@ -49,6 +63,15 @@ export function createAttemptRepository(store: RowStore): AttemptRepository {
       return all.filter((a) => a.sessionId === sessionId);
     },
     all: () => store.all<Attempt>(ATTEMPTS_TABLE),
+  };
+}
+
+export function createMelodyRepository(store: RowStore): MelodyRepository {
+  return {
+    save: (melody) =>
+      store.insert(MELODIES_TABLE, melody.id, melody as unknown as Record<string, unknown>),
+    get: (id) => store.getById<Melody>(MELODIES_TABLE, id),
+    all: () => store.all<Melody>(MELODIES_TABLE),
   };
 }
 

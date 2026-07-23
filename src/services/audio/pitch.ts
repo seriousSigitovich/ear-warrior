@@ -41,6 +41,7 @@ export function defaultNativePitch(): NativePitchModule {
   let subscription: { remove: () => void } | null = null;
   // Lazily resolved so constructing the detector never loads the native module (keeps the UI mountable
   // under Expo Go, where the native side is absent; capture itself needs a custom dev client).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped native module handle
   let cached: any;
   const pitchy = () => {
     if (!cached) {

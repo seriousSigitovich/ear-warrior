@@ -18,6 +18,28 @@ export function generateDeviceId(rand: () => number = Math.random): string {
   return `dev_${hex}`;
 }
 
+/**
+ * Adapt any durable document store (the app's SQLite `RowStore`) to the key-value shape.
+ * Keeps the device id in the same database as everything else — no extra native dependency.
+ */
+export function keyValueOverRowStore(
+  store: {
+    insert(table: string, id: string, row: Record<string, unknown>): Promise<void>;
+    getById<T>(table: string, id: string): Promise<T | null>;
+  },
+  table: string,
+): KeyValueStore {
+  return {
+    async getItem(key) {
+      const row = await store.getById<{ value: string }>(table, key);
+      return row ? row.value : null;
+    },
+    async setItem(key, value) {
+      await store.insert(table, key, { value });
+    },
+  };
+}
+
 /** Return the stored device id, generating and persisting one on first use. */
 export async function getOrCreateDeviceId(
   store: KeyValueStore,

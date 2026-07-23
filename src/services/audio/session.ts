@@ -11,6 +11,7 @@ export interface AudioSessionDriver {
 
 /** Real expo-audio audio-mode adapter (lazily required; not loaded under the pure-logic test runner). */
 export function defaultAudioSessionDriver(): AudioSessionDriver {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped native module handle
   let audioMod: any;
   const audio = () => (audioMod ??= require('expo-audio'));
   return {

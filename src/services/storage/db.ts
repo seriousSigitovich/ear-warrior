@@ -4,11 +4,21 @@
 
 export const SESSIONS_TABLE = 'sessions';
 export const ATTEMPTS_TABLE = 'attempts';
+/** Target melodies, so a stored `Attempt.melodyId` always resolves (data-model integrity). */
+export const MELODIES_TABLE = 'melodies';
 /** Singleton row holding the learner's difficulty state (FR-011b). */
 export const DIFFICULTY_SETTINGS_TABLE = 'difficulty_settings';
+/** Small key-value area (anonymous device id, R9) — keeps it out of a separate native store. */
+export const KEY_VALUE_TABLE = 'key_value';
 
 /** Every table the app creates on open. */
-export const ALL_TABLES = [SESSIONS_TABLE, ATTEMPTS_TABLE, DIFFICULTY_SETTINGS_TABLE];
+export const ALL_TABLES = [
+  SESSIONS_TABLE,
+  ATTEMPTS_TABLE,
+  MELODIES_TABLE,
+  DIFFICULTY_SETTINGS_TABLE,
+  KEY_VALUE_TABLE,
+];
 
 /** Minimal document store keyed by string id. The SQLite adapter serializes rows as JSON docs. */
 export interface RowStore {
@@ -57,6 +67,7 @@ export function createInMemoryRowStore(): RowStore {
 export function defaultRowStore(): RowStore {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const SQLite = require('expo-sqlite');
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped expo-sqlite handle
   const dbPromise = SQLite.openDatabaseAsync('ear-warrior.db').then(async (db: any) => {
     for (const table of ALL_TABLES) {
       await db.execAsync(`CREATE TABLE IF NOT EXISTS ${table} (id TEXT PRIMARY KEY, data TEXT);`);
