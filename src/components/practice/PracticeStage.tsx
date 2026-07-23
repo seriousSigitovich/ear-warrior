@@ -1,24 +1,33 @@
 // Center "stage" for the practice loop — the per-phase visual that sits between the header
-// and the transport actions. Renders the idle waveform, the animated listening bars, the
-// "your turn" fretboard motif, and the live capture indicator. Purely presentational.
+// and the transport actions. Renders the idle waveform, the animated listening bars, and the
+// "your turn" note ladder that fills in live as the attempt is heard. Purely presentational.
 import React, { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
-import { LoopPhase } from '../../features/practice/usePracticeLoop';
+import { CaptureProgress, LoopPhase } from '../../features/practice/usePracticeLoop';
+import { noteName } from '../../lib/pitchNote';
 import {
   Waveform,
   IDLE_BARS,
   LISTENING_BARS,
 } from '../common/Waveform';
-import { colors, font, textAlpha } from '../../theme/nocturne';
+import { colors, font, textAlpha, withAlpha } from '../../theme/nocturne';
 
-export function PracticeStage({ phase }: { phase: LoopPhase }) {
+export interface PracticeStageProps {
+  phase: LoopPhase;
+  /** Notes in the target melody — the number of marks on the "your turn" ladder. */
+  noteCount: number;
+  /** Live capture read-out; ignored outside the capturing phase. */
+  progress: CaptureProgress;
+}
+
+export function PracticeStage({ phase, noteCount, progress }: PracticeStageProps) {
   switch (phase) {
     case 'playingMelody':
       return <Listening />;
     case 'awaitingInput':
-      return <YourTurn capturing={false} />;
+      return <YourTurn capturing={false} noteCount={noteCount} progress={progress} />;
     case 'capturing':
-      return <YourTurn capturing />;
+      return <YourTurn capturing noteCount={noteCount} progress={progress} />;
     case 'grading':
       return <Grading />;
     case 'idle':
@@ -52,19 +61,89 @@ function Listening() {
   );
 }
 
-function YourTurn({ capturing }: { capturing: boolean }) {
+function YourTurn({
+  capturing,
+  noteCount,
+  progress,
+}: {
+  capturing: boolean;
+  noteCount: number;
+  progress: CaptureProgress;
+}) {
+  const heard = capturing ? Math.min(progress.notesHeard, noteCount) : 0;
+  // The most recent onset is the note being played, so it reads as "in progress"; the ones
+  // before it are settled. Before anything is heard, the first mark waits for the learner.
+  const settled = Math.max(0, heard - 1);
+  const current = capturing ? settled : -1;
+
   return (
     <View style={styles.center}>
       <Text style={styles.yourTurn}>Your turn</Text>
       <Text style={styles.sub}>Play it back on your guitar</Text>
-      <Fretboard />
-      {capturing ? (
-        <>
-          <ProgressBar />
-          <Text style={styles.captureNote}>listening for your notes…</Text>
-        </>
-      ) : null}
+
+      <View style={styles.ladder}>
+        {Array.from({ length: noteCount }, (_, i) => (
+          <NoteMark key={i} state={i < settled ? 'settled' : i === current ? 'current' : 'pending'} />
+        ))}
+      </View>
+
+      <Text style={styles.captureNote}>
+        {capturing
+          ? `note ${Math.min(Math.max(heard, 1), noteCount)} of ${noteCount}${
+              progress.lastMidi === null ? '' : ` — ${noteName(progress.lastMidi)} heard`
+            }`
+          : `${noteCount} notes to play back`}
+      </Text>
+
+      <ProgressBar fraction={capturing ? heard / noteCount : 0} />
     </View>
+  );
+}
+
+// One note mark on the ladder: settled (accent fill + check), current (pulsing dot), or pending.
+function NoteMark({ state }: { state: 'settled' | 'current' | 'pending' }) {
+  if (state === 'settled') {
+    return (
+      <View style={[styles.mark, styles.markSettled]}>
+        <Text style={styles.check}>✓</Text>
+      </View>
+    );
+  }
+  if (state === 'current') {
+    return (
+      <View style={[styles.mark, styles.markCurrent]}>
+        <PulseDot />
+      </View>
+    );
+  }
+  return <View style={[styles.mark, styles.markPending]} />;
+}
+
+// The web frame pulses the ring's box-shadow; RN can't animate shadows cheaply, so the inner
+// dot carries the pulse instead — same 1.4s beat, same "actively hearing this note" read.
+function PulseDot() {
+  const pulse = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1, duration: 700, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0, duration: 700, useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [pulse]);
+
+  return (
+    <Animated.View
+      style={[
+        styles.pulseDot,
+        {
+          opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 0.7] }),
+          transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.35] }) }],
+        },
+      ]}
+    />
   );
 }
 
@@ -73,20 +152,6 @@ function Grading() {
     <View style={styles.center}>
       <Waveform bars={LISTENING_BARS} height={40} align="center" animated />
       <Text style={styles.listening}>Checking your notes…</Text>
-    </View>
-  );
-}
-
-// Four "strings" with two note marks — the fretboard motif from the redesign.
-function Fretboard() {
-  return (
-    <View style={styles.fret}>
-      <View style={styles.string} />
-      <View style={styles.string} />
-      <View style={styles.string} />
-      <View style={styles.string} />
-      <View style={[styles.fretDot, { left: '36%', top: 1 }]} />
-      <View style={[styles.fretDot, { left: '64%', top: 24 }]} />
     </View>
   );
 }
@@ -102,19 +167,19 @@ function Dot({ filled }: { filled?: boolean }) {
   );
 }
 
-// A looping fill that reads as "actively listening" during capture.
-function ProgressBar() {
-  const w = useRef(new Animated.Value(0.08)).current;
+// Attempt progress: how much of the melody has been played back, eased in as notes land
+// (the web frame's `transition: width .5s ease`).
+function ProgressBar({ fraction }: { fraction: number }) {
+  const w = useRef(new Animated.Value(fraction)).current;
   useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(w, { toValue: 0.9, duration: 2600, useNativeDriver: false }),
-        Animated.timing(w, { toValue: 0.08, duration: 400, useNativeDriver: false }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [w]);
+    const anim = Animated.timing(w, {
+      toValue: Math.max(0, Math.min(1, fraction)),
+      duration: 500,
+      useNativeDriver: false,
+    });
+    anim.start();
+    return () => anim.stop();
+  }, [w, fraction]);
   const width = w.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] });
   return (
     <View style={styles.track}>
@@ -131,16 +196,24 @@ const styles = StyleSheet.create({
   dots: { flexDirection: 'row', gap: 8 },
   dot: { width: 7, height: 7, borderRadius: 3.5 },
 
-  yourTurn: { color: colors.accent, fontSize: 24, fontWeight: font.weightHeading },
-  sub: { color: textAlpha[65], fontSize: 14, marginTop: -12 },
-  captureNote: { color: textAlpha[45], fontSize: 11 },
+  yourTurn: { color: colors.accent, fontSize: 22, fontWeight: font.weightHeading },
+  sub: { color: textAlpha[65], fontSize: 13, marginTop: -14 },
+  captureNote: { color: textAlpha[55], fontSize: 11, letterSpacing: 0.2, marginTop: -12 },
 
-  fret: { height: 44, width: 220, justifyContent: 'space-between', paddingVertical: 1 },
-  string: { height: 1, backgroundColor: colors.divider },
-  fretDot: { position: 'absolute', width: 7, height: 7, borderRadius: 3.5, backgroundColor: colors.accent },
+  ladder: { flexDirection: 'row', gap: 8, marginTop: 6 },
+  mark: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
+  markSettled: {
+    backgroundColor: withAlpha(colors.accent, 0.22),
+    borderWidth: 1.5,
+    borderColor: colors.accent,
+  },
+  markCurrent: { borderWidth: 1.5, borderColor: colors.accent },
+  markPending: { borderWidth: 1.5, borderColor: colors.divider },
+  check: { color: colors.accentRamp[300], fontSize: 14, fontWeight: '700', lineHeight: 17 },
+  pulseDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: colors.accent },
 
   track: {
-    width: 220,
+    width: 240,
     height: 3,
     borderRadius: 2,
     backgroundColor: colors.neutral[800],

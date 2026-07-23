@@ -17,22 +17,39 @@ export interface CaptureResult {
   timedOut: boolean;
 }
 
+/** Live handle on a running capture — lets the UI end the attempt early ("Stop & check"). */
+export interface CaptureHandle {
+  stop(): void;
+}
+
+export interface CaptureHooks {
+  /** Every voiced frame, as it arrives — drives the live "notes heard so far" UI. */
+  onVoicedFrame?: (frame: PitchFrame) => void;
+  /** Called once the detector is listening, with a handle that ends the attempt early. */
+  onReady?: (handle: CaptureHandle) => void;
+}
+
 /**
- * Run one capture window over a pitch detector, resolving when the attempt ends by silence or times
- * out. Pure orchestration around the injected detector; the actual audio IO lives in the detector.
+ * Run one capture window over a pitch detector, resolving when the attempt ends by silence, is
+ * stopped by the learner, or times out. Pure orchestration around the injected detector; the actual
+ * audio IO lives in the detector.
  */
 export function runCapture(
   detector: PitchDetector,
   pitchCfg: PitchDetectionConfig,
   cfg: CaptureConfig,
+  hooks: CaptureHooks = {},
 ): Promise<CaptureResult> {
   return new Promise<CaptureResult>((resolve, reject) => {
     const frames: PitchFrame[] = [];
     let started = false;
+    let settled = false;
     let noInputTimer: ReturnType<typeof setTimeout>;
     let endTimer: ReturnType<typeof setTimeout> | undefined;
 
     const finish = async (timedOut: boolean) => {
+      if (settled) return; // silence, an early stop, and the timeout can race
+      settled = true;
       clearTimeout(noInputTimer);
       if (endTimer) clearTimeout(endTimer);
       await detector.stop();
@@ -55,8 +72,10 @@ export function runCapture(
           if (endTimer) clearTimeout(endTimer);
           // Restart the end-of-attempt silence timer on every voiced frame.
           endTimer = setTimeout(() => void finish(false), cfg.endSilenceMs);
+          hooks.onVoicedFrame?.(frame);
         }
       })
+      .then(() => hooks.onReady?.({ stop: () => void finish(false) }))
       .catch(reject);
   });
 }

@@ -2,7 +2,7 @@
 // Nocturne styling: outlined actions rather than filled — primary carries the accent as a
 // line (and optional glow), secondary a quiet divider border, ghost a bare accent link.
 import React from 'react';
-import { Pressable, StyleSheet, Text, TextStyle, ViewStyle } from 'react-native';
+import { Pressable, StyleProp, StyleSheet, Text, TextStyle, ViewStyle } from 'react-native';
 import { colors, radius, withAlpha } from '../../theme/nocturne';
 
 export interface ButtonProps {
@@ -12,7 +12,7 @@ export interface ButtonProps {
   variant?: 'primary' | 'secondary' | 'ghost';
   /** Adds the accent glow used on the hero "Start practice" call to action. */
   glow?: boolean;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 }
 
 export function Button({ label, onPress, disabled, variant = 'primary', glow, style }: ButtonProps) {

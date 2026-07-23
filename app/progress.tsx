@@ -8,14 +8,11 @@ import { Screen } from '../src/components/common/Screen';
 import { Kicker } from '../src/components/common/Kicker';
 import { Card } from '../src/components/common/Card';
 import { Button } from '../src/components/common/Button';
-import { Waveform, WaveBar } from '../src/components/common/Waveform';
-import { colors, font, textAlpha, withAlpha } from '../src/theme/nocturne';
+import { TrendLine } from '../src/components/common/TrendLine';
+import { colors, font, textAlpha } from '../src/theme/nocturne';
 
-// Seven-session accuracy trend, rendered as a bar sparkline (echoing the waveform motif).
-const TREND: WaveBar[] = [0.5, 0.54, 0.52, 0.62, 0.58, 0.72, 0.85].map((heightPct, i, a) => ({
-  heightPct,
-  color: withAlpha(colors.accent, 0.3 + (0.7 * i) / (a.length - 1)),
-}));
+// Seven-session accuracy trend (illustrative until US3 wires real history).
+const TREND = [0.5, 0.54, 0.52, 0.62, 0.58, 0.72, 0.85];
 
 export default function Progress() {
   const router = useRouter();
@@ -31,7 +28,7 @@ export default function Progress() {
       <Text style={styles.caption}>Accuracy — last 7 sessions</Text>
 
       <Card style={styles.chartCard}>
-        <Waveform bars={TREND} height={100} barWidth={26} gap={14} style={styles.chart} />
+        <TrendLine values={TREND} height={100} />
       </Card>
 
       <View style={styles.statRow}>
@@ -59,7 +56,6 @@ const styles = StyleSheet.create({
   caption: { color: textAlpha[55], fontSize: 12, marginBottom: 18 },
 
   chartCard: { padding: 16, marginBottom: 18 },
-  chart: { alignSelf: 'center' },
 
   statRow: { flexDirection: 'row', gap: 10 },
   stat: { flex: 1, padding: 14 },

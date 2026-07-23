@@ -78,7 +78,11 @@ export default function Practice() {
           </ScrollView>
         )
       ) : (
-        <PracticeStage phase={loop.phase} />
+        <PracticeStage
+          phase={loop.phase}
+          noteCount={loop.melody?.notes.length ?? L1.noteCount}
+          progress={loop.progress}
+        />
       )}
 
       <TransportControls
@@ -89,6 +93,7 @@ export default function Practice() {
         onReplay={loop.replay}
         onRetry={loop.retry}
         onNext={loop.next}
+        onStop={loop.stopAttempt}
       />
     </Screen>
   );
@@ -99,7 +104,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: 24,
   },
   feedback: { gap: 18, paddingVertical: 8 },
 });

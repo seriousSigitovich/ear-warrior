@@ -225,3 +225,15 @@ Task T021: "Contract test for audio playback in tests/contract/playback.test.ts"
 - Native pitch-detection accuracy and audio fidelity cannot be unit-tested — they are validated on-device via `quickstart.md` (T052/T053).
 - The empirical tuning constants (clarity threshold, segmentation stability/gap, tuning-offset threshold) are calibrated during on-device validation and exposed as config, per research.md.
 - Commit after each task or logical group; stop at any checkpoint to validate a story independently.
+
+---
+
+## Phase 7: Convergence
+
+**Purpose**: Close code-vs-intent gaps found by `/speckit-converge` that the existing task checkboxes do
+not reveal. These are distinct from the already-tracked unbuilt work (US2/US3 in T036–T046, a11y/perf in
+T051–T054, capture regression in T021C), which converge does not duplicate.
+
+- [ ] T055 [US1] Add a regression test for the real `react-native-pitchy` adapter `defaultNativePitch()` in `src/services/audio/pitch.ts`: assert it resolves the library's **default export** (so `init`/`start`/`addListener`/`stop` are invoked on the real surface, not the module namespace) and maps `confidence`/`tCaptureMs` correctly — the existing `tests/contract/pitch.test.ts` only exercises the injected fake `NativePitchModule` and so missed the default-export defect that crashed on-device capture. Align the pitch mock to the real module shape per `Constitution II` (bug fixes MUST include a regression test) and `contracts/pitch-detection.md` (partial)
+- [ ] T056 [US3] Gate or label the illustrative statistics in `app/progress.tsx` (82% accuracy, "+6% this week", 6-day streak, 142 attempts, the hardcoded 7-session trend) as placeholder — or hide the figures — until US3 aggregation (T043–T046) supplies real values, so the screen never presents fabricated data as real per FR-013 / US3 (contradicts)
+- [ ] T057 [US2] Mark the difficulty mode toggle and level ladder in `app/settings.tsx` as not-yet-active (disabled/"coming soon"), since the current controls are local-only state that neither persists nor changes generation (always L1), so the UI does not imply a functional effect it lacks — until wired under T038–T041 per FR-011 / US2 (contradicts)
