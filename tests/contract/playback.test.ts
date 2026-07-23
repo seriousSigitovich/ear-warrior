@@ -21,13 +21,13 @@ function melody(midis: number[]): Melody {
 }
 
 function fakePlayer() {
-  const played: { file: string; durationMs: number }[] = [];
+  const played: { midi: number; durationMs: number }[] = [];
   let stops = 0;
   const native: NativePlayer = {
-    async playSample(file, durationMs) {
-      played.push({ file, durationMs });
+    async playTone(midi, durationMs) {
+      played.push({ midi, durationMs });
     },
-    async preloadSamples() {},
+    async preloadTones() {},
     async stopAll() {
       stops++;
     },
@@ -36,14 +36,14 @@ function fakePlayer() {
 }
 
 describe('audio playback (contracts/audio-playback.md)', () => {
-  test('plays the correct sample per midi, in order, resolving after the last note', async () => {
+  test('plays the correct note per midi, in order, resolving after the last note', async () => {
     const f = fakePlayer();
     const pb = createAudioPlayback(f.native);
     await pb.playMelody(scheduleMelody(melody([64, 67, 69]), 120));
-    expect(f.played.map((p) => p.file)).toEqual(['e4.mp3', 'g4.mp3', 'a4.mp3']);
+    expect(f.played.map((p) => p.midi)).toEqual([64, 67, 69]);
   });
 
-  test('preload throws on a missing sample (never partial playback)', async () => {
+  test('preload throws on an out-of-range note (never partial playback)', async () => {
     const pb = createAudioPlayback(fakePlayer().native);
     await expect(pb.preload([200])).rejects.toThrow();
   });
@@ -51,7 +51,7 @@ describe('audio playback (contracts/audio-playback.md)', () => {
   test('playReferenceTone plays the tuning tone for a note', async () => {
     const f = fakePlayer();
     await createAudioPlayback(f.native).playReferenceTone(64);
-    expect(f.played).toEqual([{ file: 'e4.mp3', durationMs: 1500 }]);
+    expect(f.played).toEqual([{ midi: 64, durationMs: 1500 }]);
   });
 
   test('stop is idempotent', async () => {

@@ -1,5 +1,6 @@
-// Pre-rendered note-sample manifest (T025). The mapping midi → asset filename is pure and testable;
-// the actual asset modules are registered by Metro (require) in sampleAssets.native.ts on device.
+// Note-range helpers. Playback no longer bundles pre-rendered samples — tones are synthesized on the
+// fly (see synth.ts). These pure helpers still guard the playable E2–E6 range: `sampleManifest` is the
+// range check used by `preload` (throws on any out-of-range note, never partial playback).
 import { noteName } from '../../lib/pitchNote';
 import { GUITAR_MAX_MIDI, GUITAR_MIN_MIDI } from '../../lib/pitchNote';
 

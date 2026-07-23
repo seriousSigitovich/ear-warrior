@@ -1,9 +1,11 @@
-// Audio playback service (contracts/audio-playback.md). Sequences pre-rendered per-note samples via
-// expo-audio (expo-av's successor; migration anticipated in research R6). The native player is injected
-// so orchestration (correct sample per midi, resolve-after-last, idempotent stop) is contract-testable;
-// the real expo-audio binding is isolated in `defaultNativePlayer`.
+// Audio playback service (contracts/audio-playback.md). Notes are synthesized on the fly (no bundled
+// samples): the native player renders a plucked-string tone per MIDI note into the cache dir and plays
+// it via expo-audio. The native player is injected so orchestration (correct note per midi, in order,
+// resolve-after-last, idempotent stop) stays contract-testable; the real binding is isolated in
+// `defaultNativePlayer`.
 import { PlaybackMelody } from '../../lib/schedule';
-import { sampleFileForMidi, sampleManifest } from './samples';
+import { sampleManifest } from './samples';
+import { renderNoteWav } from './synth';
 
 export interface AudioPlayback {
   preload(midiNotes: number[]): Promise<void>;
@@ -12,33 +14,52 @@ export interface AudioPlayback {
   stop(): Promise<void>;
 }
 
-/** Injectable native player: plays one already-scheduled note and can stop all output. */
+/** Injectable native player: renders/plays a synthesized tone for one MIDI note and can stop output. */
 export interface NativePlayer {
-  /** Play the sample for `file`, resolving when it finishes (or after `durationMs`). */
-  playSample(file: string, durationMs: number): Promise<void>;
-  preloadSamples(files: string[]): Promise<void>;
+  /** Play the synthesized tone for `midi`, resolving after `durationMs`. */
+  playTone(midi: number, durationMs: number): Promise<void>;
+  /** Pre-generate tones so the first note of a melody starts without a synthesis hitch. */
+  preloadTones(midis: number[]): Promise<void>;
   stopAll(): Promise<void>;
 }
 
-/** Real expo-audio adapter (lazily required; never loaded under the pure-logic test runner). */
+/** Tones are rendered at a generous fixed length so any note/reference duration fits the sample tail. */
+const TONE_RENDER_MS = 2200;
+
+/** Real adapter: synthesize each note to a cached WAV and play it through expo-audio. */
 export function defaultNativePlayer(): NativePlayer {
   let audioMod: any;
-  let assets: Record<string, number>;
+  let fsMod: any;
   const audio = () => (audioMod ??= require('expo-audio'));
-  const sampleAssets = () =>
-    (assets ??= require('./sampleAssets.native').SAMPLE_ASSETS as Record<string, number>);
+  const fs = () => (fsMod ??= require('expo-file-system'));
+  const uriCache = new Map<number, string>();
+
+  // Generate (once) a WAV tone for a MIDI note in the cache dir and return its file uri.
+  const toneUri = (midi: number): string => {
+    const cached = uriCache.get(midi);
+    if (cached) return cached;
+    const { File, Paths } = fs();
+    const file = new File(Paths.cache, `tone-${midi}.wav`);
+    if (!file.exists) {
+      file.create({ overwrite: true });
+      file.write(renderNoteWav(midi, TONE_RENDER_MS));
+    }
+    uriCache.set(midi, file.uri);
+    return file.uri;
+  };
+
   return {
-    async preloadSamples() {
-      // expo-audio creates players on demand; explicit warm-up is optional.
+    async preloadTones(midis) {
+      for (const midi of midis) toneUri(midi); // materialize the WAV files ahead of playback
     },
-    async playSample(file, durationMs) {
-      const player = audio().createAudioPlayer(sampleAssets()[file]);
+    async playTone(midi, durationMs) {
+      const player = audio().createAudioPlayer(toneUri(midi));
       player.play();
       await new Promise((r) => setTimeout(r, durationMs));
       player.remove();
     },
     async stopAll() {
-      // Players are released per-note in playSample; nothing global to release.
+      // Players are released per-note in playTone; nothing global to release.
     },
   };
 }
@@ -49,8 +70,8 @@ const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 export function createAudioPlayback(native: NativePlayer = defaultNativePlayer()): AudioPlayback {
   return {
     async preload(midiNotes) {
-      const manifest = sampleManifest(midiNotes); // throws on any missing sample
-      await native.preloadSamples(Object.values(manifest));
+      sampleManifest(midiNotes); // range guard: throws on any note outside E2–E6
+      await native.preloadTones(midiNotes);
     },
     async playMelody(m) {
       // Schedule each note by startMs; resolve only after the final note completes.
@@ -60,12 +81,12 @@ export function createAudioPlayback(native: NativePlayer = defaultNativePlayer()
           await wait(note.startMs - cursor);
           cursor = note.startMs;
         }
-        await native.playSample(sampleFileForMidi(note.midi), note.durationMs);
+        await native.playTone(note.midi, note.durationMs);
         cursor += note.durationMs;
       }
     },
     async playReferenceTone(midi) {
-      await native.playSample(sampleFileForMidi(midi), 1500);
+      await native.playTone(midi, 1500);
     },
     stop: () => native.stopAll(),
   };
