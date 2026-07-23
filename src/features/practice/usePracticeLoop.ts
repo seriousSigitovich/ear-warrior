@@ -51,6 +51,16 @@ export function usePracticeLoop(level: DifficultyLevel, deps: PracticeLoopDeps) 
   const captureAndGrade = useCallback(
     async (m: Melody) => {
       setPhase('capturing');
+      // Microphone access is required to hear the attempt; requesting here triggers the OS prompt
+      // on first use. Without it, capture silently records nothing. On denial, fall through to an
+      // empty (timed-out) grade so the learner sees the retry state rather than a dead screen.
+      const micGranted = await deps.session.ensureMicPermission();
+      if (!micGranted) {
+        setTuning(null);
+        setGrade(gradeAttempt(m, [], deps.gradingCfg));
+        setPhase('feedback');
+        return;
+      }
       await deps.session.enterRecording();
       const { frames, timedOut } = await runCapture(deps.detector, deps.pitchCfg, deps.captureCfg);
       await deps.session.release();

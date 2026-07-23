@@ -50,16 +50,25 @@ export function defaultNativePitch(): NativePitchModule {
     return cached;
   };
   return {
-    requestPermission: () => pitchy().checkPermissionsAndInit?.() ?? Promise.resolve(true),
-    async start(cfg, onFrame) {
-      await pitchy().init({ minVolume: 0, ...cfg });
-      subscription = pitchy().addListener((raw: { pitch: number; clarity?: number }) => {
-        onFrame({
-          hz: raw.pitch ?? 0,
-          clarity: raw.clarity ?? 0,
-          timestampMs: Date.now(),
-        });
-      });
+    // react-native-pitchy has no permission API of its own; microphone permission is owned by
+    // the AudioSession (expo-audio) and requested in the practice loop before capture starts.
+    requestPermission: () => Promise.resolve(true),
+    async start(_cfg, onFrame) {
+      // init() is synchronous and takes a PitchyConfig — NOT our band-pass PitchDetectionConfig
+      // (minHz/maxHz/clarity are applied JS-side by the segmenter). minVolume is dBFS: the library
+      // default is -60; the old `0` demanded full-scale loudness and silenced every frame.
+      pitchy().init({ algorithm: 'YIN', minVolume: -60, minConfidence: 0 });
+      subscription = pitchy().addListener(
+        (raw: { pitch: number; confidence?: number; tCaptureMs?: number }) => {
+          onFrame({
+            hz: raw.pitch > 0 ? raw.pitch : 0, // pitchy reports -1 when unvoiced
+            clarity: raw.confidence ?? 0, // the event field is `confidence`, not `clarity`
+            // tCaptureMs is the sample's true capture time (Date.now() epoch), immune to bridge
+            // backlog — use it so burst-delivered frames keep their real spacing for segmentation.
+            timestampMs: raw.tCaptureMs ?? Date.now(),
+          });
+        },
+      );
       await pitchy().start();
     },
     async stop() {
