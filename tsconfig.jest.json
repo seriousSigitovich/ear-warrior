@@ -1,0 +1,21 @@
+{
+  "//": "Dedicated config for the Jest (ts-jest) pure-logic runner. Self-contained — does NOT extend expo/tsconfig.base, so `expo start` rewriting tsconfig.json for the app never affects the test compile. CommonJS + node resolution for ts-jest.",
+  "compilerOptions": {
+    "target": "ES2019",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "lib": ["ES2019"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "declaration": false,
+    "types": ["jest", "node"]
+  },
+  "include": ["src", "tests"],
+  "exclude": ["node_modules", "dist", "build", "app", "src/components", "src/features"]
+}

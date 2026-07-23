@@ -91,6 +91,43 @@ export interface Melody {
   createdAt: string;
 }
 
+/** One captured reproduction of a melody and its grading (FR-005, FR-006, FR-012). */
+export interface Attempt {
+  id: string;
+  sessionId: string;
+  melodyId: string;
+  detectedNotes: DetectedNote[];
+  noteResults: NoteResult[];
+  verdict: Verdict;
+  /** Minimum per-note clarity across the attempt (FR-017). */
+  confidence: number;
+  lowConfidence: boolean;
+  timedOut: boolean;
+  createdAt: string;
+}
+
+export type DifficultyMode = 'adaptive' | 'fixed';
+
+/** A continuous practice run containing multiple attempts (FR-018). */
+export interface Session {
+  id: string;
+  startedAt: string;
+  /** null while active. */
+  endedAt: string | null;
+  difficultyMode: DifficultyMode;
+  currentDifficultyId: string;
+  attemptCount: number;
+  accuracyPct: number;
+}
+
+/** Aggregated cross-session view for the single local learner (FR-013, US3). Derived, not stored. */
+export interface ProgressProfile {
+  accuracyTrend: { date: string; accuracyPct: number }[];
+  practiceVolume: { totalAttempts: number; totalSessions: number; totalMinutes: number };
+  difficultyReached: number;
+  weakAreas: { descriptor: string; missRate: number }[];
+}
+
 export type TuningDirection = 'sharp' | 'flat' | 'none';
 
 /** Result of the systematic-detune check (contracts/tuning-check.md, FR-014). */
