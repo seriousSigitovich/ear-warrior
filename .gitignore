@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+
+# Build / test output
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# Expo / React Native (generated with the native layer)
+.expo/
+.expo-shared/
+web-build/
+ios/
+android/
+*.keystore
+*.jks
+
+# Env & secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# Editor / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.swp
+*.tmp

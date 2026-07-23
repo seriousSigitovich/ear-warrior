@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ES2019",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "lib": ["ES2019"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "declaration": false,
+    "types": ["jest", "node"]
+  },
+  "//": "Runnable core: pure logic + dependency-injected service wrappers (no top-level React Native imports). The React Native layer (app/, src/components, src/features) is compiled by tsconfig.app.json under the Expo toolchain.",
+  "include": ["src", "tests"],
+  "exclude": ["node_modules", "dist", "build", "app", "src/components", "src/features"]
+}

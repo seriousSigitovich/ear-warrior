@@ -1,0 +1,15 @@
+{
+  "//": "React Native / Expo layer. Requires the Expo toolchain + native deps installed (npm install) and is built/typechecked as part of the app; not run in the pure-logic sandbox. Extends Expo's base tsconfig once installed.",
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "jsx": "react-jsx",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    }
+  },
+  "include": ["app", "src", "expo-env.d.ts"]
+}

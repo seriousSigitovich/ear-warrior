@@ -46,15 +46,15 @@ pitch-detection accuracy and audio fidelity are validated on-device via `quickst
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T008 [P] Define domain types in `src/models/index.ts` (Note, DifficultyLevel, Melody, NoteResult, Attempt, Session, ProgressProfile) per data-model.md
-- [ ] T009 [P] Write failing unit tests for pitch↔note math (Hz→MIDI, cents deviation, nearest-note within ±50 cents, guitar-range guard) in `tests/unit/lib/pitchNote.test.ts`
-- [ ] T010 Implement pitch↔note + cents/tolerance helpers in `src/lib/pitchNote.ts` to pass T009
+- [X] T008 [P] Define domain types in `src/models/index.ts` (Note, DifficultyLevel, Melody, NoteResult, Attempt, Session, ProgressProfile) per data-model.md
+- [X] T009 [P] Write failing unit tests for pitch↔note math (Hz→MIDI, cents deviation, nearest-note within ±50 cents, guitar-range guard) in `tests/unit/lib/pitchNote.test.ts`
+- [X] T010 Implement pitch↔note + cents/tolerance helpers in `src/lib/pitchNote.ts` to pass T009
 - [ ] T011 Initialize `expo-sqlite` database with schema/migration for `sessions` and `attempts` in `src/services/storage/db.ts`
 - [ ] T012 [P] Implement Session & Attempt repositories (create/read/update; survive app restart per FR-018) in `src/services/storage/repositories.ts`
 - [ ] T013 [P] Implement anonymous per-install device-id generator (no PII) in `src/lib/deviceId.ts`
 - [ ] T014 [P] Implement microphone-permission + audio-session helper (playback fully stops before capture, R7) in `src/services/audio/session.ts`
 - [ ] T015 [P] Create root navigation shell + shared UI primitives/theme in `app/_layout.tsx` and `src/components/common/`
-- [ ] T016 [P] Seed a default DifficultyLevel (L1) config in `src/services/melody/levels.ts`
+- [X] T016 [P] Seed a default DifficultyLevel (L1) config in `src/services/melody/levels.ts`
 
 **Checkpoint**: Foundation ready — user stories can now begin.
 
@@ -70,18 +70,18 @@ a correct/incorrect verdict identifying matched/wrong/missed/extra notes, and su
 
 ### Tests for User Story 1 (REQUIRED per constitution — write FIRST, ensure they FAIL) ⚠️
 
-- [ ] T017 [P] [US1] Unit tests for melody generator (length == noteCount; range/scale membership; no consecutive identical pitches per FR-001; deterministic by seed; invalid level throws) in `tests/unit/melody/generator.test.ts`
-- [ ] T018 [P] [US1] Unit tests for pitch-stream segmentation (pitch-change + silence-gap → note sequence; low-clarity treated as silence) using recorded fixtures in `tests/unit/lib/segment.test.ts` (+ fixtures in `tests/fixtures/`)
-- [ ] T019 [P] [US1] Table-driven unit tests for grading engine best-fit alignment (exact, one wrong, missed, extra, **mid-phrase insertion/omission must NOT cascade** per FR-005, octave mismatch, ±50-cent boundary, timeout, low-confidence) in `tests/unit/grading/grade.test.ts`
+- [X] T017 [P] [US1] Unit tests for melody generator (length == noteCount; range/scale membership; no consecutive identical pitches per FR-001; deterministic by seed; invalid level throws) in `tests/unit/melody/generator.test.ts`
+- [X] T018 [P] [US1] Unit tests for pitch-stream segmentation (pitch-change + silence-gap → note sequence; low-clarity treated as silence) using recorded fixtures in `tests/unit/lib/segment.test.ts` (+ fixtures in `tests/fixtures/`)
+- [X] T019 [P] [US1] Table-driven unit tests for grading engine best-fit alignment (exact, one wrong, missed, extra, **mid-phrase insertion/omission must NOT cascade** per FR-005, octave mismatch, ±50-cent boundary, timeout, low-confidence) in `tests/unit/grading/grade.test.ts`
 - [ ] T020 [P] [US1] Contract test for the pitch-detection wrapper against a mocked `react-native-pitchy` (permission handling, silence/low-clarity pass-through, clean teardown) in `tests/contract/pitch.test.ts`
 - [ ] T021 [P] [US1] Contract test for audio playback against a mocked `expo-av` (correct sample per `midi`, `playMelody` resolves after last note, idempotent `stop`) in `tests/contract/playback.test.ts`
-- [ ] T021A [P] [US1] Unit tests for the pure tuning-detection rule (warn when median signed cents offset > threshold across ≥ min-count notes mostly the same direction; no warn on a single sharp/flat note or scattered offsets; thresholds calibratable) per FR-014 in `tests/unit/lib/tuning.test.ts`
+- [X] T021A [P] [US1] Unit tests for the pure tuning-detection rule (warn when median signed cents offset > threshold across ≥ min-count notes mostly the same direction; no warn on a single sharp/flat note or scattered offsets; thresholds calibratable) per FR-014 in `tests/unit/lib/tuning.test.ts`
 
 ### Implementation for User Story 1
 
-- [ ] T022 [P] [US1] Implement melody generator (pure) in `src/services/melody/generator.ts` to pass T017
-- [ ] T023 [P] [US1] Implement pitch-stream segmentation (pure) in `src/lib/segment.ts` to pass T018
-- [ ] T024 [US1] Implement grading engine with best-fit (edit-distance/LCS) alignment + ±50-cent nearest-note match + octave sensitivity in `src/services/grading/grade.ts` to pass T019 (depends on T010, T023)
+- [X] T022 [P] [US1] Implement melody generator (pure) in `src/services/melody/generator.ts` to pass T017
+- [X] T023 [P] [US1] Implement pitch-stream segmentation (pure) in `src/lib/segment.ts` to pass T018
+- [X] T024 [US1] Implement grading engine with best-fit (edit-distance/LCS) alignment + ±50-cent nearest-note match + octave sensitivity in `src/services/grading/grade.ts` to pass T019 (depends on T010, T023)
 - [ ] T025 [P] [US1] Add pre-rendered note-sample assets for the L1 note pool + manifest loader in `assets/samples/` and `src/services/audio/samples.ts`
 - [ ] T026 [US1] Implement pitch-detection wrapper over `react-native-pitchy` in `src/services/audio/pitch.ts` to pass T020 (depends on T014)
 - [ ] T027 [US1] Implement audio playback (expo-av sample sequencing + reference tone) in `src/services/audio/playback.ts` to pass T021 (depends on T025)
