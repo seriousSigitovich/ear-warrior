@@ -26,11 +26,20 @@ export interface NativePlayer {
 /** Tones are rendered at a generous fixed length so any note/reference duration fits the sample tail. */
 const TONE_RENDER_MS = 2200;
 
+/**
+ * Legato overlap (Phase 0 musicality): playTone resolves after the note's hold (so scheduling and
+ * total play time are unchanged), but the tone is left ringing for this much longer before its
+ * player is released. The tail overlaps the next note's attack, connecting the line instead of the
+ * abrupt cut-off that made the sequence sound like a string of isolated beeps.
+ */
+const RELEASE_TAIL_MS = 220;
+
 /** Real adapter: synthesize each note to a cached WAV and play it through expo-audio. */
 export function defaultNativePlayer(): NativePlayer {
   /* eslint-disable @typescript-eslint/no-explicit-any -- untyped native module handles */
   let audioMod: any;
   let fsMod: any;
+  const active = new Set<any>(); // players still ringing out their release tail
   /* eslint-enable @typescript-eslint/no-explicit-any */
   const audio = () => (audioMod ??= require('expo-audio'));
   const fs = () => (fsMod ??= require('expo-file-system'));
@@ -56,12 +65,18 @@ export function defaultNativePlayer(): NativePlayer {
     },
     async playTone(midi, durationMs) {
       const player = audio().createAudioPlayer(toneUri(midi));
+      active.add(player);
       player.play();
+      // Release the player only after the tail so it overlaps the following note (legato).
+      setTimeout(() => {
+        active.delete(player);
+        player.remove();
+      }, durationMs + RELEASE_TAIL_MS);
       await new Promise((r) => setTimeout(r, durationMs));
-      player.remove();
     },
     async stopAll() {
-      // Players are released per-note in playTone; nothing global to release.
+      for (const player of active) player.remove();
+      active.clear();
     },
   };
 }

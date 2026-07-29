@@ -51,11 +51,11 @@ describe('melody length is the only varying dimension (FR-010)', () => {
     }
   });
 
-  test('the fixed pool is C major, C4–C5, at 60 BPM', () => {
+  test('the fixed pool is C major, C4–C5, at 90 BPM', () => {
     expect(FIXED_SCALE).toBe('C_major');
     expect(FIXED_RANGE_LOW_MIDI).toBe(60);
     expect(FIXED_RANGE_HIGH_MIDI).toBe(72);
-    expect(FIXED_TEMPO_BPM).toBe(60);
+    expect(FIXED_TEMPO_BPM).toBe(90);
   });
 });
 

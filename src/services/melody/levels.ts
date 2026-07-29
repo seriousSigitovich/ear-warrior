@@ -19,8 +19,12 @@ export const FIXED_SCALE = 'C_major';
 export const FIXED_RANGE_LOW_MIDI = 60;
 /** C5 — one octave up, yielding 8 distinct pitches (C D E F G A B C). */
 export const FIXED_RANGE_HIGH_MIDI = 72;
-/** Rhythm is not graded, so tempo is a constant rather than a difficulty dimension. */
-export const FIXED_TEMPO_BPM = 60;
+/**
+ * Rhythm is not graded, so tempo is a constant rather than a difficulty dimension. Set to 90 BPM
+ * (Phase 0 musicality): at 60 BPM an 8-note melody runs 8 s and the ear stops hearing it as one
+ * phrase; ~90 keeps the longest ladder melody short enough to perceive as a whole.
+ */
+export const FIXED_TEMPO_BPM = 90;
 
 function levelForRank(rank: number): DifficultyLevel {
   return {
