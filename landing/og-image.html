@@ -1,0 +1,63 @@
+<!doctype html>
+<!-- Source for og-image.png (1200×630). Render with headless Chrome:
+     "…/Google Chrome" --headless=new --window-size=1200,630 \
+       --screenshot=og-image.png file://…/og-image.html                        -->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<style>
+  * { margin: 0; box-sizing: border-box; }
+  html, body { width: 1200px; height: 630px; overflow: hidden; }
+  body {
+    background: #161826;
+    color: #e9e9ed;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+    position: relative;
+    padding: 72px 80px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  body::before {
+    content: "";
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(760px 420px at 82% -8%, rgba(145,132,217,0.28), transparent 60%),
+      radial-gradient(620px 460px at 4% 108%, rgba(145,132,217,0.12), transparent 55%);
+  }
+  .row { position: relative; z-index: 1; }
+  .brand { display: flex; align-items: center; gap: 16px; font-size: 30px; font-weight: 600; letter-spacing: -0.01em; }
+  .mark { width: 26px; height: 26px; border-radius: 7px; background: #9184d9; box-shadow: 0 0 28px rgba(145,132,217,0.7); }
+
+  .eyebrow { font-size: 22px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: #b5abfc; margin-bottom: 28px; }
+  h1 { font-size: 104px; line-height: 0.98; letter-spacing: -0.035em; font-weight: 600; max-width: 15ch; }
+  h1 .dot { color: #b5abfc; }
+  .sub { margin-top: 30px; font-size: 30px; color: rgba(233,233,237,0.66); font-weight: 400; }
+
+  .foot { position: relative; z-index: 1; display: flex; align-items: flex-end; justify-content: space-between; }
+  .bars { display: flex; align-items: flex-end; gap: 9px; height: 88px; }
+  .bars span { width: 16px; border-radius: 4px; background: rgba(233,233,237,0.18); }
+  .bars span.on { background: #9184d9; box-shadow: 0 0 16px rgba(145,132,217,0.6); }
+  .chip { font-size: 24px; color: rgba(233,233,237,0.55); font-weight: 500; }
+</style>
+</head>
+<body>
+  <div class="row brand"><span class="mark"></span>Ear Warrior</div>
+
+  <div class="row">
+    <div class="eyebrow">Ear training for any instrument</div>
+    <h1>Hear it. Play it back. Nail it<span class="dot">.</span></h1>
+    <div class="sub">Hear a melody, play it back, know exactly which notes landed.</div>
+  </div>
+
+  <div class="foot">
+    <div class="bars">
+      <span style="height:38%"></span><span style="height:58%"></span><span class="on" style="height:82%"></span>
+      <span style="height:50%"></span><span style="height:66%"></span><span style="height:44%"></span>
+      <span class="on" style="height:96%"></span><span style="height:60%"></span><span style="height:42%"></span>
+      <span class="on" style="height:72%"></span><span style="height:52%"></span><span style="height:64%"></span>
+    </div>
+    <div class="chip">Coming soon · iOS &amp; Android</div>
+  </div>
+</body>
+</html>

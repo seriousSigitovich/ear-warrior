@@ -3,16 +3,48 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Ear Warrior — Hear it. Play it back. Nail it.</title>
-<meta name="description" content="Ear training for any instrument. A short melody plays, you play or sing it back, and we tell you exactly which notes landed. No fake streaks, no invented numbers. Coming soon on iOS and Android." />
+<title>Ear Warrior — Ear training for guitar, piano &amp; voice</title>
+<meta name="description" content="Ear training for any instrument. A melody plays, you play it back, and we tell you exactly which notes landed. Coming soon on iOS &amp; Android." />
+<meta name="theme-color" content="#161826" />
+<meta name="robots" content="index, follow" />
+
+<!-- Canonical. TODO: replace https://earwarrior.app/ with your production URL everywhere below. -->
+<link rel="canonical" href="https://earwarrior.app/" />
 
 <!-- Open Graph / social -->
-<meta property="og:title" content="Ear Warrior — ear training for any instrument" />
-<meta property="og:description" content="Hear it. Play it back. Nail it. Feedback you can trust — no fake streaks, no invented numbers." />
+<meta property="og:site_name" content="Ear Warrior" />
+<meta property="og:title" content="Ear Warrior — Hear it. Play it back. Nail it." />
+<meta property="og:description" content="Ear training for any instrument. A melody plays, you play it back, and we tell you exactly which notes landed. No fake streaks, no invented numbers." />
 <meta property="og:type" content="website" />
+<meta property="og:url" content="https://earwarrior.app/" />
+<meta property="og:locale" content="en_US" />
+<!-- 1200×630 share image (generated from og-image.html). -->
+<meta property="og:image" content="https://earwarrior.app/og-image.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="Ear Warrior — ear training for any instrument" />
+
+<!-- Twitter / X -->
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Ear Warrior — Hear it. Play it back. Nail it." />
+<meta name="twitter:description" content="Ear training for any instrument. Feedback you can trust — no fake streaks, no invented numbers." />
+<meta name="twitter:image" content="https://earwarrior.app/og-image.png" />
 
 <!-- Inline SVG favicon: the accent square from the wordmark -->
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23161826'/%3E%3Crect x='10' y='10' width='12' height='12' rx='3' fill='%239184d9'/%3E%3C/svg%3E" />
+
+<!-- Structured data: helps search engines understand the product (no fabricated ratings/prices). -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Ear Warrior",
+  "description": "Ear training for any instrument — hear a melody, play it back, and get honest, note-by-note feedback.",
+  "applicationCategory": "MusicApplication",
+  "operatingSystem": "iOS, Android",
+  "url": "https://earwarrior.app/"
+}
+</script>
 
 <style>
   /* ------------------------------------------------------------------ *
@@ -327,9 +359,9 @@
     color: var(--muted-soft); font-size: 14px;
   }
 
-  /* ---------- reveal on scroll ---------- */
-  .reveal { opacity: 0; transform: translateY(16px); transition: opacity 0.6s ease, transform 0.6s ease; }
-  .reveal.in { opacity: 1; transform: none; }
+  /* ---------- reveal on scroll (progressive: only hides when JS is on) ---------- */
+  .js .reveal { opacity: 0; transform: translateY(16px); transition: opacity 0.6s ease, transform 0.6s ease; }
+  .js .reveal.in { opacity: 1; transform: none; }
 
   /* ---------- responsive ---------- */
   @media (max-width: 900px) {
@@ -345,10 +377,12 @@
 
   @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
-    .reveal { opacity: 1; transform: none; transition: none; }
+    .js .reveal { opacity: 1; transform: none; transition: none; }
     * { animation: none !important; }
   }
 </style>
+<!-- Mark JS on so reveal-on-scroll only hides content when JS can reveal it (crawler/no-JS safe). -->
+<script>document.documentElement.classList.add("js");</script>
 </head>
 
 <body>

@@ -1,0 +1,6 @@
+# Ear Warrior — allow all crawlers.
+User-agent: *
+Allow: /
+
+# TODO: replace the domain with your production URL.
+Sitemap: https://earwarrior.app/sitemap.xml

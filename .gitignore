@@ -34,3 +34,6 @@ yarn-error.*
 Thumbs.db
 *.swp
 *.tmp
+
+# Vercel
+.vercel
