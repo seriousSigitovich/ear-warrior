@@ -77,7 +77,7 @@ a correct/incorrect verdict identifying matched/wrong/missed/extra notes, and su
 - [X] T021 [P] [US1] Contract test for audio playback against a mocked `NativePlayer` (expo-audio boundary): correct note per `midi`, notes in order, `playMelody` resolves after last note, idempotent `stop`, in `tests/contract/playback.test.ts`
 - [X] T021A [P] [US1] Unit tests for the pure tuning-detection rule (warn when median signed cents offset > threshold across ≥ min-count notes mostly the same direction; no warn on a single sharp/flat note or scattered offsets; thresholds calibratable) per FR-014 in `tests/unit/lib/tuning.test.ts`
 - [X] T021B [P] [US1] Unit tests for the pure tone synth + note-range guard (deterministic Karplus–Strong render by seed, canonical 16-bit mono WAV encoding, E2–E6 range guard throws) in `tests/unit/audio/synth.test.ts` and `tests/unit/audio/samples.test.ts`
-- [ ] T021C [P] [US1] Unit tests for the capture window (FR-015): times out when no voiced frame arrives within `noInputTimeoutMs`; a voiced frame starts the attempt and (re)arms the `endSilenceMs` end-timer; timers cleared on finish — in `tests/unit/practice/capture.test.ts` (regression test for the already-implemented `src/features/practice/capture.ts`; closes analyze finding C1)
+- [X] T021C [P] [US1] Unit tests for the capture window (FR-015): times out when no voiced frame arrives within `noInputTimeoutMs`; a voiced frame starts the attempt and (re)arms the `endSilenceMs` end-timer; timers cleared on finish — in `tests/unit/practice/capture.test.ts` (regression test for the already-implemented `src/features/practice/capture.ts`; closes analyze finding C1)
 
 ### Implementation for User Story 1
 
@@ -153,14 +153,14 @@ shows accuracy trend, practice volume, and identified weak areas derived from re
 
 ### Tests for User Story 3 (REQUIRED per constitution — write FIRST, ensure they FAIL) ⚠️
 
-- [ ] T042 [P] [US3] Unit tests for progress aggregation (accuracy trend by session, practice volume, weak areas by interval/length) in `tests/unit/progress/aggregate.test.ts`
+- [X] T042 [P] [US3] Unit tests for progress aggregation (accuracy trend by session, practice volume, weak areas by interval/length) in `tests/unit/progress/aggregate.test.ts`
 
 ### Implementation for User Story 3
 
-- [ ] T043 [US3] Implement progress aggregation queries over stored attempts in `src/services/storage/progress.ts` (depends on T012) to pass T042
-- [ ] T044 [US3] Implement progress feature/view logic in `src/features/progress/useProgress.ts` (depends on T043)
-- [ ] T045 [US3] Record per-session summary (accuracy, attempt count) on session end (FR-012) in `src/features/practice/persist.ts` (depends on T033)
-- [ ] T046 [P] [US3] Build progress screen `app/progress.tsx` (accuracy trend, volume, weak areas) (depends on T044)
+- [X] T043 [US3] Implement progress aggregation queries over stored attempts in `src/services/storage/progress.ts` (depends on T012) to pass T042
+- [X] T044 [US3] Implement progress feature/view logic in `src/features/progress/useProgress.ts` (depends on T043)
+- [X] T045 [US3] Record per-session summary (accuracy, attempt count) on session end (FR-012) — **implemented in `useSession`/`lib/sessionState`, not `persist.ts`**: `useSession` writes `attemptCount`/`accuracyPct`/`endedAt` to the Session row on every attempt and on end, so the summary is recorded and viewable. persist.ts deliberately does NOT write the Session summary (documented there) to avoid conflicting tallies. The aggregation (T043) recomputes accuracy from source attempts for robustness rather than trusting the denormalized field.
+- [X] T046 [P] [US3] Build progress screen `app/progress.tsx` (accuracy trend, volume, weak areas) (depends on T044)
 
 **Checkpoint**: All three user stories are independently functional.
 
@@ -252,8 +252,8 @@ Task T021: "Contract test for audio playback in tests/contract/playback.test.ts"
 not reveal. These are distinct from the already-tracked unbuilt work (US2/US3 in T036–T046, a11y/perf in
 T051–T054, capture regression in T021C), which converge does not duplicate.
 
-- [ ] T055 [US1] Add a regression test for the real `react-native-pitchy` adapter `defaultNativePitch()` in `src/services/audio/pitch.ts`: assert it resolves the library's **default export** (so `init`/`start`/`addListener`/`stop` are invoked on the real surface, not the module namespace) and maps `confidence`/`tCaptureMs` correctly — the existing `tests/contract/pitch.test.ts` only exercises the injected fake `NativePitchModule` and so missed the default-export defect that crashed on-device capture. Align the pitch mock to the real module shape per `Constitution II` (bug fixes MUST include a regression test) and `contracts/pitch-detection.md` (partial)
-- [ ] T056 [US3] Gate or label the illustrative statistics in `app/progress.tsx` (82% accuracy, "+6% this week", 6-day streak, 142 attempts, the hardcoded 7-session trend) as placeholder — or hide the figures — until US3 aggregation (T043–T046) supplies real values, so the screen never presents fabricated data as real per FR-013 / US3 (contradicts)
+- [X] T055 [US1] Add a regression test for the real `react-native-pitchy` adapter `defaultNativePitch()` in `src/services/audio/pitch.ts` (added as `tests/contract/nativePitch.test.ts`, mocking the library so the `.default` export path and `confidence`/`tCaptureMs` mapping are asserted): assert it resolves the library's **default export** (so `init`/`start`/`addListener`/`stop` are invoked on the real surface, not the module namespace) and maps `confidence`/`tCaptureMs` correctly — the existing `tests/contract/pitch.test.ts` only exercises the injected fake `NativePitchModule` and so missed the default-export defect that crashed on-device capture. Align the pitch mock to the real module shape per `Constitution II` (bug fixes MUST include a regression test) and `contracts/pitch-detection.md` (partial)
+- [X] T056 [US3] ~~Gate or label the illustrative statistics in `app/progress.tsx`~~ — **resolved by T046**: the screen was rebuilt on real `useProgress` data with loading/empty states, so no fabricated figures (82%, +6%, 6-day streak, 142 attempts, hardcoded trend) remain to gate. Gate or label the illustrative statistics in `app/progress.tsx` (82% accuracy, "+6% this week", 6-day streak, 142 attempts, the hardcoded 7-session trend) as placeholder — or hide the figures — until US3 aggregation (T043–T046) supplies real values, so the screen never presents fabricated data as real per FR-013 / US3 (contradicts)
 - [X] T057 [US2] ~~Mark the difficulty mode toggle and level ladder in `app/settings.tsx` as not-yet-active (disabled/"coming soon")~~ — **obsolete, not performed.** This was a stopgap for shipping before US2. T041 rebuilt the screen against real persisted state, so the controls now do what they claim and there is nothing to disable
 
 ---
