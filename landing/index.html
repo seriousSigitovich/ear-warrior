@@ -1,0 +1,602 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Ear Warrior — Hear it. Play it back. Nail it.</title>
+<meta name="description" content="Ear training for any instrument. A short melody plays, you play or sing it back, and we tell you exactly which notes landed. No fake streaks, no invented numbers. Coming soon on iOS and Android." />
+
+<!-- Open Graph / social -->
+<meta property="og:title" content="Ear Warrior — ear training for any instrument" />
+<meta property="og:description" content="Hear it. Play it back. Nail it. Feedback you can trust — no fake streaks, no invented numbers." />
+<meta property="og:type" content="website" />
+
+<!-- Inline SVG favicon: the accent square from the wordmark -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23161826'/%3E%3Crect x='10' y='10' width='12' height='12' rx='3' fill='%239184d9'/%3E%3C/svg%3E" />
+
+<style>
+  /* ------------------------------------------------------------------ *
+   * Ear Warrior — pre-launch landing.
+   * Ported from the claude.ai/design "Nocturne" system (Ear Warrior
+   * Landing.dc.html). Palette mirrors src/theme/nocturne.ts so web and
+   * app read one set of tokens. Dark-only by design (brand surface).
+   * Self-contained: no external fonts, scripts, or images.
+   * ------------------------------------------------------------------ */
+
+  :root {
+    --bg:            #161826;
+    --surface:       #232532;
+    --surface-hover: #282a3a;
+    --text:          #e9e9ed;
+    --muted:         rgba(233, 233, 237, 0.62);
+    --muted-soft:    rgba(233, 233, 237, 0.45);
+    --accent:        #9184d9;
+    --accent-bright: #b5abfc;
+    --accent-tint:   rgba(145, 132, 217, 0.14);
+    --accent-tint-2: rgba(145, 132, 217, 0.22);
+    --border:        rgba(233, 233, 237, 0.10);
+    --border-strong: rgba(233, 233, 237, 0.16);
+
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --maxw: 1120px;
+
+    --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+            Helvetica, Arial, "Apple Color Emoji", sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 17px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Soft radial glow behind the hero, keeps the flat dark from feeling dead */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(900px 480px at 78% -6%, rgba(145, 132, 217, 0.16), transparent 60%),
+      radial-gradient(700px 500px at 8% 4%,  rgba(145, 132, 217, 0.07), transparent 55%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap { position: relative; z-index: 1; }
+
+  .container {
+    max-width: var(--maxw);
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  a { color: inherit; text-decoration: none; }
+
+  /* ---------- shared type ---------- */
+  .eyebrow {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 18px;
+  }
+  h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.02em; }
+  .section-title {
+    font-size: clamp(28px, 4vw, 40px);
+    line-height: 1.12;
+    letter-spacing: -0.015em;
+    max-width: 18ch;
+  }
+  .lead { color: var(--muted); }
+
+  /* ---------- buttons ---------- */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 500;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: background 0.18s ease, border-color 0.18s ease, transform 0.05s ease;
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .btn-primary {
+    padding: 13px 22px;
+    color: var(--accent-bright);
+    background: var(--accent-tint);
+    border-color: var(--accent);
+  }
+  .btn-primary:hover { background: var(--accent-tint-2); border-color: var(--accent-bright); }
+
+  .btn-ghost {
+    padding: 9px 17px;
+    font-size: 14px;
+    color: var(--text);
+    background: transparent;
+    border-color: var(--border-strong);
+  }
+  .btn-ghost:hover { background: rgba(233, 233, 237, 0.05); border-color: rgba(233, 233, 237, 0.3); }
+
+  /* ---------- nav ---------- */
+  .nav {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    backdrop-filter: blur(10px);
+    background: rgba(22, 24, 38, 0.72);
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s ease;
+  }
+  .nav.scrolled { border-bottom-color: var(--border); }
+  .nav-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 68px;
+  }
+  .brand { display: inline-flex; align-items: center; gap: 11px; font-weight: 600; font-size: 18px; }
+  .brand-mark {
+    width: 14px; height: 14px; border-radius: 4px;
+    background: var(--accent);
+    box-shadow: 0 0 16px rgba(145, 132, 217, 0.6);
+  }
+
+  /* ---------- hero ---------- */
+  .hero { padding: clamp(56px, 9vw, 104px) 0 clamp(60px, 8vw, 96px); }
+  .hero-grid {
+    display: grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: 56px;
+    align-items: center;
+  }
+  .hero h1 {
+    font-size: clamp(42px, 6.4vw, 70px);
+    line-height: 1.04;
+    letter-spacing: -0.03em;
+  }
+  .hero-body {
+    color: var(--muted);
+    font-size: clamp(16px, 1.5vw, 18px);
+    max-width: 33em;
+    margin: 26px 0 32px;
+  }
+  .hero-sub { color: var(--muted-soft); font-size: 14px; margin: 16px 0 0; }
+
+  /* hero demo card */
+  .demo-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 26px 26px 22px;
+    box-shadow: 0 24px 60px -30px rgba(0, 0, 0, 0.7);
+  }
+  .demo-label {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--muted-soft);
+  }
+  .bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    height: 104px;
+    margin: 22px 0 14px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .bars span {
+    flex: 1;
+    border-radius: 3px 3px 2px 2px;
+    background: rgba(233, 233, 237, 0.16);
+  }
+  .bars span.on { background: var(--accent); box-shadow: 0 0 12px rgba(145, 132, 217, 0.5); }
+  .demo-foot {
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 14px; color: var(--muted);
+  }
+  .demo-foot .missed { color: var(--muted-soft); }
+
+  /* ---------- generic section ---------- */
+  section { padding: clamp(64px, 9vw, 104px) 0; }
+  .section-head { margin-bottom: 44px; }
+  .section-head .lead { margin: 16px 0 0; max-width: 52ch; font-size: 17px; }
+
+  /* card grid */
+  .grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 24px;
+    transition: border-color 0.18s ease, transform 0.18s ease, background 0.18s ease;
+  }
+  .card:hover { border-color: var(--border-strong); transform: translateY(-2px); background: var(--surface-hover); }
+  .card h3 { font-size: 18px; letter-spacing: -0.01em; margin-bottom: 6px; }
+  .card p { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.55; }
+
+  .icon-box {
+    width: 44px; height: 44px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 10px;
+    background: var(--accent-tint);
+    color: var(--accent-bright);
+    margin-bottom: 18px;
+  }
+  .icon-box svg { width: 22px; height: 22px; }
+
+  .step-num { color: var(--accent); font-size: 14px; font-weight: 600; letter-spacing: 0.04em; margin-bottom: 12px; }
+
+  .chip {
+    display: inline-block;
+    font-size: 12px; font-weight: 600;
+    padding: 4px 11px;
+    border-radius: 999px;
+    background: var(--accent-tint-2);
+    color: var(--accent-bright);
+    margin-bottom: 16px;
+  }
+
+  .footnote { margin: 24px 0 0; color: var(--muted-soft); font-size: 14px; }
+
+  /* ---------- pull quote ---------- */
+  .quote { padding: clamp(48px, 7vw, 80px) 0; text-align: center; }
+  .quote p {
+    max-width: 20ch;
+    margin: 0 auto;
+    font-size: clamp(24px, 3.4vw, 34px);
+    line-height: 1.32;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    color: var(--text);
+  }
+  .quote em { color: var(--accent-bright); font-style: normal; }
+
+  /* ---------- final CTA ---------- */
+  .cta-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: clamp(32px, 5vw, 56px);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 48px;
+    align-items: center;
+  }
+  .cta-card h2 { font-size: clamp(26px, 3.4vw, 36px); margin-bottom: 18px; }
+  .cta-card .lead { color: var(--muted); font-size: 16px; max-width: 42ch; }
+
+  .form-field { display: block; margin-bottom: 8px; font-size: 13px; color: var(--muted); }
+  .notify-form input {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.22);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    padding: 13px 14px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 15px;
+    margin-bottom: 14px;
+  }
+  .notify-form input::placeholder { color: var(--muted-soft); }
+  .notify-form input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(145, 132, 217, 0.18);
+  }
+  .notify-form .btn-primary { width: 100%; }
+  .fineprint { margin: 12px 0 0; font-size: 13px; color: var(--muted-soft); }
+  .form-ok {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    border-radius: var(--radius-sm);
+    background: var(--accent-tint);
+    border: 1px solid var(--accent);
+    color: var(--accent-bright);
+    font-size: 15px;
+  }
+  .form-ok.show { display: flex; }
+
+  /* ---------- footer ---------- */
+  footer { border-top: 1px solid var(--border); padding: 32px 0 48px; }
+  .footer-inner {
+    display: flex; align-items: center; justify-content: space-between;
+    color: var(--muted-soft); font-size: 14px;
+  }
+
+  /* ---------- reveal on scroll ---------- */
+  .reveal { opacity: 0; transform: translateY(16px); transition: opacity 0.6s ease, transform 0.6s ease; }
+  .reveal.in { opacity: 1; transform: none; }
+
+  /* ---------- responsive ---------- */
+  @media (max-width: 900px) {
+    .hero-grid { grid-template-columns: 1fr; gap: 40px; }
+    .demo-card { max-width: 440px; }
+    .cta-card { grid-template-columns: 1fr; gap: 32px; }
+  }
+  @media (max-width: 720px) {
+    .grid-3 { grid-template-columns: 1fr; }
+    .footer-inner { flex-direction: column; gap: 8px; text-align: center; }
+    section { padding: 64px 0; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .reveal { opacity: 1; transform: none; transition: none; }
+    * { animation: none !important; }
+  }
+</style>
+</head>
+
+<body>
+<div class="wrap">
+
+  <!-- ===================== NAV ===================== -->
+  <header class="nav" id="nav">
+    <div class="container nav-inner">
+      <a class="brand" href="#top" aria-label="Ear Warrior home">
+        <span class="brand-mark" aria-hidden="true"></span>
+        Ear Warrior
+      </a>
+      <a class="btn btn-ghost" href="#notify">Get notified</a>
+    </div>
+  </header>
+
+  <main id="top">
+
+    <!-- ===================== HERO ===================== -->
+    <section class="hero">
+      <div class="container hero-grid">
+        <div>
+          <span class="eyebrow">Ear training for any instrument</span>
+          <h1>Hear it. Play it back. Nail it.</h1>
+          <p class="hero-body">
+            You know the melody. Getting it out of your head and onto your instrument?
+            That&rsquo;s the hard part. A short melody plays, you play or sing it back, and
+            we tell you exactly which notes landed. No fake streaks, no invented numbers.
+            Just feedback you can trust.
+          </p>
+          <a class="btn btn-primary" href="#notify">Get notified at launch</a>
+          <p class="hero-sub">Guitar, piano, voice, and more. Coming soon on iOS and Android.</p>
+        </div>
+
+        <!-- demo card: mirrors an in-app result -->
+        <div class="demo-card" role="img"
+             aria-label="Sample result: level 3 of 7, 3 of 5 notes matched, G3 missed.">
+          <div class="demo-label">Level 3 of 7</div>
+          <div class="bars" aria-hidden="true">
+            <span style="height:34%"></span>
+            <span style="height:52%"></span>
+            <span class="on" style="height:74%"></span>
+            <span style="height:46%"></span>
+            <span style="height:60%"></span>
+            <span style="height:40%"></span>
+            <span class="on" style="height:88%"></span>
+            <span style="height:54%"></span>
+            <span style="height:38%"></span>
+            <span class="on" style="height:66%"></span>
+            <span style="height:48%"></span>
+            <span style="height:58%"></span>
+            <span style="height:36%"></span>
+            <span style="height:44%"></span>
+          </div>
+          <div class="demo-foot">
+            <span>3 of 5 notes matched</span>
+            <span class="missed">G3 missed</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== ANY INSTRUMENT ===================== -->
+    <section>
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">Any instrument</span>
+          <h2 class="section-title">Guitar. Piano. Just your voice.</h2>
+          <p class="lead">
+            The grader listens for pitch, not for which instrument made it.
+            Start where you already play.
+          </p>
+        </div>
+
+        <div class="grid-3">
+          <div class="card reveal">
+            <span class="icon-box" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <line x1="6" y1="20" x2="6" y2="13"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="18" y1="20" x2="18" y2="9"/>
+              </svg>
+            </span>
+            <h3>Guitar</h3>
+            <p>Where Ear Warrior started.</p>
+          </div>
+
+          <div class="card reveal">
+            <span class="icon-box" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="16" rx="2"/><line x1="9" y1="4" x2="9" y2="13"/><line x1="15" y1="4" x2="15" y2="13"/>
+              </svg>
+            </span>
+            <h3>Piano</h3>
+            <p>Same ear, same honest grading.</p>
+          </div>
+
+          <div class="card reveal">
+            <span class="icon-box" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="3" width="6" height="11" rx="3"/><path d="M6 11a6 6 0 0 0 12 0"/><line x1="12" y1="17" x2="12" y2="21"/><line x1="8" y1="21" x2="16" y2="21"/>
+              </svg>
+            </span>
+            <h3>Voice</h3>
+            <p>No instrument required. Just your voice.</p>
+          </div>
+        </div>
+
+        <p class="footnote reveal">Bass, violin, ukulele, banjo, and anything else you play.</p>
+      </div>
+    </section>
+
+    <!-- ===================== HOW IT WORKS ===================== -->
+    <section>
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">How it works</span>
+          <h2 class="section-title">Three steps. No ceremony.</h2>
+        </div>
+
+        <div class="grid-3">
+          <div class="card reveal">
+            <div class="step-num">01</div>
+            <h3>Listen</h3>
+            <p>A short melody plays once. Nothing to set up first.</p>
+          </div>
+          <div class="card reveal">
+            <div class="step-num">02</div>
+            <h3>Play it back</h3>
+            <p>Play it on your instrument, or sing it. Your ear, your reps.</p>
+          </div>
+          <div class="card reveal">
+            <div class="step-num">03</div>
+            <h3>See what landed</h3>
+            <p>We grade every note. Not quite? Just try again, no penalty.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== PULL QUOTE ===================== -->
+    <section class="quote">
+      <div class="container reveal">
+        <p>Being a <em>warrior</em> was never about a perfect run. It&rsquo;s showing up for the next rep after a miss.</p>
+      </div>
+    </section>
+
+    <!-- ===================== WHY IT'S DIFFERENT ===================== -->
+    <section>
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">Why it&rsquo;s different</span>
+          <h2 class="section-title">Built for players who just want honest reps.</h2>
+        </div>
+
+        <div class="grid-3">
+          <div class="card reveal">
+            <span class="chip">Trust</span>
+            <h3>Feedback you can trust</h3>
+            <p>Real note names, real counts. If we don&rsquo;t have the data yet, we&rsquo;ll just say so. Never a made-up number.</p>
+          </div>
+          <div class="card reveal">
+            <span class="chip">Speed</span>
+            <h3>Reps in seconds</h3>
+            <p>Hear it, play it back, know. No levels to unlock, no loading screens.</p>
+          </div>
+          <div class="card reveal">
+            <span class="chip">Pace</span>
+            <h3>Meets you where you are</h3>
+            <p>Difficulty adapts as you play. A miss just means try again, never a failure.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== GET NOTIFIED ===================== -->
+    <section id="notify">
+      <div class="container">
+        <div class="cta-card reveal">
+          <div>
+            <span class="eyebrow">Be first</span>
+            <h2>Get notified at launch</h2>
+            <p class="lead">
+              Join the list and we&rsquo;ll email you the moment Ear Warrior is live on iOS
+              and Android. Every so often we&rsquo;ll also send a note on ear training for
+              any instrument.
+            </p>
+          </div>
+
+          <div>
+            <form class="notify-form" id="notifyForm" novalidate>
+              <label class="form-field" for="email">Email</label>
+              <input id="email" name="email" type="email" required
+                     autocomplete="email" placeholder="you@example.com" />
+              <button class="btn btn-primary" type="submit">Notify me</button>
+              <p class="fineprint">No spam. One email when we launch.</p>
+            </form>
+            <div class="form-ok" id="formOk" role="status">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+              <span>You&rsquo;re on the list. We&rsquo;ll email you at launch.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ===================== FOOTER ===================== -->
+  <footer>
+    <div class="container footer-inner">
+      <span>Ear Warrior &copy; 2026</span>
+      <span>Ear training for any instrument</span>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+  // Nav border appears once the page is scrolled a touch.
+  var nav = document.getElementById("nav");
+  var onScroll = function () { nav.classList.toggle("scrolled", window.scrollY > 8); };
+  onScroll();
+  window.addEventListener("scroll", onScroll, { passive: true });
+
+  // Reveal-on-scroll (progressive; content is fully visible without JS).
+  var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if ("IntersectionObserver" in window && !reduce) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
+      });
+    }, { threshold: 0.12, rootMargin: "0px 0px -40px 0px" });
+    document.querySelectorAll(".reveal").forEach(function (el) { io.observe(el); });
+  } else {
+    document.querySelectorAll(".reveal").forEach(function (el) { el.classList.add("in"); });
+  }
+
+  // Notify form — front-end only. Wire this up to your list provider:
+  //   TODO: POST { email } to your backend / ESP (ConvertKit, Mailchimp, Resend, …).
+  // For now it validates and shows a confirmation. It does NOT send anywhere.
+  var form = document.getElementById("notifyForm");
+  var ok = document.getElementById("formOk");
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var email = document.getElementById("email");
+    if (!email.value || !email.checkValidity()) { email.focus(); email.reportValidity && email.reportValidity(); return; }
+    form.style.display = "none";
+    ok.classList.add("show");
+  });
+</script>
+</body>
+</html>
