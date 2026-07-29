@@ -12,53 +12,53 @@ This is a requirements-quality gate ("unit tests for the spec"), not an implemen
 - [x] CHK001 Is the reference tuning standard (e.g., concert pitch A=440 Hz) explicitly specified for interpreting detected frequencies as notes? [Gap]
 - [x] CHK002 Is the exact playable pitch range (concrete low/high note bounds) for generated melodies quantified rather than left as "standard guitar range"? [Clarity, Spec §FR-001 / §Assumptions]
 - [x] CHK003 Are requirements defined for how a continuous guitar performance is divided into discrete notes (onset / note-boundary detection)? [Gap, Spec §FR-004]
-- [ ] CHK004 Is the minimum sustained duration or signal strength for a sound to count as a played note specified? [Gap]
+- [x] CHK004 Is the minimum sustained duration or signal strength for a sound to count as a played note specified? [Gap]
 - [x] CHK005 Are requirements defined for detecting two consecutive same-pitch notes as separate notes rather than one sustained note? [Gap, Edge Case]
 - [x] CHK006 Is the capture window specified — when note capture opens after playback ends and how long it stays open? [Gap, Spec §FR-015]
-- [ ] CHK007 Are the standard-tuning reference notes (E-A-D-G-B-E) that the tuning check compares against documented as requirements? [Gap, Spec §FR-014]
+- [x] CHK007 Are the standard-tuning reference notes (E-A-D-G-B-E) that the tuning check compares against documented as requirements? [Gap, Spec §FR-014]
 
 ## Requirement Clarity & Measurability
 
 - [x] CHK008 Is the note-match tolerance quantified with a specific cents value instead of "normal tuning deviation"? [Ambiguity, Spec §FR-016]
 - [x] CHK009 Is the low-confidence threshold that triggers a retry defined with a measurable value? [Clarity, Spec §FR-017]
 - [x] CHK010 Is "consistently out of tune" quantified (offset magnitude and how many notes) for triggering the tuning warning? [Ambiguity, Spec §FR-014]
-- [ ] CHK011 Is "reasonably quiet environment" defined with a measurable noise floor or signal-to-noise threshold? [Ambiguity, Spec §Assumptions / §SC-002]
+- [x] CHK011 Is "reasonably quiet environment" defined with a measurable noise floor or signal-to-noise threshold? [Ambiguity, Spec §Assumptions / §SC-002]
 - [x] CHK012 Is the no-input timeout expressed as a concrete duration? [Clarity, Spec §FR-015]
 - [x] CHK013 Is the attempt-level confidence value's derivation from per-detection clarity specified measurably? [Clarity, Spec §FR-017]
-- [ ] CHK014 Can "the same notes in the same order" be objectively evaluated given the defined tolerance and alignment rules? [Measurability, Spec §US1 / §FR-005]
+- [x] CHK014 Can "the same notes in the same order" be objectively evaluated given the defined tolerance and alignment rules? [Measurability, Spec §US1 / §FR-005]
 
 ## Requirement Consistency
 
-- [ ] CHK015 Is the "wrong octave counts as incorrect" rule stated consistently between the Assumptions and the note-match / verdict requirements? [Consistency, Spec §Assumptions / §FR-005 / §FR-016]
-- [ ] CHK016 Is the octave-sensitivity rule reconcilable with the "a different semitone never matches" rule, given an octave spans 12 semitones? [Consistency, Spec §FR-016]
-- [ ] CHK017 Is the pitch-first-only grading scope (rhythm/timing excluded) stated consistently across every correctness requirement, with no requirement implying timing is graded? [Consistency, Spec §Assumptions / §FR-005]
-- [ ] CHK018 Is the overall-verdict rule ("correct" only if all target notes matched and no extra notes) stated in the requirements themselves, not solely in downstream design docs? [Consistency, Spec §FR-005]
-- [ ] CHK019 Are the note-result categories (matched / wrong / missed / extra) defined consistently everywhere grading feedback is described? [Consistency, Spec §FR-005 / §FR-006]
-- [ ] CHK020 Do the generator's pitch-pool (scale/range) requirements align with the notes the detector/grader is required to recognize? [Consistency, Spec §FR-001 / §FR-004]
+- [x] CHK015 Is the "wrong octave counts as incorrect" rule stated consistently between the Assumptions and the note-match / verdict requirements? [Consistency, Spec §Assumptions / §FR-005 / §FR-016]
+- [x] CHK016 Is the octave-sensitivity rule reconcilable with the "a different semitone never matches" rule, given an octave spans 12 semitones? [Consistency, Spec §FR-016]
+- [x] CHK017 Is the pitch-first-only grading scope (rhythm/timing excluded) stated consistently across every correctness requirement, with no requirement implying timing is graded? [Consistency, Spec §Assumptions / §FR-005]
+- [x] CHK018 Is the overall-verdict rule ("correct" only if all target notes matched and no extra notes) stated in the requirements themselves, not solely in downstream design docs? [Consistency, Spec §FR-005]
+- [x] CHK019 Are the note-result categories (matched / wrong / missed / extra) defined consistently everywhere grading feedback is described? [Consistency, Spec §FR-005 / §FR-006]
+- [x] CHK020 Do the generator's pitch-pool (scale/range) requirements align with the notes the detector/grader is required to recognize? [Consistency, Spec §FR-001 / §FR-004]
 
 ## Scenario & Edge Case Coverage
 
 - [x] CHK021 Are requirements defined for accidental polyphony (a chord or overlapping ringing strings) given the monophonic assumption? [Coverage, Gap, Spec §Assumptions]
-- [ ] CHK022 Are requirements specified for pitch glides — bends, slides, vibrato — that move continuously between notes during a sustained sound? [Edge Case, Gap]
+- [x] CHK022 Are requirements specified for pitch glides — bends, slides, vibrato — that move continuously between notes during a sustained sound? [Edge Case, Gap]
 - [x] CHK023 Is sequence-alignment behavior defined when the learner inserts an extra note mid-phrase (does one insertion cascade following notes to "wrong")? [Ambiguity, Spec §FR-005]
 - [x] CHK024 Are requirements defined to distinguish inter-note gaps (hesitant playing) from an end-of-attempt gap? [Coverage, Spec §Edge Cases]
 - [x] CHK025 Is the post-tuning-warning state defined — is grading blocked until retune, or may the learner proceed? [Gap, Spec §FR-014]
-- [ ] CHK026 Are open-string ring-out and fret-buzz artifacts addressed in the input-handling / low-confidence requirements? [Edge Case, Gap, Spec §FR-017]
+- [x] CHK026 Are open-string ring-out and fret-buzz artifacts addressed in the input-handling / low-confidence requirements? [Edge Case, Gap, Spec §FR-017]
 
 ## Acceptance Criteria Quality
 
-- [ ] CHK027 Does SC-002's "normal conditions" enumerate the measurable preconditions (tuning accuracy, noise level, tempo) under which the ≥95% agreement is claimed? [Measurability, Spec §SC-002]
-- [ ] CHK028 Is a repeatable method defined for establishing the "human evaluator" ground truth that SC-002 is measured against? [Measurability, Spec §SC-002]
-- [ ] CHK029 Are per-note correctness outcomes tied to measurable acceptance criteria, not just the overall pass/fail verdict? [Acceptance Criteria, Spec §FR-005 / §FR-006]
+- [x] CHK027 Does SC-002's "normal conditions" enumerate the measurable preconditions (tuning accuracy, noise level, tempo) under which the ≥95% agreement is claimed? [Measurability, Spec §SC-002]
+- [x] CHK028 Is a repeatable method defined for establishing the "human evaluator" ground truth that SC-002 is measured against? [Measurability, Spec §SC-002]
+- [x] CHK029 Are per-note correctness outcomes tied to measurable acceptance criteria, not just the overall pass/fail verdict? [Acceptance Criteria, Spec §FR-005 / §FR-006]
 
 ## Dependencies & Assumptions
 
-- [ ] CHK030 Is the assumption that the microphone reliably captures the guitar (acoustic and amplified) bounded or validated (distance, input gain, device variance)? [Assumption, Spec §Assumptions]
-- [ ] CHK031 Is the standard-6-string-tuning dependency stated as a validated precondition, including defined behavior if a non-standard tuning is used? [Assumption, Spec §Assumptions]
+- [x] CHK030 Is the assumption that the microphone reliably captures the guitar (acoustic and amplified) bounded or validated (distance, input gain, device variance)? [Assumption, Spec §Assumptions]
+- [x] CHK031 Is the standard-6-string-tuning dependency stated as a validated precondition, including defined behavior if a non-standard tuning is used? [Assumption, Spec §Assumptions]
 
 ## Ambiguities & Traceability
 
-- [ ] CHK032 Is a requirement/acceptance-criteria ID scheme sufficient to trace every audio/pitch correctness rule, including rules that currently live only in `research.md` and `contracts/` rather than the spec? [Traceability]
+- [x] CHK032 Is a requirement/acceptance-criteria ID scheme sufficient to trace every audio/pitch correctness rule, including rules that currently live only in `research.md` and `contracts/` rather than the spec? [Traceability]
 
 ## Notes
 
@@ -66,4 +66,9 @@ This is a requirements-quality gate ("unit tests for the spec"), not an implemen
 - An unchecked item means the **requirement text** needs tightening (quantify, add, or reconcile) — it is not a code defect.
 - Resolved via `/speckit.clarify` (Session 2026-07-22): CHK003, CHK005, CHK006, CHK008, CHK012, CHK021, CHK023.
 - Resolved via `/speckit-clarify` (Session 2026-07-23): CHK001, CHK002, CHK009, CHK010, CHK013, CHK024, CHK025.
-- Remaining highest-priority gaps: **CHK027 / CHK028** (measurable conditions & human-evaluator ground truth for SC-002). Candidates for a follow-up clarify or resolution during `/speckit.plan`.
+- Resolved via spec-tightening pass (Session 2026-07-30, before resuming `/speckit-implement`) — the final 18:
+  - **Pile A, consistency/measurability wording** (answers already decided by prior clarifications, now stated in the FR itself): CHK014, CHK017, CHK018, CHK019 → FR-005; CHK015, CHK016 → FR-016; CHK020 → FR-001.
+  - **Pile B, product decisions**: CHK004 (min stable-note duration named + calibratable) & CHK022 (glides folded into the stable-window rule) → FR-004; CHK026 (ring-out/fret-buzz → low-confidence) → FR-017; CHK007 (tuning warning derives from played melody notes; E-A-D-G-B-E is only the retune aid) → FR-014; CHK011 (`minVolume` dBFS noise floor) & CHK030 (mic distance/gain/device-variance bounds) → Audio-capture assumption; CHK031 (standard tuning as validated precondition + defined non-standard behavior) → Single-learner assumption.
+  - **Pile C, acceptance-criteria rigor**: CHK027 (enumerated conditions), CHK028 (fixed labeled-fixture ground-truth method), CHK029 (per-note precision/recall) → SC-002 / new SC-002a.
+  - **Traceability**: CHK032 → new "Traceability of audio & pitch correctness rules" note mapping each empirical constant to its owning FR and research section.
+- All 32 items now pass. Empirical constant *values* (min duration, clarity/`minVolume`, offset threshold, per-note precision/recall targets) remain deferred to on-device calibration by design — the requirements now *name and own* each one, which is what this gate requires.
