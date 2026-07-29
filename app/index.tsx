@@ -1,8 +1,8 @@
 // Home screen (T035): start a practice session and navigate into the core loop.
 // Redesigned onto Nocturne — hero heading, waveform motif, quick stats, outlined actions.
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { MAX_RANK, getLevelByRank } from '../src/services/melody/levels';
 import { DEFAULT_DIFFICULTY_SETTINGS, effectiveRank } from '../src/features/difficulty/adapt';
 import { defaultRowStore } from '../src/services/storage/db';
@@ -18,17 +18,22 @@ export default function Home() {
   const router = useRouter();
   const [rank, setRank] = useState(effectiveRank(DEFAULT_DIFFICULTY_SETTINGS));
 
-  useEffect(() => {
-    let cancelled = false;
-    createDifficultySettingsRepository(defaultRowStore())
-      .load()
-      .then((s) => {
-        if (!cancelled) setRank(effectiveRank(s));
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // Re-read on every focus, not just first mount: expo-router keeps this screen mounted while the
+  // Difficulty screen is pushed on top, so a mount-only effect would show a stale level after the
+  // learner changes difficulty and navigates back.
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      createDifficultySettingsRepository(defaultRowStore())
+        .load()
+        .then((s) => {
+          if (!cancelled) setRank(effectiveRank(s));
+        });
+      return () => {
+        cancelled = true;
+      };
+    }, []),
+  );
 
   return (
     <Screen style={styles.screen}>

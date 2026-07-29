@@ -2,7 +2,8 @@
 // store and delegates every calculation to the pure `computeProgress`/`loadProgress` in
 // services/storage/progress (which is unit-tested). On any load error it falls back to an empty
 // profile so the screen shows its empty state rather than spinning forever.
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { ProgressProfile } from '../../models';
 import { defaultRowStore } from '../../services/storage/db';
 import {
@@ -27,24 +28,29 @@ export interface ProgressView {
 export function useProgress(): ProgressView {
   const [profile, setProfile] = useState<ProgressProfile | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    const store = defaultRowStore();
-    loadProgress({
-      sessions: createSessionRepository(store),
-      attempts: createAttemptRepository(store),
-      melodies: createMelodyRepository(store),
-    })
-      .then((p) => {
-        if (!cancelled) setProfile(p);
+  // Reload whenever the screen regains focus (not just first mount), so returning from a practice
+  // session shows the attempts just recorded. Keeps the previous profile visible while re-fetching,
+  // so there is no loading flash on refocus.
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      const store = defaultRowStore();
+      loadProgress({
+        sessions: createSessionRepository(store),
+        attempts: createAttemptRepository(store),
+        melodies: createMelodyRepository(store),
       })
-      .catch(() => {
-        if (!cancelled) setProfile(EMPTY_PROFILE);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+        .then((p) => {
+          if (!cancelled) setProfile(p);
+        })
+        .catch(() => {
+          if (!cancelled) setProfile(EMPTY_PROFILE);
+        });
+      return () => {
+        cancelled = true;
+      };
+    }, []),
+  );
 
   return { profile, loading: profile === null };
 }
