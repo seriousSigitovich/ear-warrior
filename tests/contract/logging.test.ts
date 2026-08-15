@@ -50,7 +50,7 @@ const ALLOWED_KEYS = [
   'wrong_count',
 ];
 
-/** Supabase client mock whose success can be toggled. */
+/** Attempt-log transport mock whose success can be toggled. */
 function fakeClient() {
   const inserted: AttemptLogPayload[] = [];
   let ok = true;
@@ -65,7 +65,7 @@ function fakeClient() {
   return { client, inserted, setOnline: (v: boolean) => (ok = v) };
 }
 
-describe('anonymous attempt logging (contracts/supabase-attempt-log.md)', () => {
+describe('anonymous attempt logging (contracts/attempt-log.md)', () => {
   test('payload carries only anonymized aggregate fields (no PII)', () => {
     const p = buildAttemptLogPayload(GRADE, MELODY, LEVEL, 'dev_abc', '0.1.0');
     expect(Object.keys(p).sort()).toEqual(ALLOWED_KEYS);

@@ -1,7 +1,8 @@
 import type { ExpoConfig } from 'expo/config';
 
 // Expo app configuration (T006). Microphone permission strings are required for pitch capture (FR-004).
-// Supabase anon credentials are supplied via EXPO_PUBLIC_* env at build time (contracts/supabase-attempt-log.md).
+// The backend base URL is supplied via EXPO_PUBLIC_API_URL at build time and points at the
+// Ear Warrior Node/Postgres server (server/). Absent → telemetry and sync are no-ops (offline-only).
 const config: ExpoConfig = {
   name: 'Ear Warrior',
   slug: 'ear-warrior',
@@ -30,8 +31,7 @@ const config: ExpoConfig = {
     ],
   ],
   extra: {
-    supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
-    supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+    apiUrl: process.env.EXPO_PUBLIC_API_URL,
   },
 };
 

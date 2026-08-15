@@ -16,7 +16,6 @@
     "typecheck:app": "tsc --noEmit -p tsconfig.app.json"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.43.0",
     "expo": "^57.0.8",
     "expo-asset": "~57.0.7",
     "expo-audio": "~57.0.3",

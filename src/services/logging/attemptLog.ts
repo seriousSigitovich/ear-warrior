@@ -1,6 +1,6 @@
-// Anonymous, insert-only attempt logging with an offline outbox (R9, contracts/supabase-attempt-log.md).
-// Best-effort: logging never blocks or fails the practice loop. Local SQLite stays the source of truth.
-// The Supabase client is injected so queue/flush/retry logic is testable against a mock.
+// Anonymous, insert-only attempt logging with an offline outbox (R9, contracts/attempt-log.md).
+// Best-effort: logging never blocks or fails the practice loop. Local SQLite stays the offline cache.
+// The transport client is injected so queue/flush/retry logic is testable against a mock.
 import { AttemptGrade, DifficultyLevel, Melody } from '../../models';
 
 /** Anonymized aggregate payload — never audio, per-note pitches, timestamps, location, or PII (R9). */
@@ -57,28 +57,30 @@ export interface AttemptLogOutbox {
   pending(): number;
 }
 
-/** Table the anonymized rows are inserted into (contracts/supabase-attempt-log.md). */
-export const ATTEMPT_LOG_TABLE = 'attempt_log';
+/** Path the anonymized rows are POSTed to on the Ear Warrior backend. */
+export const ATTEMPT_LOG_PATH = '/api/attempts';
 
 /**
- * Real Supabase-backed client (lazily required; never loaded under the pure-logic test runner).
- * Returns null when the project isn't configured, so a build without Supabase env simply logs
- * nothing rather than failing the loop.
+ * Real HTTP-backed client against the Ear Warrior Node/Postgres backend.
+ * Returns null when no API base URL is configured, so a build without `EXPO_PUBLIC_API_URL`
+ * simply logs nothing rather than failing the loop.
  */
-export function defaultAttemptLogClient(url?: string, anonKey?: string): AttemptLogClient | null {
-  if (!url || !anonKey) return null;
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { createClient } = require('@supabase/supabase-js');
-  const client = createClient(url, anonKey, { auth: { persistSession: false } });
+export function defaultAttemptLogClient(baseUrl?: string): AttemptLogClient | null {
+  if (!baseUrl) return null;
+  const endpoint = `${baseUrl.replace(/\/$/, '')}${ATTEMPT_LOG_PATH}`;
   return {
     async insert(row) {
-      const { error } = await client.from(ATTEMPT_LOG_TABLE).insert(row);
-      if (error) throw new Error(error.message);
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(row),
+      });
+      if (!res.ok) throw new Error(`attempt log failed: ${res.status}`);
     },
   };
 }
 
-/** Client that drops every row — used when Supabase is not configured. */
+/** Client that drops every row — used when the backend is not configured. */
 export function createNullAttemptLogClient(): AttemptLogClient {
   return { async insert() {} };
 }

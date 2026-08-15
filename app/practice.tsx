@@ -21,6 +21,8 @@ import {
   createNullAttemptLogClient,
   defaultAttemptLogClient,
 } from '../src/services/logging/attemptLog';
+import { createSyncClient } from '../src/services/sync/client';
+import { syncPull, syncPush } from '../src/services/sync/sync';
 import { getOrCreateDeviceId, keyValueOverRowStore } from '../src/lib/deviceId';
 import { CaptureConfig } from '../src/features/practice/capture';
 import { PracticeLoopDeps, usePracticeLoop } from '../src/features/practice/usePracticeLoop';
@@ -55,6 +57,10 @@ const CAPTURE_CFG: CaptureConfig = { noInputTimeoutMs: 8000, endSilenceMs: 2000 
 
 const APP_VERSION = '0.1.0';
 
+// Backend base URL (Node/Postgres). Absent in a build without it → telemetry and sync are no-ops
+// and the app stays fully offline.
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
+
 export default function Practice() {
   // One durable store shared by every repository, and one session per visit to this screen.
   const store = useMemo(() => defaultRowStore(), []);
@@ -70,14 +76,10 @@ export default function Practice() {
   const sessionId = useMemo(() => `s_${Date.now()}`, []);
   const outbox = useMemo(
     () =>
-      createAttemptLogOutbox(
-        defaultAttemptLogClient(
-          process.env.EXPO_PUBLIC_SUPABASE_URL,
-          process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
-        ) ?? createNullAttemptLogClient(),
-      ),
+      createAttemptLogOutbox(defaultAttemptLogClient(API_URL) ?? createNullAttemptLogClient()),
     [],
   );
+  const syncClient = useMemo(() => createSyncClient(API_URL), []);
   const [deviceId, setDeviceId] = useState<string | null>(null);
 
   // Create the Session row up front so attempts always have a parent (FR-018).
@@ -95,10 +97,24 @@ export default function Practice() {
     void getOrCreateDeviceId(keyValueOverRowStore(store, KEY_VALUE_TABLE)).then(setDeviceId);
   }, [repos.sessions, sessionId, store]);
 
+  // Hydrate the local cache from the backend once we know the device id (fresh install / other
+  // device). Best-effort and non-blocking; the app is fully usable offline meanwhile.
+  useEffect(() => {
+    if (!deviceId || !syncClient) return;
+    void syncPull(store, syncClient, deviceId);
+  }, [deviceId, syncClient, store]);
+
   const session = useSession(sessionId, repos.sessions);
   // `end` is stable enough to run on unmount; ending is idempotent (`ended` is terminal).
   const endSession = session.end;
   useEffect(() => () => endSession(), [endSession]);
+
+  // On leaving the screen, push this session's records up to the durable backend. Best-effort.
+  useEffect(() => {
+    return () => {
+      if (syncClient && deviceId) void syncPush(store, syncClient, deviceId);
+    };
+  }, [syncClient, deviceId, store]);
 
   const deps = useMemo<PracticeLoopDeps>(
     () => ({
