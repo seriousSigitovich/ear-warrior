@@ -3,7 +3,8 @@
 **Feature**: 001-guitar-ear-training | **Date**: 2026-07-22
 
 This document resolves the technical unknowns implied by the chosen stack (React Native + Expo dev
-client, react-native-pitchy/YIN, expo-audio with runtime tone synthesis, Supabase, EAS distribution) and
+client, react-native-pitchy/YIN, expo-audio with runtime tone synthesis, a self-hosted Node/Postgres
+backend, EAS distribution) and
 records the key algorithmic decisions the plan depends on. Each item follows: **Decision → Rationale →
 Alternatives considered**.
 
@@ -103,28 +104,42 @@ Alternatives considered**.
 - **Alternatives considered**: Simultaneous play+record — rejected, unneeeded and error-prone across iOS
   categories and Android audio focus.
 
-## R8. Local persistence — expo-sqlite as source of truth
+## R8. Local persistence — expo-sqlite as the offline cache (durable history in Postgres)
 
-- **Decision**: Use `expo-sqlite` as the offline source of truth for Sessions, Attempts, and derived
-  Progress. Repositories in `src/services/storage` expose typed CRUD; Progress (US3) is computed by
-  queries/aggregation over stored attempts.
+- **Decision**: Use `expo-sqlite` as the **offline cache and the practice loop's authoritative local
+  store** for Sessions, Attempts, and derived Progress. Repositories in `src/services/storage` expose
+  typed CRUD; Progress (US3) is computed by queries/aggregation over the local rows. The durable,
+  cross-device copy lives in the Node/Postgres backend (R9): the local RowStore documents are pushed up
+  and pulled back via `/api/sync`, so Postgres is the long-term source of truth while the device keeps
+  working fully offline.
 - **Rationale**: Relational queries fit the accuracy-trend and weak-area aggregations; SQLite is offline,
-  durable across app restarts (FR-013, interrupted-session edge case), and bundled with Expo.
+  durable across app restarts (FR-013, interrupted-session edge case), and bundled with Expo. Keeping the
+  loop reading local SQLite preserves the offline-core-loop constraint; syncing to Postgres adds
+  durability without a network dependency in the hot path.
 - **Alternatives considered**: AsyncStorage/MMKV key-value — rejected, awkward for aggregate queries.
-  Supabase as source of truth — rejected, violates the offline-core-loop constraint and the "no
-  accounts / logging-only" scope for Supabase.
+  A remote DB as the *only* store (queried live in the loop) — rejected, violates the offline-core-loop
+  constraint; instead the remote store is a sync target, not the runtime store.
+- **History**: an earlier plan used **Supabase** for the remote side; it was replaced by the self-hosted
+  Node/Postgres backend (see R9).
 
-## R9. Supabase — anonymous, insert-only attempt logging
+## R9. Node/Postgres backend — anonymous telemetry, waitlist, and game-history sync
 
-- **Decision**: A single `attempt_log` table; the app inserts anonymized attempt records using the
-  Supabase **anon** key with an **insert-only Row Level Security policy** and **no user accounts**.
-  Identify installs with a locally generated random **anonymous device id** (no PII). Writes go through
-  an **offline outbox**: attempts are logged locally first and flushed to Supabase best-effort when
-  online.
-- **Rationale**: Matches the stated scope (Supabase only for logging attempts, no accounts) while
-  preserving offline operation and avoiding any personal data.
-- **Alternatives considered**: Supabase Auth anonymous sessions — rejected as heavier than needed;
-  insert-only RLS with an anon device id is sufficient. Storing progress in Supabase — rejected (see R8).
+- **Decision**: A self-hosted **Fastify + Drizzle + Postgres** service (`server/`) with a small HTTP API,
+  no user accounts. It carries three things: (1) anonymous aggregate telemetry — `POST /api/attempts`
+  inserts one row into an insert-only `attempt_log` table; (2) the landing waitlist — `POST /api/subscribe`
+  into `signups` (dedup by `lower(email)`); (3) durable game-history sync — `POST/GET /api/sync` upserts
+  the device's RowStore documents into `sync_documents` (keyed by `device_id, collection, doc_id`,
+  last-write-wins on `updated_at`). Installs are identified by a locally generated random **anonymous
+  device id** (no PII). Telemetry writes go through an **offline outbox**: attempts are logged locally
+  first and flushed best-effort when online; the whole backend is optional (unset `EXPO_PUBLIC_API_URL`
+  → the client no-ops and the app is fully offline).
+- **Rationale**: Owning the backend removes the third-party dependency and lets telemetry, waitlist, and
+  the new cross-device sync share one typed schema and one deploy, while preserving offline operation and
+  storing no personal data beyond the waitlist email. Insert-only is enforced by API surface (there is no
+  read/update/delete route for `attempt_log`), zod-validated at the edge.
+- **Alternatives considered**: **Supabase** (anon key + insert-only RLS) — the original choice, **replaced**
+  by this self-hosted service so telemetry and durable sync live together and there is no external vendor.
+  A managed DB queried live in the practice loop — rejected (see R8: the loop reads local SQLite).
 - **Privacy note (codified as FR-019; verified by SC-008)**: captured microphone audio and derived pitch
   frames never leave the device. Remote telemetry logs only melody characteristics, verdict, per-note
   outcome summary, difficulty, app version, timestamp, and the anonymous device id — never audio, raw

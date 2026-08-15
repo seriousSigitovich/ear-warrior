@@ -3,9 +3,10 @@
 **Feature**: 001-guitar-ear-training | **Date**: 2026-07-22
 
 Derived from the spec's Key Entities and Functional Requirements. Local SQLite (`expo-sqlite`) is the
-source of truth; the Supabase `attempt_log` is a downstream anonymized projection (see
-`contracts/supabase-attempt-log.md`). Types shown are conceptual; `src/models/` holds the TypeScript
-definitions.
+offline cache and the practice loop's authoritative store; the Node/Postgres backend holds the durable
+copies — the `attempt_log` table is a downstream anonymized projection (see
+`contracts/attempt-log.md`), and `sync_documents` is a lossless mirror of the on-device RowStore synced
+via `/api/sync`. Types shown are conceptual; `src/models/` holds the TypeScript definitions.
 
 ---
 
@@ -189,7 +190,7 @@ capturing ─(lowConfidence)→ feedback(offer retry)
   attempt persistence never touches the Session row.
 - `Session.currentDifficultyId → DifficultyLevel.id`
 - `DifficultySettings.adaptiveRank` / `.fixedRank → DifficultyLevel.rank` (singleton row, no session FK)
-- Deleting a Session cascades its Attempts (local only). Supabase logs are independent and immutable.
+- Deleting a Session cascades its Attempts (local only). Backend `attempt_log` rows are independent and immutable.
 - **Level-id stability**: level ids are derived from `rank` (`"L" + rank`) and the ladder is fixed at 7
   ranks, so stored `difficultyId` values stay resolvable. If a future phase renumbers or removes ranks, the
   migration MUST preserve historical `Melody.difficultyId` values — either by keeping retired ids

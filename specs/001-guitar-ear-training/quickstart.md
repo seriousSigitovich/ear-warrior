@@ -14,11 +14,14 @@ scenarios on a physical device.
 ## Prerequisites
 
 - Node LTS, and an Expo account with EAS access (`npx eas login`).
-- A Supabase project with the `attempt_log` table + insert-only RLS applied
-  (see [contracts/supabase-attempt-log.md](./contracts/supabase-attempt-log.md)).
+- The **Node/Postgres backend** (`server/`) running and reachable. For local validation:
+  `cd server && cp .env.example .env && docker compose up --build` (Postgres + Fastify on :8080; it
+  applies its schema — `attempt_log`, `signups`, `sync_documents` — at boot). See
+  [contracts/attempt-log.md](./contracts/attempt-log.md).
 - No audio assets to prepare — playback tones are **synthesized at runtime** (Karplus–Strong) and cached
   on first use (R6).
-- Env: `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` configured.
+- Env: `EXPO_PUBLIC_API_URL` pointing at the backend (e.g. `http://<your-lan-ip>:8080`). Unset → the app
+  runs fully offline and simply logs/syncs nothing.
 
 ## Setup
 
@@ -26,10 +29,10 @@ scenarios on a physical device.
 npm install
 ```
 
-Apply the Supabase migration (once):
+Start the backend (applies its schema on boot — no separate migration step for dev):
 
 ```bash
-supabase db push   # or run supabase/migrations SQL in the Supabase SQL editor
+cd server && cp .env.example .env && docker compose up --build   # Postgres + Fastify on :8080
 ```
 
 ## Build the dev client (not Expo Go)
@@ -96,13 +99,16 @@ Each maps to acceptance criteria in [spec.md](./spec.md). Mark pass/fail per dev
 
 ### Telemetry & offline
 
-1. **Online logging**: Complete an attempt → a matching row appears in Supabase `attempt_log` with no
-   PII/audio. *(contracts/supabase-attempt-log.md)*
+1. **Online logging**: Complete an attempt → a matching row appears in the backend `attempt_log` table
+   (`POST /api/attempts`) with no PII/audio. *(contracts/attempt-log.md)*
 2. **Offline core loop**: Enable airplane mode → the full listen→play→feedback loop still works; logs
    queue locally and flush after reconnecting. *(offline-core-loop constraint, R9)*
 3. **No audio / PII egress**: with a network proxy or device traffic inspector, confirm outbound traffic
    carries only the anonymized `attempt_log` payload — no audio, raw frames, note-by-note pitches, or
    PII. *(SC-008, FR-019)*
+4. **History sync**: complete a few attempts online, then clear the app's local data (or reinstall the dev
+   client) and relaunch → prior sessions/attempts are pulled back from the backend (`GET /api/sync`), so
+   Postgres is the durable source of truth while the device stays an offline cache. *(R8/R9)*
 
 ### Accessibility (SC-009)
 

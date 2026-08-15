@@ -16,9 +16,11 @@ loop.
 modules are required). Monophonic pitch detection uses **react-native-pitchy** (YIN). Melody playback
 uses **expo-audio**, synthesizing a plucked-string tone (Karplus–Strong) per note at runtime and playing
 it from a cached WAV — **no bundled audio samples**. **Local
-SQLite is the source of truth** for sessions/attempts/progress (satisfying the offline-core-loop and
-cross-session-persistence requirements), while **Supabase** is a best-effort, account-less, insert-only
-sink for anonymous attempt logs. Distribution is via **EAS** — internal distribution on Android and
+SQLite is the on-device cache and the practice loop's authoritative local store** for
+sessions/attempts/progress (satisfying the offline-core-loop and cross-session-persistence requirements),
+while a **self-hosted Node/Postgres backend** (`server/`, Fastify + Drizzle) is a best-effort,
+account-less sink for anonymous attempt logs **and** the durable, cross-device home for synced game
+history. Distribution is via **EAS** — internal distribution on Android and
 TestFlight/ad-hoc on iOS — to 10–15 testers. Per **Constitution Principle II (Test-First)**, all pure
 logic — grading, note segmentation, pitch↔note math, and melody generation — is developed **test-first**
 with unit and contract tests (Jest / `jest-expo`); native pitch-detection accuracy and audio fidelity are
@@ -29,21 +31,25 @@ additionally validated on real devices.
 **Language/Version**: TypeScript 5.3.x on React Native 0.86 (Expo SDK 57), targeting Hermes.
 
 **Primary Dependencies**: Expo (custom dev client), `react-native-pitchy` (YIN monophonic pitch
-detection), `expo-audio` (playback of runtime-synthesized tones), `@supabase/supabase-js` (anonymous
-attempt logging), `expo-sqlite` (local persistence, source of truth), `expo-router` (navigation),
+detection), `expo-audio` (playback of runtime-synthesized tones), the built-in `fetch` (anonymous
+attempt logging + game-history sync to the Node backend — no client SDK), `expo-sqlite` (local cache /
+authoritative offline store), `expo-router` (navigation),
 `expo-file-system` (writes/reads the cached synthesized-tone WAVs). ESLint + Prettier + TypeScript
 `strict`.
 
 **Storage**:
-- **Local (source of truth)**: `expo-sqlite` for Sessions, Attempts, and derived Progress — works fully
-  offline (FR-013, offline-core-loop assumption).
-- **Remote (telemetry only)**: Supabase Postgres, single insert-only `attempt_log` table, no accounts,
-  anonymous per-install device id, best-effort with an offline outbox queue.
+- **Local (offline cache / authoritative in the loop)**: `expo-sqlite` for Sessions, Attempts, and derived
+  Progress — works fully offline (FR-013, offline-core-loop assumption).
+- **Remote (Node/Postgres backend, `server/`)**: Fastify + Drizzle + Postgres, no accounts. Insert-only
+  `attempt_log` telemetry (`POST /api/attempts`), `signups` waitlist (`POST /api/subscribe`), and durable
+  game-history sync (`POST/GET /api/sync` into `sync_documents`, last-write-wins on `updated_at`).
+  Anonymous per-install device id; telemetry is best-effort with an offline outbox queue.
 
 **Testing**: **Jest** with the **`jest-expo`** preset + **React Native Testing Library**. Pure logic
 (grading engine, frame segmentation, pitch↔note math, melody generator) is written **test-first** with
 table-driven unit tests; each service boundary in `contracts/` has contract tests run against mocked
-native modules (`react-native-pitchy`, `expo-audio`, Supabase client) and recorded pitch-frame fixtures.
+native modules (`react-native-pitchy`, `expo-audio`) and the injected HTTP transport (attempt-log / sync
+clients), plus recorded pitch-frame fixtures.
 Native pitch-detection accuracy and audio fidelity — which cannot be unit-tested — are validated on real
 devices via `quickstart.md`.
 
@@ -62,8 +68,8 @@ Physical devices required (microphone + audio output).
 - 60 fps UI during playback and feedback.
 
 **Constraints**:
-- **Offline core loop**: generation, playback, capture, and grading MUST work with no network; Supabase
-  logging is deferred to an outbox when offline.
+- **Offline core loop**: generation, playback, capture, and grading MUST work with no network; backend
+  telemetry and sync are deferred to an outbox / next sync when offline.
 - **Monophonic only**: single-note melodies matched to `react-native-pitchy`'s monophonic YIN output.
 - **Guitar range**: generated notes stay within standard 6-string range (~E2–E6).
 - **Note-match tolerance**: a note matches when the detected pitch rounds to the target note within a
@@ -150,7 +156,7 @@ specs/001-guitar-ear-training/
 │   ├── grading-engine.md
 │   ├── difficulty-adaptation.md
 │   ├── tuning-check.md
-│   └── supabase-attempt-log.md
+│   └── attempt-log.md
 └── checklists/
     ├── requirements.md
     ├── audio.md
@@ -184,24 +190,27 @@ src/
 │   │   └── pitch.ts          # react-native-pitchy wrapper → contracts/pitch-detection.md
 │   ├── melody/               # generator (pure)            → contracts/melody-generator.md
 │   ├── grading/              # grading engine (pure)       → contracts/grading-engine.md
-│   ├── storage/              # expo-sqlite repositories (source of truth)
-│   └── logging/              # Supabase anonymous outbox    → contracts/supabase-attempt-log.md
+│   ├── storage/              # expo-sqlite repositories (offline cache / authoritative in the loop)
+│   ├── sync/                 # game-history push/pull       → server /api/sync (offline-safe)
+│   └── logging/              # anonymous attempt-log outbox → server /api/attempts (contracts/attempt-log.md)
 ├── models/                   # Entity types (data-model.md)
 └── lib/                      # pitch↔note math, cents/tolerance, segmentation, tuning-detune detection (pure)
 
 tests/                        # Jest (jest-expo) + React Native Testing Library
 ├── unit/                     # pure logic (grading, segmentation, pitch↔note, generator) — test-first
-├── contract/                 # boundary tests vs mocked react-native-pitchy / expo-audio / supabase
+├── contract/                 # boundary tests vs mocked react-native-pitchy / expo-audio / HTTP transport
 └── fixtures/                 # recorded pitch-frame arrays for deterministic grading tests
 
 assets/
 └── samples/                  # (legacy scaffold) note-range guard only — no bundled audio; tones synth'd at runtime
 
-supabase/
-└── migrations/               # attempt_log table + insert-only RLS policy
+server/                       # self-hosted backend (replaces Supabase) — Fastify + Drizzle + Postgres
+├── src/routes/               # /api/attempts (telemetry), /api/subscribe (waitlist), /api/sync (history)
+├── src/db/                   # Drizzle schema + boot DDL: attempt_log, signups, sync_documents
+└── Dockerfile, docker-compose.yml
 
 eas.json                      # development (dev-client) + internal/ad-hoc distribution profiles
-app.config.ts                 # Expo config: mic permission, plugins, bundle ids
+app.config.ts                 # Expo config: mic permission, plugins, bundle ids, EXPO_PUBLIC_API_URL
 ```
 
 **Structure Decision**: Single Expo React Native app using `expo-router`. Code is organized by the three
