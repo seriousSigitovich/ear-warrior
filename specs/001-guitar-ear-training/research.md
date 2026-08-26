@@ -53,6 +53,18 @@ Alternatives considered**.
   breaks on hesitant playing (an explicit edge case).
 - **Note**: This segmenter lives in `src/lib` as a pure function and is unit-tested (test-first) against
   recorded frame fixtures (Principle II).
+- **Adaptive voicing gate (Tier 1 noise robustness, 2026-08-15)**: on-device testing showed a *fixed*
+  clarity gate assumes a quiet room and a loud source — a noisy room either drops real notes or admits
+  background as spurious notes, and a weak source in a quiet room falls under the gate. So the gate is now
+  set **relative to the room**: per capture, estimate the ambient clarity floor (a low percentile of the
+  frames — every capture is padded with ambient by its pre-onset lead-in and the ~2 s silent tail) and
+  gate at `clamp(ambient + margin, hardMin, hardMax)`. With too few frames it falls back to the band
+  midpoint, which equals the old fixed 0.5, so behavior degrades safely. Pure + unit-tested in
+  `src/lib/noiseFloor.ts` (`tests/unit/lib/noiseFloor.test.ts`); margin/percentile/clamps are on-device
+  calibration knobs. **Not** done here (needs native/UI, deferred): waveform DSP (band-pass / noise gate /
+  AGC) — `react-native-pitchy` exposes per-frame pitch, not raw PCM, so those require a native change;
+  a "play your quietest note" onboarding calibration; and adapting the capture-onset gate (streaming),
+  which still uses a fixed threshold.
 
 ## R4. Pitch → note mapping and match tolerance
 

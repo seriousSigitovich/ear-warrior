@@ -3,7 +3,7 @@
 // as a verdict card + note chips (with a non-blocking tuning advisory) or a calm retry state.
 import React, { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { GradingConfig, SegmentConfig, Session } from '../src/models';
+import { CalibrationConfig, GradingConfig, SegmentConfig, Session } from '../src/models';
 import { MAX_RANK } from '../src/services/melody/levels';
 import { STANDARD_TUNING_MIDI } from '../src/features/practice/tuning';
 import { createAudioPlayback } from '../src/services/audio/playback';
@@ -54,6 +54,14 @@ const GRADING_CFG: GradingConfig = {
   lowConfidenceThreshold: 0.6,
 };
 const CAPTURE_CFG: CaptureConfig = { noInputTimeoutMs: 8000, endSilenceMs: 2000 };
+// Tier 1 noise robustness — voicing gate calibrated per capture from ambient clarity (research.md).
+const CALIBRATION_CFG: CalibrationConfig = {
+  ambientPercentile: 0.2,
+  margin: 0.15,
+  hardMin: 0.3,
+  hardMax: 0.7,
+  minFrames: 20,
+};
 
 const APP_VERSION = '0.1.0';
 
@@ -125,6 +133,7 @@ export default function Practice() {
       segmentCfg: SEGMENT_CFG,
       gradingCfg: GRADING_CFG,
       captureCfg: CAPTURE_CFG,
+      calibrationCfg: CALIBRATION_CFG,
       seed: () => Math.floor(Math.random() * 1e9),
       difficulty: repos.difficulty,
       sessionId,

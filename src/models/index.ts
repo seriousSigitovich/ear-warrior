@@ -201,3 +201,22 @@ export interface TuningConfig {
   /** Minimum notes required before judging tune (default 3). */
   minNotes: number;
 }
+
+/**
+ * Adaptive voicing calibration (Tier 1 noise robustness). Instead of a fixed clarity gate, the
+ * segmenter's voicing threshold is set relative to the room's measured ambient clarity, so a noisy
+ * room raises the gate above the noise and a quiet room lowers it to catch a weak source. Estimated
+ * per capture from the ambient frames that every capture window contains (pre-onset + the silent tail).
+ */
+export interface CalibrationConfig {
+  /** Clarity percentile (0–1) taken as the ambient/quiet floor for the capture (default ~0.2). */
+  ambientPercentile: number;
+  /** Require voiced clarity to sit at least this far above the ambient floor (default ~0.15). */
+  margin: number;
+  /** Never gate below this — YIN clarity under it is essentially noise (default ~0.3). */
+  hardMin: number;
+  /** Never demand more than this, so a real (if imperfect) note stays reachable (default ~0.7). */
+  hardMax: number;
+  /** Minimum frames needed to trust an ambient estimate; below it, fall back to the midpoint. */
+  minFrames: number;
+}

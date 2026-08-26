@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Attempt,
   AttemptGrade,
+  CalibrationConfig,
   DetectedNote,
   DifficultyLevel,
   DifficultySettings,
@@ -12,6 +13,7 @@ import {
   Melody,
   SegmentConfig,
 } from '../../models';
+import { DEFAULT_CALIBRATION_CONFIG, adaptiveClarityThreshold } from '../../lib/noiseFloor';
 import { generateMelody } from '../../services/melody/generator';
 import { getLevelByRank } from '../../services/melody/levels';
 import {
@@ -42,6 +44,8 @@ export interface PracticeLoopDeps {
   segmentCfg: SegmentConfig;
   gradingCfg: GradingConfig;
   captureCfg: CaptureConfig;
+  /** Adaptive-voicing calibration (Tier 1 noise robustness). Defaults when omitted. */
+  calibrationCfg?: CalibrationConfig;
   seed: () => number;
   /** Persisted difficulty state (FR-011b). */
   difficulty: DifficultySettingsRepository;
@@ -203,7 +207,14 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
       handleRef.current = null;
       await deps.session.release();
 
-      const detected = segmentFrames(frames, deps.segmentCfg);
+      // Tier 1 noise robustness: set the voicing gate relative to this capture's measured ambient
+      // clarity (from its pre-onset lead-in + silent tail) instead of a fixed threshold, so a noisy
+      // room raises the gate above the noise and a quiet room lowers it to catch a weak source.
+      const clarityThreshold = adaptiveClarityThreshold(
+        frames,
+        deps.calibrationCfg ?? DEFAULT_CALIBRATION_CONFIG,
+      );
+      const detected = segmentFrames(frames, { ...deps.segmentCfg, clarityThreshold });
       setTuning(evaluateTuning(detected, deps.playback)); // advisory, non-blocking (FR-014)
 
       setPhase('grading');
