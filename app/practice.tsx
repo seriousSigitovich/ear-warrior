@@ -55,7 +55,7 @@ const GRADING_CFG: GradingConfig = {
   octaveSensitive: true,
   lowConfidenceThreshold: 0.6,
 };
-const CAPTURE_CFG: CaptureConfig = { noInputTimeoutMs: 8000, endSilenceMs: 2000 };
+const CAPTURE_CFG: CaptureConfig = { noInputTimeoutMs: 8000, endSilenceMs: 2000, warmupMs: 120 };
 // Tier 1 noise robustness — voicing gate calibrated per capture from ambient clarity (research.md).
 const CALIBRATION_CFG: CalibrationConfig = {
   ambientPercentile: 0.2,

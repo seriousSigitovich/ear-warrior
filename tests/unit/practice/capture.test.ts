@@ -8,7 +8,9 @@ import { PitchDetectionConfig, PitchDetector } from '../../../src/services/audio
 import { CaptureConfig, CaptureHandle, runCapture } from '../../../src/features/practice/capture';
 
 const PITCH_CFG: PitchDetectionConfig = { minHz: 80, maxHz: 1320, clarityThreshold: 0.5 };
-const CAPTURE_CFG: CaptureConfig = { noInputTimeoutMs: 8000, endSilenceMs: 2000 };
+// warmupMs: 0 here — these tests exercise the timeout/re-arm/stop logic, not the warm-up guard,
+// which gets its own dedicated test below with a non-zero value.
+const CAPTURE_CFG: CaptureConfig = { noInputTimeoutMs: 8000, endSilenceMs: 2000, warmupMs: 0 };
 
 const voiced = (timestampMs: number): PitchFrame => ({ hz: 440, clarity: 0.9, timestampMs });
 const silent = (timestampMs: number): PitchFrame => ({ hz: 0, clarity: 0, timestampMs });
@@ -99,6 +101,19 @@ describe('runCapture window (FR-015)', () => {
     jest.advanceTimersByTime(100000); // any lingering timer would fire here
     await flush();
     expect(calls.stop).toBe(stopsAtFinish); // exactly one release, no late finish
+  });
+
+  test('frames within warmupMs of the first frame are dropped before reaching segmentation', async () => {
+    const cfg: CaptureConfig = { ...CAPTURE_CFG, warmupMs: 150 };
+    const { detector, emit } = fakeDetector();
+    const p = runCapture(detector, PITCH_CFG, cfg);
+    emit(voiced(0)); // anchors captureStartMs at 0 — within its own warm-up window, dropped
+    emit(voiced(100)); // still < 150ms from the anchor — dropped
+    emit(voiced(200)); // past the warm-up window — kept, starts the attempt
+    jest.advanceTimersByTime(cfg.endSilenceMs);
+    const res = await p;
+    expect(res.frames).toHaveLength(1);
+    expect(res.frames[0].timestampMs).toBe(200);
   });
 
   test('the learner can stop the attempt early via the capture handle', async () => {

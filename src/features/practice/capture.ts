@@ -10,6 +10,14 @@ export interface CaptureConfig {
   noInputTimeoutMs: number;
   /** Silence after the last detected note that ends a started attempt (~2 s, FR-015). */
   endSilenceMs: number;
+  /**
+   * Frames within this many ms of the first frame are dropped entirely — right after
+   * session.ts switches the audio session from playback to recording, the mic/AGC hasn't settled
+   * (route-switch click, gain ramping), and those early buffers can look like a real note to the
+   * segmenter. Anchored to the first frame actually received, not wall-clock time, so it isn't
+   * thrown off by scheduling jitter between the session switch and the detector starting.
+   */
+  warmupMs: number;
 }
 
 export interface CaptureResult {
@@ -45,6 +53,7 @@ export function runCapture(
     let started = false;
     let settled = false;
     let endTimer: ReturnType<typeof setTimeout> | undefined;
+    let captureStartMs: number | null = null;
 
     const finish = async (timedOut: boolean) => {
       if (settled) return; // silence, an early stop, and the timeout can race
@@ -66,6 +75,12 @@ export function runCapture(
 
     detector
       .start(pitchCfg, (frame) => {
+        if (captureStartMs === null) {
+          captureStartMs = frame.timestampMs;
+        }
+        if (frame.timestampMs - captureStartMs < cfg.warmupMs) {
+          return; // still warming up — drop it before it can reach segmentation at all
+        }
         frames.push(frame);
         if (isVoiced(frame)) {
           started = true;
