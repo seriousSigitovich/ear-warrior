@@ -73,6 +73,8 @@ describe('adaptive gate end-to-end with segmentation', () => {
     gapMs: 200,
     minHz: 80,
     maxHz: 1320,
+    onsetConfirmFrames: 3,
+    attackGuardMs: 40,
   };
 
   // A realistic NOISY room: a steady background (clarity 0.5, ~200 Hz) present the whole time — in the

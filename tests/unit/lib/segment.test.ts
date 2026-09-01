@@ -8,6 +8,8 @@ const CFG: SegmentConfig = {
   gapMs: 120,
   minHz: 80,
   maxHz: 1320,
+  onsetConfirmFrames: 3,
+  attackGuardMs: 40,
 };
 
 /** Build a run of voiced frames at 20 ms cadence for a given MIDI note. */
@@ -66,5 +68,26 @@ describe('pitch-stream segmentation (FR-004, R3)', () => {
     const notes = segmentFrames(frames, CFG);
     expect(notes).toHaveLength(1);
     expect(notes[0].clarity).toBeCloseTo(0.8, 5);
+  });
+
+  test('a glitchy first frame (e.g. an octave misread on attack) does not corrupt the real note', () => {
+    // One bad frame at a different pitch, then a sustained run of the correct one — the old
+    // group[0]-anchored comparison would have locked the whole note to the glitch's pitch.
+    const frames = [
+      ...voiced(76, 0, 1), // E5 glitch, single frame
+      ...voiced(64, 20, 5), // E4, the actual note
+    ];
+    const notes = segmentFrames(frames, CFG);
+    expect(notes.map((n) => n.midi)).toEqual([64]);
+  });
+
+  test('a single-frame pitch blip mid-note is reabsorbed rather than splitting the note', () => {
+    const frames = [
+      ...voiced(64, 0, 3),
+      ...voiced(67, 60, 1), // one stray frame, doesn't sustain
+      ...voiced(64, 80, 3),
+    ];
+    const notes = segmentFrames(frames, CFG);
+    expect(notes.map((n) => n.midi)).toEqual([64]);
   });
 });

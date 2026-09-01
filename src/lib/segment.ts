@@ -1,8 +1,13 @@
-// Pitch-stream segmentation (FR-004, R3): turn per-frame pitch into discrete notes with a
-// stability + gap heuristic. Pure function over a frame array — no IO. A new note starts on a
-// nearest-note (pitch) change or after a silence gap; a note is emitted only if it sustains for
-// at least `minNoteMs`. Each emitted note carries the median frequency and median clarity over
-// its stable window (median clarity feeds attempt confidence, FR-017).
+// Pitch-stream segmentation (FR-004, R3): turn per-frame pitch into discrete notes. Two concerns
+// that used to be one comparison (`this frame vs the note's very first frame`) are now separate:
+// - Boundary detection: a note ends on a silence gap, or on a pitch change that *persists* for
+//   `onsetConfirmFrames` frames. A single glitchy frame (attack transient, stray octave read) can no
+//   longer fracture a note, because a deviation that doesn't sustain is folded back into it.
+// - Pitch estimation: once a note's window is closed, its reported pitch is the median over the
+//   window with the leading `attackGuardMs` dropped — the attack is the least reliable part of a
+//   plucked note, so it's excluded from the estimate rather than anchoring it.
+// A note is emitted only if its full window (including the attack) sustains for at least
+// `minNoteMs`. Pure function over a frame array — no IO.
 import { DetectedNote, PitchFrame, SegmentConfig } from '../models';
 import { centsFromHz, midiFromHz } from './pitchNote';
 
@@ -16,51 +21,96 @@ function median(values: number[]): number {
   return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
 }
 
+/** The note's running identity: the median pitch of its confirmed frames so far. */
+function groupMidi(group: PitchFrame[]): number {
+  return midiFromHz(median(group.map((f) => f.hz)));
+}
+
 export function segmentFrames(frames: PitchFrame[], cfg: SegmentConfig): DetectedNote[] {
   const notes: DetectedNote[] = [];
   let group: PitchFrame[] = [];
+  // Consecutive frames that disagree with `group`'s identity — a candidate for the *next* note.
+  // Promoted to a real split only once it reaches onsetConfirmFrames; otherwise it was a glitch and
+  // gets folded back into `group` the moment a frame agrees with `group` again.
+  let pendingChange: PitchFrame[] = [];
   let lastVoicedTs: number | null = null;
 
-  const flush = () => {
-    if (group.length === 0) {
+  const flush = (g: PitchFrame[]) => {
+    if (g.length === 0) {
       return;
     }
-    const durationMs = group[group.length - 1].timestampMs - group[0].timestampMs;
-    if (durationMs >= cfg.minNoteMs) {
-      const medianHz = median(group.map((f) => f.hz));
-      notes.push({
-        index: notes.length,
-        midi: midiFromHz(medianHz),
-        frequencyHz: medianHz,
-        centsOffset: centsFromHz(medianHz),
-        clarity: median(group.map((f) => f.clarity)),
-        startMs: group[0].timestampMs,
-        endMs: group[group.length - 1].timestampMs,
-      });
+    const durationMs = g[g.length - 1].timestampMs - g[0].timestampMs;
+    if (durationMs < cfg.minNoteMs) {
+      return;
     }
+    const guardCutoffMs = g[0].timestampMs + cfg.attackGuardMs;
+    const stable = g.filter((f) => f.timestampMs >= guardCutoffMs);
+    const pitchSource = stable.length > 0 ? stable : g;
+    const medianHz = median(pitchSource.map((f) => f.hz));
+    notes.push({
+      index: notes.length,
+      midi: midiFromHz(medianHz),
+      frequencyHz: medianHz,
+      centsOffset: centsFromHz(medianHz),
+      clarity: median(pitchSource.map((f) => f.clarity)),
+      startMs: g[0].timestampMs,
+      endMs: g[g.length - 1].timestampMs,
+    });
+  };
+
+  const closeGroup = () => {
+    flush(group);
     group = [];
+    pendingChange = [];
   };
 
   for (const f of frames) {
     if (!isVoiced(f, cfg)) {
       // Silence: split the current note once the gap since the last voiced frame exceeds gapMs.
       if (group.length > 0 && lastVoicedTs !== null && f.timestampMs - lastVoicedTs >= cfg.gapMs) {
-        flush();
+        closeGroup();
       }
       continue;
     }
 
-    if (group.length > 0) {
-      const gapExceeded = lastVoicedTs !== null && f.timestampMs - lastVoicedTs >= cfg.gapMs;
-      const pitchChanged = midiFromHz(f.hz) !== midiFromHz(group[0].hz);
-      if (gapExceeded || pitchChanged) {
-        flush();
-      }
+    if (group.length === 0) {
+      group.push(f);
+      lastVoicedTs = f.timestampMs;
+      continue;
     }
-    group.push(f);
+
+    const gapExceeded = lastVoicedTs !== null && f.timestampMs - lastVoicedTs >= cfg.gapMs;
+    if (gapExceeded) {
+      closeGroup();
+      group.push(f);
+      lastVoicedTs = f.timestampMs;
+      continue;
+    }
+
+    const frameMidi = midiFromHz(f.hz);
+    if (frameMidi === groupMidi(group)) {
+      // Agrees with the note so far — any pending candidate was a false alarm, reabsorb it too.
+      group.push(...pendingChange, f);
+      pendingChange = [];
+      lastVoicedTs = f.timestampMs;
+      continue;
+    }
+
+    // Disagrees — accumulate as a candidate for the next note, but only if it agrees with itself.
+    pendingChange =
+      pendingChange.length > 0 && midiFromHz(pendingChange[0].hz) !== frameMidi
+        ? [f] // the candidate wasn't self-consistent either — restart it on this frame
+        : [...pendingChange, f];
     lastVoicedTs = f.timestampMs;
+
+    if (pendingChange.length >= cfg.onsetConfirmFrames) {
+      // Sustained pitch change: close the note on the old pitch, start the next on the new one.
+      flush(group);
+      group = pendingChange;
+      pendingChange = [];
+    }
   }
-  flush();
+  closeGroup();
 
   return notes;
 }

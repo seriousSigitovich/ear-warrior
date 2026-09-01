@@ -47,6 +47,8 @@ const SEGMENT_CFG: SegmentConfig = {
   gapMs: 200,
   minHz: 80,
   maxHz: 1320,
+  onsetConfirmFrames: 3,
+  attackGuardMs: 40,
 };
 const GRADING_CFG: GradingConfig = {
   centsTolerance: 50,

@@ -184,6 +184,18 @@ export interface SegmentConfig {
   minHz: number;
   /** Highest accepted frequency (Hz); above → out of guitar band. */
   maxHz: number;
+  /**
+   * Consecutive frames of a new, self-consistent pitch required before a mid-note pitch change is
+   * treated as a real note boundary. Kills single-frame glitches (attack transients, stray octave
+   * reads) that would otherwise fracture one note into two — the deviation must persist to count.
+   */
+  onsetConfirmFrames: number;
+  /**
+   * Leading slice (ms) of a note's window dropped before estimating its pitch — the attack transient
+   * of a plucked/picked note is the least reliable part of the signal (mic settling, string not yet
+   * stable), so the reported pitch comes from what follows it rather than from the note's own onset.
+   */
+  attackGuardMs: number;
 }
 
 export interface GradingConfig {
