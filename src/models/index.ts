@@ -69,18 +69,33 @@ export interface AttemptGrade {
   timedOut: boolean;
 }
 
+/** Scale families the generator draws from; the tonic is picked per melody. */
+export type ScaleFamily = 'major_pentatonic' | 'major' | 'natural_minor';
+
 /**
- * Named generation configuration (FR-010). Levels differ in melody length **only** — `scale`,
- * the range bounds, and `tempoBpm` hold the same constant at every rank this phase.
+ * How the second half of a phrase relates to its opening motif — repetition is what makes a phrase
+ * memorable, so *less* of it is harder: `repeat` < `sequence` < `variation` < `none`.
+ */
+export type MotifMode = 'repeat' | 'sequence' | 'variation' | 'none';
+
+/**
+ * Named generation configuration (FR-010). Difficulty is a route through several dimensions —
+ * vocabulary (`scales`), interval size (`maxLeap`), length, predictability (`motif`), and span —
+ * rather than length alone; see research R11.
  */
 export interface DifficultyLevel {
   id: string;
-  /** 1–7; `noteCount` is always `rank + 1`. */
+  /** 1–9, ordering for adaptation. */
   rank: number;
-  /** 2 at rank 1 … 8 at rank 7 (SC-005). */
   noteCount: number;
-  /** Scale name; constant "C_major" at every rank this phase. */
-  scale: string;
+  /** Families a melody at this level may use; one is picked per melody. */
+  scales: ScaleFamily[];
+  /** Largest melodic interval between consecutive notes, in semitones. */
+  maxLeap: number;
+  /** Largest distance between the phrase's lowest and highest note, in semitones. */
+  maxSpan: number;
+  motif: MotifMode;
+  /** Register every generated note must fall inside. */
   rangeLowMidi: number;
   rangeHighMidi: number;
   tempoBpm: number;

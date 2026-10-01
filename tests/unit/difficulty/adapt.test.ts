@@ -190,7 +190,7 @@ describe('manual selection preserves adaptive progress (FR-011b)', () => {
     expect(effectiveRank(setMode(toFixed, 'adaptive'))).toBe(5);
   });
 
-  test('any rank 1–7 may be selected — no unlock gating', () => {
+  test('any rank 1–9 may be selected — no unlock gating', () => {
     const start = settings({ adaptiveRank: 1 });
     expect(effectiveRank(setMode(setFixedRank(start, MAX_RANK), 'fixed'))).toBe(MAX_RANK);
   });
@@ -221,9 +221,12 @@ describe('purity', () => {
 });
 
 describe('error modes', () => {
-  test.each([0, 8, -1, 1.5, NaN])('setFixedRank rejects out-of-range rank %p', (rank) => {
-    expect(() => setFixedRank(settings(), rank)).toThrow();
-  });
+  test.each([0, MAX_RANK + 1, -1, 1.5, NaN])(
+    'setFixedRank rejects out-of-range rank %p',
+    (rank) => {
+      expect(() => setFixedRank(settings(), rank)).toThrow();
+    },
+  );
 
   test('a negative streak count in the input state is rejected', () => {
     expect(() => applyAttempt(settings({ streakCount: -1 }), CORRECT)).toThrow();

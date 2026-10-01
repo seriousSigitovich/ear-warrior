@@ -4,7 +4,14 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { DifficultyMode, DifficultySettings } from '../src/models';
-import { MAX_RANK, MIN_RANK, getLevelByRank } from '../src/services/melody/levels';
+import {
+  MAX_RANK,
+  MIN_RANK,
+  describeLeap,
+  describeMotif,
+  describeScales,
+  getLevelByRank,
+} from '../src/services/melody/levels';
 import {
   DEFAULT_DIFFICULTY_SETTINGS,
   effectiveRank,
@@ -13,17 +20,12 @@ import {
 } from '../src/features/difficulty/adapt';
 import { defaultRowStore } from '../src/services/storage/db';
 import { createDifficultySettingsRepository } from '../src/services/storage/repositories';
-import { noteName } from '../src/lib/pitchNote';
 import { Screen } from '../src/components/common/Screen';
 import { Kicker } from '../src/components/common/Kicker';
 import { Card } from '../src/components/common/Card';
 import { colors, font, radius, textAlpha } from '../src/theme/nocturne';
 
 const RANKS = Array.from({ length: MAX_RANK - MIN_RANK + 1 }, (_, i) => MIN_RANK + i);
-
-function humanScale(scale: string): string {
-  return scale.replace(/_/g, ' ');
-}
 
 export default function Settings() {
   const [repo] = useState(() => createDifficultySettingsRepository(defaultRowStore()));
@@ -95,12 +97,10 @@ export default function Settings() {
         </Text>
         <View style={styles.hr} />
         <Row label="Notes per melody" value={`${level.noteCount}`} />
-        <Row
-          label="Pitch range"
-          value={`${noteName(level.rangeLowMidi)}–${noteName(level.rangeHighMidi)}`}
-        />
+        <Row label="Scale" value={describeScales(level)} />
+        <Row label="Largest leap" value={describeLeap(level.maxLeap)} />
+        <Row label="Structure" value={describeMotif(level.motif)} />
         <Row label="Tempo" value={`${level.tempoBpm} BPM`} />
-        <Row label="Scale" value={humanScale(level.scale)} />
       </Card>
 
       <View style={styles.spacer} />
@@ -199,8 +199,9 @@ const styles = StyleSheet.create({
   segText: { color: colors.text, fontSize: 13 },
   segTextActive: { color: colors.accent },
 
-  dots: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, marginLeft: -8 },
-  dotTarget: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  dots: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, marginHorizontal: -8 },
+  // Nine ranks share the row, so targets flex to the available width (≈39pt on a 375pt phone).
+  dotTarget: { flex: 1, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   dotDone: { width: 22, height: 22, borderRadius: 11, backgroundColor: colors.neutral[600] },
   dotCurrent: {
     width: 26,

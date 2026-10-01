@@ -4,7 +4,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { RankChange } from '../../features/practice/usePracticeLoop';
-import { getLevelByRank } from '../../services/melody/levels';
+import { MAX_RANK, getLevelByRank } from '../../services/melody/levels';
 import { Card } from '../common/Card';
 import { colors, font, textAlpha, withAlpha } from '../../theme/nocturne';
 
@@ -20,7 +20,7 @@ export function RankChangeBanner({ change }: { change: RankChange }) {
       style={styles.card}
       accessible
       accessibilityRole="alert"
-      accessibilityLabel={`${title}. Now level ${change.to} of 7, ${noteCount} notes per melody.`}
+      accessibilityLabel={`${title}. Now level ${change.to} of ${MAX_RANK}, ${noteCount} notes per melody.`}
     >
       <View style={[styles.badge, { backgroundColor: withAlpha(hue, 0.16) }]}>
         <Text style={[styles.glyph, { color: up ? colors.accentRamp[300] : colors.warm }]}>

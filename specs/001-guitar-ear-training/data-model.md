@@ -42,24 +42,23 @@ not a standalone table; serialized within Melody/Attempt rows.
 
 ## DifficultyLevel
 
-Named configuration controlling generation (FR-010). Exactly **7 static levels, rank 1–7**, differing in
-**melody length only** — every other field holds the same constant at every rank.
+Named configuration controlling generation (FR-010). Exactly **9 static levels, rank 1–9**; the ladder
+is in research R11.
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `id` | string | `"L1"`…`"L7"`, derived from `rank` |
-| `rank` | int 1–7 | ordering for adaptation (US2) |
-| `noteCount` | int | **`rank + 1`** → 2 notes at rank 1 … 8 at rank 7 (SC-005) |
-| `scale` | string | constant `"C_major"` at every rank |
-| `rangeLowMidi` / `rangeHighMidi` | int | constant `60` / `72` (C4–C5) at every rank |
-| `tempoBpm` | int | constant `60` at every rank |
+| `id` | string | `"L1"`…`"L9"`, derived from `rank` |
+| `rank` | int 1–9 | ordering for adaptation (US2) |
+| `noteCount` | int 2–12 | phrase length |
+| `scales` | ScaleFamily[] | `major_pentatonic` / `major` / `natural_minor`; one is picked per melody |
+| `maxLeap` | int | largest interval between consecutive notes, semitones |
+| `maxSpan` | int | largest lowest-to-highest distance in a phrase, semitones |
+| `motif` | `repeat` / `sequence` / `variation` / `none` | how the phrase reuses its opening motif (≥ 6 notes) |
+| `rangeLowMidi` / `rangeHighMidi` | int | register, constant `52` / `79` (E3–G5) |
+| `tempoBpm` | int | constant `90` |
 
-**Validation**: `2 ≤ noteCount ≤ 8` and `noteCount === rank + 1`; `rank` unique and contiguous 1–7;
-`scale`/range/tempo identical across all levels. Seeded as static config; not user-editable this phase
-(manual override selects an existing level — FR-011b).
-
-**Invariant worth asserting in tests**: the fixed pool yields 8 distinct pitches (C D E F G A B C), which
-must remain ≥ 2 for the no-consecutive-repeats rule (FR-001) and is comfortably above the rank-7 need.
+**Validation**: `rank` unique and contiguous 1–9. Seeded as static config; not user-editable (manual
+override selects an existing level — FR-011b).
 
 ## DifficultySettings
 
@@ -93,7 +92,7 @@ An ordered target sequence the learner must reproduce (FR-001).
 | `id` | string (uuid) | |
 | `notes` | Note[] | ordered target notes (monophonic) |
 | `difficultyId` | string → DifficultyLevel.id | |
-| `scale` | string | pool it was drawn from |
+| `scale` | string | resolved key it was drawn from, e.g. `"G_major"` |
 | `createdAt` | ISO timestamp | |
 
 **Validation**: `notes.length === difficulty.noteCount`; every note within range and scale. Generated

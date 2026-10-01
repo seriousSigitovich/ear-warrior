@@ -26,8 +26,8 @@
 - Q: After the out-of-tune warning, may the learner proceed to grading? → A: **Advisory** — the app shows the warning and offers a tuning reference before grading, but the learner may dismiss it and continue; grading still runs (it is not blocked until retuning).
 - Q: What may leave the device — microphone audio and the remote-telemetry data-handling boundary? → A: Raw and derived audio (pitch frames) **never leave the device**; only **anonymized attempt metadata** (verdict, per-note outcome, difficulty level, timestamps, and an anonymous per-install device id) may be sent to remote telemetry — no PII, no accounts, best-effort and non-blocking.
 - Q: What is the accessibility baseline for the mobile UI (Constitution III)? → A: **WCAG 2.1 AA, mobile-adapted** — all interactive controls carry accessible labels/roles, text contrast ≥ 4.5:1, the UI is fully operable via VoiceOver/TalkBack, touch targets are ≥ 44pt (iOS) / 48dp (Android), and the UI respects OS font-scaling.
-- Q: Which difficulty dimensions vary across levels (FR-010)? → A: **Melody length only.** The ladder is exactly **7 levels (rank 1–7) whose `noteCount` runs 2→8**; the pitch pool (scale + range) and tempo are **identical at every level** and do not vary. Range/scale/tempo variation is explicitly deferred to a later phase.
-- Q: What is the single fixed pitch pool and tempo shared by all levels? → A: **C major (diatonic), C4–C5 (MIDI 60–72), 60 BPM.** That window yields 8 distinct pitches (C D E F G A B C), enough for an 8-note melody under the no-consecutive-repeats rule. Confining the pool to **one octave** means a correct note name is never available in a wrong octave, so the default octave-sensitive matching cannot produce octave-mismatch failures in this phase.
+- Q: Which difficulty dimensions vary across levels (FR-010)? → A: **Melody length only.** The ladder is exactly **7 levels (rank 1–7) whose `noteCount` runs 2→8**; the pitch pool (scale + range) and tempo are **identical at every level** and do not vary. Range/scale/tempo variation is explicitly deferred to a later phase. *(Superseded 2026-09-23: 9 multi-dimensional levels — see FR-010, R11.)*
+- Q: What is the single fixed pitch pool and tempo shared by all levels? → A: **C major (diatonic), C4–C5 (MIDI 60–72), 60 BPM.** That window yields 8 distinct pitches (C D E F G A B C), enough for an 8-note melody under the no-consecutive-repeats rule. Confining the pool to **one octave** means a correct note name is never available in a wrong octave, so the default octave-sensitive matching cannot produce octave-mismatch failures in this phase. *(Superseded 2026-09-23: per-melody key in E3–G5 — see FR-001.)*
 - Q: What thresholds raise or lower difficulty in adaptive mode (FR-011)? → A: **Streak-based and asymmetric — 3 consecutive correct attempts raise the level by one rank; 2 consecutive incorrect attempts lower it by one rank.** Steps are always ±1 rank, the streak counter resets to zero on any level change, and the level clamps at rank 1 and rank 7 (a learner already at the boundary simply stays there).
 - Q: How do the difficulty mode and level behave across mode switches and app restarts? → A: **Separate persisted state.** The adaptive rank and the manually selected fixed level are **two independent values**; switching adaptive → fixed → adaptive resumes adaptive at the rank it held, unaffected by the fixed selection. The mode and both level values persist across sessions and app restarts. Fixed mode may select **any** of the 7 levels — there is no unlock gating.
 - Q: Which attempt outcomes feed the adaptation streak? → A: **Only the first graded attempt on each newly generated melody.** Retries of the same melody (FR-008), low-confidence ungraded captures (FR-017), and no-input timeouts (FR-015) are **excluded entirely** — they neither extend nor break the streak, leaving it unchanged. An attempt graded after the learner dismissed the out-of-tune advisory (FR-014) counts normally. Rationale: the streak measures first-hearing recall, retries are unlimited and would otherwise let a learner grind one melody into a promotion, and counting ungraded captures would demote a learner for room noise rather than for ability.
@@ -142,16 +142,15 @@ confirm it shows accuracy trends, practice volume, and identified weak areas der
 
 ### Functional Requirements
 
-- **FR-001**: System MUST generate short monophonic melodic phrases with a configurable number of notes
-  drawn from a defined pitch pool (scale/key and range). For this phase the pitch pool is a single fixed
-  pool shared by every difficulty level: **C major (diatonic), C4–C5 (MIDI 60–72)** — the 8 pitches
-  C4 D4 E4 F4 G4 A4 B4 C5. It sits inside the standard guitar range **E2–E6 (MIDI 40–88)**, and being
-  confined to one octave it contains no duplicate note names, so octave-mismatch outcomes cannot arise
-  from generated targets. Every pitch in this pool falls inside the detector's recognized band (E2–E6,
-  ~80–1320 Hz; see Guitar-playable range) and is an equal-tempered note the ±50-cent matcher (FR-016) can
-  resolve, so the notes the generator produces and the notes the detector/grader can recognize are the
-  same set by construction. Generated phrases MUST NOT place two identical pitches consecutively, so every
-  note is separable by a pitch change (see FR-004).
+- **FR-001**: System MUST generate short monophonic melodic phrases, deterministic per seed. Each melody
+  picks its own key (a guitar-friendly tonic and one of the level's scale families) and lies in the
+  register **E3–G5 (MIDI 52–79)**, inside the standard guitar range **E2–E6 (MIDI 40–88)** and the
+  detector's recognized band. Phrases MUST carry rhythm (note durations from a small cell vocabulary,
+  a held final note), MUST end on the tonic, and — from 6 notes up — MUST be built as a motif and its
+  answer (repeated, sequenced, or varied per level). Every interval MUST be ≤ the level's `maxLeap` and
+  the phrase span ≤ its `maxSpan`. Generated phrases MUST NOT place two identical pitches consecutively,
+  so every note is separable by a pitch change (see FR-004) — a detector limit, not a musical one; lift it
+  once the segmenter splits re-plucked notes by onset.
 - **FR-002**: System MUST play the generated melody audibly to the learner.
 - **FR-003**: System MUST clearly signal the transition from "listening" to "your turn to play".
 - **FR-004**: System MUST capture the learner's guitar performance and derive the ordered sequence of
@@ -185,11 +184,11 @@ confirm it shows accuracy trends, practice volume, and identified weak areas der
   receiving feedback, without altering the melody.
 - **FR-008**: Learners MUST be able to retry the same melody and receive a fresh grading.
 - **FR-009**: Learners MUST be able to advance to a new generated melody.
-- **FR-010**: System MUST support exactly **7 difficulty levels (rank 1–7)** that vary **melody length
-  only**: level rank *r* generates melodies of `noteCount = r + 1`, giving 2 notes at rank 1 up to 8 notes
-  at rank 7. Every level MUST share the single fixed pitch pool defined in FR-001 (**C major, C4–C5**) and
-  a fixed playback tempo of **60 BPM**. Varying pitch range, scale, or tempo across levels is explicitly
-  **out of scope for this phase**.
+- **FR-010**: System MUST support exactly **9 difficulty levels (rank 1–9)**. Difficulty is a route
+  through several dimensions — scale vocabulary (major pentatonic → major → natural minor → mixed),
+  largest interval, length (3 → 10 notes), motif predictability (repeat → sequence → variation → free),
+  and span — laid out as a sawtooth: each new vocabulary starts with a shorter, stepwise phrase. Tempo is
+  a constant **90 BPM** (rhythm is played, not graded). See research R11 for the ladder.
 - **FR-011**: System MUST adapt difficulty from recent performance using an **asymmetric consecutive-streak
   rule**: **3 consecutive correct** attempts raise the level by **one rank**; **2 consecutive incorrect**
   attempts lower it by **one rank**. Adjustments are always ±1 rank — never a multi-rank jump. The streak
@@ -206,7 +205,7 @@ confirm it shows accuracy trends, practice volume, and identified weak areas der
 - **FR-011b**: The difficulty mode (adaptive or fixed), the **adaptive rank**, and the **manually selected
   fixed level** MUST be persisted independently and MUST survive session end and app restart. Selecting a
   fixed level MUST NOT overwrite the adaptive rank: returning to adaptive mode resumes at the rank adaptive
-  mode last held. Fixed mode MUST allow selecting any of the 7 levels; levels are not gated behind prior
+  mode last held. Fixed mode MUST allow selecting any of the 9 levels; levels are not gated behind prior
   progress.
 - **FR-012**: System MUST record each attempt's result (verdict, per-note outcome, timestamp) within a
   session.
@@ -306,8 +305,8 @@ method and conditions for the accuracy claim are owned by **SC-002 / SC-002a**.
 - **SC-003**: Feedback for an attempt appears within 2 seconds of the learner finishing playing.
 - **SC-004**: A first-time learner can start a session, complete an attempt, and understand the feedback
   within 2 minutes without external instructions.
-- **SC-005**: The app offers exactly 7 difficulty ranks whose melodies run from **2 notes at rank 1 to
-  8 notes at rank 7**, one note added per rank.
+- **SC-005**: The app offers exactly 9 difficulty ranks; within one scale vocabulary no dimension gets
+  easier from rank to rank, and each new vocabulary is introduced with a shorter phrase.
 - **SC-006**: After two weeks of regular practice (e.g., 4+ sessions per week), a returning learner shows
   a measurable improvement in recognition accuracy of at least 25% over their first-session baseline.
 - **SC-007**: At least 90% of learners report the feedback clearly tells them which notes they got wrong.

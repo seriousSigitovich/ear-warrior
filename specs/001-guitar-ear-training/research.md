@@ -170,20 +170,37 @@ Alternatives considered**.
 
 ## R11. Melody generation parameters
 
-- **Decision**: Generator takes a Difficulty Level and produces a monophonic sequence. Per the 2026-07-23
-  clarifications, levels differ in **melody length only**: 7 ranks with `noteCount = rank + 1` (2→8 notes,
-  SC-005). All ranks share one **fixed pitch pool — C major diatonic, C4–C5 (MIDI 60–72)** — and a fixed
-  **60 BPM** tempo (FR-001, FR-010).
-- **Rationale**: A single varying dimension makes the difficulty curve diagnosable — when a learner starts
-  failing, length is the only variable that changed. The one-octave pool is deliberate: it contains no
-  duplicate note names, so the default octave-sensitive matching cannot produce octave-mismatch failures
-  from generated targets. Its 8 distinct pitches (C D E F G A B C) also comfortably satisfy the
-  no-consecutive-repeats rule at the 8-note top rank.
-- **Alternatives considered**: Advancing range/scale/tempo together — rejected, confounds the difficulty
-  signal and makes adaptation coarse. Staged advancement (length, then range, then scale) — deferred to a
-  later phase as unnecessary for the first ladder. Varying tempo — rejected outright: rhythm is not graded
-  (pitch-first grading), so tempo changes memorization load without changing what is measured. ML/generative
-  melody models — rejected, unnecessary complexity for short ear-training phrases.
+*Revised 2026-09-23. The first ladder (7 ranks, length only, C major C4–C5, one beat per note) produced
+phrases that felt like mush: no rhythm to group notes, no repetition to hold on to, and every phrase the
+same shape and key.*
+
+- **Decision**: Generate top-down in layers — key (tonic + family per melody) → rhythm (cells of
+  1 / ½+½ / 2 / 1½+½ beats, final note held 2 beats) → motif (from 6 notes: motif of ⌊n/2⌋ notes, then
+  the same rhythm with the pitches repeated / shifted one scale degree / one note varied, closing on the
+  tonic) → pitches (weighted walk: small intervals, chord tones on strong beats, gap-fill after leaps,
+  arch contour). Candidates are generated and checked against hard constraints; a rejected one is redrawn
+  from the same seeded stream. Difficulty is a 9-rank sawtooth through several dimensions:
+
+  | Rank | Scales | Notes | Max leap | Span | Motif |
+  |---|---|---|---|---|---|
+  | 1 | major pentatonic | 3 | 3 | 5 | — |
+  | 2 | major pentatonic | 4 | 5 | 7 | — |
+  | 3 | major pentatonic | 6 | 5 | 7 | repeat |
+  | 4 | major | 4 | 2 | 7 | — |
+  | 5 | major | 6 | 4 | 9 | sequence |
+  | 6 | major | 8 | 7 | 12 | sequence |
+  | 7 | natural minor | 6 | 4 | 9 | repeat |
+  | 8 | natural minor | 8 | 7 | 12 | variation |
+  | 9 | major / natural minor | 10 | 12 | 14 | free |
+
+- **Rationale**: Reproducing a phrase by ear is limited by vocabulary, interval size, memory load, and
+  predictability, not by note count alone — 8 notes with a repeated motif are easier to hold than 6 free
+  ones. The sawtooth keeps the diagnosability argument of the first design: within a stretch only one or
+  two knobs move per rank, and a new vocabulary arrives with the load reduced.
+- **Validation**: The ladder is a hypothesis. First-attempt success rate per rank (already in attempt
+  telemetry) should fall smoothly; a cliff or a plateau between two ranks marks the step to retune.
+- **Open**: consecutive repeated pitches stay banned until the segmenter splits re-plucked notes by onset
+  (FR-004); rhythm is played but not graded.
 
 ## R12. Accessibility baseline (SC-009)
 
