@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Ear Warrior promo slides</title>
+<!--
+  Deterministic slide deck for the 30 s promo (1080x1920, 30 fps).
+  Everything is a pure function of time: window.renderAt(t) positions every element, so render.mjs can
+  screenshot any frame in any order. Timings sit on a 0.5 s grid (120 BPM) shared with music.mjs —
+  if you move a note there, move the matching reveal here (CALL_T / RESP_T / RESULT_T below).
+  Palette mirrors src/theme/nocturne.ts and landing/index.html.
+-->
+<style>
+  :root {
+    --bg: #161826;
+    --surface: #232532;
+    --text: #e9e9ed;
+    --muted: rgba(233, 233, 237, 0.6);
+    --accent: #9184d9;
+    --bright: #b5abfc;
+    --warm: #c2a190;
+    --line: rgba(233, 233, 237, 0.12);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1080px; height: 1920px; overflow: hidden; background: var(--bg); }
+  body {
+    font-family: -apple-system, "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+    position: relative;
+  }
+  #glow {
+    position: absolute; inset: 0;
+    background: radial-gradient(820px 820px at 50% 40%, rgba(145, 132, 217, 0.24), transparent 70%);
+  }
+  .slide {
+    position: absolute; inset: 0;
+    /* keep clear of the Reels/Shorts/TikTok UI: ~220px top, ~330px bottom */
+    padding: 230px 96px 340px;
+    display: flex; flex-direction: column; justify-content: center;
+    opacity: 0;
+  }
+  [data-in] { opacity: 0; }
+
+  .eyebrow {
+    font-size: 40px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--bright); margin-bottom: 36px;
+  }
+  h1 {
+    font-size: 116px; line-height: 1.03; font-weight: 700; letter-spacing: -0.035em;
+  }
+  h1 .w { display: inline-block; margin-right: 0.22em; }
+  h1 em { font-style: normal; color: var(--bright); }
+  .sub { font-size: 42px; line-height: 1.35; color: var(--muted); margin-top: 48px; max-width: 840px; }
+  .center { align-items: center; text-align: center; }
+
+  /* S1 */
+  .logo { width: 260px; height: 260px; border-radius: 60px; display: block; box-shadow: 0 0 120px rgba(145, 132, 217, 0.45); }
+  .logo-wrap { margin-bottom: 72px; }
+  .tag { font-size: 40px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin-top: 64px; }
+
+  /* S2 quiz card */
+  .card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 40px; padding: 44px;
+  }
+  .quiz { margin-top: 64px; }
+  .quiz .q { font-size: 36px; color: var(--muted); margin-bottom: 28px; }
+  .pills { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .pill {
+    border: 1.5px solid var(--line); border-radius: 999px; padding: 26px 0; text-align: center;
+    font-size: 40px; font-weight: 500;
+  }
+  .strike { position: relative; display: inline-block; }
+  .strike::after {
+    content: ""; position: absolute; left: -4px; top: 54%; height: 10px; border-radius: 5px;
+    background: var(--warm); width: calc(var(--s, 0) * (100% + 8px));
+  }
+
+  /* bars (S3 + S4) */
+  .bars { display: flex; align-items: flex-end; justify-content: space-between; }
+  .col { display: flex; flex-direction: column; align-items: center; }
+  .bar { width: 100%; border-radius: 22px; background: rgba(233, 233, 237, 0.14); }
+  .lbl { font-size: 34px; color: var(--muted); margin-top: 18px; font-weight: 500; }
+  #bars3 { width: 888px; height: 420px; margin-top: 72px; gap: 28px; }
+  #bars3 .col { width: 150px; }
+  #bars4 { width: 100%; height: 190px; gap: 24px; }
+  #bars4 .col { width: 130px; }
+  #bars4 .lbl { font-size: 30px; margin-top: 12px; }
+
+  /* S4 */
+  .steps { display: flex; flex-direction: column; gap: 20px; margin-bottom: 40px; }
+  .step { display: flex; align-items: center; gap: 28px; padding: 26px 32px; border-radius: 30px; border: 1.5px solid var(--line); }
+  .num {
+    flex: 0 0 64px; height: 64px; border-radius: 50%; display: grid; place-items: center;
+    font-size: 32px; font-weight: 700; background: rgba(145, 132, 217, 0.18); color: var(--bright);
+  }
+  .step h3 { font-size: 50px; font-weight: 650; letter-spacing: -0.02em; }
+  .step p { font-size: 32px; color: var(--muted); margin-top: 4px; }
+  .res-head { display: flex; justify-content: space-between; font-size: 32px; color: var(--muted); margin-bottom: 20px; min-height: 40px; }
+  .caption { font-size: 64px; font-weight: 700; letter-spacing: -0.03em; margin-top: 30px; min-height: 76px; }
+  .caption.big em { font-style: normal; color: var(--bright); }
+  .miss { font-size: 36px; color: var(--warm); margin-top: 8px; min-height: 44px; font-weight: 500; }
+
+  /* S5 */
+  .word { font-size: 150px; line-height: 1.12; font-weight: 700; letter-spacing: -0.04em; }
+  .word.v { font-size: 120px; }
+
+  /* S6 */
+  .wordmark { font-size: 108px; font-weight: 700; letter-spacing: -0.04em; margin-bottom: 36px; }
+  .nail { font-size: 56px; line-height: 1.25; font-weight: 600; letter-spacing: -0.02em; }
+  .nail span { display: inline-block; margin: 0 0.12em; }
+  .nail .hl { color: var(--bright); }
+  .cta {
+    margin-top: 72px; display: inline-block; padding: 30px 56px; border-radius: 999px;
+    border: 2px solid var(--accent); background: rgba(145, 132, 217, 0.14);
+    font-size: 40px; font-weight: 600; color: var(--bright);
+  }
+</style>
+</head>
+<body>
+<div id="glow"></div>
+
+<!-- S1 — hook -->
+<section class="slide center" data-start="0" data-end="4">
+  <div class="logo-wrap" data-in="-1"><img class="logo" id="logo1" src="../brand/logo.png" alt=""></div>
+  <h1 data-in="-1">Can you play<br>what you<br><em>just heard?</em></h1>
+  <div class="tag" data-in="1.2">Ear training for any instrument</div>
+</section>
+
+<!-- S2 — the problem -->
+<section class="slide" data-start="4" data-end="8">
+  <h1 data-in="4.3">Most ear trainers make you <span class="strike" id="strike"><em>name</em></span> it.</h1>
+  <div class="card quiz" data-in="5.0" id="quizCard">
+    <div class="q">Name this interval</div>
+    <div class="pills">
+      <div class="pill">Minor 3rd</div>
+      <div class="pill" id="pillSel">Major 3rd</div>
+      <div class="pill">Perfect 4th</div>
+      <div class="pill">Tritone</div>
+    </div>
+  </div>
+</section>
+
+<!-- S3 — the answer -->
+<section class="slide" data-start="8" data-end="12">
+  <h1 data-in="8.15">Ear Warrior makes you <em>play it back.</em></h1>
+  <div class="bars" id="bars3" data-in="8.4"></div>
+  <div class="sub" data-in="10.7">The real skill behind picking out any song by ear.</div>
+</section>
+
+<!-- S4 — the loop -->
+<section class="slide" data-start="12" data-end="20">
+  <div class="eyebrow" data-in="12.1">How it works</div>
+  <div class="steps">
+    <div data-in="12.3"><div class="step" id="st1"><div class="num">1</div><div><h3>Listen</h3><p>A short melody plays once.</p></div></div></div>
+    <div data-in="14.8"><div class="step" id="st2"><div class="num">2</div><div><h3>Play it back</h3><p>On your instrument, or just sing.</p></div></div></div>
+    <div data-in="17.4"><div class="step" id="st3"><div class="num">3</div><div><h3>See what landed</h3><p>Not quite? Try again. No penalty.</p></div></div></div>
+  </div>
+  <div class="card" data-in="12.3" id="resCard">
+    <div class="res-head"><span>Level 3 of 7</span><span id="resState"></span></div>
+    <div class="bars" id="bars4"></div>
+    <div class="caption" id="caption"></div>
+    <div class="miss" id="miss"></div>
+  </div>
+</section>
+
+<!-- S5 — any instrument -->
+<section class="slide" data-start="20" data-end="24">
+  <div class="eyebrow" data-in="20.2">Any instrument</div>
+  <div class="word" data-in="20.45">Guitar.</div>
+  <div class="word" data-in="21.45">Piano.</div>
+  <div class="word v" data-in="22.45"><em style="font-style:normal;color:var(--bright)">Just your voice.</em></div>
+  <div class="sub" data-in="23.0">The grader listens for pitch, not for what made it.</div>
+</section>
+
+<!-- S6 — close -->
+<section class="slide center" data-start="24" data-end="30">
+  <div class="logo-wrap" data-in="24.3"><img class="logo" src="../brand/logo.png" alt=""></div>
+  <div class="wordmark" data-in="24.6">Ear Warrior</div>
+  <div class="nail">
+    <span data-in="26.0">Hear it.</span><span data-in="26.5">Play it back.</span><br>
+    <span class="hl" data-in="27.0">Nail it.</span>
+  </div>
+  <div class="cta" data-in="28.0">Coming soon · iOS &amp; Android</div>
+</section>
+
+<script>
+  const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+  const seg = (t, a, b) => clamp((t - a) / (b - a));
+  const ease = x => 1 - Math.pow(1 - x, 3);
+
+  // The melody the viewer hears (MIDI) and the one "played back" — index 1 is the deliberate miss.
+  const TARGET = [52, 55, 57, 60, 57];
+  const REPLY  = [52, 53, 57, 60, 57];
+  const NAMES  = ['E3', 'G3', 'A3', 'C4', 'A3'];
+  const STEP = 0.5;
+  const CALL3_T = 8.5;   // S3 call
+  const CALL_T = 12.5;   // S4 call
+  const RESP_T = 15.0;   // S4 reply
+  const RESULT_T = 17.5; // S4 result chime
+
+  const NEUTRAL = 'rgba(233,233,237,0.14)';
+  const HEARD = 'rgba(145,132,217,0.5)';
+  const ACCENT = '#9184d9';
+  const WARM = '#c2a190';
+
+  function buildBars(el, scale) {
+    el.innerHTML = '';
+    TARGET.forEach((m, i) => {
+      const col = document.createElement('div'); col.className = 'col';
+      const bar = document.createElement('div'); bar.className = 'bar';
+      bar.style.height = Math.round((70 + (m - 52) * 30) * scale) + 'px';
+      const lbl = document.createElement('div'); lbl.className = 'lbl'; lbl.textContent = NAMES[i];
+      col.append(bar, lbl); el.append(col);
+    });
+  }
+  buildBars(document.getElementById('bars3'), 1.1);
+  buildBars(document.getElementById('bars4'), 0.5);
+
+  function paintBar(bar, t, tCall, tReply, i, settle) {
+    let color = NEUTRAL, glow = 0;
+    const tc = tCall + i * STEP, tr = tReply === null ? null : tReply + i * STEP;
+    if (t >= tc) { color = settle; glow = 1 - seg(t, tc, tc + 0.6); }
+    if (tr !== null && t >= tr) { color = i === 1 ? WARM : ACCENT; glow = 1 - seg(t, tr, tr + 0.6); }
+    bar.style.background = color;
+    bar.style.transform = 'scaleY(' + (1 + 0.05 * glow) + ')';
+    bar.style.transformOrigin = 'bottom';
+    bar.style.boxShadow = glow > 0 ? '0 0 ' + Math.round(50 * glow) + 'px ' + (i === 1 && tr !== null && t >= tr ? 'rgba(194,161,144,0.6)' : 'rgba(145,132,217,0.7)') : 'none';
+  }
+
+  const slides = [...document.querySelectorAll('.slide')];
+  const reveals = [...document.querySelectorAll('[data-in]')];
+  const bars3 = [...document.querySelectorAll('#bars3 .bar')];
+  const bars4 = [...document.querySelectorAll('#bars4 .bar')];
+  const $ = id => document.getElementById(id);
+
+  window.renderAt = function (t) {
+    // slide-level dip: fade out over the last 0.35 s, next slide fades in over 0.45 s after the cut
+    for (const s of slides) {
+      const a = +s.dataset.start, b = +s.dataset.end;
+      const fin = a === 0 ? 1 : ease(seg(t, a, a + 0.45));
+      const fout = 1 - ease(seg(t, b - 0.4, b));
+      s.style.opacity = t >= a && t < b ? fin * fout : 0;
+    }
+    // element reveals
+    for (const el of reveals) {
+      const p = ease(seg(t, +el.dataset.in, +el.dataset.in + 0.55));
+      el.style.opacity = p;
+      el.style.transform = p < 1 ? 'translateY(' + (1 - p) * 30 + 'px)' : 'none';
+      el.style.filter = p < 1 ? 'blur(' + (1 - p) * 10 + 'px)' : 'none';
+    }
+
+    // ambient glow breathes
+    $('glow').style.opacity = 0.75 + 0.25 * Math.sin(t * 1.6);
+    $('logo1').style.transform = 'scale(' + (1 + 0.025 * Math.sin(t * 2.2)) + ')';
+
+    // S2
+    $('strike').style.setProperty('--s', ease(seg(t, 6.3, 6.8)));
+    const sel = $('pillSel');
+    const sp = ease(seg(t, 5.8, 6.0));
+    sel.style.background = 'rgba(145,132,217,' + 0.22 * sp + ')';
+    sel.style.borderColor = sp > 0 ? ACCENT : 'rgba(233,233,237,0.12)';
+    $('quizCard').firstElementChild.style.opacity = 1;
+    $('quizCard').style.opacity = ease(seg(t, 5.0, 5.55)) * (1 - 0.6 * ease(seg(t, 6.6, 7.0)));
+
+    // S3 — melody lights the bars as it plays
+    bars3.forEach((b, i) => paintBar(b, t, CALL3_T, null, i, ACCENT));
+
+    // S4 — call, reply, result
+    bars4.forEach((b, i) => paintBar(b, t, CALL_T, RESP_T, i, HEARD));
+    const act = [t >= 12.3 && t < 14.8, t >= 14.8 && t < 17.4, t >= 17.4];
+    ['st1', 'st2', 'st3'].forEach((id, k) => {
+      const e = $(id);
+      e.style.borderColor = act[k] ? ACCENT : 'rgba(233,233,237,0.12)';
+      e.style.background = act[k] ? 'rgba(145,132,217,0.12)' : 'transparent';
+      e.style.opacity = act[k] ? 1 : (t > 14.8 ? 0.55 : 1);
+    });
+    const cap = $('caption');
+    if (t < RESULT_T) {
+      cap.className = 'caption';
+      cap.textContent = t < 14.8 ? 'Listening…' : 'Your turn';
+      $('resState').textContent = '';
+      $('miss').textContent = '';
+    } else {
+      cap.className = 'caption big';
+      cap.innerHTML = '<em>4 of 5</em> notes matched';
+      $('miss').textContent = 'G3 missed';
+    }
+  };
+
+  window.renderAt(0);
+</script>
+</body>
+</html>
