@@ -13,6 +13,10 @@
     REVEAL         the melody again, notes light up on a keyboard
     OUTRO          "how many notes did you get?"
 
+  Two layouts. Default: logo + rings while listening, keyboard only at the answer. layout "keyboard" (with
+  coldOpen in timeline.mjs): the keyboard is on screen from frame 0, the headline is large, and every note
+  just pulses the keyboard's frame — still no hint about which key.
+
   Palette mirrors src/theme/nocturne.ts, landing/index.html and the promo.
 -->
 <style>
@@ -77,11 +81,26 @@
     flex: 1 1 0; max-width: 150px; height: 112px; border-radius: 30px; border: 1.5px solid var(--line);
     display: grid; place-items: center; font-size: 46px; font-weight: 650; letter-spacing: -0.02em; color: var(--muted);
   }
-  #kbCard { position: absolute; left: 96px; top: 1030px; width: 888px; background: var(--surface); border: 1px solid var(--line); border-radius: 40px; padding: 28px; }
+  #kbCard { inset: auto; left: 96px; top: 1030px; width: 888px; background: var(--surface); border: 1px solid var(--line); border-radius: 40px; padding: 28px; }
   #kb { position: relative; width: 832px; height: 360px; }
   .wk { position: absolute; top: 0; height: 360px; border-radius: 0 0 12px 12px; background: rgba(233, 233, 237, 0.16); }
   .bk { position: absolute; top: 0; height: 220px; border-radius: 0 0 10px 10px; background: #0f101b; border: 1px solid var(--line); border-top: none; }
   .wk .c { position: absolute; left: 0; right: 0; bottom: 12px; text-align: center; font-size: 20px; color: var(--muted); }
+
+  /* KEYBOARD LAYOUT: big headline, keyboard in frame the whole time (y 1060–1516), a mid zone for dots / countdown / chips. */
+  body.keys .head { top: 320px; }
+  body.keys .head h1 { font-size: 168px; line-height: 1; white-space: nowrap; }
+  body.keys .head .sub { font-size: 50px; margin-top: 30px; }
+  body.keys .ring, body.keys #logo { display: none; }
+  body.keys #dots { top: 790px; gap: 30px; }
+  body.keys .dot { width: 44px; height: 44px; }
+  body.keys #count { left: 405px; top: 760px; width: 270px; height: 270px; }
+  body.keys #num { left: 405px; top: 760px; width: 270px; height: 270px; font-size: 140px; }
+  body.keys #chips { top: 780px; }
+  body.keys #kbCard { top: 1060px; }
+  body.keys #kb { height: 400px; }
+  body.keys .wk { height: 400px; }
+  body.keys .bk { height: 250px; }
 
   /* OUTRO */
   #outro { display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 230px 96px 340px; }
@@ -105,7 +124,7 @@
 </header>
 
 <section class="grp head" id="hHook"><h1 id="hookTitle"></h1><div class="sub" id="hookSub"></div></section>
-<section class="grp head" id="hTurn"><h1>Your <em>turn.</em></h1><div class="sub">0 listens left.<br>Play it on any instrument, or hum it.</div></section>
+<section class="grp head" id="hTurn"><h1>Your <em>turn.</em></h1><div class="sub" id="turnSub">0 listens left.<br>Play it on any instrument, or hum it.</div></section>
 <section class="grp head" id="hReveal"><h1>The <em>answer.</em></h1><div class="sub" id="revealSub"></div></section>
 
 <section class="grp full" id="sListen">
@@ -123,10 +142,8 @@
   <div id="num"></div>
 </section>
 
-<section class="grp full" id="sReveal">
-  <div id="chips"></div>
-  <div id="kbCard"><div id="kb"></div></div>
-</section>
+<section class="grp full" id="sReveal"><div id="chips"></div></section>
+<section class="grp full" id="kbCard"><div id="kb"></div></section>
 
 <section class="grp full" id="outro">
   <h1 data-in="0">How many notes<br><em>did you get?</em></h1>
@@ -150,6 +167,8 @@
   const TRAIL = 'rgba(145,132,217,0.42)';
   const IDLE_CHIP = 'rgba(233,233,237,0.6)';
   const END = TL.outroAt + 0.4; // everything but the end card is gone by here
+  const KEYS = C.layout === 'keyboard';
+  document.body.classList.toggle('keys', KEYS);
 
   /** "No tabs.\nJust your *ear.*" → lines separated by <br>, *accented* words in <em>. */
   function rich(el, text) {
@@ -167,6 +186,15 @@
   rich($('hookTitle'), C.hook);
   if (C.hook.split('\n').length > 2) $('hookTitle').className = 'tight';
   $('hookSub').textContent = N + ' notes · ' + INSTRUMENT + ' · one listen';
+  if (KEYS) {
+    $('turnSub').textContent = '0 listens left. Play it back.';
+    // Fit the hook: no taller than the room above the dots, no wider than the column (lines are explicit, so measure, don't wrap).
+    const h = $('hookTitle');
+    let fs = Math.min(168, Math.floor(340 / C.hook.split('\n').length));
+    const width = () => { const r = document.createRange(); r.selectNodeContents(h); return r.getBoundingClientRect().width; };
+    h.style.fontSize = fs + 'px';
+    while (width() > 888 && fs > 96) h.style.fontSize = (fs -= 4) + 'px';
+  }
   $('revealSub').textContent = 'In ' + C.key + ' · Level ' + C.level + ' of 9';
   $('tag').textContent = 'Ear challenge #' + C.id;
   $('follow').textContent = 'Follow for challenge #' + (C.id + 1);
@@ -179,14 +207,30 @@
   const chips = C.notes.map(n => { const e = div('nchip', $('chips')); e.textContent = n.name; return e; });
 
   const WHITE_PCS = [0, 2, 4, 5, 7, 9, 11];
-  const lo = Math.floor(Math.min(...C.notes.map(n => n.midi)) / 12) * 12;
-  if (Math.max(...C.notes.map(n => n.midi)) >= lo + 24) throw new Error('melody does not fit the two-octave keyboard');
-  const WW = 832 / 14, BW = WW * 0.62;
+  const isBlack = m => !WHITE_PCS.includes(m % 12);
+  const midis = C.notes.map(n => n.midi);
+  const whiteIdx = m => Math.floor(m / 12) * 7 + WHITE_PCS.filter(p => p <= m % 12).length - 1; // white key at or below m
+  const whiteMidi = i => Math.floor(i / 7) * 12 + WHITE_PCS[i % 7];
+
+  // The keyboard is `n` white keys starting at midi `start`. Default: two octaves from the C below the
+  // melody. Keyboard layout: fewer, bigger keys (≥ 10) with the melody centred.
+  function keyWindow() {
+    if (!KEYS) {
+      const start = Math.floor(Math.min(...midis) / 12) * 12;
+      if (Math.max(...midis) >= start + 24) throw new Error('melody does not fit the two-octave keyboard');
+      return { start, n: 14 };
+    }
+    const low = whiteIdx(Math.min(...midis)), span = whiteIdx(Math.max(...midis)) - low + 1;
+    const n = Math.min(14, Math.max(10, span + 4));
+    return { start: whiteMidi(low - Math.floor((n - span) / 2)), n };
+  }
+  const KB = keyWindow();
+  const WW = 832 / KB.n, BW = WW * 0.62;
   const keyEl = {};
   let wi = 0;
-  for (let m = lo; m < lo + 24; m++) {
+  for (let m = KB.start; wi < KB.n; m++) {
     const pc = m % 12;
-    if (WHITE_PCS.includes(pc)) {
+    if (!isBlack(m)) {
       const k = div('wk', $('kb'));
       k.style.left = wi * WW + 1.5 + 'px'; k.style.width = WW - 3 + 'px';
       if (pc === 0) { const c = div('c', k); c.textContent = 'C' + (Math.floor(m / 12) - 1); }
@@ -197,7 +241,6 @@
       keyEl[m] = k;
     }
   }
-  const isBlack = m => !WHITE_PCS.includes(m % 12);
   function paintKey(m, state, glow) {
     const k = keyEl[m];
     const idle = isBlack(m) ? '#0f101b' : 'rgba(233,233,237,0.16)';
@@ -209,6 +252,7 @@
     ['top', 0, END], ['hHook', 0, TL.turnAt], ['sListen', 0, TL.turnAt],
     ['hTurn', TL.turnAt, TL.turnEnd], ['sTurn', TL.turnAt, TL.turnEnd],
     ['hReveal', TL.turnEnd, END], ['sReveal', TL.turnEnd, END],
+    ['kbCard', KEYS ? 0 : TL.turnEnd, END],
   ].map(([id, a, b]) => [$(id), a, b]);
   const reveals = [...document.querySelectorAll('[data-in]')];
   [TL.outroAt + 0.45, TL.outroAt + 0.65, TL.outroAt + 0.85, TL.outroAt + 1.0].forEach((at, i) => { reveals[i].dataset.in = at; });
@@ -243,6 +287,11 @@
     });
     const pulse = last >= 0 ? Math.exp(-(t - on(last)) * 6) : 0;
     $('logo').style.transform = 'scale(' + (1 + 0.07 * pulse + 0.015 * Math.sin(t * 2.2)) + ')';
+    if (KEYS) { // each note knocks on the keyboard's frame while listening
+      const p = t < TL.turnAt ? pulse : 0;
+      $('kbCard').style.boxShadow = p > 0.01 ? '0 0 ' + Math.round(70 * p) + 'px rgba(145,132,217,' + 0.55 * p + ')' : 'none';
+      $('kbCard').style.borderColor = p > 0.01 ? 'rgba(145,132,217,' + (0.2 + 0.7 * p) + ')' : '';
+    }
 
     // TURN
     const left = TL.turnEnd - t;

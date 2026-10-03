@@ -26,7 +26,7 @@ export function renderScore(c, path) {
     mix(T.make(n.midi, dur + T.tail, i), at + onset, T.gain);
   });
 
-  mix(whoosh(0.45), tl.listenAt - 0.45, 0.1);
+  if (tl.listenAt >= 0.45) mix(whoosh(0.45), tl.listenAt - 0.45, 0.1);
   playMelody(tl.listenAt);
 
   // Countdown: one soft click per second, a brighter one when time is up.

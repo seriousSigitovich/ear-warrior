@@ -8,7 +8,7 @@
 // 6-note phrases up a little.
 export const DUR = 15;
 
-const HOOK = 1.0;     // headline alone before the melody starts
+const HOOK = 1.0;     // headline alone before the melody starts (0 for a coldOpen challenge: sound from frame 0)
 const GAP = 0.3;      // breath between sections
 const OUTRO = 2.0;    // end card
 
@@ -26,9 +26,10 @@ export function melodyTiming(c) {
 
 export function timeline(c) {
   const { notes, length } = melodyTiming(c);
-  const listenAt = HOOK;
+  const hook = c.coldOpen ? 0 : HOOK;
+  const listenAt = hook;
   const turnAt = listenAt + length + GAP;
-  const turn = DUR - OUTRO - GAP - 2 * length - HOOK - GAP;
+  const turn = DUR - OUTRO - GAP - 2 * length - hook - GAP;
   const revealAt = turnAt + turn + GAP;
   const outroAt = revealAt + length;
   if (turn < 4) throw new Error(`Challenge #${c.id}: only ${turn.toFixed(1)} s to play it back — melody too long`);
