@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Ear Warrior challenge</title>
+<!--
+  One 15 s challenge video (1080x1920, 30 fps). render.mjs injects window.CHALLENGE = { ...challenge, timeline }
+  before this page loads; every element is a pure function of time via window.renderAt(t), same as the promo.
+  Timing comes from timeline.mjs — never hard-code a second here.
+
+    hook + LISTEN  melody plays once; nothing on screen reveals a pitch (that would be a hint)
+    TURN           countdown while the viewer plays it back
+    REVEAL         the melody again, notes light up on a keyboard
+    OUTRO          "how many notes did you get?"
+
+  Palette mirrors src/theme/nocturne.ts, landing/index.html and the promo.
+-->
+<style>
+  :root {
+    --bg: #161826;
+    --surface: #232532;
+    --text: #e9e9ed;
+    --muted: rgba(233, 233, 237, 0.6);
+    --accent: #9184d9;
+    --bright: #b5abfc;
+    --warm: #c2a190;
+    --line: rgba(233, 233, 237, 0.12);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1080px; height: 1920px; overflow: hidden; background: var(--bg); }
+  body {
+    font-family: -apple-system, "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+    position: relative;
+  }
+  #glow {
+    position: absolute; inset: 0;
+    background: radial-gradient(820px 820px at 50% 60%, rgba(145, 132, 217, 0.24), transparent 70%);
+  }
+  /* A phase group; its opacity is driven by renderAt. Children fade up via [data-in]. */
+  .grp { position: absolute; opacity: 0; }
+  .full { inset: 0; }
+  [data-in] { opacity: 0; }
+
+  /* Keep clear of the Reels/Shorts/TikTok UI: ~220px top, ~330px bottom (content stays in y 220–1590). */
+  #top { left: 96px; right: 96px; top: 244px; display: flex; justify-content: space-between; align-items: center; }
+  .brand { display: flex; align-items: center; gap: 18px; font-size: 36px; font-weight: 650; letter-spacing: -0.02em; }
+  .brand img { width: 60px; height: 60px; border-radius: 15px; display: block; }
+  .tag {
+    font-size: 28px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--bright);
+    border: 1.5px solid var(--line); border-radius: 999px; padding: 14px 28px;
+  }
+
+  .head { left: 96px; top: 380px; width: 888px; }
+  h1 { font-size: 116px; line-height: 1.03; font-weight: 700; letter-spacing: -0.035em; }
+  h1.tight { font-size: 100px; line-height: 1.06; }
+  h1 em { font-style: normal; color: var(--bright); }
+  .sub { font-size: 42px; line-height: 1.35; color: var(--muted); margin-top: 34px; max-width: 840px; }
+
+  /* LISTEN */
+  .ring { position: absolute; left: 420px; top: 1030px; width: 240px; height: 240px; border-radius: 50%; border: 3px solid var(--accent); opacity: 0; }
+  #logo { position: absolute; left: 430px; top: 1040px; width: 220px; height: 220px; border-radius: 52px; box-shadow: 0 0 110px rgba(145, 132, 217, 0.45); }
+  #dots { position: absolute; left: 0; right: 0; top: 1440px; display: flex; justify-content: center; gap: 28px; }
+  .dot { width: 36px; height: 36px; border-radius: 50%; background: rgba(233, 233, 237, 0.14); }
+
+  /* TURN */
+  #count { position: absolute; left: 310px; top: 950px; width: 460px; height: 460px; }
+  #num {
+    position: absolute; left: 310px; top: 950px; width: 460px; height: 460px;
+    display: grid; place-items: center; font-size: 230px; font-weight: 700; letter-spacing: -0.04em; color: var(--bright);
+  }
+
+  /* REVEAL */
+  #chips { position: absolute; left: 96px; top: 860px; width: 888px; display: flex; justify-content: center; gap: 14px; }
+  .nchip {
+    flex: 1 1 0; max-width: 150px; height: 112px; border-radius: 30px; border: 1.5px solid var(--line);
+    display: grid; place-items: center; font-size: 46px; font-weight: 650; letter-spacing: -0.02em; color: var(--muted);
+  }
+  #kbCard { position: absolute; left: 96px; top: 1030px; width: 888px; background: var(--surface); border: 1px solid var(--line); border-radius: 40px; padding: 28px; }
+  #kb { position: relative; width: 832px; height: 360px; }
+  .wk { position: absolute; top: 0; height: 360px; border-radius: 0 0 12px 12px; background: rgba(233, 233, 237, 0.16); }
+  .bk { position: absolute; top: 0; height: 220px; border-radius: 0 0 10px 10px; background: #0f101b; border: 1px solid var(--line); border-top: none; }
+  .wk .c { position: absolute; left: 0; right: 0; bottom: 12px; text-align: center; font-size: 20px; color: var(--muted); }
+
+  /* OUTRO */
+  #outro { display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 230px 96px 340px; }
+  #outro h1 { font-size: 112px; }
+  #outro .sub { margin-top: 36px; }
+  .pill {
+    margin-top: 64px; display: inline-block; padding: 28px 54px; border-radius: 999px;
+    border: 2px solid var(--accent); background: rgba(145, 132, 217, 0.14);
+    font-size: 40px; font-weight: 600; color: var(--bright);
+  }
+  .soon { margin-top: 56px; display: flex; align-items: center; gap: 18px; font-size: 32px; color: var(--muted); }
+  .soon img { width: 56px; height: 56px; border-radius: 14px; }
+</style>
+</head>
+<body>
+<div id="glow"></div>
+
+<header id="top" class="grp">
+  <div class="brand"><img src="../../brand/logo.png" alt="">Ear Warrior</div>
+  <div class="tag" id="tag"></div>
+</header>
+
+<section class="grp head" id="hHook"><h1 id="hookTitle"></h1><div class="sub" id="hookSub"></div></section>
+<section class="grp head" id="hTurn"><h1>Your <em>turn.</em></h1><div class="sub">0 listens left.<br>Play it on any instrument, or hum it.</div></section>
+<section class="grp head" id="hReveal"><h1>The <em>answer.</em></h1><div class="sub" id="revealSub"></div></section>
+
+<section class="grp full" id="sListen">
+  <div id="rings"></div>
+  <img id="logo" src="../../brand/logo.png" alt="">
+  <div id="dots"></div>
+</section>
+
+<section class="grp full" id="sTurn">
+  <svg id="count" viewBox="0 0 460 460">
+    <circle cx="230" cy="230" r="206" fill="none" stroke="rgba(233,233,237,0.12)" stroke-width="14"/>
+    <circle id="arc" cx="230" cy="230" r="206" fill="none" stroke="#9184d9" stroke-width="14" stroke-linecap="round"
+            transform="rotate(-90 230 230)"/>
+  </svg>
+  <div id="num"></div>
+</section>
+
+<section class="grp full" id="sReveal">
+  <div id="chips"></div>
+  <div id="kbCard"><div id="kb"></div></div>
+</section>
+
+<section class="grp full" id="outro">
+  <h1 data-in="0">How many notes<br><em>did you get?</em></h1>
+  <div class="sub" data-in="0">Drop your score in the comments.</div>
+  <div class="pill" data-in="0" id="follow"></div>
+  <div class="soon" data-in="0"><img src="../../brand/logo.png" alt=""><span>Coming soon · iOS &amp; Android</span></div>
+</section>
+
+<script>
+  const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+  const seg = (t, a, b) => clamp((t - a) / (b - a));
+  const ease = x => 1 - Math.pow(1 - x, 3);
+  const $ = id => document.getElementById(id);
+  const div = (cls, parent) => { const e = document.createElement('div'); e.className = cls; parent.append(e); return e; };
+  /** Visible from a to b with `f` seconds of fade at each end. */
+  const vis = (t, a, b, f = 0.35) => ease(seg(t, a, a + f)) * (1 - ease(seg(t, b - f, b)));
+
+  const C = window.CHALLENGE, TL = C.timeline, N = C.notes.length;
+  const INSTRUMENT = { pluck: 'Guitar', keys: 'Piano', voice: 'Voice' }[C.timbre];
+  const ACCENT = '#9184d9', BRIGHT = '#b5abfc';
+  const TRAIL = 'rgba(145,132,217,0.42)';
+  const IDLE_CHIP = 'rgba(233,233,237,0.6)';
+  const END = TL.outroAt + 0.4; // everything but the end card is gone by here
+
+  /** "No tabs.\nJust your *ear.*" → lines separated by <br>, *accented* words in <em>. */
+  function rich(el, text) {
+    text.split('\n').forEach((line, i) => {
+      if (i) el.append(document.createElement('br'));
+      line.split('*').forEach((part, j) => {
+        if (!part) return;
+        if (j % 2) { const em = document.createElement('em'); em.textContent = part; el.append(em); }
+        else el.append(part);
+      });
+    });
+  }
+
+  // --- static copy ------------------------------------------------------------------------------
+  rich($('hookTitle'), C.hook);
+  if (C.hook.split('\n').length > 2) $('hookTitle').className = 'tight';
+  $('hookSub').textContent = N + ' notes · ' + INSTRUMENT + ' · one listen';
+  $('revealSub').textContent = 'In ' + C.key + ' · Level ' + C.level + ' of 9';
+  $('tag').textContent = 'Ear challenge #' + C.id;
+  $('follow').textContent = 'Follow for challenge #' + (C.id + 1);
+
+  // --- LISTEN: pulse rings + one dot per note (count only — no pitch, no rhythm) ----------------
+  const rings = C.notes.map(() => div('ring', $('rings')));
+  const dots = C.notes.map(() => div('dot', $('dots')));
+
+  // --- REVEAL: note chips + a two-octave keyboard -----------------------------------------------
+  const chips = C.notes.map(n => { const e = div('nchip', $('chips')); e.textContent = n.name; return e; });
+
+  const WHITE_PCS = [0, 2, 4, 5, 7, 9, 11];
+  const lo = Math.floor(Math.min(...C.notes.map(n => n.midi)) / 12) * 12;
+  if (Math.max(...C.notes.map(n => n.midi)) >= lo + 24) throw new Error('melody does not fit the two-octave keyboard');
+  const WW = 832 / 14, BW = WW * 0.62;
+  const keyEl = {};
+  let wi = 0;
+  for (let m = lo; m < lo + 24; m++) {
+    const pc = m % 12;
+    if (WHITE_PCS.includes(pc)) {
+      const k = div('wk', $('kb'));
+      k.style.left = wi * WW + 1.5 + 'px'; k.style.width = WW - 3 + 'px';
+      if (pc === 0) { const c = div('c', k); c.textContent = 'C' + (Math.floor(m / 12) - 1); }
+      keyEl[m] = k; wi++;
+    } else {
+      const k = div('bk', $('kb'));
+      k.style.left = wi * WW - BW / 2 + 'px'; k.style.width = BW + 'px';
+      keyEl[m] = k;
+    }
+  }
+  const isBlack = m => !WHITE_PCS.includes(m % 12);
+  function paintKey(m, state, glow) {
+    const k = keyEl[m];
+    const idle = isBlack(m) ? '#0f101b' : 'rgba(233,233,237,0.16)';
+    k.style.background = state === 'cur' ? (isBlack(m) ? BRIGHT : ACCENT) : state === 'trail' ? TRAIL : idle;
+    k.style.boxShadow = state === 'cur' ? '0 0 ' + Math.round(54 * glow + 10) + 'px rgba(145,132,217,0.8)' : 'none';
+  }
+
+  const phases = [
+    ['top', 0, END], ['hHook', 0, TL.turnAt], ['sListen', 0, TL.turnAt],
+    ['hTurn', TL.turnAt, TL.turnEnd], ['sTurn', TL.turnAt, TL.turnEnd],
+    ['hReveal', TL.turnEnd, END], ['sReveal', TL.turnEnd, END],
+  ].map(([id, a, b]) => [$(id), a, b]);
+  const reveals = [...document.querySelectorAll('[data-in]')];
+  [TL.outroAt + 0.45, TL.outroAt + 0.65, TL.outroAt + 0.85, TL.outroAt + 1.0].forEach((at, i) => { reveals[i].dataset.in = at; });
+
+  window.renderAt = function (t) {
+    // phase groups: the hook is already on screen at t=0 (it doubles as the thumbnail), the end card fades in last
+    for (const [el, a, b] of phases) el.style.opacity = a === 0 ? 1 - ease(seg(t, b - 0.35, b)) : vis(t, a, b);
+    $('outro').style.opacity = ease(seg(t, END, END + 0.5));
+    for (const el of reveals) {
+      const p = ease(seg(t, +el.dataset.in, +el.dataset.in + 0.55));
+      el.style.opacity = p;
+      el.style.transform = p < 1 ? 'translateY(' + (1 - p) * 30 + 'px)' : 'none';
+      el.style.filter = p < 1 ? 'blur(' + (1 - p) * 10 + 'px)' : 'none';
+    }
+    $('glow').style.opacity = 0.75 + 0.25 * Math.sin(t * 1.6);
+
+    // LISTEN
+    const on = i => TL.listenAt + TL.notes[i].onset;
+    let last = -1;
+    C.notes.forEach((_, i) => { if (t >= on(i)) last = i; });
+    rings.forEach((r, i) => {
+      const p = seg(t, on(i), on(i) + 1.0);
+      r.style.opacity = t >= on(i) ? 0.55 * (1 - ease(p)) : 0;
+      r.style.transform = 'scale(' + (1 + 1.1 * ease(p)) + ')';
+    });
+    dots.forEach((d, i) => {
+      const lit = t >= on(i);
+      const pop = 1 - ease(seg(t, on(i), on(i) + 0.4));
+      d.style.background = lit ? ACCENT : 'rgba(233,233,237,0.14)';
+      d.style.transform = 'scale(' + (1 + 0.5 * pop) + ')';
+      d.style.boxShadow = lit ? '0 0 ' + Math.round(26 * pop) + 'px rgba(145,132,217,0.9)' : 'none';
+    });
+    const pulse = last >= 0 ? Math.exp(-(t - on(last)) * 6) : 0;
+    $('logo').style.transform = 'scale(' + (1 + 0.07 * pulse + 0.015 * Math.sin(t * 2.2)) + ')';
+
+    // TURN
+    const left = TL.turnEnd - t;
+    const shown = clamp(Math.ceil(left), 1, Math.ceil(TL.turn));
+    const lastTick = Math.max(...TL.ticks.filter(x => x <= t), TL.turnAt);
+    $('num').textContent = shown;
+    $('num').style.transform = 'scale(' + (1 + 0.14 * (1 - ease(seg(t, lastTick, lastTick + 0.3)))) + ')';
+    $('num').style.color = shown === 1 ? '#c2a190' : BRIGHT;
+    const C2 = 2 * Math.PI * 206;
+    $('arc').style.strokeDasharray = C2;
+    $('arc').style.strokeDashoffset = C2 * (1 - clamp(left / TL.turn));
+
+    // REVEAL
+    let cur = -1;
+    C.notes.forEach((_, i) => { if (t >= TL.revealAt + TL.notes[i].onset) cur = i; });
+    const glow = cur >= 0 ? 1 - seg(t, TL.revealAt + TL.notes[cur].onset, TL.revealAt + TL.notes[cur].onset + 0.6) : 0;
+    chips.forEach((c, i) => {
+      const state = i === cur ? 'cur' : i < cur ? 'trail' : 'idle';
+      c.style.background = state === 'cur' ? ACCENT : state === 'trail' ? 'rgba(145,132,217,0.2)' : 'transparent';
+      c.style.borderColor = state === 'idle' ? 'rgba(233,233,237,0.12)' : ACCENT;
+      c.style.color = state === 'cur' ? '#fff' : state === 'trail' ? BRIGHT : IDLE_CHIP;
+      c.style.transform = state === 'cur' ? 'scale(' + (1 + 0.08 * glow) + ')' : 'none';
+      c.style.boxShadow = state === 'cur' ? '0 0 ' + Math.round(44 * glow) + 'px rgba(145,132,217,0.7)' : 'none';
+    });
+    for (const m in keyEl) {
+      const played = C.notes.some((n, i) => n.midi === +m && i <= cur);
+      const isCur = cur >= 0 && C.notes[cur].midi === +m;
+      paintKey(+m, isCur ? 'cur' : played ? 'trail' : 'idle', glow);
+    }
+  };
+
+  window.renderAt(0);
+</script>
+</body>
+</html>

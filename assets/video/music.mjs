@@ -4,104 +4,10 @@
 //
 // Timeline is on a 0.5 s grid (120 BPM) and must stay in step with slides.html:
 //   0–4 hook · 4–8 problem · 8–12 call (S3) · 12–20 call → reply → result (S4) · 20–24 instruments · 24–30 close
-import { writeFileSync } from 'node:fs';
+import { track, pluck, voice, keys, bell, pad, sub, writeWav } from './synth.mjs';
 
-const SR = 44100;
 const DUR = 30;
-const out = new Float32Array(SR * DUR);
-const hz = m => 440 * Math.pow(2, (m - 69) / 12);
-
-function mix(buf, start, gain = 1) {
-  const o = Math.round(start * SR);
-  for (let i = 0; i < buf.length && o + i < out.length; i++) out[o + i] += buf[i] * gain;
-}
-
-// --- voices -----------------------------------------------------------------------------------
-
-/** Karplus–Strong pluck (guitar-ish). */
-function pluck(m, dur, seed = 0x9e3779b9) {
-  const f = hz(m), total = Math.round(dur * SR), n = Math.max(2, Math.round(SR / f));
-  const d = new Float32Array(n);
-  let s = seed >>> 0;
-  const rnd = () => { s ^= s << 13; s ^= s >>> 17; s ^= s << 5; return ((s >>> 0) / 0xffffffff) * 2 - 1; };
-  for (let i = 0; i < n; i++) d[i] = rnd();
-  const o = new Float32Array(total);
-  let idx = 0;
-  for (let i = 0; i < total; i++) {
-    const c = d[idx], nx = d[(idx + 1) % n];
-    o[i] = c;
-    d[idx] = 0.5 * (c + nx) * 0.996;
-    idx = (idx + 1) % n;
-  }
-  const a = Math.min(total, Math.round(0.005 * SR)), r = Math.min(total, Math.round(0.05 * SR));
-  for (let i = 0; i < a; i++) o[i] *= i / a;
-  for (let i = 0; i < r; i++) o[total - 1 - i] *= i / r;
-  return o;
-}
-
-/** Hummed "voice": sine + soft 2nd/3rd harmonic with gentle vibrato and a slow attack. */
-function voice(m, dur) {
-  const f = hz(m), total = Math.round(dur * SR), o = new Float32Array(total);
-  let ph = 0;
-  for (let i = 0; i < total; i++) {
-    const t = i / SR;
-    const vib = 1 + 0.004 * Math.sin(2 * Math.PI * 5.4 * t) * Math.min(1, t / 0.4);
-    ph += (2 * Math.PI * f * vib) / SR;
-    const env = Math.min(1, t / 0.07) * Math.min(1, (dur - t) / 0.12) * Math.exp(-0.5 * t);
-    o[i] = env * (Math.sin(ph) + 0.28 * Math.sin(2 * ph) + 0.1 * Math.sin(3 * ph));
-  }
-  return o;
-}
-
-/** Soft piano-ish tone: a few decaying partials. */
-function keys(m, dur) {
-  const f = hz(m), total = Math.round(dur * SR), o = new Float32Array(total);
-  const parts = [[1, 1, 2.2], [2, 0.5, 3.0], [3, 0.25, 4.0], [4, 0.12, 5.5]];
-  for (let i = 0; i < total; i++) {
-    const t = i / SR;
-    let v = 0;
-    for (const [k, a, dec] of parts) v += a * Math.sin(2 * Math.PI * f * k * t) * Math.exp(-dec * t);
-    o[i] = v * Math.min(1, t / 0.004) * Math.min(1, (dur - t) / 0.08);
-  }
-  return o;
-}
-
-/** Glassy bell for the "it landed" chime. */
-function bell(m, dur) {
-  const f = hz(m), total = Math.round(dur * SR), o = new Float32Array(total);
-  for (let i = 0; i < total; i++) {
-    const t = i / SR;
-    o[i] = (Math.sin(2 * Math.PI * f * t) + 0.35 * Math.sin(2 * Math.PI * f * 2.76 * t) * Math.exp(-4 * t)) *
-      Math.exp(-2.6 * t) * Math.min(1, t / 0.003);
-  }
-  return o;
-}
-
-/** Pad: two slightly detuned sines per note, slow attack/release. */
-function pad(notes, dur) {
-  const total = Math.round(dur * SR), o = new Float32Array(total);
-  const A = 0.6, R = 0.7;
-  for (const m of notes) {
-    const f = hz(m);
-    for (const det of [-0.0018, 0.0018]) {
-      for (let i = 0; i < total; i++) {
-        const t = i / SR;
-        const env = Math.min(1, t / A) * Math.min(1, (dur - t) / R);
-        o[i] += env * Math.sin(2 * Math.PI * f * (1 + det) * t) * 0.5;
-      }
-    }
-  }
-  return o;
-}
-
-function sub(m, dur) {
-  const f = hz(m), total = Math.round(dur * SR), o = new Float32Array(total);
-  for (let i = 0; i < total; i++) {
-    const t = i / SR;
-    o[i] = Math.sin(2 * Math.PI * f * t) * Math.min(1, t / 0.05) * Math.min(1, (dur - t) / 0.4);
-  }
-  return o;
-}
+const { out, mix } = track(DUR);
 
 // --- score ------------------------------------------------------------------------------------
 
@@ -138,17 +44,5 @@ mix(bell(74, 2.5), 24.4, 0.22);
 mix(bell(81, 3.0), 28.0, 0.18);
 
 // --- master -----------------------------------------------------------------------------------
-let peak = 0;
-for (const v of out) peak = Math.max(peak, Math.abs(v));
-const g = 0.8 / (peak || 1);
-const pcm = new Int16Array(out.length);
-for (let i = 0; i < out.length; i++) pcm[i] = Math.round(Math.max(-1, Math.min(1, out[i] * g)) * 32767);
-
-const buf = Buffer.alloc(44 + pcm.length * 2);
-buf.write('RIFF', 0); buf.writeUInt32LE(36 + pcm.length * 2, 4); buf.write('WAVEfmt ', 8);
-buf.writeUInt32LE(16, 16); buf.writeUInt16LE(1, 20); buf.writeUInt16LE(1, 22);
-buf.writeUInt32LE(SR, 24); buf.writeUInt32LE(SR * 2, 28); buf.writeUInt16LE(2, 32); buf.writeUInt16LE(16, 34);
-buf.write('data', 36); buf.writeUInt32LE(pcm.length * 2, 40);
-Buffer.from(pcm.buffer).copy(buf, 44);
-writeFileSync(process.argv[2] ?? 'music.wav', buf);
+const peak = writeWav(process.argv[2] ?? 'music.wav', out);
 console.log(`wrote ${process.argv[2] ?? 'music.wav'} (${DUR}s, pre-master peak ${peak.toFixed(2)})`);

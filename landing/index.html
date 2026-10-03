@@ -247,6 +247,60 @@
   }
   .demo-foot .missed { color: var(--muted-soft); }
 
+  /* ---------- promo video ---------- */
+  .watch { padding-top: 0; }
+  .watch-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 340px);
+    gap: clamp(40px, 7vw, 96px);
+    align-items: center;
+  }
+  .watch .lead { margin: 16px 0 0; max-width: 46ch; font-size: 17px; }
+  .player {
+    position: relative;
+    margin: 0;
+    width: 100%;
+    max-width: 340px;
+    justify-self: end;
+    aspect-ratio: 9 / 16;
+    border-radius: 28px;
+    overflow: hidden;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    box-shadow: 0 40px 90px -40px rgba(145, 132, 217, 0.45), 0 24px 60px -30px rgba(0, 0, 0, 0.7);
+  }
+  .player video { display: block; width: 100%; height: 100%; object-fit: cover; background: var(--bg); }
+  /* Poster-state play button: hidden without JS (native controls take over), hidden once playing. */
+  .player .play {
+    display: none;
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    place-items: end center;      /* disc sits in the lower third, clear of the poster's headline */
+    padding: 0 0 84px; border: 0; cursor: pointer;
+    background: linear-gradient(180deg, rgba(22, 24, 38, 0) 55%, rgba(22, 24, 38, 0.6));
+    color: var(--accent-bright);
+    font-family: inherit;
+  }
+  .js .player:not(.started) .play { display: grid; }
+  .play:focus-visible { outline: 2px solid var(--accent); outline-offset: -4px; }
+  .play-disc {
+    width: 76px; height: 76px; border-radius: 50%;
+    display: grid; place-items: center;
+    background: rgba(22, 24, 38, 0.72);
+    border: 1px solid var(--accent);
+    box-shadow: 0 0 32px rgba(145, 132, 217, 0.45);
+    backdrop-filter: blur(6px);
+    transition: transform 0.18s ease, background 0.18s ease;
+  }
+  .play:hover .play-disc { transform: scale(1.06); background: var(--accent-tint-2); }
+  .play-disc svg { width: 28px; height: 28px; margin-left: 4px; }
+  .play-hint {
+    position: absolute; left: 0; right: 0; bottom: 22px;
+    text-align: center;
+    font-size: 12px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--text);
+  }
+
   /* ---------- generic section ---------- */
   section { padding: clamp(64px, 9vw, 104px) 0; }
   .section-head { margin-bottom: 44px; }
@@ -371,6 +425,8 @@
     .hero-grid { grid-template-columns: 1fr; gap: 40px; }
     .demo-card { max-width: 440px; }
     .cta-card { grid-template-columns: 1fr; gap: 32px; }
+    .watch-grid { grid-template-columns: 1fr; gap: 36px; }
+    .player { justify-self: start; }
   }
   @media (max-width: 720px) {
     .grid-3 { grid-template-columns: 1fr; }
@@ -445,6 +501,33 @@
             <span class="missed">G3 missed</span>
           </div>
         </div>
+      </div>
+    </section>
+
+    <!-- ===================== PROMO VIDEO ===================== -->
+    <section class="watch" aria-labelledby="watch-title">
+      <div class="container watch-grid">
+        <div class="reveal">
+          <span class="eyebrow">See it in 30 seconds</span>
+          <h2 class="section-title" id="watch-title">Hear the loop.</h2>
+          <p class="lead">
+            A short melody plays. You play it back. We show exactly which notes landed
+            &mdash; and the next one gets a little harder. Sound on.
+          </p>
+        </div>
+
+        <figure class="player reveal" id="player">
+          <video id="promo" controls playsinline preload="none" poster="promo-poster.jpg"
+                 aria-label="Ear Warrior in 30 seconds: a melody plays, you play it back, and the app shows which notes landed.">
+            <source src="promo.mp4" type="video/mp4" />
+          </video>
+          <button class="play" id="promoPlay" type="button" aria-label="Play the 30-second promo with sound">
+            <span class="play-disc" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12.5-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5z"/></svg>
+            </span>
+            <span class="play-hint" aria-hidden="true">30 sec &middot; sound on</span>
+          </button>
+        </figure>
       </div>
     </section>
 
@@ -629,6 +712,23 @@
   } else {
     document.querySelectorAll(".reveal").forEach(function (el) { el.classList.add("in"); });
   }
+
+  // Promo video: click-to-play, because browsers block autoplay with sound and the promo has music.
+  // Without JS the native controls stay visible; with JS they appear after the first play.
+  var player = document.getElementById("player");
+  var promo = document.getElementById("promo");
+  promo.controls = false;
+  document.getElementById("promoPlay").addEventListener("click", function () {
+    player.classList.add("started");
+    promo.controls = true;
+    var p = promo.play();
+    if (p && p.catch) p.catch(function () { player.classList.remove("started"); promo.controls = false; });
+  });
+  promo.addEventListener("ended", function () {
+    promo.currentTime = 0;           // back to the hook frame
+    promo.controls = false;
+    player.classList.remove("started");
+  });
 
   // Notify form — front-end only. Wire this up to your list provider:
   //   TODO: POST { email } to your backend / ESP (ConvertKit, Mailchimp, Resend, …).

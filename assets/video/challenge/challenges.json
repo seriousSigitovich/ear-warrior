@@ -1,0 +1,197 @@
+[
+  {
+    "id": 1,
+    "level": 1,
+    "seed": 2,
+    "timbre": "pluck",
+    "tempoBpm": 90,
+    "hook": "Can you play\nthis *by ear?*",
+    "scale": "major pentatonic",
+    "tonicPc": 7,
+    "minor": false,
+    "key": "G major pentatonic",
+    "notes": [
+      {
+        "midi": 62,
+        "name": "D4",
+        "beats": 1
+      },
+      {
+        "midi": 64,
+        "name": "E4",
+        "beats": 1
+      },
+      {
+        "midi": 67,
+        "name": "G4",
+        "beats": 2
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "level": 2,
+    "seed": 3,
+    "timbre": "keys",
+    "tempoBpm": 90,
+    "hook": "Think your ear\nis *good?*",
+    "scale": "major pentatonic",
+    "tonicPc": 0,
+    "minor": false,
+    "key": "C major pentatonic",
+    "notes": [
+      {
+        "midi": 67,
+        "name": "G4",
+        "beats": 0.5
+      },
+      {
+        "midi": 69,
+        "name": "A4",
+        "beats": 0.5
+      },
+      {
+        "midi": 67,
+        "name": "G4",
+        "beats": 1
+      },
+      {
+        "midi": 72,
+        "name": "C5",
+        "beats": 2
+      }
+    ]
+  },
+  {
+    "id": 3,
+    "level": 3,
+    "seed": 1,
+    "timbre": "pluck",
+    "tempoBpm": 110,
+    "hook": "Sounds easy.\n*Play it back.*",
+    "scale": "major pentatonic",
+    "tonicPc": 0,
+    "minor": false,
+    "key": "C major pentatonic",
+    "notes": [
+      {
+        "midi": 67,
+        "name": "G4",
+        "beats": 0.5
+      },
+      {
+        "midi": 64,
+        "name": "E4",
+        "beats": 0.5
+      },
+      {
+        "midi": 62,
+        "name": "D4",
+        "beats": 2
+      },
+      {
+        "midi": 67,
+        "name": "G4",
+        "beats": 0.5
+      },
+      {
+        "midi": 64,
+        "name": "E4",
+        "beats": 0.5
+      },
+      {
+        "midi": 60,
+        "name": "C4",
+        "beats": 2
+      }
+    ]
+  },
+  {
+    "id": 4,
+    "level": 5,
+    "seed": 3,
+    "timbre": "keys",
+    "tempoBpm": 90,
+    "hook": "No tabs.\nNo sheet music.\n*Just your ear.*",
+    "scale": "major",
+    "tonicPc": 0,
+    "minor": false,
+    "key": "C major",
+    "notes": [
+      {
+        "midi": 67,
+        "name": "G4",
+        "beats": 0.5
+      },
+      {
+        "midi": 69,
+        "name": "A4",
+        "beats": 0.5
+      },
+      {
+        "midi": 67,
+        "name": "G4",
+        "beats": 1
+      },
+      {
+        "midi": 69,
+        "name": "A4",
+        "beats": 0.5
+      },
+      {
+        "midi": 71,
+        "name": "B4",
+        "beats": 0.5
+      },
+      {
+        "midi": 72,
+        "name": "C5",
+        "beats": 2
+      }
+    ]
+  },
+  {
+    "id": 5,
+    "level": 7,
+    "seed": 6,
+    "timbre": "voice",
+    "tempoBpm": 90,
+    "hook": "Minor key.\n*One listen.*",
+    "scale": "natural minor",
+    "tonicPc": 9,
+    "minor": true,
+    "key": "A natural minor",
+    "notes": [
+      {
+        "midi": 64,
+        "name": "E4",
+        "beats": 0.5
+      },
+      {
+        "midi": 67,
+        "name": "G4",
+        "beats": 0.5
+      },
+      {
+        "midi": 65,
+        "name": "F4",
+        "beats": 1
+      },
+      {
+        "midi": 64,
+        "name": "E4",
+        "beats": 0.5
+      },
+      {
+        "midi": 67,
+        "name": "G4",
+        "beats": 0.5
+      },
+      {
+        "midi": 69,
+        "name": "A4",
+        "beats": 2
+      }
+    ]
+  }
+]
