@@ -33,6 +33,14 @@ module.exports = async (req, res) => {
     return res.status(400).json({ ok: false, error: 'invalid_email' });
   }
 
+  // Where the signup came from (e.g. "tiktok:ode"); the page already sanitises it, repeat here
+  // because the body is client-controlled. The backend column caps at 64 chars.
+  const source =
+    String(body.source || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9_.:-]/g, '')
+      .slice(0, 60) || 'landing';
+
   // Simplest path: email the signup to the owner over SMTP (e.g. Gmail + an app password).
   if (process.env.SMTP_USER && process.env.SMTP_PASS) {
     try {
@@ -48,7 +56,7 @@ module.exports = async (req, res) => {
         to: process.env.NOTIFY_TO || process.env.SMTP_USER,
         replyTo: email,
         subject: `New signup: ${email}`,
-        text: `${email}\n\nsource: landing\nua: ${String(req.headers['user-agent'] || '').slice(0, 200)}`,
+        text: `${email}\n\nsource: ${source}\nua: ${String(req.headers['user-agent'] || '').slice(0, 200)}`,
       });
       return res.status(200).json({ ok: true });
     } catch (err) {
@@ -70,7 +78,7 @@ module.exports = async (req, res) => {
         'Content-Type': 'application/json',
         'User-Agent': String(req.headers['user-agent'] || '').slice(0, 300),
       },
-      body: JSON.stringify({ email, source: 'landing' }),
+      body: JSON.stringify({ email, source }),
     });
 
     if (r.ok) {
