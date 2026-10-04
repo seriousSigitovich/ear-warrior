@@ -344,18 +344,43 @@
 </div>
 
 <script>
+  // Engagement tracking in Vercel Web Analytics. Custom events (va('event')) are Pro-only, so each
+  // milestone is sent as a virtual page view on /e/<name>; it then shows up in Analytics -> Pages
+  // with its unique visitors (e.g. /e/video-play), and sessions that engage stop counting as bounces.
+  // Fired at most once per page load, and only after the Vercel script is ready: it replays queued
+  // calls before its own first page view, which would wrongly give that view the virtual path.
+  var fired = {};
+  function track(name) {
+    if (fired[name]) return;
+    fired[name] = true;
+    var tries = 0;
+    (function send() {
+      if (window.vai || ++tries > 20) {
+        try { window.va && window.va("pageview", { route: "/e/" + name, path: "/e/" + name }); } catch (e) {}
+      } else {
+        setTimeout(send, 250);
+      }
+    })();
+  }
+
   // Promo video: click-to-play, because browsers block autoplay with sound and the promo has music.
   // Without JS the native controls stay visible; with JS they appear after the first play.
   var player = document.getElementById("player");
   var promo = document.getElementById("promo");
   promo.controls = false;
+  document.getElementById("email").addEventListener("focus", function () { track("email-focus"); }, { once: true });
+  promo.addEventListener("timeupdate", function () {
+    if (promo.duration && promo.currentTime / promo.duration >= 0.5) track("video-50");
+  });
   document.getElementById("promoPlay").addEventListener("click", function () {
+    track("video-play");
     player.classList.add("started");
     promo.controls = true;
     var p = promo.play();
     if (p && p.catch) p.catch(function () { player.classList.remove("started"); promo.controls = false; });
   });
   promo.addEventListener("ended", function () {
+    track("video-end");
     promo.currentTime = 0;           // back to the hook frame
     promo.controls = false;
     player.classList.remove("started");
@@ -402,6 +427,7 @@
         form.style.display = "none";
         document.getElementById("fineprint").style.display = "none";
         ok.classList.add("show");
+        track("signup-ok");
       })
       .catch(function () {
         btn.disabled = false;
