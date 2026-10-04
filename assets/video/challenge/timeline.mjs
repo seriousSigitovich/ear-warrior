@@ -24,7 +24,26 @@ export function melodyTiming(c) {
   return { notes, length: beat * sec };
 }
 
+// --- series videos (classics.mjs, kind "quiz") ------------------------------------------------------------
+//   melody from frame 0 → "write the notes in the comments" while it plays again, slower → "new melody in the next Short"
+// No countdown and no reveal, and no fixed length: the Short is as long as the melody needs (≈ 2.7×melody + 4 s),
+// which keeps short phrases short and lets Shorts loop straight back into the melody.
+const SERIES_SLOW = 0.7;   // the second playing runs at this fraction of the tempo — time to catch each note
+const SERIES_GAP = 0.8;    // between the first and the second playing: the headline swaps here
+const SERIES_TAIL = 0.5;   // let the last note ring before the end card
+const SERIES_OUTRO = 3.0;  // end card: long enough to read "new melody in the next Short → subscribe"
+
+function seriesTimeline(c) {
+  const { notes, length } = melodyTiming(c);
+  const slow = melodyTiming({ ...c, tempoBpm: c.tempoBpm * SERIES_SLOW });
+  const againAt = length + SERIES_GAP;
+  const outroAt = againAt + slow.length + SERIES_TAIL;
+  const dur = Math.ceil((outroAt + SERIES_OUTRO) * 30) / 30; // whole frames
+  return { notes, length, againNotes: slow.notes, againLength: slow.length, listenAt: 0, againAt, outroAt, dur };
+}
+
 export function timeline(c) {
+  if (c.kind === 'quiz') return seriesTimeline(c);
   const { notes, length } = melodyTiming(c);
   const hook = c.coldOpen ? 0 : HOOK;
   const listenAt = hook;

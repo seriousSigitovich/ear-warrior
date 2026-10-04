@@ -1,7 +1,8 @@
 // Renders challenge videos: slides.html frame-by-frame in headless Chrome, muxed with score.mjs's soundtrack.
 //   node render.mjs stills <id> <outDir> 0,2.5,...   → PNG per timestamp (layout review)
-//   node render.mjs video  <id|all> [outDir]         → 1080x1920 30 fps H.264 + AAC, ear-challenge-NN.mp4 (default ./out)
-// Needs puppeteer-core (NODE_PATH) and the system Chrome + ffmpeg. Melodies come from challenges.json.
+//   node render.mjs video  <id|series|all> [outDir]  → 1080x1920 30 fps H.264 + AAC, ear-challenge-NN.mp4 (default ./out)
+// Needs puppeteer-core (NODE_PATH) and the system Chrome + ffmpeg. Melodies come from challenges.json (generator,
+// ids 1–7) and classics.mjs (famous tunes, ids 8+; `series` = all of those).
 import { createRequire } from 'node:module';
 import { spawn } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync } from 'node:fs';
@@ -10,6 +11,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { renderScore } from './score.mjs';
 import { timeline } from './timeline.mjs';
+import { CLASSICS } from './classics.mjs';
 
 // ESM ignores NODE_PATH; a CommonJS require honours it.
 const puppeteer = createRequire(import.meta.url)('puppeteer-core');
@@ -19,10 +21,12 @@ const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const FPS = 30, W = 1080, H = 1920;
 const challenges = JSON.parse(readFileSync(join(here, 'challenges.json'), 'utf8'));
 
+const pool = [...challenges, ...CLASSICS];
+
 const [mode, which, arg1, arg2] = process.argv.slice(2);
-const pick = which === 'all' ? challenges : challenges.filter(c => c.id === +which);
+const pick = which === 'all' ? pool : which === 'series' ? CLASSICS : pool.filter(c => c.id === +which);
 if (!['stills', 'video'].includes(mode) || !pick.length) {
-  console.error('usage: render.mjs stills <id> <dir> t1,t2,... | video <id|all> [dir]');
+  console.error('usage: render.mjs stills <id> <dir> t1,t2,... | video <id|series|all> [dir]');
   process.exit(1);
 }
 
@@ -71,7 +75,7 @@ if (mode === 'stills') {
     const done = new Promise((res, rej) => { ff.on('close', code => (code === 0 ? res() : rej(new Error('ffmpeg exited ' + code)))); });
 
     const page = await open(c);
-    const total = FPS * dur;
+    const total = Math.round(FPS * dur);
     for (let f = 0; f < total; f++) {
       await page.evaluate(t => window.renderAt(t), f / FPS);
       const png = await page.screenshot({ type: 'png' });

@@ -16,15 +16,33 @@ const TIMBRES = {
   voice: { make: (m, dur) => voice(m, dur), gain: 0.55, tail: 0.05 },
 };
 
+// Series videos: the melody sounds on frame 0 — no whoosh, no lead-in, nothing before the first note.
+// Both playings are dry (a tonic bed would be a hint); the end card gets the tonic bell arpeggio.
+function scoreSeries(c, tl, mix, playMelody) {
+  const third = c.minor ? 3 : 4;
+  playMelody(tl.listenAt);
+
+  mix(whoosh(0.4), tl.againAt - 0.4, 0.1);
+  playMelody(tl.againAt, tl.againNotes); // slower, so every note can be caught
+
+  const top = 60 + c.tonicPc;
+  [top, top + third, top + 7].forEach((m, i) => mix(bell(m, 2.2), tl.outroAt + 0.05 + i * 0.09, 0.3));
+}
+
 export function renderScore(c, path) {
   const tl = timeline(c);
   const { out, mix } = track(tl.dur);
   const T = TIMBRES[c.timbre];
 
-  const playMelody = at => c.notes.forEach((n, i) => {
-    const { onset, dur } = tl.notes[i];
+  const playMelody = (at, timing = tl.notes) => c.notes.forEach((n, i) => {
+    const { onset, dur } = timing[i];
     mix(T.make(n.midi, dur + T.tail, i), at + onset, T.gain);
   });
+
+  if (c.kind === 'quiz') {
+    scoreSeries(c, tl, mix, playMelody);
+    return writeWav(path, out);
+  }
 
   if (tl.listenAt >= 0.45) mix(whoosh(0.45), tl.listenAt - 0.45, 0.1);
   playMelody(tl.listenAt);

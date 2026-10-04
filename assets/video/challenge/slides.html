@@ -17,6 +17,10 @@
   coldOpen in timeline.mjs): the keyboard is on screen from frame 0, the headline is large, and every note
   just pulses the keyboard's frame — still no hint about which key.
 
+  Series videos (classics.mjs, kind "quiz") reuse the keyboard layout with their own timeline (timeline.mjs,
+  seriesTimeline) and `body.ser` rules: the hook headline + the melody from frame 0 → "write the notes in the
+  comments" + the melody again → end card.
+
   Palette mirrors src/theme/nocturne.ts, landing/index.html and the promo.
 -->
 <style>
@@ -102,6 +106,15 @@
   body.keys .wk { height: 400px; }
   body.keys .bk { height: 250px; }
 
+  /* SERIES: same keyboard layout; a taller headline zone whose lines are each fitted to the column (fitLines). */
+  .ln { display: block; white-space: nowrap; line-height: 1.04; letter-spacing: -0.035em; } /* em on the line itself, so it scales with fitLines */
+  body.ser .head { top: 330px; }
+  body.ser .head h1 { line-height: 1.04; white-space: normal; }
+  body.ser .head .sub { font-size: 48px; margin-top: 26px; }
+  body.ser #dots { top: 940px; }
+  body.ser #outro h1 { font-size: 128px; }
+  body.ser .pill { font-size: 54px; padding: 34px 70px; margin-top: 56px; }
+
   /* OUTRO */
   #outro { display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 230px 96px 340px; }
   #outro h1 { font-size: 112px; }
@@ -124,7 +137,7 @@
 </header>
 
 <section class="grp head" id="hHook"><h1 id="hookTitle"></h1><div class="sub" id="hookSub"></div></section>
-<section class="grp head" id="hTurn"><h1>Your <em>turn.</em></h1><div class="sub" id="turnSub">0 listens left.<br>Play it on any instrument, or hum it.</div></section>
+<section class="grp head" id="hTurn"><h1 id="turnTitle">Your <em>turn.</em></h1><div class="sub" id="turnSub">0 listens left.<br>Play it on any instrument, or hum it.</div></section>
 <section class="grp head" id="hReveal"><h1>The <em>answer.</em></h1><div class="sub" id="revealSub"></div></section>
 
 <section class="grp full" id="sListen">
@@ -146,10 +159,10 @@
 <section class="grp full" id="kbCard"><div id="kb"></div></section>
 
 <section class="grp full" id="outro">
-  <h1 data-in="0">How many notes<br><em>did you get?</em></h1>
-  <div class="sub" data-in="0">Drop your score in the comments.</div>
+  <h1 data-in="0" id="outroTitle">How many notes<br><em>did you get?</em></h1>
+  <div class="sub" data-in="0" id="outroSub">Drop your score in the comments.</div>
   <div class="pill" data-in="0" id="follow"></div>
-  <div class="soon" data-in="0"><img src="../../brand/logo.png" alt=""><span>Coming soon · iOS &amp; Android</span></div>
+  <div class="soon" data-in="0"><img src="../../brand/logo.png" alt=""><span id="soonTxt">Coming soon · iOS &amp; Android</span></div>
 </section>
 
 <script>
@@ -166,9 +179,12 @@
   const ACCENT = '#9184d9', BRIGHT = '#b5abfc';
   const TRAIL = 'rgba(145,132,217,0.42)';
   const IDLE_CHIP = 'rgba(233,233,237,0.6)';
-  const END = TL.outroAt + 0.4; // everything but the end card is gone by here
+  const SER = C.kind === 'quiz';
+  const END = SER ? TL.outroAt : TL.outroAt + 0.4; // everything but the end card is gone by here
   const KEYS = C.layout === 'keyboard';
   document.body.classList.toggle('keys', KEYS);
+  document.body.classList.toggle('ser', SER);
+
 
   /** "No tabs.\nJust your *ear.*" → lines separated by <br>, *accented* words in <em>. */
   function rich(el, text) {
@@ -182,11 +198,31 @@
     });
   }
 
+  /** Like rich(), but every line is its own block so fitLines can size it on its own. */
+  function richLines(el, text) {
+    el.textContent = '';
+    text.split('\n').forEach(line => { const d = document.createElement('span'); d.className = 'ln'; rich(d, line); el.append(d); });
+  }
+  /** Poster-style headline: each line gets the largest size that fits the 888 px column (capped at maxPx), then the
+   *  whole block shrinks to fit maxH. Lines are explicit, so measure — don't wrap. */
+  function fitLines(el, maxH, maxPx = 168) {
+    const lines = [...el.children];
+    const sizes = lines.map(l => {
+      l.style.fontSize = '100px';
+      const r = document.createRange(); r.selectNodeContents(l);
+      return Math.min(maxPx, 100 * 888 / r.getBoundingClientRect().width);
+    });
+    const k = Math.min(1, maxH / sizes.reduce((sum, f) => sum + f * 1.04, 0));
+    lines.forEach((l, i) => { l.style.fontSize = Math.floor(sizes[i] * k) + 'px'; });
+  }
+
   // --- static copy ------------------------------------------------------------------------------
-  rich($('hookTitle'), C.hook);
-  if (C.hook.split('\n').length > 2) $('hookTitle').className = 'tight';
-  $('hookSub').textContent = N + ' notes · ' + INSTRUMENT + ' · one listen';
-  if (KEYS) {
+  if (!SER) {
+    rich($('hookTitle'), C.hook);
+    if (C.hook.split('\n').length > 2) $('hookTitle').className = 'tight';
+    $('hookSub').textContent = N + ' notes · ' + INSTRUMENT + ' · one listen';
+  }
+  if (KEYS && !SER) {
     $('turnSub').textContent = '0 listens left. Play it back.';
     // Fit the hook: no taller than the room above the dots, no wider than the column (lines are explicit, so measure, don't wrap).
     const h = $('hookTitle');
@@ -198,6 +234,16 @@
   $('revealSub').textContent = 'In ' + C.key + ' · Level ' + C.level + ' of 9';
   $('tag').textContent = 'Ear challenge #' + C.id;
   $('follow').textContent = 'Follow for challenge #' + (C.id + 1);
+
+  if (SER) {
+    richLines($('hookTitle'), C.hook); fitLines($('hookTitle'), 440);
+    $('hookSub').textContent = N + ' notes · listen closely';
+    richLines($('turnTitle'), 'Write the notes\n*in the comments*'); fitLines($('turnTitle'), 380);
+    $('turnSub').textContent = 'One more time, slower. Name each note.';
+    richLines($('outroTitle'), 'New melody\nin the next\n*Short*');
+    $('outroSub').textContent = 'Write your notes in the comments.';
+    $('follow').textContent = 'Subscribe →';
+  }
 
   // --- LISTEN: pulse rings + one dot per note (count only — no pitch, no rhythm) ----------------
   const rings = C.notes.map(() => div('ring', $('rings')));
@@ -248,14 +294,19 @@
     k.style.boxShadow = state === 'cur' ? '0 0 ' + Math.round(54 * glow + 10) + 'px rgba(145,132,217,0.8)' : 'none';
   }
 
-  const phases = [
+  // Series: the hook stays through the first playing, the "write the notes" headline takes over for the second.
+  const phases = (SER ? [
+    ['top', 0, END], ['hHook', 0, TL.againAt - 0.4], ['hTurn', TL.againAt - 0.4, END],
+    ['sListen', 0, END], ['kbCard', 0, END],
+  ] : [
     ['top', 0, END], ['hHook', 0, TL.turnAt], ['sListen', 0, TL.turnAt],
     ['hTurn', TL.turnAt, TL.turnEnd], ['sTurn', TL.turnAt, TL.turnEnd],
     ['hReveal', TL.turnEnd, END], ['sReveal', TL.turnEnd, END],
     ['kbCard', KEYS ? 0 : TL.turnEnd, END],
-  ].map(([id, a, b]) => [$(id), a, b]);
+  ]).map(([id, a, b]) => [$(id), a, b]);
   const reveals = [...document.querySelectorAll('[data-in]')];
-  [TL.outroAt + 0.45, TL.outroAt + 0.65, TL.outroAt + 0.85, TL.outroAt + 1.0].forEach((at, i) => { reveals[i].dataset.in = at; });
+  (SER ? [0.15, 0.4, 0.65, 0.9].map(d => END + d) : [TL.outroAt + 0.45, TL.outroAt + 0.65, TL.outroAt + 0.85, TL.outroAt + 1.0])
+    .forEach((at, i) => { reveals[i].dataset.in = at; });
 
   window.renderAt = function (t) {
     // phase groups: the hook is already on screen at t=0 (it doubles as the thumbnail), the end card fades in last
@@ -268,6 +319,7 @@
       el.style.filter = p < 1 ? 'blur(' + (1 - p) * 10 + 'px)' : 'none';
     }
     $('glow').style.opacity = 0.75 + 0.25 * Math.sin(t * 1.6);
+    if (SER) return renderSeries(t);
 
     // LISTEN
     const on = i => TL.listenAt + TL.notes[i].onset;
@@ -322,6 +374,29 @@
       paintKey(+m, isCur ? 'cur' : played ? 'trail' : 'idle', glow);
     }
   };
+
+  /** Series: the melody plays twice (listenAt, againAt); everything below is relative to the playing in progress. */
+  function renderSeries(t) {
+    const second = t >= TL.againAt - 0.15;
+    const start = second ? TL.againAt : TL.listenAt;
+    const notes = second ? TL.againNotes : TL.notes; // the second playing is slower
+    let cur = -1;
+    C.notes.forEach((_, i) => { if (t >= start + notes[i].onset) cur = i; });
+    const pulse = cur >= 0 ? Math.exp(-(t - (start + notes[cur].onset)) * 6) : 0;
+
+    // each note knocks on the keyboard's frame (no hint about which key)
+    $('kbCard').style.boxShadow = pulse > 0.01 ? '0 0 ' + Math.round(70 * pulse) + 'px rgba(145,132,217,' + 0.55 * pulse + ')' : 'none';
+    $('kbCard').style.borderColor = pulse > 0.01 ? 'rgba(145,132,217,' + (0.2 + 0.7 * pulse) + ')' : '';
+
+    // one dot per note — the count, nothing else
+    dots.forEach((d, i) => {
+      const lit = cur >= i;
+      const pop = lit && i === cur ? 1 - ease(seg(t, start + notes[i].onset, start + notes[i].onset + 0.4)) : 0;
+      d.style.background = lit ? ACCENT : 'rgba(233,233,237,0.14)';
+      d.style.transform = 'scale(' + (1 + 0.5 * pop) + ')';
+      d.style.boxShadow = lit ? '0 0 ' + Math.round(26 * pop) + 'px rgba(145,132,217,0.9)' : 'none';
+    });
+  }
 
   window.renderAt(0);
 </script>
