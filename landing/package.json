@@ -1,0 +1,5 @@
+{
+  "name": "ear-warrior-landing",
+  "private": true,
+  "dependencies": { "nodemailer": "^6.9.14" }
+}

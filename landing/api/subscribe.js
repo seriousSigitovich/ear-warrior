@@ -1,7 +1,8 @@
-// POST /api/subscribe { email } -> forwards to the Ear Warrior Node/Postgres backend.
+// POST /api/subscribe { email } -> validates, then forwards the email.
 // Zero dependencies: uses the global fetch of Vercel's Node runtime.
-// Config via env var on the Vercel project (Settings -> Environment Variables):
-//   API_URL  e.g. https://api.earwarrior.app   (the Fastify server in /server)
+// Config via env vars on the Vercel project (Settings -> Environment Variables), first one set wins:
+//   SMTP_USER, SMTP_PASS  (+ optional SMTP_HOST, NOTIFY_TO)  each signup is emailed to NOTIFY_TO (default: SMTP_USER)
+//   API_URL        e.g. https://api.earwarrior.app         (the Fastify server in /server)
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -30,6 +31,30 @@ module.exports = async (req, res) => {
     .toLowerCase();
   if (!EMAIL_RE.test(email) || email.length > 320) {
     return res.status(400).json({ ok: false, error: 'invalid_email' });
+  }
+
+  // Simplest path: email the signup to the owner over SMTP (e.g. Gmail + an app password).
+  if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+    try {
+      const nodemailer = require('nodemailer');
+      const transport = nodemailer.createTransport({
+        host: process.env.SMTP_HOST || 'smtp.gmail.com',
+        port: 465,
+        secure: true,
+        auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+      });
+      await transport.sendMail({
+        from: `Ear Warrior <${process.env.SMTP_USER}>`,
+        to: process.env.NOTIFY_TO || process.env.SMTP_USER,
+        replyTo: email,
+        subject: `New signup: ${email}`,
+        text: `${email}\n\nsource: landing\nua: ${String(req.headers['user-agent'] || '').slice(0, 200)}`,
+      });
+      return res.status(200).json({ ok: true });
+    } catch (err) {
+      console.error('smtp error', err);
+      return res.status(502).json({ ok: false, error: 'store_failed' });
+    }
   }
 
   const api = process.env.API_URL;
