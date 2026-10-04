@@ -3,4 +3,4 @@ User-agent: *
 Allow: /
 
 # TODO: replace the domain with your production URL.
-Sitemap: https://ear-warrior.app/sitemap.xml
+Sitemap: https://earwarrior.app/sitemap.xml
