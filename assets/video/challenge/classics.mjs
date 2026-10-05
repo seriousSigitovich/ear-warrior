@@ -49,6 +49,22 @@ const SERIES = [
   TWINKLE,
   // Experiment H5 (docs/experiments.md): #12 re-made with a guitar neck instead of the keyboard — only the picture differs.
   { ...TWINKLE, id: 13, title: 'Twinkle, Twinkle (fretboard)', layout: 'fretboard' },
+  // Experiment H6 (docs/experiments.md): the FULL tune (8 bars, 37 notes, ~13 s) instead of a 7–8 note phrase — the one deliberate
+  // exception to the ≤ ~5 s rule above; the Short runs ~37 s. Guitar sound + fretboard picture like #13; the difficulty is what's new.
+  {
+    id: 14, title: 'Korobeiniki', timbre: 'pluck', layout: 'fretboard', tempoBpm: 144, tonicPc: 9, minor: true, key: 'A minor',
+    hook: 'You know it.\nNow play\n*the whole thing*',
+    notes: [
+      'E5:1 B4:.5 C5:.5 D5:1 C5:.5 B4:.5',
+      'A4:1 A4:.5 C5:.5 E5:1 D5:.5 C5:.5',
+      'B4:1.5 C5:.5 D5:1 E5:1',
+      'C5:1 A4:1 A4:2',
+      'D5:1.5 F5:.5 A5:1 G5:.5 F5:.5',
+      'E5:1.5 C5:.5 E5:1 D5:.5 C5:.5',
+      'B4:1 B4:.5 C5:.5 D5:1 E5:1',
+      'C5:1 A4:1 A4:2',
+    ].join(' '),
+  },
 ].map(s => ({ kind: 'quiz', coldOpen: true, layout: 'keyboard', ...s, notes: parse(s.notes) }));
 
 export const CLASSICS = SERIES;

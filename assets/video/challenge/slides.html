@@ -119,6 +119,9 @@
   body.ser .head h1 { line-height: 1.04; white-space: normal; }
   body.ser .head .sub { font-size: 48px; margin-top: 26px; }
   body.ser #dots { top: 940px; }
+  /* long melodies (> 14 notes): small dots wrapped into the 888 px column so they don't run off the screen */
+  body.ser #dots.many { left: 96px; right: 96px; flex-wrap: wrap; gap: 12px; }
+  body.ser #dots.many .dot { width: 26px; height: 26px; }
   body.ser #outro h1 { font-size: 128px; }
   body.ser .pill { font-size: 54px; padding: 34px 70px; margin-top: 56px; }
 
@@ -257,6 +260,7 @@
   // --- LISTEN: pulse rings + one dot per note (count only — no pitch, no rhythm) ----------------
   const rings = C.notes.map(() => div('ring', $('rings')));
   const dots = C.notes.map(() => div('dot', $('dots')));
+  $('dots').classList.toggle('many', C.notes.length > 14);
 
   // --- REVEAL: note chips + a two-octave keyboard -----------------------------------------------
   const chips = C.notes.map(n => { const e = div('nchip', $('chips')); e.textContent = n.name; return e; });
