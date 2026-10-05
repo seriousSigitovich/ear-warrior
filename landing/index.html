@@ -238,7 +238,9 @@
     transition: transform 0.18s ease, background 0.18s ease;
   }
   .play:hover .play-disc { transform: scale(1.06); background: var(--accent-tint-2); }
-  .play-disc svg { width: 28px; height: 28px; margin-left: 4px; }
+  /* The path's centroid already sits on the disc centre; its bounding box is ~2.6px right of it.
+     1px splits the difference, which is what reads as centred for a play triangle. */
+  .play-disc svg { width: 28px; height: 28px; margin-left: 1px; }
   .play-hint {
     position: absolute; left: 0; right: 0; bottom: 22px;
     text-align: center;
