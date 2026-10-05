@@ -89,6 +89,13 @@
   #kb { position: relative; width: 832px; height: 360px; }
   .wk { position: absolute; top: 0; height: 360px; border-radius: 0 0 12px 12px; background: rgba(233, 233, 237, 0.16); }
   .bk { position: absolute; top: 0; height: 220px; border-radius: 0 0 10px 10px; background: #0f101b; border: 1px solid var(--line); border-top: none; }
+  /* FRETBOARD (series layout "fretboard"): drawn inside #kb (832×400 under body.keys) */
+  .neck { position: absolute; inset: 0; border-radius: 14px; background: #1b1c2b; border: 1px solid var(--line); overflow: hidden; }
+  .nut { position: absolute; left: 0; top: 0; bottom: 0; width: 14px; background: rgba(233, 233, 237, 0.7); }
+  .fretwire { position: absolute; top: 0; bottom: 0; width: 4px; background: rgba(233, 233, 237, 0.26); }
+  .inlay { position: absolute; width: 28px; height: 28px; border-radius: 50%; background: rgba(233, 233, 237, 0.14); }
+  .gstr { position: absolute; left: 0; right: 0; background: rgba(233, 233, 237, 0.55); }
+  .gstr[data-wound="1"] { background: rgba(194, 161, 144, 0.75); }
   .wk .c { position: absolute; left: 0; right: 0; bottom: 12px; text-align: center; font-size: 20px; color: var(--muted); }
 
   /* KEYBOARD LAYOUT: big headline, keyboard in frame the whole time (y 1060–1516), a mid zone for dots / countdown / chips. */
@@ -181,7 +188,9 @@
   const IDLE_CHIP = 'rgba(233,233,237,0.6)';
   const SER = C.kind === 'quiz';
   const END = SER ? TL.outroAt : TL.outroAt + 0.4; // everything but the end card is gone by here
-  const KEYS = C.layout === 'keyboard';
+  const FRET = C.layout === 'fretboard'; // series only: a guitar neck in the keyboard's slot, same headline zone and timing
+  const KEYS = C.layout === 'keyboard' || FRET;
+  if (FRET && !SER) throw new Error('layout "fretboard" is only built for series (kind "quiz") videos');
   document.body.classList.toggle('keys', KEYS);
   document.body.classList.toggle('ser', SER);
 
@@ -270,8 +279,8 @@
     const n = Math.min(14, Math.max(10, span + 4));
     return { start: whiteMidi(low - Math.floor((n - span) / 2)), n };
   }
-  const KB = keyWindow();
-  const WW = 832 / KB.n, BW = WW * 0.62;
+  const KB = FRET ? { start: 0, n: 0 } : keyWindow(); // n = 0 → the key loop below builds nothing
+  const WW = 832 / (KB.n || 1), BW = WW * 0.62;
   const keyEl = {};
   let wi = 0;
   for (let m = KB.start; wi < KB.n; m++) {
@@ -285,6 +294,28 @@
       const k = div('bk', $('kb'));
       k.style.left = wi * WW - BW / 2 + 'px'; k.style.width = BW + 'px';
       keyEl[m] = k;
+    }
+  }
+  // Fretboard (layout "fretboard"): 6 strings × 7 frets, nut on the left, real fret spacing (each fret 2^(-1/12) of
+  // the one before). Nothing is lit — like the keyboard, the picture gives no hint about which note is played;
+  // every note just rings the strings (see renderSeries).
+  const STRINGS = [];
+  if (FRET) {
+    const W = 832, H = 400, FRETS = 7, PAD = 44;
+    const span = 1 - Math.pow(2, -FRETS / 12);
+    const fx = n => (W - 14) * (1 - Math.pow(2, -n / 12)) / span + 14; // x of fret n's wire; the nut ends at 14
+    const board = div('neck', $('kb'));
+    const nut = div('nut', board);
+    for (let n = 1; n <= FRETS; n++) { const w = div('fretwire', board); w.style.left = fx(n) - 2 + 'px'; }
+    [3, 5, 7].forEach(n => { // inlay dots sit in the middle of the fret space
+      const d = div('inlay', board); d.style.left = (fx(n - 1) + fx(n)) / 2 - 14 + 'px'; d.style.top = H / 2 - 14 + 'px';
+    });
+    const gap = (H - 2 * PAD) / 5;
+    for (let s = 0; s < 6; s++) {
+      const e = div('gstr', board), th = 2 + s * 0.9; // low E is the thickest
+      e.style.top = PAD + s * gap - th / 2 + 'px'; e.style.height = th + 'px';
+      e.dataset.wound = s >= 3 ? '1' : '';
+      STRINGS.push(e);
     }
   }
   function paintKey(m, state, glow) {
@@ -387,6 +418,14 @@
     // each note knocks on the keyboard's frame (no hint about which key)
     $('kbCard').style.boxShadow = pulse > 0.01 ? '0 0 ' + Math.round(70 * pulse) + 'px rgba(145,132,217,' + 0.55 * pulse + ')' : 'none';
     $('kbCard').style.borderColor = pulse > 0.01 ? 'rgba(145,132,217,' + (0.2 + 0.7 * pulse) + ')' : '';
+
+    // fretboard: every note rings all the strings (a quick wobble that decays) — still no hint which one
+    STRINGS.forEach((s, i) => {
+      const wobble = pulse > 0.01 ? Math.sin((t - start) * 140 + i * 1.7) * 3.2 * pulse : 0;
+      s.style.transform = 'translateY(' + wobble + 'px)';
+      s.style.background = pulse > 0.01 ? 'rgba(181,171,252,' + (0.55 + 0.45 * pulse) + ')' : '';
+      s.style.boxShadow = pulse > 0.01 ? '0 0 ' + Math.round(26 * pulse) + 'px rgba(145,132,217,' + 0.8 * pulse + ')' : 'none';
+    });
 
     // one dot per note — the count, nothing else
     dots.forEach((d, i) => {

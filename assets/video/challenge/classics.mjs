@@ -18,6 +18,12 @@ function parse(str) {
 
 // `hook` : first-frame headline ("\n" = line break, *word* = accent). A dare, never naming the tune.
 // `timbre`: keys / pluck / voice (see score.mjs). Folk tunes get the guitar so the pair reads as "folk".
+const TWINKLE = {
+  id: 12, title: 'Twinkle, Twinkle', timbre: 'pluck', tempoBpm: 120, tonicPc: 0, minor: false, key: 'C major',
+  hook: 'Everyone\nknows this one.\n*Can you play it?*',
+  notes: 'C4:1 C4:1 G4:1 G4:1 A4:1 A4:1 G4:2',
+};
+
 const SERIES = [
   {
     id: 8, title: 'Ode to Joy', timbre: 'keys', tempoBpm: 120, tonicPc: 0, minor: false, key: 'C major',
@@ -40,11 +46,9 @@ const SERIES = [
     hook: 'Sounds\neasy?\n*Play it by ear*',
     notes: 'C4:1 D4:1 E4:1 C4:1 C4:1 D4:1 E4:1 C4:1',
   },
-  {
-    id: 12, title: 'Twinkle, Twinkle', timbre: 'pluck', tempoBpm: 120, tonicPc: 0, minor: false, key: 'C major',
-    hook: 'Everyone\nknows this one.\n*Can you play it?*',
-    notes: 'C4:1 C4:1 G4:1 G4:1 A4:1 A4:1 G4:2',
-  },
+  TWINKLE,
+  // Experiment H5 (docs/experiments.md): #12 re-made with a guitar neck instead of the keyboard — only the picture differs.
+  { ...TWINKLE, id: 13, title: 'Twinkle, Twinkle (fretboard)', layout: 'fretboard' },
 ].map(s => ({ kind: 'quiz', coldOpen: true, layout: 'keyboard', ...s, notes: parse(s.notes) }));
 
 export const CLASSICS = SERIES;
