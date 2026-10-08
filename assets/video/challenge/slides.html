@@ -185,7 +185,7 @@
   const vis = (t, a, b, f = 0.35) => ease(seg(t, a, a + f)) * (1 - ease(seg(t, b - f, b)));
 
   const C = window.CHALLENGE, TL = C.timeline, N = C.notes.length;
-  const INSTRUMENT = { pluck: 'Guitar', keys: 'Piano', voice: 'Voice' }[C.timbre];
+  const INSTRUMENT = { pluck: 'Guitar', keys: 'Piano', grand: 'Piano', voice: 'Voice' }[C.timbre];
   const ACCENT = '#9184d9', BRIGHT = '#b5abfc';
   const TRAIL = 'rgba(145,132,217,0.42)';
   const IDLE_CHIP = 'rgba(233,233,237,0.6)';
@@ -251,7 +251,7 @@
     richLines($('hookTitle'), C.hook); fitLines($('hookTitle'), 440);
     $('hookSub').textContent = N + ' notes · listen closely';
     richLines($('turnTitle'), 'Write the notes\n*in the comments*'); fitLines($('turnTitle'), 380);
-    $('turnSub').textContent = 'One more time, slower. Name each note.';
+    $('turnSub').textContent = TL.once ? 'Name each note.' : 'One more time, slower. Name each note.';
     richLines($('outroTitle'), 'New melody\nin the next\n*Short*');
     $('outroSub').textContent = 'Write your notes in the comments.';
     $('follow').textContent = 'Subscribe →';
@@ -412,7 +412,7 @@
 
   /** Series: the melody plays twice (listenAt, againAt); everything below is relative to the playing in progress. */
   function renderSeries(t) {
-    const second = t >= TL.againAt - 0.15;
+    const second = !TL.once && t >= TL.againAt - 0.15;
     const start = second ? TL.againAt : TL.listenAt;
     const notes = second ? TL.againNotes : TL.notes; // the second playing is slower
     let cur = -1;

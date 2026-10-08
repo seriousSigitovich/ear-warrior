@@ -49,7 +49,7 @@ module.exports = async (req, res) => {
   // A store outage must not lose the signup, so on failure we fall through to the other sinks.
   let stored = null;
   try {
-    stored = await addSignup(email);
+    stored = await addSignup(email, source);
   } catch (err) {
     console.error('store error', err);
   }

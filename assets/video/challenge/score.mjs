@@ -6,13 +6,14 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { track, pluck, voice, keys, bell, pad, sub, tick, whoosh, writeWav } from '../synth.mjs';
+import { track, pluck, voice, keys, grand, bell, pad, sub, tick, whoosh, writeWav } from '../synth.mjs';
 import { timeline } from './timeline.mjs';
 
 // `tail` is how long the tone is allowed to ring past the note's own length.
 const TIMBRES = {
   pluck: { make: (m, dur, i) => pluck(m, dur, 0x1234567 + i), gain: 0.8, tail: 0.9 },
   keys: { make: (m, dur) => keys(m, dur), gain: 0.6, tail: 0.5 },
+  grand: { make: (m, dur) => grand(m, dur), gain: 0.9, tail: 1.2 },
   voice: { make: (m, dur) => voice(m, dur), gain: 0.55, tail: 0.05 },
 };
 
@@ -22,8 +23,10 @@ function scoreSeries(c, tl, mix, playMelody) {
   const third = c.minor ? 3 : 4;
   playMelody(tl.listenAt);
 
-  mix(whoosh(0.4), tl.againAt - 0.4, 0.1);
-  playMelody(tl.againAt, tl.againNotes); // slower, so every note can be caught
+  if (!tl.once) {
+    mix(whoosh(0.4), tl.againAt - 0.4, 0.1);
+    playMelody(tl.againAt, tl.againNotes); // slower, so every note can be caught
+  }
 
   const top = 60 + c.tonicPc;
   [top, top + third, top + 7].forEach((m, i) => mix(bell(m, 2.2), tl.outroAt + 0.05 + i * 0.09, 0.3));

@@ -7,6 +7,7 @@
 
 const CAP = 100;
 const KEY = 'signups';
+const SOURCES_KEY = 'signup_sources';
 
 const url = () => process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
 const token = () => process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
@@ -34,13 +35,19 @@ async function getCount() {
   return n + base();
 }
 
-/** Registers an email (idempotent). Returns { count, position } or null when no store is configured. */
-async function addSignup(email) {
+/**
+ * Registers an email (idempotent). Returns { count, position } or null when no store is configured.
+ * `source` (e.g. "youtube:ear16") is kept in a hash next to the set; HSETNX keeps the FIRST touch, so a
+ * repeat submit from another platform doesn't overwrite where the person originally came from.
+ * Read it back with: HGETALL signup_sources
+ */
+async function addSignup(email, source) {
   if (!configured()) return null;
   const [, rank, n] = await pipeline([
     ['ZADD', KEY, 'NX', Date.now(), email],
     ['ZRANK', KEY, email],
     ['ZCARD', KEY],
+    ['HSETNX', SOURCES_KEY, email, source || 'landing'],
   ]);
   return { count: n + base(), position: rank + 1 + base() };
 }

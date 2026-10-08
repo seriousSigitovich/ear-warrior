@@ -65,6 +65,21 @@ const SERIES = [
       'C5:1 A4:1 A4:2',
     ].join(' '),
   },
+  // Experiment H7 (docs/experiments.md): a *dance* tune — Can-Can (Offenbach, "Galop infernal") — with the #12 hook, on piano.
+  // Notes read off an Allegro easy-piano score the author supplied (C major, 4/4, bars 1–4 of the right hand, staccato quarters).
+  {
+    id: 15, title: 'Can-Can (Galop infernal)', timbre: 'keys', tempoBpm: 140, tonicPc: 0, minor: false, key: 'C major',
+    hook: 'Everyone\nknows this one.\n*Can you play it?*',
+    notes: 'G4:1 D5:1 D5:1 E5:1  D5:1 C5:1 C5:1 E5:1  F5:1 A5:1 C6:1 A5:1  A5:1 G5:1 G5:2',
+  },
+  // Experiment H8 (docs/experiments.md): #12's exact format (guitar, keyboard, hook, 120 bpm, two playings) with only the melody changed to a
+  // very short popular tune — Happy Birthday (public domain in the US since 2016). 3/4: pickup "Hap-py" (dotted 8th + 16th), "birth-day to", "you" held.
+  // (The `once` / `speed` options in timeline.mjs — a single playing at a fraction of the tempo — were built for an earlier cut of this and are currently unused.)
+  {
+    id: 16, title: 'Happy Birthday', timbre: 'grand', tempoBpm: 120, tonicPc: 0, minor: false, key: 'C major',
+    hook: 'Everyone\nknows this one.\n*Can you play it?*',
+    notes: 'G4:.75 G4:.25 A4:1 G4:1 C5:1 B4:2',
+  },
 ].map(s => ({ kind: 'quiz', coldOpen: true, layout: 'keyboard', ...s, notes: parse(s.notes) }));
 
 export const CLASSICS = SERIES;

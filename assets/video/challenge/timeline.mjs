@@ -33,7 +33,20 @@ const SERIES_GAP = 0.8;    // between the first and the second playing: the head
 const SERIES_TAIL = 0.5;   // let the last note ring before the end card
 const SERIES_OUTRO = 3.0;  // end card: long enough to read "new melody in the next Short → subscribe"
 
+// `once` videos (classics.mjs): the melody plays a single time at `speed` × its tempo, then the headline swaps to "write the notes"
+// for ONCE_ASK seconds before the end card — about half the length of the two-playings format.
+const ONCE_ASK = 2.2;
+
+function onceTimeline(c) {
+  const { notes, length } = melodyTiming({ ...c, tempoBpm: c.tempoBpm * (c.speed ?? 1) });
+  const againAt = length + SERIES_GAP;   // headline swap (starts SERIES's 0.4 s fade-in before this)
+  const outroAt = againAt + ONCE_ASK;
+  const dur = Math.ceil((outroAt + SERIES_OUTRO) * 30) / 30;
+  return { notes, length, againNotes: notes, againLength: length, listenAt: 0, againAt, outroAt, dur, once: true };
+}
+
 function seriesTimeline(c) {
+  if (c.once) return onceTimeline(c);
   const { notes, length } = melodyTiming(c);
   const slow = melodyTiming({ ...c, tempoBpm: c.tempoBpm * SERIES_SLOW });
   const againAt = length + SERIES_GAP;

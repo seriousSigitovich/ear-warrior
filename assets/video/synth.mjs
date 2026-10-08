@@ -1,7 +1,11 @@
 // Synthesis voices shared by the promo (music.mjs) and the challenge videos (challenge/score.mjs) —
-// no samples, same spirit as the app's runtime audio.
+// synthesized, same spirit as the app's runtime audio. One exception: `grand` plays pitch-shifted Salamander Grand Piano samples
+// (samples/salamander, CC-BY 3.0 © Alexander Holm — credit it in the video description).
 // The plucked-string voice mirrors renderPluckedString() in src/services/audio/synth.ts (Karplus–Strong).
 import { writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 export const SR = 44100;
 export const hz = m => 440 * Math.pow(2, (m - 69) / 12);
@@ -62,6 +66,34 @@ export function keys(m, dur) {
     let v = 0;
     for (const [k, a, dec] of parts) v += a * Math.sin(2 * Math.PI * f * k * t) * Math.exp(-dec * t);
     o[i] = v * Math.min(1, t / 0.004) * Math.min(1, (dur - t) / 0.08);
+  }
+  return o;
+}
+
+// Salamander anchors: every third semitone from D#3, i.e. Ds / Fs / A / C per octave (the file names the sampler uses).
+const SAMPLE_DIR = join(dirname(fileURLToPath(import.meta.url)), 'samples', 'salamander');
+const ANCHORS = [];
+for (let oct = 3; oct <= 6; oct++) for (const [name, pc] of [['Ds', 3], ['Fs', 6], ['A', 9], ['C', 12]]) ANCHORS.push({ file: `${name}${oct}`, midi: 12 * (oct + 1) + pc });
+ANCHORS.push({ file: 'C7', midi: 96 });
+const sampleCache = new Map();
+function loadSample(file) {
+  if (!sampleCache.has(file)) {
+    const raw = execFileSync('ffmpeg', ['-v', 'error', '-i', join(SAMPLE_DIR, file + '.mp3'), '-ac', '1', '-ar', String(SR), '-f', 'f32le', '-'], { maxBuffer: 1 << 28 });
+    sampleCache.set(file, new Float32Array(raw.buffer, raw.byteOffset, raw.length / 4));
+  }
+  return sampleCache.get(file);
+}
+
+/** Grand piano: the nearest real sample (D#/F#/A/C anchors), resampled the ≤ 2 semitones to the wanted pitch; held for `dur`, then a short release. */
+export function grand(m, dur) {
+  const a = ANCHORS.reduce((best, x) => (Math.abs(x.midi - m) < Math.abs(best.midi - m) ? x : best));
+  const src = loadSample(a.file), ratio = Math.pow(2, (m - a.midi) / 12);
+  const total = Math.round(dur * SR), o = new Float32Array(total), rel = 0.35 * SR;
+  for (let i = 0; i < total; i++) {
+    const p = i * ratio, j = Math.floor(p);
+    if (j + 1 >= src.length) break;
+    const v = src[j] + (src[j + 1] - src[j]) * (p - j);
+    o[i] = v * Math.min(1, (total - i) / rel);
   }
   return o;
 }
