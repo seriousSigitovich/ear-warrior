@@ -175,13 +175,30 @@
   .demo-dots i {
     width: 10px; height: 10px; border-radius: 50%;
     background: var(--accent-tint-2);
-    transition: background 0.1s ease, box-shadow 0.1s ease, transform 0.1s ease;
+    transition: background 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
   }
   .demo-dots i.on {
     background: var(--accent-bright);
     box-shadow: 0 0 12px rgba(181, 171, 252, 0.8);
     transform: scale(1.25);
   }
+  .demo-dots i.heard { background: var(--accent); }
+  .demo-dots i.ok    { background: #7fd8a0; box-shadow: 0 0 10px rgba(127, 216, 160, 0.55); }
+  .demo-dots i.bad   { background: #ff8f8f; box-shadow: 0 0 10px rgba(255, 143, 143, 0.45); }
+  .demo-dots i.miss  { background: transparent; box-shadow: inset 0 0 0 1.5px var(--muted-soft); }
+  .demo-actions { margin-top: 12px; }
+  .demo-actions[hidden], .demo-note[hidden] { display: none; }
+  .demo-check {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 9px 14px;
+    font-family: inherit; font-size: 14px; font-weight: 500;
+    color: #10121c; background: var(--accent-bright);
+    border: 0; border-radius: var(--radius-sm); cursor: pointer;
+  }
+  .demo-check:hover { background: #c6bffd; }
+  .demo-check:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
+  .demo-check svg { width: 16px; height: 16px; }
+  .demo-note { margin: 8px 0 0; font-size: 12px; color: var(--muted-soft); line-height: 1.4; }
 
   /* ---------- founding members ---------- */
   .perk { max-width: 460px; margin: 0 0 18px; }
@@ -305,9 +322,16 @@
               <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12.5-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5z"/></svg>
             </button>
             <div class="demo-text">
-              <p class="demo-title">Try it: hear this once</p>
+              <p class="demo-title" id="demoTitle">Try it: hear this once</p>
               <p class="demo-sub" id="demoSub" aria-live="polite">7 notes. Everyone knows it. Can you play it back?</p>
               <div class="demo-dots" id="demoDots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+              <div class="demo-actions" id="demoActions" hidden>
+                <button class="demo-check" id="demoCheck" type="button">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+                  Play it back &mdash; check me
+                </button>
+              </div>
+              <p class="demo-note" id="demoNote" hidden>Uses your mic to hear your guitar, piano or voice. Audio stays on your device: nothing is recorded or uploaded.</p>
             </div>
           </div>
 
@@ -347,6 +371,7 @@
 
 </div>
 
+<script src="ear.js"></script>
 <script>
   // Engagement tracking in Vercel Web Analytics. Custom events (va('event')) are Pro-only, so each
   // milestone is sent as a virtual page view on /e/<name>; it then shows up in Analytics -> Pages
@@ -369,37 +394,74 @@
 
   document.getElementById("email").addEventListener("focus", function () { track("email-focus"); }, { once: true });
 
-  // Try-it melody: Twinkle, Twinkle (C C G G A A G), synthesized with Web Audio so there is no asset
-  // to load and it starts instantly. The AudioContext is created inside the click (iOS requires a
-  // user gesture). Each note is a plucked-string-like tone: triangle wave, fast attack, exp. decay.
+  // Try-it card: hear Twinkle, Twinkle (C C G G A A G) -> play it back -> we show which notes landed.
+  // Playback is synthesized with Web Audio (no asset, instant). Matching is ear.js (pitch + onset +
+  // alignment, a port of the app's pipeline) and runs entirely on the device; the mic is only opened
+  // when the visitor presses "check me", only after the melody has finished (so it can't hear itself),
+  // and is closed as soon as the attempt ends.
+  var demoEl = document.getElementById("demo");
   var demoBtn = document.getElementById("demoBtn");
   var demoSub = document.getElementById("demoSub");
+  var demoTitle = document.getElementById("demoTitle");
+  var demoActions = document.getElementById("demoActions");
+  var demoNote = document.getElementById("demoNote");
+  var demoCheck = document.getElementById("demoCheck");
   var dots = document.querySelectorAll("#demoDots i");
-  var NOTES = [261.63, 261.63, 392.0, 392.0, 440.0, 440.0, 392.0];   // C4 C4 G4 G4 A4 A4 G4
+  var FREQS = [261.63, 261.63, 392.0, 392.0, 440.0, 440.0, 392.0];   // C4 C4 G4 G4 A4 A4 G4
+  var TARGET_MIDI = [60, 60, 67, 67, 69, 69, 67];
   var STEP = 0.5;                                                    // seconds per note (120 bpm)
-  var audioCtx = null, demoTimers = [];
-  function demoReset() {
+  var PLAY_ICON = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12.5-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5z"/></svg>';
+  var PAUSE_ICON = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>';
+  var audioCtx = null, demoTimers = [], busy = false;
+  var mic = null;   // { stream, src, an, timer } while listening
+  var asking = false;
+
+  function setDots(cls, upTo) {
+    for (var i = 0; i < dots.length; i++) {
+      dots[i].className = (cls && i < upTo) ? cls : "";
+    }
+  }
+  function demoIdle() {
     demoTimers.forEach(clearTimeout);
     demoTimers = [];
-    for (var i = 0; i < dots.length; i++) dots[i].classList.remove("on");
+    busy = false;
     demoBtn.setAttribute("aria-pressed", "false");
-    demoBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12.5-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5z"/></svg>';
+    demoBtn.innerHTML = PLAY_ICON;
   }
-  demoBtn.addEventListener("click", function () {
+  function stopMic() {
+    if (!mic) return;
+    clearInterval(mic.timer);
+    try { mic.src.disconnect(); } catch (e) {}
+    mic.stream.getTracks().forEach(function (t) { t.stop(); });
+    mic = null;
+  }
+  function showCheck(show) {
+    demoActions.hidden = !show;
+    demoNote.hidden = !show;
+  }
+
+  function playMelody() {
     var AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) { demoSub.textContent = "Your browser can’t play audio here."; return; }
-    if (demoBtn.getAttribute("aria-pressed") === "true") return;      // already playing
+    if (busy) return;
+    stopMic();
+    busy = true;
     track("melody-play");
     audioCtx = audioCtx || new AC();
     if (audioCtx.state === "suspended") audioCtx.resume();
+    demoEl.dataset.state = "playing";
+    demoTitle.textContent = "Listen…";
+    demoSub.textContent = "One time. Remember it.";
+    showCheck(false);
+    demoCheck.lastChild.nodeValue = " Play it back — check me";
+    setDots("", 0);
     demoBtn.setAttribute("aria-pressed", "true");
-    demoBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>';
-    demoSub.textContent = "Listening…";
+    demoBtn.innerHTML = PAUSE_ICON;
     var t0 = audioCtx.currentTime + 0.05;
-    NOTES.forEach(function (freq, i) {
-      var t = t0 + i * STEP, last = i === NOTES.length - 1, len = last ? 1.2 : 0.7;
+    FREQS.forEach(function (freq, i) {
+      var t = t0 + i * STEP, last = i === FREQS.length - 1, len = last ? 1.2 : 0.7;
       var osc = audioCtx.createOscillator(), g = audioCtx.createGain();
-      osc.type = "triangle";
+      osc.type = "triangle";                       // plucked-string-like: fast attack, exp. decay
       osc.frequency.value = freq;
       g.gain.setValueAtTime(0.0001, t);
       g.gain.exponentialRampToValueAtTime(0.5, t + 0.012);
@@ -407,15 +469,121 @@
       osc.connect(g); g.connect(audioCtx.destination);
       osc.start(t); osc.stop(t + len + 0.05);
       demoTimers.push(setTimeout(function () {
-        for (var k = 0; k < dots.length; k++) dots[k].classList.toggle("on", k === i);
+        for (var k = 0; k < dots.length; k++) dots[k].className = k === i ? "on" : "";
       }, (t - audioCtx.currentTime) * 1000));
     });
     demoTimers.push(setTimeout(function () {
-      demoReset();
-      demoSub.textContent = "Now play it back on any instrument. Tap to hear it again.";
+      demoIdle();
+      setDots("", 0);
+      demoEl.dataset.state = "ready";
+      demoTitle.textContent = "Your turn";
+      demoSub.textContent = "Play it on guitar, piano, ukulele or sing it.";
+      showCheck(true);
       track("melody-done");
-    }, (NOTES.length * STEP + 0.9) * 1000));
-  });
+    }, (FREQS.length * STEP + 0.9) * 1000));
+  }
+  demoBtn.addEventListener("click", playMelody);
+
+  // ---- listening + matching ----
+  var FRAME_MS = 20, WARMUP_MS = 450, END_SILENCE_MS = 1500, NO_INPUT_MS = 9000, MAX_MS = 20000;
+
+  function startListening() {
+    if (mic || busy || asking) return;
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.EarMatch) {
+      demoSub.textContent = "Mic isn’t available in this browser. Try Safari or Chrome.";
+      return;
+    }
+    track("mic-start");
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    demoSub.textContent = "Allow the microphone to continue…";
+    asking = true;
+    navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+    }).then(function (stream) {
+      asking = false;
+      var E = window.EarMatch;
+      var src = audioCtx.createMediaStreamSource(stream);
+      var an = audioCtx.createAnalyser();
+      an.fftSize = 2048;
+      src.connect(an);                       // not connected to the speakers: no feedback
+      var buf = new Float32Array(an.fftSize);
+      var frames = [], t0 = performance.now(), gate = null, lastShown = -1, lastLoudT = null;
+      demoEl.dataset.state = "listening";
+      showCheck(false);
+      demoTitle.textContent = "Get ready…";
+      demoSub.textContent = "Quiet for a moment.";
+      setDots("", 0);
+
+      function finish(timedOut) {
+        stopMic();
+        var notes = E.segment(frames, { gate: gate || 0.012 });
+        if (timedOut && !notes.length) {
+          demoEl.dataset.state = "ready";
+          demoTitle.textContent = "Didn’t hear anything";
+          demoSub.textContent = "Play a bit louder or closer to the mic, then try again.";
+          setDots("", 0);
+          showCheck(true);
+          track("mic-silent");
+          return;
+        }
+        var g = E.grade(TARGET_MIDI, notes);
+        for (var i = 0; i < dots.length; i++) {
+          dots[i].className = g.results[i] === "matched" ? "ok" : g.results[i] === "wrong" ? "bad" : "miss";
+        }
+        demoEl.dataset.state = "result";
+        var n = g.matched, total = TARGET_MIDI.length;
+        demoTitle.textContent = n === total ? "All " + total + " landed" : n + " of " + total + " landed";
+        demoSub.textContent = n === total
+          ? "Your ear works. The app gives you a slightly harder one next. Join below to get it."
+          : "Green = right, red = a different note, hollow = missed. Try again, or join below to keep training.";
+        showCheck(true);
+        demoCheck.lastChild.nodeValue = " Try again";
+        track("score-" + n);
+      }
+
+      mic = {
+        stream: stream, src: src, an: an,
+        timer: setInterval(function () {
+          var now = performance.now() - t0;
+          an.getFloatTimeDomainData(buf);
+          var level = E.rms(buf, buf.length - 512, buf.length);
+          if (now < WARMUP_MS) {                       // ambient level -> silence gate; ignore the mic's settle-in
+            frames.push({ t: now, rms: 0, hz: 0, clarity: 0, ambient: level });
+            return;
+          }
+          if (gate === null) {
+            gate = E.gateFrom(frames.map(function (f) { return f.ambient; }));
+            frames = [];
+            demoTitle.textContent = "Play it now";
+            demoSub.textContent = "Notes light up as we hear them.";
+          }
+          var y = E.yin(buf, audioCtx.sampleRate);
+          frames.push({ t: now, rms: level, hz: y.hz, clarity: y.clarity });
+          if (level >= gate) lastLoudT = now;
+          var notes = E.segment(frames, { gate: gate });
+          if (notes.length !== lastShown) {
+            lastShown = notes.length;
+            setDots("heard", Math.min(notes.length, dots.length));
+          }
+          if (lastLoudT !== null && notes.length && now - lastLoudT >= END_SILENCE_MS) finish(false);
+          else if (notes.length >= TARGET_MIDI.length + 3) finish(false);
+          else if (lastLoudT === null && now - WARMUP_MS >= NO_INPUT_MS) finish(true);
+          else if (now >= MAX_MS) finish(notes.length === 0);
+        }, FRAME_MS)
+      };
+    }).catch(function (e) {
+      asking = false;
+      track("mic-denied");
+      demoEl.dataset.state = "ready";
+      demoTitle.textContent = "No mic access";
+      demoSub.textContent = (e && e.name === "NotAllowedError")
+        ? "Allow the microphone in your browser to check your playing, or just play along and join below."
+        : "Couldn’t open the microphone on this device.";
+      showCheck(true);
+    });
+  }
+  demoCheck.addEventListener("click", startListening);
 
   // Where the signup came from, so waitlist growth can be split by platform / video:
   // ?utm_source=youtube&utm_campaign=ear16&utm_content=desc  ->  "youtube:ear16:desc". Falls back to
