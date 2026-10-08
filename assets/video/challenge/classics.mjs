@@ -10,9 +10,10 @@ const PC = { C: 0, 'C#': 1, Db: 1, D: 2, 'D#': 3, Eb: 3, E: 4, F: 5, 'F#': 6, Gb
 function parse(str) {
   return str.trim().split(/\s+/).map(tok => {
     const [name, beats] = tok.split(':');
+    const len = beats.includes('/') ? beats.split('/').reduce((a, b) => a / b) : +beats; // "2/3" = a triplet third
     const m = name.match(/^([A-G][#b]?)(\d)$/);
     if (!m) throw new Error('bad note ' + tok);
-    return { midi: PC[m[1]] + 12 * (+m[2] + 1), name, beats: +beats };
+    return { midi: PC[m[1]] + 12 * (+m[2] + 1), name, beats: len };
   });
 }
 
@@ -80,6 +81,34 @@ const SERIES = [
     hook: 'Everyone\nknows this one.\n*Can you play it?*',
     notes: 'G4:.75 G4:.25 A4:1 G4:1 C5:1 B4:2',
   },
+  // Experiment H10 (docs/experiments.md): probe guitarists — #12's format (hook, 120 bpm, two playings, cold open) but the picture is a 12-fret neck with
+  // all six strings, grey, except the string the melody is on (white; the high E). Mary Had a Little Lamb (public domain), moved to G so it lies on that
+  // string: B A G A B B B = frets 7 5 3 5 7 7 7. (A first cut used Seven Nation Army — dropped: a copyrighted tune.) Real acoustic-guitar samples.
+  {
+    id: 18, title: 'Mary Had a Little Lamb (G, one string)', timbre: 'acoustic', layout: 'string', stringIdx: 0, tempoBpm: 120, tonicPc: 7, minor: false, key: 'G major',
+    hook: 'Can you *PLAY*\nwithout *TABS*?',
+    sub: 'Everyone knows this tune · by ear',
+    notes: 'B4:1 A4:1 G4:1 A4:1 B4:1 B4:1 B4:2',
+  },
 ].map(s => ({ kind: 'quiz', coldOpen: true, layout: 'keyboard', ...s, notes: parse(s.notes) }));
 
-export const CLASSICS = SERIES;
+// Experiment H9 (docs/experiments.md): "guess the KEY" quiz instead of "play the melody back". kind "key", 10 s:
+//   I–IV–V–I strummed on guitar from frame 0 → the same cadence again under four answer cards (A–D) → end card.
+// `notes` are the chord ROOTS (only for timing/pulse — one entry per chord, `beats` = chord length); `chords` are the voicings (MIDI, low → high).
+// `options` are the four answer cards, `answer` is the index of the right one — the answer is NEVER on screen, it goes in the pinned comment.
+const KEYQUIZ = [
+  {
+    id: 17, kind: 'key', tag: 'Key quiz #1', timbre: 'pluck', layout: 'fretboard', coldOpen: true, tempoBpm: 75, tonicPc: 7, minor: false, key: 'G major',
+    hook: 'Can you figure\nout the *KEY*\nby ear?',
+    sub: 'of this song · on guitar',
+    // open G · C · D · G (G2 B2 D3 G3 B3 G4 / C3 E3 G3 C4 E4 / D3 A3 D4 F#4 / G again)
+    chordNames: ['G', 'C', 'D', 'G'],   // recorded strums in samples/guitar; `chords` is the synthesized fallback
+    chords: [[43, 47, 50, 55, 59, 67], [48, 52, 55, 60, 64], [50, 57, 62, 66], [43, 47, 50, 55, 59, 67]],
+    // One recorded fingerstyle take (Freesound 527783, CC0; samples/guitar/README.md), G → C → G → D → G, sped up 1.35×. `changes` = when each chord starts.
+    audio: { file: 'cadence-gcdg.wav', length: 15.33, changes: [0, 1.89, 5.48, 9.07, 12.67], optionsAt: 5.2 },
+    notes: 'G2:1 C3:1 G2:1 D3:1 G2:1',
+    options: ['D', 'C', 'G', 'A'], answer: 2,
+  },
+].map(s => ({ ...s, notes: parse(s.notes) }));
+
+export const CLASSICS = [...SERIES, ...KEYQUIZ];

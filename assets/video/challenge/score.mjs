@@ -6,7 +6,7 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { track, pluck, voice, keys, grand, bell, pad, sub, tick, whoosh, writeWav } from '../synth.mjs';
+import { track, pluck, guitarNote, guitarChord, guitarClip, voice, keys, grand, bell, pad, sub, tick, whoosh, writeWav } from '../synth.mjs';
 import { timeline } from './timeline.mjs';
 
 // `tail` is how long the tone is allowed to ring past the note's own length.
@@ -14,6 +14,8 @@ const TIMBRES = {
   pluck: { make: (m, dur, i) => pluck(m, dur, 0x1234567 + i), gain: 0.8, tail: 0.9 },
   keys: { make: (m, dur) => keys(m, dur), gain: 0.6, tail: 0.5 },
   grand: { make: (m, dur) => grand(m, dur), gain: 0.9, tail: 1.2 },
+  // Recorded acoustic guitar, one string: each note is damped when the next lands, the last one rings out (lastTail).
+  acoustic: { make: (m, dur) => guitarNote(m, dur), gain: 0.9, tail: 0.04, lastTail: 1.6 },
   voice: { make: (m, dur) => voice(m, dur), gain: 0.55, tail: 0.05 },
 };
 
@@ -32,14 +34,38 @@ function scoreSeries(c, tl, mix, playMelody) {
   [top, top + third, top + 7].forEach((m, i) => mix(bell(m, 2.2), tl.outroAt + 0.05 + i * 0.09, 0.3));
 }
 
+// Key quiz: real recorded open-chord strums (`chordNames`, samples/guitar) when the entry has them; otherwise each chord is
+// strummed (low → high, 35 ms apart) on the synthesized plucked-string voice; the cadence plays twice and nothing else
+// does — no bell, no tonic bed: the pinned comment holds the answer.
+function scoreKey(c, tl, mix) {
+  if (c.audio) return mix(guitarClip(c.audio.file), 0, 0.9); // one recorded take of the whole cadence, nothing else
+  const play = at => c.chords.forEach((chord, i) => {
+    const { onset, dur } = tl.notes[i];
+    if (c.chordNames) { // damp each chord when the next one lands (a player mutes the strings); the last one rings out
+      const last = i === c.chords.length - 1;
+      return mix(guitarChord(c.chordNames[i], last ? dur + 1.4 : dur + 0.05, last ? 0.4 : 0.18), at + onset, 0.9);
+    }
+    chord.forEach((m, k) => mix(pluck(m, dur + 1.1, 0x1234567 + i * 31 + k), at + onset + k * 0.035, 0.42));
+  });
+  play(tl.listenAt);
+  mix(whoosh(0.4), tl.againAt - 0.4, 0.1);
+  play(tl.againAt);
+}
+
 export function renderScore(c, path) {
   const tl = timeline(c);
   const { out, mix } = track(tl.dur);
   const T = TIMBRES[c.timbre];
 
+  if (c.kind === 'key') {
+    scoreKey(c, tl, mix);
+    return writeWav(path, out);
+  }
+
   const playMelody = (at, timing = tl.notes) => c.notes.forEach((n, i) => {
     const { onset, dur } = timing[i];
-    mix(T.make(n.midi, dur + T.tail, i), at + onset, T.gain);
+    const tail = i === c.notes.length - 1 && T.lastTail != null ? T.lastTail : T.tail;
+    mix(T.make(n.midi, dur + tail, i), at + onset, T.gain);
   });
 
   if (c.kind === 'quiz') {

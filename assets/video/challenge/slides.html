@@ -96,6 +96,11 @@
   .inlay { position: absolute; width: 28px; height: 28px; border-radius: 50%; background: rgba(233, 233, 237, 0.14); }
   .gstr { position: absolute; left: 0; right: 0; background: rgba(233, 233, 237, 0.55); }
   .gstr[data-wound="1"] { background: rgba(194, 161, 144, 0.75); }
+  /* 12-FRET layout (series layout "string"): all six strings, grey, except the one the melody is on (white); fret numbers under the neck */
+  .fretnum { position: absolute; bottom: 14px; width: 60px; margin-left: -30px; text-align: center; font-size: 30px; font-weight: 600; color: var(--muted); }
+  body.str #kb { height: 360px; }
+  .gstr.dim { background: rgba(233, 233, 237, 0.2); }
+  .gstr.main { background: #fff; }
   .wk .c { position: absolute; left: 0; right: 0; bottom: 12px; text-align: center; font-size: 20px; color: var(--muted); }
 
   /* KEYBOARD LAYOUT: big headline, keyboard in frame the whole time (y 1060–1516), a mid zone for dots / countdown / chips. */
@@ -124,6 +129,16 @@
   body.ser #dots.many .dot { width: 26px; height: 26px; }
   body.ser #outro h1 { font-size: 128px; }
   body.ser .pill { font-size: 54px; padding: 34px 70px; margin-top: 56px; }
+
+  /* KEY QUIZ (kind "key"): four answer cards in the mid zone where the dots usually are; dots are not used */
+  body.key #dots { display: none; }
+  #opts { position: absolute; left: 96px; top: 800px; width: 888px; display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 18px; }
+  .opt {
+    height: 190px; border-radius: 36px; border: 2px solid var(--line); background: var(--surface);
+    display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 6px;
+  }
+  .opt .l { font-size: 34px; font-weight: 650; letter-spacing: 0.1em; color: var(--bright); }
+  .opt .k { font-size: 76px; font-weight: 700; letter-spacing: -0.03em; }
 
   /* OUTRO */
   #outro { display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 230px 96px 340px; }
@@ -165,6 +180,8 @@
   <div id="num"></div>
 </section>
 
+<section class="grp full" id="sOpts"><div id="opts"></div></section>
+
 <section class="grp full" id="sReveal"><div id="chips"></div></section>
 <section class="grp full" id="kbCard"><div id="kb"></div></section>
 
@@ -185,17 +202,21 @@
   const vis = (t, a, b, f = 0.35) => ease(seg(t, a, a + f)) * (1 - ease(seg(t, b - f, b)));
 
   const C = window.CHALLENGE, TL = C.timeline, N = C.notes.length;
-  const INSTRUMENT = { pluck: 'Guitar', keys: 'Piano', grand: 'Piano', voice: 'Voice' }[C.timbre];
+  const INSTRUMENT = { pluck: 'Guitar', acoustic: 'Guitar', keys: 'Piano', grand: 'Piano', voice: 'Voice' }[C.timbre];
   const ACCENT = '#9184d9', BRIGHT = '#b5abfc';
   const TRAIL = 'rgba(145,132,217,0.42)';
   const IDLE_CHIP = 'rgba(233,233,237,0.6)';
-  const SER = C.kind === 'quiz';
+  const KEYQ = C.kind === 'key';           // key quiz: series timing/picture, plus answer cards
+  const SER = C.kind === 'quiz' || KEYQ;
   const END = SER ? TL.outroAt : TL.outroAt + 0.4; // everything but the end card is gone by here
-  const FRET = C.layout === 'fretboard'; // series only: a guitar neck in the keyboard's slot, same headline zone and timing
+  const ONE = C.layout === 'string';       // series only: ONE string (the high E), 12 numbered frets
+  const FRET = C.layout === 'fretboard' || ONE; // series only: a guitar neck in the keyboard's slot, same headline zone and timing
   const KEYS = C.layout === 'keyboard' || FRET;
-  if (FRET && !SER) throw new Error('layout "fretboard" is only built for series (kind "quiz") videos');
+  if (FRET && !SER) throw new Error('layouts "fretboard" / "string" are only built for series (kind "quiz") videos');
   document.body.classList.toggle('keys', KEYS);
+  document.body.classList.toggle('str', ONE);
   document.body.classList.toggle('ser', SER);
+  document.body.classList.toggle('key', KEYQ);
 
 
   /** "No tabs.\nJust your *ear.*" → lines separated by <br>, *accented* words in <em>. */
@@ -244,17 +265,35 @@
     while (width() > 888 && fs > 96) h.style.fontSize = (fs -= 4) + 'px';
   }
   $('revealSub').textContent = 'In ' + C.key + ' · Level ' + C.level + ' of 9';
-  $('tag').textContent = 'Ear challenge #' + C.id;
+  $('tag').textContent = C.tag || 'Ear challenge #' + C.id;
   $('follow').textContent = 'Follow for challenge #' + (C.id + 1);
 
   if (SER) {
     richLines($('hookTitle'), C.hook); fitLines($('hookTitle'), 440);
-    $('hookSub').textContent = N + ' notes · listen closely';
+    $('hookSub').textContent = C.sub || N + ' notes · listen closely';
     richLines($('turnTitle'), 'Write the notes\n*in the comments*'); fitLines($('turnTitle'), 380);
     $('turnSub').textContent = TL.once ? 'Name each note.' : 'One more time, slower. Name each note.';
     richLines($('outroTitle'), 'New melody\nin the next\n*Short*');
     $('outroSub').textContent = 'Write your notes in the comments.';
     $('follow').textContent = 'Subscribe →';
+    if (ONE) { // guitarists answer in frets (0 = open string), so ask for those
+      richLines($('turnTitle'), 'Write the frets\n*in the comments*'); fitLines($('turnTitle'), 380);
+      $('turnSub').textContent = 'One more time, slower. 0 = open string.';
+      $('outroSub').textContent = 'Write your frets in the comments.';
+    }
+  }
+  if (KEYQ) {
+    $('hookSub').textContent = C.sub;
+    richLines($('turnTitle'), 'Which *key*\nis it in?'); fitLines($('turnTitle'), 380);
+    $('turnSub').textContent = 'Comment ' + 'A, B, C or D.';
+    richLines($('outroTitle'), 'Answer in the\n*pinned comment*');
+    $('outroSub').textContent = 'Same cadence, a new key next time.';
+    $('follow').textContent = 'Follow for the next key →';
+    C.options.forEach((k, i) => {
+      const o = div('opt', $('opts'));
+      div('l', o).textContent = 'ABCD'[i];
+      div('k', o).textContent = k;
+    });
   }
 
   // --- LISTEN: pulse rings + one dot per note (count only — no pitch, no rhythm) ----------------
@@ -305,21 +344,36 @@
   // every note just rings the strings (see renderSeries).
   const STRINGS = [];
   if (FRET) {
-    const W = 832, H = 400, FRETS = 7, PAD = 44;
+    const W = 832, H = ONE ? 360 : 400, FRETS = ONE ? 12 : 7, PAD = 44;
+    const X0 = ONE ? 58 : 0; // one-string layout: a gutter left of the nut for the "0" (open string)
     const span = 1 - Math.pow(2, -FRETS / 12);
-    const fx = n => (W - 14) * (1 - Math.pow(2, -n / 12)) / span + 14; // x of fret n's wire; the nut ends at 14
+    const fx = n => X0 + 14 + (W - X0 - 14) * (1 - Math.pow(2, -n / 12)) / span; // x of fret n's wire; the nut ends at X0 + 14
     const board = div('neck', $('kb'));
-    const nut = div('nut', board);
+    const nut = div('nut', board); nut.style.left = X0 + 'px';
     for (let n = 1; n <= FRETS; n++) { const w = div('fretwire', board); w.style.left = fx(n) - 2 + 'px'; }
-    [3, 5, 7].forEach(n => { // inlay dots sit in the middle of the fret space
-      const d = div('inlay', board); d.style.left = (fx(n - 1) + fx(n)) / 2 - 14 + 'px'; d.style.top = H / 2 - 14 + 'px';
+    (ONE ? [3, 5, 7, 9, 12] : [3, 5, 7]).forEach(n => { // inlay dots sit in the middle of the fret space (12 = two dots)
+      const mid = (fx(n - 1) + fx(n)) / 2 - 14;
+      (n === 12 ? [-1, 1] : [0]).forEach(k => { const d = div('inlay', board); d.style.left = mid + 'px'; d.style.top = (ONE ? 40 + (H - 130) / 2 : H / 2) - 14 + k * 62 + 'px'; });
     });
-    const gap = (H - 2 * PAD) / 5;
-    for (let s = 0; s < 6; s++) {
-      const e = div('gstr', board), th = 2 + s * 0.9; // low E is the thickest
-      e.style.top = PAD + s * gap - th / 2 + 'px'; e.style.height = th + 'px';
-      e.dataset.wound = s >= 3 ? '1' : '';
-      STRINGS.push(e);
+    if (ONE) {
+      for (let n = 0; n <= FRETS; n++) { // numbers under the frets: 0 in the gutter, n between wires n-1 and n
+        const t = div('fretnum', board); t.textContent = n;
+        t.style.left = (n === 0 ? X0 / 2 : (fx(n - 1) + fx(n)) / 2) + 'px';
+      }
+      const TOP = 40, gap = (H - TOP - 90) / 5, main = C.stringIdx ?? 0; // string 0 = the thin high E, at the top (as in a tab)
+      for (let k = 0; k < 6; k++) {
+        const e = div('gstr ' + (k === main ? 'main' : 'dim'), board), th = k === main ? 5 : 3 + k * 0.9; // the white one is drawn a bit heavier so it reads against the thicker grey ones
+        e.style.top = TOP + k * gap - th / 2 + 'px'; e.style.height = th + 'px'; e.style.left = X0 + 'px';
+        if (k === main) STRINGS.push(e); // only the melody's string rings
+      }
+    } else {
+      const gap = (H - 2 * PAD) / 5;
+      for (let s = 0; s < 6; s++) {
+        const e = div('gstr', board), th = 2 + s * 0.9; // low E is the thickest
+        e.style.top = PAD + s * gap - th / 2 + 'px'; e.style.height = th + 'px';
+        e.dataset.wound = s >= 3 ? '1' : '';
+        STRINGS.push(e);
+      }
     }
   }
   function paintKey(m, state, glow) {
@@ -333,6 +387,7 @@
   const phases = (SER ? [
     ['top', 0, END], ['hHook', 0, TL.againAt - 0.4], ['hTurn', TL.againAt - 0.4, END],
     ['sListen', 0, END], ['kbCard', 0, END],
+    ...(KEYQ ? [['sOpts', TL.againAt - 0.4, END]] : []),
   ] : [
     ['top', 0, END], ['hHook', 0, TL.turnAt], ['sListen', 0, TL.turnAt],
     ['hTurn', TL.turnAt, TL.turnEnd], ['sTurn', TL.turnAt, TL.turnEnd],
@@ -425,7 +480,7 @@
 
     // fretboard: every note rings all the strings (a quick wobble that decays) — still no hint which one
     STRINGS.forEach((s, i) => {
-      const wobble = pulse > 0.01 ? Math.sin((t - start) * 140 + i * 1.7) * 3.2 * pulse : 0;
+      const wobble = pulse > 0.01 ? Math.sin((t - start) * 140 + i * 1.7) * (ONE ? 7 : 3.2) * pulse : 0;
       s.style.transform = 'translateY(' + wobble + 'px)';
       s.style.background = pulse > 0.01 ? 'rgba(181,171,252,' + (0.55 + 0.45 * pulse) + ')' : '';
       s.style.boxShadow = pulse > 0.01 ? '0 0 ' + Math.round(26 * pulse) + 'px rgba(145,132,217,' + 0.8 * pulse + ')' : 'none';

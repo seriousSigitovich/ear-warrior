@@ -98,6 +98,56 @@ export function grand(m, dur) {
   return o;
 }
 
+// Real strummed open chords (samples/guitar, CC0 — see its README): the chord named by `name` (G / C / D), kept for `dur`, then a release.
+const GUITAR_DIR = join(dirname(fileURLToPath(import.meta.url)), 'samples', 'guitar');
+export function guitarChord(name, dur, release = 0.4) {
+  const key = 'guitar/' + name;
+  if (!sampleCache.has(key)) {
+    const raw = execFileSync('ffmpeg', ['-v', 'error', '-i', join(GUITAR_DIR, `chord_${name}.mp3`), '-ac', '1', '-ar', String(SR), '-f', 'f32le', '-'], { maxBuffer: 1 << 28 });
+    sampleCache.set(key, new Float32Array(raw.buffer, raw.byteOffset, raw.length / 4));
+  }
+  const src = sampleCache.get(key), total = Math.min(src.length, Math.round(dur * SR)), rel = Math.min(total, Math.round(release * SR));
+  const o = src.slice(0, total);
+  for (let i = 0; i < rel; i++) o[total - 1 - i] *= i / rel;
+  return o;
+}
+
+// Single acoustic-guitar notes (samples/guitar-acoustic, Iowa MIS — see its README): the nearest recorded note resampled to the wanted pitch,
+// leading silence trimmed so the pluck lands on the beat, held for `dur`, then a short release (a player damps the string when the next note comes).
+const ACOUSTIC_DIR = join(dirname(fileURLToPath(import.meta.url)), 'samples', 'guitar-acoustic');
+const ACOUSTIC = { E4: 64, F4: 65, G4: 67, A4: 69, B4: 71, C5: 72 };
+export function guitarNote(m, dur, release = 0.12) {
+  const [file, root] = Object.entries(ACOUSTIC).reduce((best, x) => (Math.abs(x[1] - m) < Math.abs(best[1] - m) ? x : best));
+  const key = 'acoustic/' + file;
+  if (!sampleCache.has(key)) {
+    const raw = execFileSync('ffmpeg', ['-v', 'error', '-i', join(ACOUSTIC_DIR, file + '.mp3'), '-ac', '1', '-ar', String(SR), '-f', 'f32le', '-'], { maxBuffer: 1 << 28 });
+    const all = new Float32Array(raw.buffer, raw.byteOffset, raw.length / 4);
+    let peak = 0;
+    for (const v of all) peak = Math.max(peak, Math.abs(v));
+    let on = 0;
+    while (on < all.length && Math.abs(all[on]) < peak * 0.05) on++;
+    sampleCache.set(key, all.slice(Math.max(0, on - Math.round(0.004 * SR)))); // keep ~4 ms of the attack's lead-in
+  }
+  const src = sampleCache.get(key), ratio = Math.pow(2, (m - root) / 12);
+  const total = Math.round(dur * SR), o = new Float32Array(total), rel = Math.min(total, Math.round(release * SR));
+  for (let i = 0; i < total; i++) {
+    const p = i * ratio, j = Math.floor(p);
+    if (j + 1 >= src.length) break;
+    o[i] = (src[j] + (src[j + 1] - src[j]) * (p - j)) * Math.min(1, (total - i) / rel);
+  }
+  return o;
+}
+
+/** A whole recorded clip from samples/guitar (wav/mp3), mono. */
+export function guitarClip(file) {
+  const key = 'guitar-clip/' + file;
+  if (!sampleCache.has(key)) {
+    const raw = execFileSync('ffmpeg', ['-v', 'error', '-i', join(GUITAR_DIR, file), '-ac', '1', '-ar', String(SR), '-f', 'f32le', '-'], { maxBuffer: 1 << 28 });
+    sampleCache.set(key, new Float32Array(raw.buffer, raw.byteOffset, raw.length / 4));
+  }
+  return sampleCache.get(key);
+}
+
 /** Glassy bell for the "it landed" chime. */
 export function bell(m, dur) {
   const f = hz(m), total = Math.round(dur * SR), o = new Float32Array(total);

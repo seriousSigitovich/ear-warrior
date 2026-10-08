@@ -55,7 +55,34 @@ function seriesTimeline(c) {
   return { notes, length, againNotes: slow.notes, againLength: slow.length, listenAt: 0, againAt, outroAt, dur };
 }
 
+// --- key quiz (classics.mjs, kind "key"): a fixed 10 s -----------------------------------------------------
+//   cadence from frame 0 → same cadence again under the answer cards → end card ("answer in the pinned comment")
+// Both playings at the SAME tempo (the viewer is choosing among options, not catching notes), so the second one is just a replay.
+const KEY_DUR = 10;
+const KEY_GAP = 0.7;   // between the first and the second playing
+const KEY_TAIL = 0.5;  // let the last chord ring before the end card
+
+// An entry with `audio` ({ file, length, changes: chord-change times in s, optionsAt }) is one recorded take instead of a synthesized cadence:
+// it plays once, the answer cards come in at `optionsAt` while it keeps going, and the video is as long as the take needs.
+function keyAudioTimeline(c) {
+  const { length, changes, optionsAt } = c.audio;
+  const notes = changes.map((t, i) => ({ onset: t, dur: (changes[i + 1] ?? length) - t }));
+  const outroAt = length + KEY_TAIL;
+  const dur = Math.ceil((outroAt + 2.6) * 30) / 30;
+  return { notes, length, againNotes: notes, againLength: length, listenAt: 0, againAt: optionsAt, outroAt, dur, once: true };
+}
+
+function keyTimeline(c) {
+  if (c.audio) return keyAudioTimeline(c);
+  const { notes, length } = melodyTiming(c);
+  const againAt = length + KEY_GAP;
+  const outroAt = againAt + length + KEY_TAIL;
+  if (outroAt > KEY_DUR - 2) throw new Error(`Key quiz #${c.id}: end card would get only ${(KEY_DUR - outroAt).toFixed(1)} s`);
+  return { notes, length, againNotes: notes, againLength: length, listenAt: 0, againAt, outroAt, dur: KEY_DUR };
+}
+
 export function timeline(c) {
+  if (c.kind === 'key') return keyTimeline(c);
   if (c.kind === 'quiz') return seriesTimeline(c);
   const { notes, length } = melodyTiming(c);
   const hook = c.coldOpen ? 0 : HOOK;
