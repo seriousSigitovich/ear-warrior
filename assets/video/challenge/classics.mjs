@@ -131,6 +131,27 @@ const SERIES = [
     neon: true,
     notes: 'E4:.5 F#4:.5 G4:.5 A4:.5 B4:.5 G4:.5 B4:1 A#4:.5 F#4:.5 A#4:1 A4:.5 F#4:.5 A4:1',
   },
+  // Experiment H13 (docs/experiments.md): Callaway's four-step loop in one 10 s Short. Ode to Joy (public domain), the exact 8 notes of #8, but the
+  // 6th is wrong (F4 → F#4). ONE playing at normal speed (`once`): hook = stakes ("you", your ear at risk, "one listen") + big question (which note?);
+  // the wrong note = the head fake (the viewer knows the tune, so the prediction F is broken); the headline swap = re-hook (names the wrong note,
+  // which closes loop 1, and asks for the right one, which opens loop 2); the Short loops back into the melody. The right note is never played.
+  {
+    id: 25, title: 'Ode to Joy, 6th note wrong', once: true, timbre: 'acoustic', layout: 'fretboard', tempoBpm: 120, tonicPc: 0, minor: false, key: 'C major',
+    hook: 'You know this tune.\nOne note is *wrong.*\n*One listen.*',
+    ask: 'The *6th note*\nwas wrong.', askSub: 'What should it be? Comment it.',
+    outroSub: 'Write the right note (or fret) in the comments.',
+    notes: 'E4:1 E4:1 F4:1 G4:1 G4:1 F#4:1 E4:1 D4:1',
+  },
+  // #26: #25's melody and format, but the hook does NOT warn about the wrong note — so the F# is a real head fake (a broken prediction), not a spot-the-difference task.
+  // Callaway's loop, simplified: hook = stakes (guitarists, one try) + big question ("play this by ear?"); head fake = the wrong 6th note;
+  // re-hook = "Wait. One note was wrong. Which one?" (closes the first question, opens the second). Nothing else is asked of the viewer.
+  {
+    id: 26, title: 'Ode to Joy, 6th note wrong (hidden)', once: true, timbre: 'acoustic', layout: 'fretboard', tempoBpm: 120, tonicPc: 0, minor: false, key: 'C major',
+    hook: 'Guitarists:\nCan you *play this\nby ear?*\n*One try.*',
+    ask: 'Wait. One note\nwas *wrong.*', askSub: 'Which one?',
+    outroSub: 'Comment the wrong note.',
+    notes: 'E4:1 E4:1 F4:1 G4:1 G4:1 F#4:1 E4:1 D4:1',
+  },
 ].map(s => ({ kind: 'quiz', coldOpen: true, layout: 'keyboard', ...s, notes: parse(s.notes) }));
 
 // Experiment H9 (docs/experiments.md): "guess the KEY" quiz instead of "play the melody back". kind "key", 10 s:

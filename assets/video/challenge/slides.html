@@ -285,6 +285,11 @@
       $('outroSub').textContent = 'Write your frets in the comments.';
     }
   }
+  if (SER && C.ask) { // an entry can bring its own second headline (e.g. #25 "The 6th note was wrong.")
+    richLines($('turnTitle'), C.ask); fitLines($('turnTitle'), 380);
+    if (C.askSub) $('turnSub').textContent = C.askSub;
+    if (C.outroSub) $('outroSub').textContent = C.outroSub;
+  }
   if (KEYQ) {
     $('hookSub').textContent = C.sub;
     richLines($('turnTitle'), 'Which *key*\nis it in?'); fitLines($('turnTitle'), 380);
