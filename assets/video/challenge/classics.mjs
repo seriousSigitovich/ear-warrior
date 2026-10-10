@@ -90,6 +90,32 @@ const SERIES = [
     sub: 'Everyone knows this tune · by ear',
     notes: 'B4:1 A4:1 G4:1 A4:1 B4:1 B4:1 B4:2',
   },
+  // Experiment H11 (docs/experiments.md): a statement hook ("97% can't…", from the #8 re-cut that held 40 % vs ~30 % for question hooks)
+  // on new tunes. All four: guitar neck + recorded acoustic guitar, so inside each pair only the hook differs. The "97%" is, like #8's "90%",
+  // a hook device and NOT a measured number. Melodies from memory — listen once before posting.
+  // #19 vs #20: same tune, generic vs guitarist hook. #21 vs #22: same, order swapped (guitarist hook first) to cancel the posting-order confound.
+  // Jingle Bells (public domain, 1857), the chorus up to "jingle all the way".
+  {
+    id: 19, title: 'Jingle Bells', timbre: 'acoustic', layout: 'fretboard', tempoBpm: 150, tonicPc: 0, minor: false, key: 'C major',
+    hook: '*97%* can\'t\nplay this\nby *EAR*',
+    notes: 'E4:1 E4:1 E4:2 E4:1 E4:1 E4:2 E4:1 G4:1 C4:1.5 D4:.5 E4:2',
+  },
+  {
+    id: 20, title: 'Jingle Bells', timbre: 'acoustic', layout: 'fretboard', tempoBpm: 150, tonicPc: 0, minor: false, key: 'C major',
+    hook: '*97%* of guitarists\ncan\'t play this\nby *EAR*',
+    notes: 'E4:1 E4:1 E4:2 E4:1 E4:1 E4:2 E4:1 G4:1 C4:1.5 D4:.5 E4:2',
+  },
+  // Amazing Grace (public domain), G major 3/4: pickup D, then "-ma-zing grace, how sweet the sound".
+  {
+    id: 21, title: 'Amazing Grace', timbre: 'acoustic', layout: 'fretboard', tempoBpm: 110, tonicPc: 7, minor: false, key: 'G major',
+    hook: '*97%* of guitarists\ncan\'t play this\nby *EAR*',
+    notes: 'D4:1 G4:2 B4:.5 G4:.5 B4:2 A4:1 G4:2 E4:1 D4:2',
+  },
+  {
+    id: 22, title: 'Amazing Grace', timbre: 'acoustic', layout: 'fretboard', tempoBpm: 110, tonicPc: 7, minor: false, key: 'G major',
+    hook: '*97%* can\'t\nplay this\nby *EAR*',
+    notes: 'D4:1 G4:2 B4:.5 G4:.5 B4:2 A4:1 G4:2 E4:1 D4:2',
+  },
 ].map(s => ({ kind: 'quiz', coldOpen: true, layout: 'keyboard', ...s, notes: parse(s.notes) }));
 
 // Experiment H9 (docs/experiments.md): "guess the KEY" quiz instead of "play the melody back". kind "key", 10 s:
