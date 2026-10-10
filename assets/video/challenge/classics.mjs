@@ -116,6 +116,21 @@ const SERIES = [
     hook: '*97%* can\'t\nplay this\nby *EAR*',
     notes: 'D4:1 G4:2 B4:.5 G4:.5 B4:2 A4:1 G4:2 E4:1 D4:2',
   },
+  // Experiment H12 (docs/experiments.md): #21's guitarist "97%" hook, fretboard and recorded acoustic guitar, on a new tune — Grieg, In the Hall of the
+  // Mountain King (public domain). The guitar-friendly E minor transposition (original: B minor): E F# G A B G B | A# F# A# | A F# A, eighths with the
+  // last note of each figure a quarter. Slower than the piece's usual ~138 bpm so 13 notes are catchable. From memory — listen before posting.
+  {
+    id: 23, title: 'In the Hall of the Mountain King', timbre: 'acoustic', layout: 'fretboard', tempoBpm: 104, tonicPc: 4, minor: true, key: 'E minor',
+    hook: '*97%* of guitarists\ncan\'t play this\nby *EAR*',
+    notes: 'E4:.5 F#4:.5 G4:.5 A4:.5 B4:.5 G4:.5 B4:1 A#4:.5 F#4:.5 A#4:1 A4:.5 F#4:.5 A4:1',
+  },
+  // #24: same tune and format as #23, only the hook differs — an instruction ("No tabs. No chords. Just your EAR. Play this.", two lines, neon accent word via `neon: true`) instead of the "97%" statement.
+  {
+    id: 24, title: 'In the Hall of the Mountain King', timbre: 'acoustic', layout: 'fretboard', tempoBpm: 104, tonicPc: 4, minor: true, key: 'E minor',
+    hook: 'No tabs. No chords.\nJust your *EAR*. Play this.',
+    neon: true,
+    notes: 'E4:.5 F#4:.5 G4:.5 A4:.5 B4:.5 G4:.5 B4:1 A#4:.5 F#4:.5 A#4:1 A4:.5 F#4:.5 A4:1',
+  },
 ].map(s => ({ kind: 'quiz', coldOpen: true, layout: 'keyboard', ...s, notes: parse(s.notes) }));
 
 // Experiment H9 (docs/experiments.md): "guess the KEY" quiz instead of "play the melody back". kind "key", 10 s:

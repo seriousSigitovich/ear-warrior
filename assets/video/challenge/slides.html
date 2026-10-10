@@ -64,6 +64,8 @@
   h1 { font-size: 116px; line-height: 1.03; font-weight: 700; letter-spacing: -0.035em; }
   h1.tight { font-size: 100px; line-height: 1.06; }
   h1 em { font-style: normal; color: var(--bright); }
+  /* opt-in (`neon: true` on a challenge): the accent words glow like a neon sign */
+  body.neon h1 em { color: #e6e0ff; text-shadow: 0 0 3px #fff, 0 0 calc(5px + 5px * var(--g, 0.5)) #c9bfff, 0 0 calc(10px + 12px * var(--g, 0.5)) #a99bff, 0 0 calc(20px + 24px * var(--g, 0.5)) #8b7bff, 0 0 calc(36px + 40px * var(--g, 0.5)) rgba(139, 123, 255, 0.7); } /* --g pulses 0..1, set per frame in renderAt */
   .sub { font-size: 42px; line-height: 1.35; color: var(--muted); margin-top: 34px; max-width: 840px; }
 
   /* LISTEN */
@@ -217,6 +219,7 @@
   document.body.classList.toggle('str', ONE);
   document.body.classList.toggle('ser', SER);
   document.body.classList.toggle('key', KEYQ);
+  document.body.classList.toggle('neon', !!C.neon);
 
 
   /** "No tabs.\nJust your *ear.*" → lines separated by <br>, *accented* words in <em>. */
@@ -399,6 +402,7 @@
     .forEach((at, i) => { reveals[i].dataset.in = at; });
 
   window.renderAt = function (t) {
+    if (C.neon) document.body.style.setProperty('--g', (0.5 - 0.5 * Math.cos(2 * Math.PI * t / 1.4)).toFixed(3)); // neon pulse, 1.4 s period
     // phase groups: the hook is already on screen at t=0 (it doubles as the thumbnail), the end card fades in last
     for (const [el, a, b] of phases) el.style.opacity = a === 0 ? 1 - ease(seg(t, b - 0.35, b)) : vis(t, a, b);
     $('outro').style.opacity = ease(seg(t, END, END + 0.5));
