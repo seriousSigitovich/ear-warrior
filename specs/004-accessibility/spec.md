@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-11
 
-**Status**: Draft — FR-009 decided (owner, 2026-10-11); small-phone height still to verify on Android
+**Status**: Draft — FR-009 decided and implemented (owner, 2026-10-11, exception to 44 pt accepted); to verify on an Android device
 
 **Input**: User description: "Accessibility — increase the fonts" (owner's pre-Android-release plan, item 5). Scope
 widened from "bigger fonts" to the readability and accessibility baseline the release needs, because a larger
@@ -140,7 +140,7 @@ the fret-cell outcome matches the decision recorded in FR-009.
 1. **Given** any interactive control other than a fret cell, **When** measured on a 360 × 640 dp phone, **Then**
    it is at least 48 × 48 dp (44 × 44 pt on iOS).
 2. **Given** the answer view, **When** the fretboard is measured on the iPhone 17 Pro and on the 360 × 640 dp
-   reference phone, **Then** no vertical space is unused and the cell height is recorded against the 44 pt / 48 dp target.
+   reference phone, **Then** no vertical space is unused, rows are ≥ 30 pt (the board scrolls below that), and the cell height is recorded against the 44 pt / 48 dp target as the accepted exception of FR-009.
 
 ---
 
@@ -165,7 +165,7 @@ the fret-cell outcome matches the decision recorded in FR-009.
 - **FR-006**: Every text/background pair MUST meet contrast **≥ 4.5 : 1** (≥ 3 : 1 for large text), including the fretboard's fret numbers and the result markers' text.
 - **FR-007**: Result meaning (matched / wrong / missed / extra) MUST NOT depend on colour alone; each status MUST also be distinguishable by shape, text or position.
 - **FR-008**: Every interactive control MUST expose an accessible label and role (already true today — this MUST NOT regress), and state changes MUST be announced: a note placed or removed, a graded verdict, a difficulty-rank change, the "N of M placed" count.
-- **FR-009**: The fretboard MUST use all vertical space the screen leaves it: no band of unused space above, inside or below the answer view, and a screen under a navigation header MUST NOT pad for the top safe-area inset a second time. Fret cells MUST then be as tall as the layout allows (target **44 pt iOS / 48 dp Android**). Where a device is too short for 13 frets at that height, the shortfall is recorded as an owner-accepted exception per device class, unless the owner chooses to reduce the number of frets shown at once. (Status 2026-10-11: the double inset is fixed; cell ≈ 34 pt on a 402 × 874 pt iPhone; Android 360 × 640 dp **not yet measured** — an estimate from the layout is ≈ 20 dp.)
+- **FR-009**: The answer view MUST give the fretboard every free pixel: while it is on screen it shows no "PRACTICE" kicker or level badge, and a screen under a navigation header MUST NOT pad for the top safe-area inset a second time. The board MUST **adapt to the height the phone leaves it**, so the whole neck (nut to fret 12) is visible without scrolling on current phones, with the prompt, the "N of M placed" caption, the note slots and the controls fixed. Fret rows MUST NOT get shorter than **30 pt**; on a phone too short for 13 rows at that height the board scrolls instead of squeezing further. The 44 pt (iOS) / 48 dp (Android) touch-target minimum is **not met for fret cells**: this is an **owner-accepted exception** (2026-10-11 — a 44 pt floor needs ≈ 570 pt of neck and forced scrolling on every phone, which the owner rejected). Measured on an iPhone 17 Pro (402 × 874 pt): cells ≈ 37 pt, no scroll. Android 360 × 640 dp **not yet measured** (estimate ≈ 20 dp, so it would scroll).
 - **FR-010**: Every interactive control other than a fret cell MUST be at least 48 × 48 dp (44 × 44 pt on iOS).
 - **FR-011**: The read-only result board MUST present as a single accessible summary element, not as individually focusable cells; the answer board MUST let a screen-reader user bypass its cells to reach the controls beneath it.
 - **FR-012**: The screen-reader and text-size behaviour MUST be verified on a **physical Android device** (TalkBack, largest text size) and recorded in the quickstart (F8), since neither can be exercised by the unit-test runner.

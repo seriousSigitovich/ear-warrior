@@ -24,7 +24,10 @@ export interface FretboardProps {
   statuses?: NoteStatus[];
   /** Absent → read-only (result view). */
   onTap?: (position: FretPosition) => void;
-  /** Fixed fret height. Omit to share the available height equally (the answer view). */
+  /**
+   * Fixed fret height. Omit to share the available height equally, never below MIN_ROW_HEIGHT
+   * (the answer view).
+   */
   rowHeight?: number;
   style?: StyleProp<ViewStyle>;
 }
@@ -34,6 +37,13 @@ const STRING_WIDTH = [3.5, 3, 2.5, 2, 1.5, 1];
 /** Marker size; the cell is at least this wide even on a small phone. */
 const MARKER = 26;
 const GUTTER = 28;
+/**
+ * Shortest a fret row may get on the answer board. The board fills whatever height the screen
+ * leaves it, so rows adapt to the phone; only on a phone too short for 13 rows at this height does
+ * the answer view scroll. 44 pt / 48 dp is the touch-target ideal (spec 004 FR-009) but does not
+ * fit 13 frets on current phones, so this floor is an owner-accepted exception.
+ */
+const MIN_ROW_HEIGHT = 30;
 
 export function Fretboard({ taps, statuses, onTap, rowHeight, style }: FretboardProps) {
   // Last tap wins when the same cell is pressed twice, so its number is the most recent one.
@@ -52,7 +62,7 @@ export function Fretboard({ taps, statuses, onTap, rowHeight, style }: Fretboard
         ))}
       </View>
 
-      <View style={styles.rows}>
+      <View style={[styles.rows, rowHeight === undefined && styles.rowsFlex]}>
         {Array.from({ length: FRET_COUNT }, (_, fret) => (
           <View
             key={fret}
@@ -172,8 +182,9 @@ const styles = StyleSheet.create({
   labels: { flexDirection: 'row', paddingBottom: 4 },
   stringLabel: { flex: 1, textAlign: 'center', fontSize: 11, color: textAlpha[55] },
   rows: { flex: 1 },
+  rowsFlex: { minHeight: FRET_COUNT * MIN_ROW_HEIGHT },
   row: { flexDirection: 'row', alignItems: 'stretch' },
-  rowFlex: { flex: 1, minHeight: 22 },
+  rowFlex: { flex: 1, minHeight: MIN_ROW_HEIGHT },
   fretNumber: {
     width: GUTTER,
     alignSelf: 'center',

@@ -192,10 +192,12 @@ export default function Practice() {
 
   return (
     <Screen edges={['bottom']}>
-      <View style={styles.header}>
-        <Kicker>Practice</Kicker>
-        <Tag label={`Level ${loop.level.rank} of ${MAX_RANK}`} />
-      </View>
+      {answering ? null : (
+        <View style={styles.header}>
+          <Kicker>Practice</Kicker>
+          <Tag label={`Level ${loop.level.rank} of ${MAX_RANK}`} />
+        </View>
+      )}
 
       {showFeedback ? (
         retryOnly ? (

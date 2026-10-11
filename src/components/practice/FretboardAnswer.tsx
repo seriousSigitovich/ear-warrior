@@ -1,7 +1,7 @@
 // "Your turn" stage for fretboard input: prompt, one slot per melody note (filled with the note name
 // as it is placed), a progress caption and the fretboard to tap. Controls live in FretboardControls.
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { FretPosition, FretTap } from '../../lib/fretboard';
 import { noteName } from '../../lib/pitchNote';
 import { Fretboard } from '../fretboard/Fretboard';
@@ -32,7 +32,15 @@ export function FretboardAnswer({ noteCount, taps, onTap }: FretboardAnswerProps
         ))}
       </View>
 
-      <Fretboard taps={taps} onTap={onTap} style={styles.board} />
+      {/* The prompt and slots stay put; only the board scrolls, and only on a phone too short for
+          44-pt fret rows (the board is never squeezed below that). */}
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        delaysContentTouches={false}
+      >
+        <Fretboard taps={taps} onTap={onTap} style={styles.board} />
+      </ScrollView>
     </View>
   );
 }
@@ -53,6 +61,8 @@ const SLOT_LOOK = StyleSheet.create({
 
 const styles = StyleSheet.create({
   wrap: { flex: 1, gap: 14 },
+  scroll: { flex: 1 },
+  scrollContent: { flexGrow: 1 },
   head: { gap: 4 },
   title: { color: colors.accent, fontSize: 22, fontWeight: font.weightHeading },
   sub: { color: textAlpha[65], fontSize: 13 },
