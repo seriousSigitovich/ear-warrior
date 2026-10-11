@@ -89,14 +89,22 @@ An ordered target sequence the learner must reproduce (FR-001).
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `id` | string (uuid) | |
+| `id` | string | generated: a uuid; curated: `<tuneId>-<seed>` (FR-021) |
 | `notes` | Note[] | ordered target notes (monophonic) |
 | `difficultyId` | string → DifficultyLevel.id | |
 | `scale` | string | resolved key it was drawn from, e.g. `"G_major"` |
 | `createdAt` | ISO timestamp | |
 
-**Validation**: `notes.length === difficulty.noteCount`; every note within range and scale. Generated
-by `services/melody` (pure); see `contracts/melody-generator.md`.
+**Validation (generated)**: `notes.length === difficulty.noteCount`; every note within range and scale; no
+two consecutive identical pitches (FR-001). Produced by `services/melody` (pure); see
+`contracts/melody-generator.md`.
+
+**Curated melodies (FR-021, the MVP source)**: same shape, produced by `curatedMelody(level, seed)` in
+`src/services/melody/curated.ts`. A curated tune is assigned to one level by hand (`rank` 1–9), so
+`notes.length` is **not** tied to `noteCount` and the length need not grow from rank to rank. Notes lie inside
+the neck (E2–E5, MIDI 40–76) and inside the tune's `scale`; **consecutive identical pitches are allowed**
+(owner, 2026-10-11) because a fretboard tap is a separate tap. Stored on attempts exactly like a generated
+melody, so `Attempt.melodyId` and the adaptation streak (FR-011a) behave the same for both sources.
 
 ## Attempt
 

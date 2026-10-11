@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-22
 
-**Status**: Draft — MVP build in progress. **Last updated**: 2026-10-11
+**Status**: MVP built (fretboard input, curated melodies); SC-009 accessibility open. **Last updated**: 2026-10-11
 
 **Input**: User description: "Build an application that can help me improve my ears in terms of playing music. I want to build an ability to quickly recognise musical phrases and be able to reproduce it on a guitar. The main idea is to play right after the short generated melody and app should check for the correctness through the feedback."
 
@@ -41,6 +41,8 @@
 - Q: What are the answer-entry rules? → A: An answer holds **at most as many notes as the melody** (extra taps are sounded but not added); **Undo** removes the last note, **Clear** empties the answer, **Replay** replays the melody; **Check** is enabled with **≥ 1** note — a shorter answer is graded and its unplayed targets are `missed`. **Retry** (FR-008) clears the board and re-answers the same melody.
 - Q: Where do the MVP's melodies come from, now that the answer is a fretboard? → A: **From a curated set, not the generator** (owner, 2026-10-11). The generator (FR-001, the R11 ladder's generation parameters) stays in the code, unchanged, and is deferred to a later phase; the build selects the melody source and defaults to the curated set. Introduced as **FR-021**. Reason it matters now: the generator writes up to G5 (MIDI 79) but the 12-fret neck reaches only E5 (76), so the curated melodies are written to fit E2–E5.
 - Q: How long is the neck? → A: **12 frets** (open + 1–12, 13 positions per string, E2–E5), chosen by the owner for a simpler neck with taller cells; it replaces the 16-position first draft. **Implemented 2026-10-11 (T087)**, ahead of the curated set (T088/T089) at the owner's instruction. The generator's F5–G5 reach (MIDI 77–79) exceeds the 12-fret neck, which is resolved by switching the generator off in this version (FR-021, T088/T089); with the generator turned back on those notes cannot be answered.
+
+- Q: May a curated melody repeat a pitch back-to-back, and what does that mean for `mic` mode? → A: **Yes, repeats are allowed in the curated set** (owner, 2026-10-11) — in `fretboard` mode a repeated note is simply a second tap. The no-consecutive-identical-pitches rule (FR-001) now binds **the generator and `mic` mode only**. The microphone segmenter cannot separate a re-plucked note (FR-004), so `mic` mode MUST NOT be given a curated melody: it keeps the generator as its melody source (FR-021).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -88,21 +90,23 @@ improve — so that practice stays challenging but achievable.
 **Why this priority**: Turns a single-loop demo into a sustainable training tool. It multiplies the
 value of US1 but is not required for the app to be usable.
 
-**Independent Test**: Choose or reach a difficulty rank, then verify that generated melodies match that
-rank's level definition (R11, e.g. its note count), and that 3 consecutive correct first attempts raise the rank by one while
-2 consecutive incorrect first attempts lower it by one.
+**Independent Test**: Choose or reach a difficulty rank, then verify that the melody offered belongs to that
+rank (a curated tune assigned to it; with the generator, one that matches the level's definition, R11), and that
+3 consecutive correct first attempts raise the rank by one while 2 consecutive incorrect first attempts lower it
+by one.
 
 **Acceptance Scenarios**:
 
-1. **Given** difficulty rank *r* is in effect, **When** a melody is generated, **Then** it follows that
-   level's definition (R11) — its note count, scale vocabulary, largest interval, span and motif — within the
-   shared register E3–G5 at 90 BPM.
+1. **Given** difficulty rank *r* is in effect, **When** a melody is chosen, **Then** it belongs to level *r*:
+   a curated tune assigned to *r* inside E2–E5 (FR-021, the MVP), or — with the generator on — one that follows
+   that level's definition (R11: note count, scale vocabulary, largest interval, span, motif) within E3–G5 at
+   90 BPM.
 2. **Given** the learner's first graded attempt is correct on **3 consecutive** new melodies, **When** the
-   next melody is generated, **Then** the rank has increased by exactly 1 and the melody contains one more
-   note than the previous one.
+   next melody is chosen, **Then** the rank has increased by exactly 1 and the melody belongs to level *r*+1
+   (with the generator on it also has the next level's note count, R11).
 3. **Given** the learner's first graded attempt is incorrect on **2 consecutive** new melodies, **When** the
-   next melody is generated, **Then** the rank has decreased by exactly 1 and the melody contains one fewer
-   note than the previous one.
+   next melody is chosen, **Then** the rank has decreased by exactly 1 and the melody belongs to level *r*−1
+   (with the generator on it also has the previous level's note count, R11).
 4. **Given** the learner prefers manual control, **When** they set a fixed difficulty, **Then** the app
    keeps that level and does not auto-adjust.
 5. **Given** the learner is at adaptive rank 5, **When** they switch to fixed rank 2 and later switch back
@@ -166,7 +170,8 @@ confirm it shows accuracy trends, practice volume, and identified weak areas der
   answer (repeated, sequenced, or varied per level). Every interval MUST be ≤ the level's `maxLeap` and
   the phrase span ≤ its `maxSpan`. Generated phrases MUST NOT place two identical pitches consecutively,
   so every note is separable by a pitch change (see FR-004) — a detector limit, not a musical one; lift it
-  once the segmenter splits re-plucked notes by onset.
+  once the segmenter splits re-plucked notes by onset. The rule binds the generator and `mic` mode only:
+  curated melodies (FR-021) may repeat a pitch.
 - **FR-002**: System MUST play the generated melody audibly to the learner.
 - **FR-003**: System MUST clearly signal the transition from "listening" to "your turn to play".
 - **FR-004** *(`mic` input mode — see FR-020)*: System MUST capture the learner's guitar performance and derive the ordered sequence of
@@ -290,7 +295,7 @@ confirm it shows accuracy trends, practice volume, and identified weak areas der
     its `matched` / `wrong` / `extra` status (FR-006).
   - Each Attempt MUST record its `inputMode`; attempts recorded before FR-020 are `mic`. Accuracy MUST
     NOT be pooled across modes (a tap carries no pitch noise).
-- **FR-021**: In the MVP build, melodies MUST come from a **curated set** — a fixed, hand-written list — and NOT from the generator of FR-001/FR-010. The generator stays in the codebase unchanged and is **deferred to a later phase**; the build selects the melody source, defaulting to the curated set. Each curated melody MUST carry its notes (pitch and order), the rhythm needed to play it back, and the difficulty **level** (rank 1–9) it belongs to, and MUST lie entirely inside the neck's reach **E2–E5 (MIDI 40–76)** so that every note can be answered on 12 frets (FR-020). The adaptive/fixed difficulty behaviour (FR-011, FR-011a, FR-011b) is unchanged and selects melodies by level. **This version (owner, 2026-10-11): the generator is switched off** (`EXPO_PUBLIC_MELODY_SOURCE=generator` turns it back on) **and the app ships a small starter set** so practice still works — public-domain tunes drafted from memory, at least one per level 1–9, **to be verified and extended by the owner**. A melody is picked **deterministically from the tunes of the current level by the loop's seed** (no memory of recent picks, so a repeat is possible). The set's final size and content are **not yet decided** — see Open Questions.
+- **FR-021**: In the MVP build, melodies MUST come from a **curated set** — a fixed, hand-written list — and NOT from the generator of FR-001/FR-010. The generator stays in the codebase unchanged and is **deferred to a later phase**; a build setting selects the melody source and defaults to the curated set. Each curated melody MUST carry its notes (pitch and order), the rhythm needed to play it back, and the difficulty **level** (rank 1–9) it belongs to, and MUST lie entirely inside the neck's reach **E2–E5 (MIDI 40–76)** so that every note can be answered on 12 frets (FR-020). A curated melody **MAY repeat a pitch back-to-back** (owner, 2026-10-11). Because the microphone segmenter cannot separate such notes (FR-004), **`mic` mode MUST use the generator as its melody source**, whatever the build setting says. The adaptive/fixed difficulty behaviour (FR-011, FR-011a, FR-011b) is unchanged and selects melodies by level. A melody is picked **deterministically from the tunes of the current level by the loop's seed** (no memory of recent picks, so a repeat is possible). The set's size and content are **not yet decided** — see Open Questions. The shipped **starter set** — public-domain tunes drafted from memory, at least one per level 1–9 — is a placeholder that the owner is to verify and extend.
 
 ### Traceability of audio & pitch correctness rules
 
@@ -345,8 +350,9 @@ method and conditions for the accuracy claim are owned by **SC-002 / SC-002a**.
 - **SC-003**: Feedback for an attempt appears within 2 seconds of the learner finishing playing.
 - **SC-004**: A first-time learner can start a session, complete an attempt, and understand the feedback
   within 2 minutes without external instructions.
-- **SC-005**: The app offers exactly 9 difficulty ranks; within one scale vocabulary no dimension gets
-  easier from rank to rank, and each new vocabulary is introduced with a shorter phrase.
+- **SC-005**: The app offers exactly 9 difficulty ranks. For the generator's ladder (R11), within one scale
+  vocabulary no dimension gets easier from rank to rank, and each new vocabulary is introduced with a shorter
+  phrase. The curated set carries no such guarantee yet — its difficulty ordering is an Open Question.
 - **SC-006**: After two weeks of regular practice (e.g., 4+ sessions per week), a returning learner shows
   a measurable improvement in recognition accuracy of at least 25% over their first-session baseline.
 - **SC-007**: At least 90% of learners report the feedback clearly tells them which notes they got wrong.
@@ -364,7 +370,7 @@ method and conditions for the accuracy claim are owned by **SC-002 / SC-002a**.
 - **Content and size**: how many melodies, and who writes or approves them? (The famous-tune melodies of the video series in `docs/experiments.md` are one candidate source; their keys and range must be checked against E2–E5.)
 - **Selection rule**: the starter set picks randomly within the level with no memory of recent picks. Is that acceptable, or should it avoid an immediate repeat / cycle in order? With few tunes per level a learner will see repeats.
 - **Difficulty**: are the 9 levels still the right axis for a hand-picked set, or does the MVP need fewer levels? (With few melodies, 9 levels leaves some with one tune.)
-- **Repeated pitches**: the no-consecutive-identical-pitches rule (FR-001) exists for the microphone segmenter; in `fretboard` mode a repeated note is just a second tap. The starter set **does** contain repeated pitches (e.g. Twinkle, Ode to Joy) because the real tunes do. Confirm, and note that `mic` mode could not grade them.
+- ~~**Repeated pitches**~~ — **decided 2026-10-11**: allowed in the curated set; `mic` mode keeps the generator (FR-021, FR-001).
 
 ## Assumptions
 

@@ -15,9 +15,9 @@
 > telemetry — is shared. See `contracts/fretboard-input.md`; tasks in tasks.md Phase 9.
 
 A cross-platform mobile app that trains ear-to-guitar recall through a tight loop: the app plays a
-short generated melody from runtime-synthesized note tones, then captures the learner's guitar reproduction
-via the microphone, detects the played notes with monophonic pitch detection, grades them note-by-note,
-and shows immediate feedback. Adaptive difficulty (US2) and cross-session progress (US3) build on that
+short melody (curated in the MVP, generated when the generator is on) from runtime-synthesized note tones,
+then takes the learner's reproduction — tapped on a fretboard in the MVP, or captured via the microphone with
+monophonic pitch detection in `mic` mode — grades it note-by-note, and shows immediate feedback. Adaptive difficulty (US2) and cross-session progress (US3) build on that
 loop.
 
 **Technical approach**: React Native + Expo with a **custom dev client** (not Expo Go, because native
@@ -31,7 +31,7 @@ account-less sink for anonymous attempt logs **and** the durable, cross-device h
 history. Distribution is via **EAS** — internal distribution on Android and
 TestFlight/ad-hoc on iOS — to 10–15 testers. Per **Constitution Principle II (Test-First)**, all pure
 logic — grading, note segmentation, pitch↔note math, and melody generation — is developed **test-first**
-with unit and contract tests (Jest / `jest-expo`); native pitch-detection accuracy and audio fidelity are
+with unit and contract tests (Jest / `ts-jest`); native pitch-detection accuracy and audio fidelity are
 additionally validated on real devices.
 
 ## Technical Context
@@ -78,7 +78,7 @@ audio output is needed, so it also runs in a simulator; `mic` mode still needs a
 - 60 fps UI during playback and feedback.
 - **Fretboard input (FR-020, SC-010)**: a tap sounds its note without perceptible lag. The original
   target was **p95 < 200 ms** (the constitution default for interactive operations); it was **not
-  measured** — the owner accepted a hands-on check on a physical device on 2026-10-11 (T075A). The 40 neck
+  measured** — the owner accepted a hands-on check on a physical device on 2026-10-11 (T075A). The 37 neck
   pitches are pre-rendered once the screen has settled so no tap pays for synthesis.
 
 **Constraints**:
@@ -90,8 +90,10 @@ audio output is needed, so it also runs in a simulator; `mic` mode still needs a
   fixed **±50 cents** (nearest-note), never a different semitone (FR-016).
 - **Grading alignment**: best-fit sequence alignment (edit-distance/LCS) so a single inserted/omitted note
   doesn't cascade following notes to wrong (FR-005).
-- **No consecutive identical pitches**: generated melodies never repeat a pitch back-to-back, so notes are
-  separable by pitch change without same-pitch onset detection (FR-001/FR-004).
+- **No consecutive identical pitches — generator and `mic` mode only**: generated melodies never repeat a
+  pitch back-to-back, so notes are separable by pitch change without same-pitch onset detection
+  (FR-001/FR-004). The curated set (FR-021) **may** repeat pitches — a fretboard tap is a separate tap — so
+  `mic` mode must not play curated tunes (T091).
 - **Difficulty ladder (US2)**: exactly **9 ranks** (FR-010, research R11) — a sawtooth through scale
   vocabulary, largest interval, length (3–10 notes), motif and span. All ranks share the register
   **E3–G5 (MIDI 52–79)** and a fixed **90 BPM** tempo; each melody picks its own key (FR-001). Targets can
@@ -129,7 +131,7 @@ audio output is needed, so it also runs in a simulator; `mic` mode still needs a
 | Principle | Gate | Status |
 |-----------|------|--------|
 | **I. Code Quality & Maintainability** | ESLint + Prettier enforced in CI-equivalent local checks; TypeScript `strict`; single-responsibility services; no dead code | ✅ PASS — committed in Project Structure; tooling is a merge prerequisite |
-| **II. Test-First & Comprehensive Coverage (NON-NEGOTIABLE)** | New behavior has failing tests first; contracts have tests | ✅ PASS — Jest/`jest-expo` + RNTL; pure logic (grading, segmentation, pitch↔note, generator) is test-first; each contract has boundary tests against mocked natives + frame fixtures. Native detector accuracy validated on-device (not unit-testable). |
+| **II. Test-First & Comprehensive Coverage (NON-NEGOTIABLE)** | New behavior has failing tests first; contracts have tests | ✅ PASS — Jest (`ts-jest`, node; no RNTL, so hooks/`.tsx` are validated on-device); pure logic (grading, segmentation, pitch↔note, generator) is test-first; each contract has boundary tests against mocked natives + frame fixtures. Native detector accuracy validated on-device (not unit-testable). |
 | **III. User Experience Consistency** | Shared component library, consistent feedback/error patterns, accessibility baseline | ✅ PASS — `src/components/` is the single source for shared UX; unified feedback and error states; accessibility baseline made concrete as **WCAG 2.1 AA, mobile-adapted (SC-009)** — labeled controls, ≥ 4.5:1 contrast, VoiceOver/TalkBack, ≥ 44pt/48dp targets |
 | **IV. Performance by Design** | Measurable targets declared before implementation; evidence-driven optimization | ✅ PASS — targets declared above; pitch-detection latency and grading time are budgeted and will be measured on-device |
 
@@ -188,7 +190,8 @@ specs/001-guitar-ear-training/
 └── checklists/
     ├── requirements.md
     ├── audio.md
-    └── difficulty.md
+    ├── difficulty.md
+    └── fretboard-a11y.md
 ```
 
 ### Source Code (repository root)
@@ -204,10 +207,13 @@ app/                          # expo-router screens
 src/
 ├── components/               # Shared UI (Principle III: single source of shared UX)
 │   ├── feedback/             # NoteResult chips, verdict banner, per-note breakdown
-│   ├── controls/             # Play / Replay / Retry / Next buttons
+│   ├── fretboard/            # on-screen neck, 6 × 13 tappable cells (FR-020)
+│   ├── practice/             # fretboard answer stage (slots + neck)
+│   ├── controls/             # Play / Replay / Retry / Next, Undo / Clear / Check buttons
 │   └── common/               # Buttons, layout, accessible primitives
 ├── features/
 │   ├── practice/             # US1 orchestration (state machine, hooks)
+│   │                         #   inputMode.ts (mic | fretboard, FR-020), melodySource.ts (curated | generator, FR-021)
 │   ├── difficulty/           # US2 adaptive + manual difficulty (pure reducer)
 │   │                         #   → contracts/difficulty-adaptation.md
 │   └── progress/             # US3 aggregation + views
@@ -216,15 +222,17 @@ src/
 │   │   ├── playback.ts       # expo-audio synthesized-tone playback → contracts/audio-playback.md
 │   │   ├── synth.ts          # runtime Karplus–Strong tone synth → WAV (pure)
 │   │   └── pitch.ts          # react-native-pitchy wrapper → contracts/pitch-detection.md
-│   ├── melody/               # generator (pure)            → contracts/melody-generator.md
+│   ├── melody/               # generator (pure, off in the MVP) → contracts/melody-generator.md;
+│   │                         #   curated.ts — the MVP's hand-written tunes (FR-021)
 │   ├── grading/              # grading engine (pure)       → contracts/grading-engine.md
 │   ├── storage/              # expo-sqlite repositories (offline cache / authoritative in the loop)
 │   ├── sync/                 # game-history push/pull       → server /api/sync (offline-safe)
 │   └── logging/              # anonymous attempt-log outbox → server /api/attempts (contracts/attempt-log.md)
 ├── models/                   # Entity types (data-model.md)
-└── lib/                      # pitch↔note math, cents/tolerance, segmentation, tuning-detune detection (pure)
+└── lib/                      # pitch↔note math, cents/tolerance, segmentation, tuning-detune detection,
+                              #   fretboard.ts — neck geometry and tap → note model → contracts/fretboard-input.md (pure)
 
-tests/                        # Jest (jest-expo) + React Native Testing Library
+tests/                        # Jest (ts-jest, node) — no React Native Testing Library
 ├── unit/                     # pure logic (grading, segmentation, pitch↔note, generator) — test-first
 ├── contract/                 # boundary tests vs mocked react-native-pitchy / expo-audio / HTTP transport
 └── fixtures/                 # recorded pitch-frame arrays for deterministic grading tests
@@ -250,11 +258,15 @@ mocked at the service boundary for contract tests.
 
 ## Complexity Tracking
 
-> **No Constitution gate deviations.** All four principles are satisfied by this plan; this section is
-> intentionally empty.
+Constitution exceptions in force. Each has an owner decision and a way out; none is silent.
+
+| # | Principle | Exception | Why accepted | Closes when |
+|---|-----------|-----------|--------------|-------------|
+| 1 | IV Performance | **SC-010** (tap-to-sound) was never measured; the owner accepted a hands-on check on 2026-10-11 (T075A). SC-001 / SC-003 were never measured in `fretboard` mode. | The tap sounds without perceptible lag on a device; instrumenting costs more than the risk. | A tap ever feels late (re-open T075A with a measurement), and T092 measures SC-001 / SC-003. |
+| 2 | III UX / accessibility | **SC-009 is not met for the fretboard**: fret cells are ≈ 51 × 29 pt against the 44 pt target (re-measured on a simulator after the 12-fret change; 16 frets gave ≈ 24 pt). See `checklists/fretboard-a11y.md`. | **Pending owner decision** (exempt the dense grid, or redesign it) — not yet an accepted exception. | T076 closes: the decision is recorded here and the cheap fixes are applied. |
 
 An earlier draft of this plan deferred automated testing as a Principle II exception. That deviation was
-**withdrawn**: Principle II is now satisfied by a test-first unit layer for all pure logic (grading,
-segmentation, pitch↔note math, melody generator) plus contract tests at each service boundary. The only
-behavior left to manual, on-device validation is native pitch-detection accuracy and audio fidelity,
-which are inherently not unit-testable — not a deviation from the principle.
+**withdrawn**: Principle II is satisfied by a test-first unit layer for all pure logic (grading,
+segmentation, pitch↔note math, melody generator, fretboard model) plus contract tests at each service
+boundary. The only behavior left to manual, on-device validation is native pitch-detection accuracy, audio
+fidelity and the screens (hooks and `.tsx` cannot run under ts-jest) — not a deviation from the principle.

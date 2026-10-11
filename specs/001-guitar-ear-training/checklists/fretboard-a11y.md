@@ -20,6 +20,11 @@ run and a largest-font-scale run — those need a device (quickstart F8).
 > **Update 2026-10-11**: the owner shortened the neck to 12 frets (13 rows instead of 16, FR-020, T087). Re-measured
 > in the simulator on the same screen: a cell is now ≈ **51 × 29 pt** (was ≈ 51 × 24). Still below 44 pt, so the
 > A1 decision below stands; A4(a) is now 6 × 13 = 78 stops instead of 96.
+>
+> **Re-verified 2026-10-11** (iPhone 17 Pro simulator, 402 × 874 pt, level 1 answer view): fret-wire spacing
+> ≈ 66.5 px at 2.29 px/pt → **29 pt**; string spacing ≈ 117.5 px → **51 pt**. The 12-fret change moved the
+> height from ≈ 24 to ≈ 29 pt, not to 44. Reaching 44 pt would need ≈ 570 pt of neck against ≈ 350 pt available;
+> reclaiming the ≈ 80 pt of blank space above the "PRACTICE" row would give ≈ 35 pt. **A1 still fails.**
 
 ## Why A1 is structural
 
