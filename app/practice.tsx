@@ -72,8 +72,8 @@ const CALIBRATION_CFG: CalibrationConfig = {
 
 const APP_VERSION = '0.1.0';
 
-/** Every pitch the fretboard can sound (E2–G5), rendered ahead of time so a tap plays at once. */
-const FRETBOARD_MIDI = Array.from({ length: 40 }, (_, i) => 40 + i);
+/** Every pitch the fretboard can sound (E2–E5), rendered ahead of time so a tap plays at once. */
+const FRETBOARD_MIDI = Array.from({ length: 37 }, (_, i) => 40 + i);
 
 /** Fret height on the result view, where the board sits in a scrolling column. */
 const RESULT_FRET_HEIGHT = 26;

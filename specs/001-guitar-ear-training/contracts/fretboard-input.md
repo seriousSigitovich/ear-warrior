@@ -19,8 +19,8 @@ before this feature), so existing loop tests and callers are unaffected.
 |----------|-------|-------|
 | `OPEN_STRING_MIDI` | `[40, 45, 50, 55, 59, 64]` | E2 A2 D3 G3 B3 E4, string 0 = lowest. Also `STANDARD_TUNING_MIDI` |
 | `STRING_COUNT` | 6 | |
-| `FRET_COUNT` / `MAX_FRET` | 16 / 15 | open + frets 1–15; 15 is needed for G5 (79) on the high e |
-| Reach | MIDI 40–79 (E2–G5) | covers FR-001's register E3–G5 (52–79) |
+| `FRET_COUNT` / `MAX_FRET` | 13 / 12 | open + frets 1–12 (was 16 / 15 until 2026-10-11; fewer rows give taller cells) |
+| Reach | MIDI 40–76 (E2–E5) | the register every MVP melody must fit (FR-021). The generator's E3–G5 register (52–79) is wider than the neck, which is one reason the generator is out of the MVP |
 
 `fretMidi({string, fret}) = OPEN_STRING_MIDI[string] + fret`; throws on an invalid position.
 `positionsForMidi(midi)` lists every position that sounds a pitch (low string first; empty off the board).
@@ -59,7 +59,7 @@ tapStatuses(noteResults): NoteStatus[]                // grade results aligned b
 
 ## Audio
 
-The 40 pitches of the neck (MIDI 40–79) are pre-rendered through `AudioPlayback.preload` once the screen
+The 37 pitches of the neck (MIDI 40–76) are pre-rendered through `AudioPlayback.preload` once the screen
 has settled (`InteractionManager.runAfterInteractions`), so a tap sounds immediately. Failure to preload is
 non-fatal. Output is the same runtime-synthesized tone as melody playback (R6) — no bundled samples.
 

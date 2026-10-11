@@ -42,12 +42,12 @@ describe('fretMidi', () => {
 
   test('each fret adds one semitone', () => {
     expect(fretMidi({ string: 5, fret: 3 })).toBe(67); // G4 on the high e
-    expect(fretMidi({ string: 5, fret: 15 })).toBe(79); // G5 — top of the generator's range
+    expect(fretMidi({ string: 5, fret: 12 })).toBe(76); // E5 — the 12th fret of the high e, top of the neck
   });
 
   test('rejects positions off the board', () => {
     expect(() => fretMidi({ string: 6, fret: 0 })).toThrow();
-    expect(() => fretMidi({ string: 0, fret: 16 })).toThrow();
+    expect(() => fretMidi({ string: 0, fret: 13 })).toThrow(); // the neck ends at the 12th fret
     expect(() => fretMidi({ string: 0, fret: -1 })).toThrow();
     expect(isValidPosition({ string: 2, fret: 1.5 })).toBe(false);
   });
@@ -55,9 +55,8 @@ describe('fretMidi', () => {
 
 describe('positionsForMidi', () => {
   test('lists every string that can sound the pitch, low string first', () => {
-    // G3 (55): open G, fret 5 on D, fret 10 on A, fret 15 on E.
+    // G3 (55): open G, fret 5 on D, fret 10 on A; the low E would need fret 15, past the 12th.
     expect(positionsForMidi(55)).toEqual([
-      { string: 0, fret: 15 },
       { string: 1, fret: 10 },
       { string: 2, fret: 5 },
       { string: 3, fret: 0 },
@@ -65,7 +64,7 @@ describe('positionsForMidi', () => {
   });
 
   test('every position round-trips through fretMidi', () => {
-    for (let midi = 40; midi <= 79; midi++) {
+    for (let midi = 40; midi <= 76; midi++) {
       const positions = positionsForMidi(midi);
       expect(positions.length).toBeGreaterThan(0);
       for (const p of positions) expect(fretMidi(p)).toBe(midi);
@@ -74,12 +73,13 @@ describe('positionsForMidi', () => {
 
   test('pitches off the board have no position', () => {
     expect(positionsForMidi(39)).toEqual([]);
-    expect(positionsForMidi(80)).toEqual([]);
+    expect(positionsForMidi(77)).toEqual([]); // F5 is past the 12th fret of the high e
   });
 
-  test('the board spans E2–G5, covering the whole generator range (E3–G5)', () => {
+  test('the board is 12 frets and spans E2–E5, the register MVP melodies must fit', () => {
+    expect(FRET_COUNT).toBe(13); // open + frets 1–12
     expect(OPEN_STRING_MIDI[0]).toBe(40);
-    expect(fretMidi({ string: STRING_COUNT - 1, fret: FRET_COUNT - 1 })).toBe(79);
+    expect(fretMidi({ string: STRING_COUNT - 1, fret: FRET_COUNT - 1 })).toBe(76);
   });
 });
 
@@ -126,8 +126,8 @@ describe('grading a fretboard answer', () => {
   const target = melodyOf([67, 64, 62]); // G4 E4 D4
 
   test('any position of the right pitch is correct', () => {
-    // G4 on the high e (fret 3) vs the B string (fret 8); E4 open vs D string fret 14; D4 on B fret 3.
-    const taps = [tapAt(4, 8, 0), tapAt(2, 14, 300), tapAt(4, 3, 600)];
+    // G4 on the high e (fret 3) vs the B string (fret 8); E4 open vs G string fret 9; D4 on B fret 3.
+    const taps = [tapAt(4, 8, 0), tapAt(3, 9, 300), tapAt(4, 3, 600)];
     const grade = gradeAttempt(target, tapsToDetected(taps), GRADING);
     expect(grade.verdict).toBe('correct');
     expect(grade.lowConfidence).toBe(false);
@@ -169,8 +169,8 @@ describe('tapStatuses', () => {
   test('stays aligned with the taps on a real grade', () => {
     const target = melodyOf([60, 62, 64]);
     // played: C, F (wrong), then nothing for E
-    const taps = [tapAt(3, 5, 0), tapAt(2, 15, 300)];
-    // C4 = midi 60 -> string 3 (G, 55) fret 5; F... string 2 (D, 50) fret 15 = 65 (F4)
+    const taps = [tapAt(3, 5, 0), tapAt(3, 10, 300)];
+    // C4 = midi 60 -> string 3 (G, 55) fret 5; F4 = 65 -> string 3 fret 10
     const grade = gradeAttempt(target, tapsToDetected(taps), GRADING);
     const statuses = tapStatuses(grade.noteResults);
     expect(statuses).toHaveLength(taps.length);

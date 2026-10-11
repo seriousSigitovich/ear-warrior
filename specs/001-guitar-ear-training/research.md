@@ -243,9 +243,9 @@ same shape and key.*
 
 ## R14. Answer input for the MVP: on-screen fretboard (FR-020)
 
-- **Decision**: The MVP answers on an **on-screen fretboard** — 6 strings (E-A-D-G-B-E) × 16 positions
-  (open + frets 1–15, E2–G5) — instead of the microphone. A tap sounds the note (the existing runtime
-  tone synthesis, R6, pre-rendered for all 40 pitches after the screen settles so a tap never stutters),
+- **Decision**: The MVP answers on an **on-screen fretboard** — 6 strings (E-A-D-G-B-E) × 13 positions
+  (open + frets 1–12, E2–E5) — instead of the microphone. A tap sounds the note (the existing runtime
+  tone synthesis, R6, pre-rendered for all 37 pitches after the screen settles so a tap never stutters),
   adds it to the answer, and the learner presses **Check**. The mic pipeline (R2–R5) is **kept, not
   deleted**, behind `EXPO_PUBLIC_INPUT_MODE` (`fretboard` default, `mic` to restore it).
 - **Rationale**: This is a scope cut to ship the MVP, not a change of product thesis. Grading is by pitch
@@ -267,6 +267,14 @@ same shape and key.*
   microphone accuracy and SC-002 is a `mic`-mode claim. (3) Fretboard play trains finding pitches on the
   neck by ear; it does not train **producing** them on a real instrument, which the `mic` mode restores.
   (4) The spec's original input — "reproduce it on a guitar" — is deferred, not dropped.
+- **Neck length and melody source (revised 2026-10-11)**: the first neck had 16 positions (frets 1–15) to
+  reach G5. The owner chose **12 frets** — a simpler neck, taller cells (the 44 pt target of SC-009 gets
+  closer) and 12 is the octave landmark. Cost: the high e tops out at E5 (MIDI 76), while the **generator**
+  writes up to G5 (79), so some generated notes could not be answered. The owner also decided the
+  **generator is deferred and not part of the MVP**; melodies come from a **curated set** (FR-021) that is
+  written to fit E2–E5. The generator and its register are left untouched, so the neck was shortened first
+  (T087, at the owner's instruction) and the curated set follows (T088/T089). **Until it lands, a generated
+  melody can contain F5–G5, which the neck cannot play** — a known, accepted defect, not a design choice.
 - **Alternatives considered**: Shipping the mic path as-is — rejected for the MVP, it needs the on-device
   calibration spike (T052/T053) to finish first. Piano-keyboard or note-name buttons — rejected, they lose
   the string/fret geometry the target learner (guitarists) actually reads, and make a note a name rather

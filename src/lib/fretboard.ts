@@ -14,12 +14,12 @@ export const OPEN_STRING_MIDI = [40, 45, 50, 55, 59, 64] as const;
 export const STRING_LABELS = ['E', 'A', 'D', 'G', 'B', 'e'] as const;
 
 export const STRING_COUNT = OPEN_STRING_MIDI.length;
-/** Fret positions per string: open (0) plus frets 1–15. 15 is needed to reach G5 on the high e. */
-export const FRET_COUNT = 16;
+/** Fret positions per string: open (0) plus frets 1–12, so the high e tops out at E5 (MIDI 76). */
+export const FRET_COUNT = 13;
 export const MAX_FRET = FRET_COUNT - 1;
 
 /** Frets carrying a single inlay dot, and the one carrying a double dot. */
-export const SINGLE_INLAY_FRETS: readonly number[] = [3, 5, 7, 9, 15];
+export const SINGLE_INLAY_FRETS: readonly number[] = [3, 5, 7, 9];
 export const DOUBLE_INLAY_FRET = 12;
 
 /** A place on the neck. `string` 0 is the low E; `fret` 0 is the open string. */

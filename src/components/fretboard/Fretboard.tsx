@@ -1,5 +1,5 @@
 // Vertical fretboard (Nocturne "Fretboard answer" frame): strings run as columns, low E on the left,
-// the nut at the top and frets 1–15 descending. A tap on any cell reports its (string, fret); the
+// the nut at the top and frets 1–12 descending. A tap on any cell reports its (string, fret); the
 // learner's answer is drawn back as numbered markers in the order the notes were placed. When
 // `statuses` is given the markers take their grade colours instead (accent matched, warm wrong).
 // Purely presentational — what a tap *means* lives in lib/fretboard and the practice loop.

@@ -34,11 +34,13 @@
 
 ### Session 2026-10-11 — MVP scope simplification
 
-- Q: How does the learner give an answer in the MVP? → A: **On an on-screen fretboard, not the microphone.** The learner taps the notes on a 6-string × 16-position neck (open + frets 1–15, standard tuning, E2–G5), hears each tapped note, and presses **Check**. This is the default input mode of the MVP build. The microphone pipeline (capture, segmentation, calibration, tuning check) stays in the codebase, unchanged and tested, and is re-enabled by the build flag `EXPO_PUBLIC_INPUT_MODE=mic`. Introduced as **FR-020**; recorded as **R14**. *(Simplifies the "play it on a guitar" input of the original feature description; the training goal — reproduce a heard melody by ear — is unchanged.)*
+- Q: How does the learner give an answer in the MVP? → A: **On an on-screen fretboard, not the microphone.** The learner taps the notes on a 6-string × 13-position neck (open + frets 1–12, standard tuning, E2–E5), hears each tapped note, and presses **Check**. This is the default input mode of the MVP build. The microphone pipeline (capture, segmentation, calibration, tuning check) stays in the codebase, unchanged and tested, and is re-enabled by the build flag `EXPO_PUBLIC_INPUT_MODE=mic`. Introduced as **FR-020**; recorded as **R14**. *(Simplifies the "play it on a guitar" input of the original feature description; the training goal — reproduce a heard melody by ear — is unchanged.)*
 - Q: What is graded when the answer is tapped? → A: **Pitch and order only, by the same grader.** A tap is a (string, fret) position, but it is graded by its **MIDI pitch**, so the same sound on another string is the same answer — the exercise tests the ear, not knowledge of one fingering. Taps are converted to the notes the segmenter would have produced (exact pitch, 0 cents offset, clarity 1), so FR-005's alignment and four categories, FR-011/011a adaptation, FR-012/013 persistence and the octave rule (FR-016) apply with no change.
 - Q: Which microphone-specific behaviours are inactive in `fretboard` mode? → A: Segmentation (FR-004), the no-input timeout and end-of-attempt silence (FR-015), low-confidence gating (FR-017), the out-of-tune advisory (FR-014) and microphone permission / noise-floor calibration. None can occur: a tap has no pitch uncertainty, there is no capture window, and the answer is submitted explicitly. Consequently **a `fretboard` attempt is never `lowConfidence` or `timedOut`**, and every submitted attempt is graded.
 - Q: How is an attempt's input mode recorded, and may modes be pooled? → A: **Every attempt records `inputMode` (`mic` | `fretboard`)** and telemetry carries `input_mode`. Modes MUST NOT be pooled when reading accuracy, because a fretboard answer carries no pitch noise (this is why SC-002's 95 % agreement target is a `mic`-mode claim). Attempts and telemetry rows recorded before this change are all `mic`.
 - Q: What are the answer-entry rules? → A: An answer holds **at most as many notes as the melody** (extra taps are sounded but not added); **Undo** removes the last note, **Clear** empties the answer, **Replay** replays the melody; **Check** is enabled with **≥ 1** note — a shorter answer is graded and its unplayed targets are `missed`. **Retry** (FR-008) clears the board and re-answers the same melody.
+- Q: Where do the MVP's melodies come from, now that the answer is a fretboard? → A: **From a curated set, not the generator** (owner, 2026-10-11). The generator (FR-001, the R11 ladder's generation parameters) stays in the code, unchanged, and is deferred to a later phase; the build selects the melody source and defaults to the curated set. Introduced as **FR-021**. Reason it matters now: the generator writes up to G5 (MIDI 79) but the 12-fret neck reaches only E5 (76), so the curated melodies are written to fit E2–E5.
+- Q: How long is the neck? → A: **12 frets** (open + 1–12, 13 positions per string, E2–E5), chosen by the owner for a simpler neck with taller cells; it replaces the 16-position first draft. **Implemented 2026-10-11 (T087)**, ahead of the curated set (T088/T089) at the owner's instruction. **Known defect until T088 lands:** the generator, still wired in, can produce F5–G5 (MIDI 77–79), which the 12-fret neck cannot play — such a melody cannot be answered correctly. Lower ranks rarely reach that high, but it is not excluded.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -156,7 +158,7 @@ confirm it shows accuracy trends, practice volume, and identified weak areas der
 
 ### Functional Requirements
 
-- **FR-001**: System MUST generate short monophonic melodic phrases, deterministic per seed. Each melody
+- **FR-001** *(the generator — **deferred from the MVP**, FR-021)*: System MUST generate short monophonic melodic phrases, deterministic per seed. Each melody
   picks its own key (a guitar-friendly tonic and one of the level's scale families) and lies in the
   register **E3–G5 (MIDI 52–79)**, inside the standard guitar range **E2–E6 (MIDI 40–88)** and the
   detector's recognized band. Phrases MUST carry rhythm (note durations from a small cell vocabulary,
@@ -198,7 +200,7 @@ confirm it shows accuracy trends, practice volume, and identified weak areas der
   receiving feedback, without altering the melody.
 - **FR-008**: Learners MUST be able to retry the same melody and receive a fresh grading.
 - **FR-009**: Learners MUST be able to advance to a new generated melody.
-- **FR-010**: System MUST support exactly **9 difficulty levels (rank 1–9)**. Difficulty is a route
+- **FR-010** *(the ladder's generation parameters belong to the deferred generator; the MVP's curated melodies are assigned to these levels, FR-021)*: System MUST support exactly **9 difficulty levels (rank 1–9)**. Difficulty is a route
   through several dimensions — scale vocabulary (major pentatonic → major → natural minor → mixed),
   largest interval, length (3 → 10 notes), motif predictability (repeat → sequence → variation → free),
   and span — laid out as a sawtooth: each new vocabulary starts with a shorter, stepwise phrase. Tempo is
@@ -272,7 +274,7 @@ confirm it shows accuracy trends, practice volume, and identified weak areas der
   `EXPO_PUBLIC_INPUT_MODE`: **`fretboard`** (the MVP default) and **`mic`** (the microphone pipeline of
   FR-004/FR-014/FR-015/FR-017, kept intact and re-enabled by setting the flag to `mic`).
   In `fretboard` mode the learner answers by tapping positions on an on-screen guitar neck — **6 strings in
-  standard tuning E-A-D-G-B-E × 16 positions (open + frets 1–15)**, reaching E2–G5, the full range of FR-001.
+  standard tuning E-A-D-G-B-E × 13 positions (open + frets 1–12)**, reaching E2–E5 (MIDI 40–76). Every target melody of the MVP MUST lie inside that reach (FR-021).
   - Tapping a position MUST **sound that note** at once (it is how the learner compares it with the melody)
     and append it to the answer, up to the melody's note count; a tap on a full answer is sounded but not
     added. The learner MUST be able to **Undo** the last note, **Clear** the answer, **Replay** the melody,
@@ -288,6 +290,7 @@ confirm it shows accuracy trends, practice volume, and identified weak areas der
     its `matched` / `wrong` / `extra` status (FR-006).
   - Each Attempt MUST record its `inputMode`; attempts recorded before FR-020 are `mic`. Accuracy MUST
     NOT be pooled across modes (a tap carries no pitch noise).
+- **FR-021**: In the MVP build, melodies MUST come from a **curated set** — a fixed, hand-written list — and NOT from the generator of FR-001/FR-010. The generator stays in the codebase unchanged and is **deferred to a later phase**; the build selects the melody source, defaulting to the curated set. Each curated melody MUST carry its notes (pitch and order), the rhythm needed to play it back, and the difficulty **level** (rank 1–9) it belongs to, and MUST lie entirely inside the neck's reach **E2–E5 (MIDI 40–76)** so that every note can be answered on 12 frets (FR-020). The adaptive/fixed difficulty behaviour (FR-011, FR-011a, FR-011b) is unchanged and selects melodies by level. The set's size, content and ordering rule are **not yet decided** — see Open Questions.
 
 ### Traceability of audio & pitch correctness rules
 
@@ -355,6 +358,13 @@ method and conditions for the accuracy claim are owned by **SC-002 / SC-002a**.
   VoiceOver and TalkBack, touch targets are ≥ 44pt (iOS) / 48dp (Android), and layouts remain usable at
   the OS's largest standard font-scaling setting.
 - **SC-010** *(`fretboard` input mode, FR-020)*: Tapping a fret sounds its note without perceptible lag on a physical device, including the first taps after the screen opens (the neck's pitches are pre-rendered once the screen settles). **Accepted on the owner's hands-on check, 2026-10-11 — no measured figure.** The original target was p95 < 200 ms from touch to audible onset (the constitution default); it was not instrumented, and is to be measured only if a tap ever feels late.
+
+## Open Questions (MVP melody set, FR-021 — owner to decide)
+
+- **Content and size**: how many melodies, and who writes or approves them? (The famous-tune melodies of the video series in `docs/experiments.md` are one candidate source; their keys and range must be checked against E2–E5.)
+- **Selection rule**: random within the level, a fixed order, or "not the same one twice in a row"? With a small set a learner will see repeats; is that acceptable?
+- **Difficulty**: are the 9 levels still the right axis for a hand-picked set, or does the MVP need fewer levels? (With few melodies, 9 levels leaves some with one tune.)
+- **Repeated pitches**: the no-consecutive-identical-pitches rule (FR-001) exists for the microphone segmenter; in `fretboard` mode a repeated note is just a second tap. May curated melodies repeat a pitch?
 
 ## Assumptions
 
