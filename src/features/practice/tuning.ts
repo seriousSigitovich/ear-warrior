@@ -3,6 +3,7 @@
 // may dismiss it and proceed to grading (clarification 2026-07-23).
 import { DetectedNote, TuningConfig, TuningWarning } from '../../models';
 import { detectConsistentDetune } from '../../lib/tuning';
+import { OPEN_STRING_MIDI } from '../../lib/fretboard';
 import { AudioPlayback } from '../../services/audio/playback';
 
 export interface TuningCheck extends TuningWarning {
@@ -11,7 +12,7 @@ export interface TuningCheck extends TuningWarning {
 }
 
 /** Open-string reference notes for standard tuning E-A-D-G-B-E. */
-export const STANDARD_TUNING_MIDI = [40, 45, 50, 55, 59, 64];
+export const STANDARD_TUNING_MIDI: readonly number[] = OPEN_STRING_MIDI;
 
 export function evaluateTuning(
   detected: DetectedNote[],

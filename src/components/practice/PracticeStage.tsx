@@ -4,6 +4,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
 import { CaptureProgress, LoopPhase } from '../../features/practice/usePracticeLoop';
+import { InputMode } from '../../models';
 import { noteName } from '../../lib/pitchNote';
 import { Waveform, IDLE_BARS, LISTENING_BARS } from '../common/Waveform';
 import { colors, font, textAlpha, withAlpha } from '../../theme/nocturne';
@@ -14,9 +15,11 @@ export interface PracticeStageProps {
   noteCount: number;
   /** Live capture read-out; ignored outside the capturing phase. */
   progress: CaptureProgress;
+  /** Only changes the idle prompt; the fretboard answer view is its own component. */
+  inputMode?: InputMode;
 }
 
-export function PracticeStage({ phase, noteCount, progress }: PracticeStageProps) {
+export function PracticeStage({ phase, noteCount, progress, inputMode }: PracticeStageProps) {
   switch (phase) {
     case 'playingMelody':
       return <Listening />;
@@ -28,15 +31,19 @@ export function PracticeStage({ phase, noteCount, progress }: PracticeStageProps
       return <Grading />;
     case 'idle':
     default:
-      return <Idle />;
+      return <Idle inputMode={inputMode} />;
   }
 }
 
-function Idle() {
+function Idle({ inputMode }: { inputMode?: InputMode }) {
   return (
     <View style={styles.center}>
       <Waveform bars={IDLE_BARS} height={34} barWidth={4} align="center" />
-      <Text style={styles.hint}>Press play, listen, then reproduce the melody.</Text>
+      <Text style={styles.hint}>
+        {inputMode === 'fretboard'
+          ? 'Press play, listen, then find the notes on the fretboard.'
+          : 'Press play, listen, then reproduce the melody.'}
+      </Text>
     </View>
   );
 }

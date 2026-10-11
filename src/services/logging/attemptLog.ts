@@ -1,7 +1,7 @@
 // Anonymous, insert-only attempt logging with an offline outbox (R9, contracts/attempt-log.md).
 // Best-effort: logging never blocks or fails the practice loop. Local SQLite stays the offline cache.
 // The transport client is injected so queue/flush/retry logic is testable against a mock.
-import { AttemptGrade, DifficultyLevel, Melody } from '../../models';
+import { AttemptGrade, DifficultyLevel, InputMode, Melody } from '../../models';
 
 /** Anonymized aggregate payload — never audio, per-note pitches, timestamps, location, or PII (R9). */
 export interface AttemptLogPayload {
@@ -17,6 +17,8 @@ export interface AttemptLogPayload {
   extra_count: number;
   confidence: number;
   octave_mismatch: boolean;
+  /** How the answer was given. A fretboard answer has no pitch noise, so it must not be pooled with mic. */
+  input_mode: InputMode;
 }
 
 export interface AttemptLogClient {
@@ -30,6 +32,7 @@ export function buildAttemptLogPayload(
   level: DifficultyLevel,
   deviceId: string,
   appVersion: string,
+  inputMode: InputMode = 'mic',
 ): AttemptLogPayload {
   const count = (status: string) => grade.noteResults.filter((r) => r.status === status).length;
   return {
@@ -45,6 +48,7 @@ export function buildAttemptLogPayload(
     extra_count: count('extra'),
     confidence: grade.confidence,
     octave_mismatch: grade.noteResults.some((r) => r.octaveMismatch),
+    input_mode: inputMode,
   };
 }
 

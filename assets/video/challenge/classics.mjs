@@ -139,23 +139,22 @@ const SERIES = [
     id: 25, title: 'Ode to Joy, 6th note wrong', once: true, timbre: 'acoustic', layout: 'fretboard', tempoBpm: 120, tonicPc: 0, minor: false, key: 'C major',
     hook: 'You know this tune.\nOne note is *wrong.*\n*One listen.*',
     ask: 'The *6th note*\nwas wrong.', askSub: 'What should it be? Comment it.',
-    outroSub: 'Write the right note (or fret) in the comments.',
     notes: 'E4:1 E4:1 F4:1 G4:1 G4:1 F#4:1 E4:1 D4:1',
   },
   // #26: #25's melody and format, but the hook does NOT warn about the wrong note — so the F# is a real head fake (a broken prediction), not a spot-the-difference task.
   // Callaway's loop, simplified: hook = stakes (guitarists, one try) + big question ("play this by ear?"); head fake = the wrong 6th note;
-  // re-hook = "Wait. One note was wrong. Which one?" (closes the first question, opens the second). Nothing else is asked of the viewer.
+  // re-hook = "Wait. One note was wrong. Which one?" (closes the first question, opens the second); a short last slide asks for the comment.
   {
     id: 26, title: 'Ode to Joy, 6th note wrong (hidden)', once: true, timbre: 'acoustic', layout: 'fretboard', tempoBpm: 120, tonicPc: 0, minor: false, key: 'C major',
-    hook: 'Guitarists:\nCan you *play this\nby ear?*\n*One try.*',
+    hook: 'Guitarists: *play this*\n*by ear?* *One try.*',
     ask: 'Wait. One note\nwas *wrong.*', askSub: 'Which one?',
-    outroSub: 'Comment the wrong note.',
+    cta: { title: 'Comment the\n*right note*', sub: 'The one that replaces the wrong one.' },
     notes: 'E4:1 E4:1 F4:1 G4:1 G4:1 F#4:1 E4:1 D4:1',
   },
 ].map(s => ({ kind: 'quiz', coldOpen: true, layout: 'keyboard', ...s, notes: parse(s.notes) }));
 
 // Experiment H9 (docs/experiments.md): "guess the KEY" quiz instead of "play the melody back". kind "key", 10 s:
-//   I–IV–V–I strummed on guitar from frame 0 → the same cadence again under four answer cards (A–D) → end card.
+//   I–IV–V–I strummed on guitar from frame 0 → the same cadence again under four answer cards (A–D) → ends.
 // `notes` are the chord ROOTS (only for timing/pulse — one entry per chord, `beats` = chord length); `chords` are the voicings (MIDI, low → high).
 // `options` are the four answer cards, `answer` is the index of the right one — the answer is NEVER on screen, it goes in the pinned comment.
 const KEYQUIZ = [

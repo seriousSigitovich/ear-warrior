@@ -42,7 +42,7 @@ export default function Home() {
         Hear it.{'\n'}Play it back.{'\n'}Nail it.
       </Text>
       <Text style={styles.blurb}>
-        A short melody plays. You reproduce it on guitar. We tell you exactly which notes landed.
+        A short melody plays. You find it on the fretboard by ear. We tell you exactly which notes landed.
       </Text>
 
       <Waveform bars={HERO_BARS} height={48} style={styles.wave} />

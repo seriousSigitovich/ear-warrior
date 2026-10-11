@@ -42,9 +42,15 @@ only server-side (dashboard / service role).
   "missed_count": 0,
   "extra_count": 0,
   "confidence": 0.82,
-  "octave_mismatch": false
+  "octave_mismatch": false,
+  "input_mode": "fretboard"
 }
 ```
+
+`input_mode` (`"mic"` | `"fretboard"`, FR-020) says how the answer was given. It is one enum — no PII, no
+audio. The server defaults it to `'mic'` when absent, so builds that predate fretboard input still insert
+(and their rows are, correctly, all microphone attempts). **Analysis MUST group by `input_mode`** — a tap is
+exact, so fretboard and microphone accuracy are not comparable.
 
 ## Postgres table (`attempt_log`)
 
@@ -67,6 +73,8 @@ create table if not exists attempt_log (
   confidence        real not null,
   octave_mismatch   boolean not null default false
 );
+-- Added with fretboard input (FR-020); existing rows were all microphone attempts.
+alter table attempt_log add column if not exists input_mode text not null default 'mic';
 create index if not exists attempt_log_device_idx on attempt_log (device_id, created_at);
 ```
 

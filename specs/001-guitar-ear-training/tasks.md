@@ -281,3 +281,23 @@ T051–T054, T021C, T055, T056), which converge does not duplicate.
 - [X] T067 Construct the anonymous attempt-log outbox (`createAttemptLogOutbox` in `src/services/logging/attemptLog.ts`) with the device id and app version, and supply it to `persistGradedAttempt` so telemetry is actually enqueued. `createAttemptLogOutbox` is currently never called anywhere in `app/` or `src/`, and its only consumer (`persist.ts`) is itself unreachable, so no row can ever reach the backend — leaving FR-019 / SC-008 untestable end-to-end despite T050 being marked complete (partial). Depends on T066
 - [X] T068 Remove or explicitly label the hardcoded "Streak — 6 days" stat in `app/index.tsx`, which now sits beside a real, persisted level value and so reads as genuine. T056 covers only the fabricated figures in `app/progress.tsx` and does not mention the home screen, so this presents invented data as real per FR-013 (contradicts)
 - [X] T069 Resolve the dangling `Melody` reference in storage: either add a melodies table/repository alongside `sessions`/`attempts`/`difficulty_settings` in `src/services/storage/db.ts`, or record the decision to denormalize the melody into the `Attempt` row and update `data-model.md`'s "Relationships & integrity" accordingly. `data-model.md` declares the `Melody` entity and `Attempt.melodyId → Melody.id`, but no melody store exists, so persisted attempts would carry a `melodyId` pointing at nothing — which also blocks US3's weak-areas-by-melody-characteristic aggregation (missing)
+
+---
+
+## Phase 9: MVP scope change — fretboard input (FR-020, R14)
+
+**Purpose**: Record the 2026-10-11 simplification: the MVP answers on an on-screen fretboard instead of the
+microphone. Written after the fact (the code landed first); the checked tasks are what is in the working
+tree, the unchecked ones are what the change still owes. Design: `contracts/fretboard-input.md`.
+The microphone pipeline is **kept** behind `EXPO_PUBLIC_INPUT_MODE=mic` — T021C, T052 and T053 remain open
+for it and are no longer MVP blockers.
+
+- [X] T070 [US1] Pure fretboard model in `src/lib/fretboard.ts` — geometry (6 × 16, E2–G5), `fretMidi`, `positionsForMidi`, `makeTap`/`addTap`/`undoTap`, `tapsToDetected` (taps → the segmenter's note shape), `tapStatuses` — with tests in `tests/unit/lib/fretboard.test.ts` (FR-020)
+- [X] T071 [US1] Add `InputMode = 'mic' | 'fretboard'` and optional `Attempt.inputMode` to `src/models/index.ts`; `STANDARD_TUNING_MIDI` now derives from `OPEN_STRING_MIDI` (FR-020, `data-model.md`)
+- [X] T072 [US1] Wire fretboard input into `usePracticeLoop`: `inputMode` dep (default `mic`), `tapFret` / `undoFret` / `clearFrets` / `submitAnswer`, shared `finishAttempt` for both modes, `retry` clears the board instead of recapturing, `next` clears the answer (FR-020, FR-008)
+- [X] T073 [US1] UI: `Fretboard`, `FretboardAnswer`, `FretboardControls`; result view shows the answer on the neck with per-tap status; idle prompt and home copy reworded for the fretboard; `app/practice.tsx` selects the mode from `EXPO_PUBLIC_INPUT_MODE` and pre-renders the 40 neck pitches (FR-006, FR-020, R14)
+- [X] T074 Record the mode: `inputMode` on each attempt, `input_mode` in the telemetry payload (`src/services/logging/attemptLog.ts`, `persist.ts`), `input_mode` column on the server (`server/src/db/ddl.ts`, `schema.ts`, `routes/telemetry.ts`, default `'mic'` for old builds/rows), asserted in `tests/contract/logging.test.ts` (FR-019, FR-020, `contracts/attempt-log.md`)
+- [ ] T075 [US1] Validate quickstart scenarios **F1–F8** on a real device (tap latency, same-pitch-any-string, entry controls, short answer, result view, retry/next, no mic prompt) and record pass/fail (FR-020)
+- [ ] T076 [P] Accessibility pass for the fretboard answer and result view — VoiceOver labels and order across 6 × 16 fret cells, ≥ 44 pt hit targets at phone width, contrast of the matched/wrong/extra tap colours, largest font scale — as an extension of T051 (SC-009)
+- [ ] T077 [US3] **Do not pool input modes in progress**: `src/services/storage/progress.ts` aggregates every attempt, but a fretboard answer is exact and a mic answer is not, so mixed history overstates accuracy. Split or filter `computeProgress` by `inputMode` (absent = `mic`) with a unit test, per FR-020 / R14. *(Spec rule not yet implemented — found while writing this phase.)*
+- [ ] T078 [P] Decide and record what returns the `mic` mode to the product (e.g. completing T052/T053, a "play it on your guitar" mode beyond the fretboard) so the deferral in R14 has an exit criterion

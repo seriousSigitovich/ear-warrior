@@ -241,6 +241,38 @@ same shape and key.*
 - **Note**: The counter reset on rank change supplies the hysteresis that prevents raise/lower thrashing —
   after any adjustment a fresh full streak is required before the next one.
 
+## R14. Answer input for the MVP: on-screen fretboard (FR-020)
+
+- **Decision**: The MVP answers on an **on-screen fretboard** — 6 strings (E-A-D-G-B-E) × 16 positions
+  (open + frets 1–15, E2–G5) — instead of the microphone. A tap sounds the note (the existing runtime
+  tone synthesis, R6, pre-rendered for all 40 pitches after the screen settles so a tap never stutters),
+  adds it to the answer, and the learner presses **Check**. The mic pipeline (R2–R5) is **kept, not
+  deleted**, behind `EXPO_PUBLIC_INPUT_MODE` (`fretboard` default, `mic` to restore it).
+- **Rationale**: This is a scope cut to ship the MVP, not a change of product thesis. Grading is by pitch
+  and order only, so the *input device* is the one piece that can be swapped without touching the grader.
+  The microphone path carries the project's largest unresolved risk — on-device calibration, the segmenter
+  onset/pitch work, mic warm-up delay and per-device variance (R2, R3, SC-002/T052–T053) — and none of
+  that risk exists for a tap: no pitch noise, no capture window, no permission prompt, no low-confidence
+  or timeout path, and it works with no instrument in hand. The learner still has to **find the melody by
+  ear** and reproduce it, which is the training goal.
+- **Design**: A tap is a `(string, fret)` position; grading uses its **MIDI pitch** (`fretMidi`), so the
+  same sound on a different string is the same answer. `tapsToDetected` converts taps into `DetectedNote[]`
+  — exact pitch, 0 cents, clarity 1, spacing from tap times — the exact shape the segmenter emits, so
+  `gradeAttempt`, adaptation, persistence, sync and telemetry run **unchanged**. `tapStatuses` maps the
+  grader's results back onto the taps for the result view. Pure logic lives in `src/lib/fretboard.ts`
+  (unit-tested); the screen is `FretboardAnswer`, `Fretboard`, `FretboardControls`.
+- **Consequences**: (1) a `fretboard` attempt is never `lowConfidence`/`timedOut`; FR-004/014/015/017 and the
+  tuning advisory are `mic`-only. (2) Each attempt records `inputMode`, telemetry gains `input_mode`, and
+  accuracy MUST NOT be pooled across modes — a tap is exact, so fretboard accuracy is not comparable to
+  microphone accuracy and SC-002 is a `mic`-mode claim. (3) Fretboard play trains finding pitches on the
+  neck by ear; it does not train **producing** them on a real instrument, which the `mic` mode restores.
+  (4) The spec's original input — "reproduce it on a guitar" — is deferred, not dropped.
+- **Alternatives considered**: Shipping the mic path as-is — rejected for the MVP, it needs the on-device
+  calibration spike (T052/T053) to finish first. Piano-keyboard or note-name buttons — rejected, they lose
+  the string/fret geometry the target learner (guitarists) actually reads, and make a note a name rather
+  than a place. Deleting the mic pipeline — rejected, it is the planned next phase and is tested. A
+  runtime in-app toggle — rejected for now, a build flag keeps the MVP UI to one path.
+
 ---
 
 ## Resolved unknowns summary
@@ -249,4 +281,5 @@ All Technical Context items are resolved for design. The remaining **empirical t
 pitch clarity threshold (R2), segmentation stability/gap thresholds (R3), cents match window (R4), and
 tuning-offset threshold (R5) — are intentionally deferred to on-device calibration during the
 feasibility spike and are exposed as named configuration so they can be adjusted without code changes.
-None block Phase 1 design.
+None block Phase 1 design. These constants apply to `mic` input mode only; the MVP's default `fretboard`
+mode (R14) needs none of them.

@@ -6,6 +6,12 @@
 
 ## Summary
 
+> **MVP scope change (2026-10-11, FR-020 / R14):** the MVP answers on an **on-screen fretboard**, not the
+> microphone. The text below describes the full design; the microphone capture → segmentation → tuning
+> path is built and kept but is **`mic` input mode**, off by default (`EXPO_PUBLIC_INPUT_MODE=mic`).
+> Everything downstream of "the notes the learner played" — grading, difficulty, persistence, sync,
+> telemetry — is shared. See `contracts/fretboard-input.md`; tasks in tasks.md Phase 9.
+
 A cross-platform mobile app that trains ear-to-guitar recall through a tight loop: the app plays a
 short generated melody from runtime-synthesized note tones, then captures the learner's guitar reproduction
 via the microphone, detects the played notes with monophonic pitch detection, grades them note-by-note,
@@ -54,7 +60,8 @@ Native pitch-detection accuracy and audio fidelity — which cannot be unit-test
 devices via `quickstart.md`.
 
 **Target Platform**: iOS 15+ (TestFlight / ad-hoc) and modern Android (EAS internal distribution).
-Physical devices required (microphone + audio output).
+Physical devices required (microphone + audio output). In the MVP's default `fretboard` input mode only
+audio output is needed, so it also runs in a simulator; `mic` mode still needs a real device.
 
 **Project Type**: Mobile application (single Expo React Native project).
 

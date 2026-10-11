@@ -45,6 +45,7 @@ const ALLOWED_KEYS = [
   'difficulty_id',
   'difficulty_rank',
   'extra_count',
+  'input_mode',
   'matched_count',
   'missed_count',
   'note_count',
@@ -82,7 +83,13 @@ describe('anonymous attempt logging (contracts/attempt-log.md)', () => {
       octave_mismatch: true,
       difficulty_id: 'L2',
       difficulty_rank: 2,
+      input_mode: 'mic',
     });
+  });
+
+  test('a fretboard answer is labelled so it is never pooled with microphone attempts', () => {
+    const p = buildAttemptLogPayload(GRADE, MELODY, LEVEL, 'dev_abc', '0.1.0', 'fretboard');
+    expect(p.input_mode).toBe('fretboard');
   });
 
   test('best-effort insert succeeds → nothing queued', async () => {

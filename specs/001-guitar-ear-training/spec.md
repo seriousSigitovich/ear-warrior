@@ -32,6 +32,14 @@
 - Q: How do the difficulty mode and level behave across mode switches and app restarts? → A: **Separate persisted state.** The adaptive rank and the manually selected fixed level are **two independent values**; switching adaptive → fixed → adaptive resumes adaptive at the rank it held, unaffected by the fixed selection. The mode and both level values persist across sessions and app restarts. Fixed mode may select **any** of the 7 levels — there is no unlock gating.
 - Q: Which attempt outcomes feed the adaptation streak? → A: **Only the first graded attempt on each newly generated melody.** Retries of the same melody (FR-008), low-confidence ungraded captures (FR-017), and no-input timeouts (FR-015) are **excluded entirely** — they neither extend nor break the streak, leaving it unchanged. An attempt graded after the learner dismissed the out-of-tune advisory (FR-014) counts normally. Rationale: the streak measures first-hearing recall, retries are unlimited and would otherwise let a learner grind one melody into a promotion, and counting ungraded captures would demote a learner for room noise rather than for ability.
 
+### Session 2026-10-11 — MVP scope simplification
+
+- Q: How does the learner give an answer in the MVP? → A: **On an on-screen fretboard, not the microphone.** The learner taps the notes on a 6-string × 16-position neck (open + frets 1–15, standard tuning, E2–G5), hears each tapped note, and presses **Check**. This is the default input mode of the MVP build. The microphone pipeline (capture, segmentation, calibration, tuning check) stays in the codebase, unchanged and tested, and is re-enabled by the build flag `EXPO_PUBLIC_INPUT_MODE=mic`. Introduced as **FR-020**; recorded as **R14**. *(Simplifies the "play it on a guitar" input of the original feature description; the training goal — reproduce a heard melody by ear — is unchanged.)*
+- Q: What is graded when the answer is tapped? → A: **Pitch and order only, by the same grader.** A tap is a (string, fret) position, but it is graded by its **MIDI pitch**, so the same sound on another string is the same answer — the exercise tests the ear, not knowledge of one fingering. Taps are converted to the notes the segmenter would have produced (exact pitch, 0 cents offset, clarity 1), so FR-005's alignment and four categories, FR-011/011a adaptation, FR-012/013 persistence and the octave rule (FR-016) apply with no change.
+- Q: Which microphone-specific behaviours are inactive in `fretboard` mode? → A: Segmentation (FR-004), the no-input timeout and end-of-attempt silence (FR-015), low-confidence gating (FR-017), the out-of-tune advisory (FR-014) and microphone permission / noise-floor calibration. None can occur: a tap has no pitch uncertainty, there is no capture window, and the answer is submitted explicitly. Consequently **a `fretboard` attempt is never `lowConfidence` or `timedOut`**, and every submitted attempt is graded.
+- Q: How is an attempt's input mode recorded, and may modes be pooled? → A: **Every attempt records `inputMode` (`mic` | `fretboard`)** and telemetry carries `input_mode`. Modes MUST NOT be pooled when reading accuracy, because a fretboard answer carries no pitch noise (this is why SC-002's 95 % agreement target is a `mic`-mode claim). Attempts and telemetry rows recorded before this change are all `mic`.
+- Q: What are the answer-entry rules? → A: An answer holds **at most as many notes as the melody** (extra taps are sounded but not added); **Undo** removes the last note, **Clear** empties the answer, **Replay** replays the melody; **Check** is enabled with **≥ 1** note — a shorter answer is graded and its unplayed targets are `missed`. **Retry** (FR-008) clears the board and re-answers the same melody.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Listen, Play Back, Get Feedback (Priority: P1)
@@ -39,6 +47,11 @@
 As a guitar learner, I want the app to play a short melody and then let me play it back on my
 guitar so that the app can tell me immediately whether I reproduced it correctly. This is the core
 practice loop: hear → recall → play → get graded.
+
+> **MVP note (2026-10-11, FR-020)**: in the MVP build "play it back" means **find the notes on an
+> on-screen fretboard** and press Check. The scenarios below hold unchanged with that reading: "your turn"
+> is the fretboard answer view, "plays the same notes" is tapping them, and the verdict and per-note
+> feedback are the same. Microphone play-back is the `mic` mode of FR-020.
 
 **Why this priority**: This is the heart of the product and the minimum that delivers value. Without
 this single loop working end-to-end, the app has no reason to exist. It is a complete, usable MVP on
@@ -153,7 +166,7 @@ confirm it shows accuracy trends, practice volume, and identified weak areas der
   once the segmenter splits re-plucked notes by onset.
 - **FR-002**: System MUST play the generated melody audibly to the learner.
 - **FR-003**: System MUST clearly signal the transition from "listening" to "your turn to play".
-- **FR-004**: System MUST capture the learner's guitar performance and derive the ordered sequence of
+- **FR-004** *(`mic` input mode — see FR-020)*: System MUST capture the learner's guitar performance and derive the ordered sequence of
   notes played by segmenting the pitch stream at **pitch changes and silence gaps**. A note MUST be
   emitted only from a **stable window** — a run of high-clarity frames holding one pitch (within the
   match tolerance of FR-016) for at least a **minimum stable-note duration** (calibratable; the exact
@@ -211,7 +224,7 @@ confirm it shows accuracy trends, practice volume, and identified weak areas der
   session.
 - **FR-013**: System MUST persist results across sessions and present accuracy trends, practice volume,
   and identified weak areas over time.
-- **FR-014**: System MUST provide a pitch/tuning reference and MUST detect and warn when the guitar
+- **FR-014** *(`mic` input mode — see FR-020)*: System MUST provide a pitch/tuning reference and MUST detect and warn when the guitar
   appears consistently out of tune before grading. "Consistently out of tune" MUST be evaluated as: the
   **median signed cents offset** across the attempt's detected notes exceeds a calibratable magnitude
   (default ~35 cents) with at least a minimum note count (default 3) offset **mostly in the same
@@ -221,7 +234,7 @@ confirm it shows accuracy trends, practice volume, and identified weak areas der
   only as the **retune aid** the learner may play against, not as the comparison basis for the warning.
   The warning is **advisory**: the app shows it and offers the tuning reference before grading, but the
   learner MAY dismiss it and continue; grading is NOT blocked pending a retune.
-- **FR-015**: System MUST detect the end of input by silence — timing out with a replay/retry prompt
+- **FR-015** *(`mic` input mode — see FR-020)*: System MUST detect the end of input by silence — timing out with a replay/retry prompt
   after **~8 seconds** of no playing following the "your turn" cue, and ending a started attempt
   **~2 seconds** after the last detected note — rather than grading an empty attempt. This end-of-attempt
   gap MUST be longer than the inter-note segmentation gap (FR-004): any pause shorter than the
@@ -237,7 +250,7 @@ confirm it shows accuracy trends, practice volume, and identified weak areas der
   assumption). This is the **same** rule as "a different semitone never matches," applied across octaves:
   because an octave spans 12 semitones, an octave-displaced note is simply a non-adjacent semitone away
   and therefore also fails to match — the two rules never conflict.
-- **FR-017**: System MUST flag low-confidence note detections — including background noise,
+- **FR-017** *(`mic` input mode — see FR-020)*: System MUST flag low-confidence note detections — including background noise,
   **non-monophonic input** (a chord or overlapping ringing strings), and other artifacts that never
   resolve to a stable single pitch such as **open-string ring-out** bleeding into the next note and
   **fret-buzz** — and prompt the learner to retry rather than grading an unreliable capture. These
@@ -252,7 +265,28 @@ confirm it shows accuracy trends, practice volume, and identified weak areas der
   attempt metadata** (overall verdict, per-note outcome, difficulty level, timestamps, and an anonymous
   per-install device id), MUST contain no personally identifying information, and MUST require no user
   account. Remote logging is best-effort and non-blocking; the core loop functions fully offline (see the
-  offline-core-loop assumption).
+  offline-core-loop assumption). The metadata also carries the attempt's **input mode** (`mic` |
+  `fretboard`, FR-020) — one enum, no PII.
+- **FR-020**: System MUST support two answer **input modes**, selected at build time by
+  `EXPO_PUBLIC_INPUT_MODE`: **`fretboard`** (the MVP default) and **`mic`** (the microphone pipeline of
+  FR-004/FR-014/FR-015/FR-017, kept intact and re-enabled by setting the flag to `mic`).
+  In `fretboard` mode the learner answers by tapping positions on an on-screen guitar neck — **6 strings in
+  standard tuning E-A-D-G-B-E × 16 positions (open + frets 1–15)**, reaching E2–G5, the full range of FR-001.
+  - Tapping a position MUST **sound that note** at once (it is how the learner compares it with the melody)
+    and append it to the answer, up to the melody's note count; a tap on a full answer is sounded but not
+    added. The learner MUST be able to **Undo** the last note, **Clear** the answer, **Replay** the melody,
+    and **Check** the answer (enabled with ≥ 1 note). **Retry** (FR-008) clears the board for the same
+    melody.
+  - An answer is **graded by pitch (MIDI), not by position**: the same pitch on another string matches
+    (FR-005, FR-016 unchanged). Taps MUST be converted to the same note shape the microphone segmenter
+    emits, so grading, adaptation (FR-011/011a), persistence (FR-012/013) and telemetry (FR-019) are
+    **identical** in both modes.
+  - In `fretboard` mode no microphone is opened and no permission is requested; FR-004, FR-014, FR-015 and
+    FR-017 do not apply, and an attempt is never `lowConfidence` or `timedOut`.
+  - After grading, the result view MUST show the answer on the fretboard with each tapped note marked by
+    its `matched` / `wrong` / `extra` status (FR-006).
+  - Each Attempt MUST record its `inputMode`; attempts recorded before FR-020 are `mic`. Accuracy MUST
+    NOT be pooled across modes (a tap carries no pitch noise).
 
 ### Traceability of audio & pitch correctness rules
 
@@ -272,7 +306,8 @@ method and conditions for the accuracy claim are owned by **SC-002 / SC-002a**.
 - **Note**: A single pitch within a melody or an attempt, with its position in the sequence; the unit of
   comparison for grading.
 - **Attempt**: One captured performance of a melody by the learner, with the derived note sequence, the
-  per-note comparison outcome, the overall verdict, and a timestamp.
+  per-note comparison outcome, the overall verdict, a timestamp, and the **input mode** it was given in
+  (`mic` | `fretboard`, FR-020).
 - **Session**: A continuous practice run containing multiple attempts, the difficulty settings in effect,
   and summary statistics.
 - **Difficulty Settings**: The learner's persisted difficulty state — the **mode** (adaptive or fixed), the
@@ -289,7 +324,7 @@ method and conditions for the accuracy claim are owned by **SC-002 / SC-002a**.
 
 - **SC-001**: A learner can complete one full listen → play → feedback cycle in under 15 seconds when
   ready to play.
-- **SC-002**: Under **defined normal conditions** — guitar in standard tuning to within ±15 cents per
+- **SC-002** *(`mic` input mode only; a `fretboard` answer has no pitch uncertainty, FR-020)*: Under **defined normal conditions** — guitar in standard tuning to within ±15 cents per
   string (calibratable), ambient noise floor below the calibrated `minVolume` threshold (see Audio
   capture assumption), melody played at the fixed 60 BPM from the C-major C4–C5 pool — the app's overall
   correct/incorrect verdict agrees with a human evaluator on at least **95%** of attempts. Agreement is
@@ -333,7 +368,12 @@ method and conditions for the accuracy claim are owned by **SC-002 / SC-002a**.
 - **Pitch-first grading**: Correctness is judged on the sequence of pitches (right notes, right order).
   Rhythmic/timing accuracy is out of scope for the initial version and may be added later as a separate
   graded dimension.
-- **Audio capture**: The learner's playing is captured through the device's microphone (acoustic sound or
+- **Answer input (MVP)**: The MVP build answers on an on-screen fretboard (FR-020), so it needs **no
+  microphone and no guitar in hand**; only audio *output* is required. The microphone assumptions below
+  (capture, `minVolume`, per-device variance) apply to `mic` mode, which is retained but not shipped as the
+  default. Fretboard input assumes a **standard-tuned** neck by construction, so the out-of-tune case
+  cannot arise.
+- **Audio capture** *(`mic` mode)*: The learner's playing is captured through the device's microphone (acoustic sound or
   amplified guitar) at a typical playing distance (~0.3–1 m) with reasonable input gain; specialized
   hardware (e.g., MIDI pickups) is not required. "Reasonably quiet" is made measurable as an input-level
   floor: frames whose level falls below a calibratable `minVolume` threshold (in dBFS; value resolved

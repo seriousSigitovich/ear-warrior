@@ -51,7 +51,13 @@ Install the resulting build on each tester device (TestFlight invite for iOS; in
 npx expo start --dev-client
 ```
 
-Open the app from the installed dev client and grant the **microphone permission** when prompted.
+Open the app from the installed dev client. The MVP default is **`fretboard` input** (FR-020): no
+microphone permission is requested. To validate the microphone pipeline instead, start with
+`EXPO_PUBLIC_INPUT_MODE=mic` and grant the **microphone permission** when prompted.
+
+> **Which scenarios apply (2026-10-11).** In `fretboard` mode, "play" in the US1 scenarios means *tap the
+> notes on the fretboard, then Check*; scenarios 8 (timeout) and 9 (out-of-tune) are **`mic` only** and
+> cannot occur. SC-002 (95 % verdict agreement) is a `mic` claim. Run the extra US1 scenarios F1–F8 below.
 
 ## Validation scenarios
 
@@ -71,6 +77,24 @@ Each maps to acceptance criteria in [spec.md](./spec.md). Mark pass/fail per dev
 7. **Latency**: Feedback appears **within 2 s** of finishing playing. *(SC-003)*
 8. **Timeout**: Don't play → app prompts replay/retry, does not grade an empty attempt. *(FR-015)*
 9. **Out-of-tune**: Detune a string → app warns and offers a reference tone. *(FR-014)*
+
+**Fretboard input (FR-020, MVP default)** — run these in the default build, on a real device:
+
+- **F1 Tap sounds**: Tap a fret → that note sounds immediately (no stutter, including the first taps after
+  the screen opens) and fills the next slot. *(FR-020; R14 preload)*
+- **F2 Same pitch, any string**: Answer a note on a different string than the obvious one but the same
+  pitch → graded **matched**. *(FR-020, pitch-not-position)*
+- **F3 Entry controls**: Undo removes the last note; Clear empties the answer; a tap on a full answer
+  sounds but adds nothing; Check is disabled with 0 notes. *(FR-020)*
+- **F4 Short answer**: Check with fewer notes than the melody → verdict **incorrect**, the unplayed targets
+  flagged **missed**. *(FR-005)*
+- **F5 Result view**: After Check the neck shows each tapped note coloured matched / wrong / extra,
+  consistent with the note chips. *(FR-006)*
+- **F6 Retry / next**: Retry → board cleared, same melody; Next → new melody, board cleared. *(FR-008/009)*
+- **F7 Mode label & no mic**: No microphone prompt appears; the attempt is recorded and logged with
+  `input_mode = fretboard`. *(FR-019/020)*
+- **F8 Accessibility & fit**: Every control and fret has a VoiceOver label; fret targets are usable at
+  phone width and at the largest font-scaling setting. *(SC-009)* — **not yet validated**
 
 ### US2 — Difficulty (P2)
 

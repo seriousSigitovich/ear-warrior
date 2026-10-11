@@ -25,24 +25,31 @@ export function melodyTiming(c) {
 }
 
 // --- series videos (classics.mjs, kind "quiz") ------------------------------------------------------------
-//   melody from frame 0 → "write the notes in the comments" while it plays again, slower → "new melody in the next Short"
-// No countdown and no reveal, and no fixed length: the Short is as long as the melody needs (≈ 2.7×melody + 4 s),
-// which keeps short phrases short and lets Shorts loop straight back into the melody.
+//   melody from frame 0 → "write the notes in the comments" while it plays again, slower → ends
+// No end card: nobody watches it, and a CTA that names one platform ("next Short") is wrong on the others — the call
+// to subscribe lives in the comments. An entry that needs the viewer to DO something (comment the right note) can add
+// a short CTA slide with `cta: { title, sub }` — that slide asks for the comment and nothing else. No countdown and no
+// reveal, and no fixed length: the video is as long as the melody needs (≈ 2.7×melody + 1 s, + CTA_LEN with a slide),
+// which keeps short phrases short and lets it loop straight back into the melody.
 const SERIES_SLOW = 0.7;   // the second playing runs at this fraction of the tempo — time to catch each note
 const SERIES_GAP = 0.8;    // between the first and the second playing: the headline swaps here
-const SERIES_TAIL = 0.5;   // let the last note ring before the end card
-const SERIES_OUTRO = 3.0;  // end card: long enough to read "new melody in the next Short → subscribe"
+const SERIES_TAIL = 1.0;   // let the last note ring out; the video ends here
+const CTA_LEN = 2.5;      // the optional CTA slide (`cta` on an entry): long enough to read a two-word title and one line
 
 // `once` videos (classics.mjs): the melody plays a single time at `speed` × its tempo, then the headline swaps to "write the notes"
-// for ONCE_ASK seconds before the end card — about half the length of the two-playings format.
+// for ONCE_ASK seconds, then the video ends — about half the length of the two-playings format.
 const ONCE_ASK = 2.2;
+
+/** Where a series video ends: at `endAt`, or CTA_LEN later when the entry has a CTA slide (which then starts at `endAt`). Whole frames. */
+function seriesEnd(c, endAt) {
+  const dur = Math.ceil((endAt + (c.cta ? CTA_LEN : 0)) * 30) / 30;
+  return c.cta ? { outroAt: endAt, dur } : { dur };
+}
 
 function onceTimeline(c) {
   const { notes, length } = melodyTiming({ ...c, tempoBpm: c.tempoBpm * (c.speed ?? 1) });
   const againAt = length + SERIES_GAP;   // headline swap (starts SERIES's 0.4 s fade-in before this)
-  const outroAt = againAt + ONCE_ASK;
-  const dur = Math.ceil((outroAt + SERIES_OUTRO) * 30) / 30;
-  return { notes, length, againNotes: notes, againLength: length, listenAt: 0, againAt, outroAt, dur, once: true };
+  return { notes, length, againNotes: notes, againLength: length, listenAt: 0, againAt, once: true, ...seriesEnd(c, againAt + ONCE_ASK) };
 }
 
 function seriesTimeline(c) {
@@ -50,35 +57,30 @@ function seriesTimeline(c) {
   const { notes, length } = melodyTiming(c);
   const slow = melodyTiming({ ...c, tempoBpm: c.tempoBpm * SERIES_SLOW });
   const againAt = length + SERIES_GAP;
-  const outroAt = againAt + slow.length + SERIES_TAIL;
-  const dur = Math.ceil((outroAt + SERIES_OUTRO) * 30) / 30; // whole frames
-  return { notes, length, againNotes: slow.notes, againLength: slow.length, listenAt: 0, againAt, outroAt, dur };
+  return { notes, length, againNotes: slow.notes, againLength: slow.length, listenAt: 0, againAt, ...seriesEnd(c, againAt + slow.length + SERIES_TAIL) };
 }
 
-// --- key quiz (classics.mjs, kind "key"): a fixed 10 s -----------------------------------------------------
-//   cadence from frame 0 → same cadence again under the answer cards → end card ("answer in the pinned comment")
+// --- key quiz (classics.mjs, kind "key") -------------------------------------------------------------------
+//   cadence from frame 0 → same cadence again under the answer cards → ends (the answer is in the pinned comment; no end card)
 // Both playings at the SAME tempo (the viewer is choosing among options, not catching notes), so the second one is just a replay.
-const KEY_DUR = 10;
 const KEY_GAP = 0.7;   // between the first and the second playing
-const KEY_TAIL = 0.5;  // let the last chord ring before the end card
+const KEY_TAIL = 1.0;  // let the last chord ring out; the video ends here
 
 // An entry with `audio` ({ file, length, changes: chord-change times in s, optionsAt }) is one recorded take instead of a synthesized cadence:
 // it plays once, the answer cards come in at `optionsAt` while it keeps going, and the video is as long as the take needs.
 function keyAudioTimeline(c) {
   const { length, changes, optionsAt } = c.audio;
   const notes = changes.map((t, i) => ({ onset: t, dur: (changes[i + 1] ?? length) - t }));
-  const outroAt = length + KEY_TAIL;
-  const dur = Math.ceil((outroAt + 2.6) * 30) / 30;
-  return { notes, length, againNotes: notes, againLength: length, listenAt: 0, againAt: optionsAt, outroAt, dur, once: true };
+  const dur = Math.ceil((length + KEY_TAIL) * 30) / 30;
+  return { notes, length, againNotes: notes, againLength: length, listenAt: 0, againAt: optionsAt, dur, once: true };
 }
 
 function keyTimeline(c) {
   if (c.audio) return keyAudioTimeline(c);
   const { notes, length } = melodyTiming(c);
   const againAt = length + KEY_GAP;
-  const outroAt = againAt + length + KEY_TAIL;
-  if (outroAt > KEY_DUR - 2) throw new Error(`Key quiz #${c.id}: end card would get only ${(KEY_DUR - outroAt).toFixed(1)} s`);
-  return { notes, length, againNotes: notes, againLength: length, listenAt: 0, againAt, outroAt, dur: KEY_DUR };
+  const dur = Math.ceil((againAt + length + KEY_TAIL) * 30) / 30;
+  return { notes, length, againNotes: notes, againLength: length, listenAt: 0, againAt, dur };
 }
 
 export function timeline(c) {

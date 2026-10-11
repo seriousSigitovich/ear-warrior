@@ -20,9 +20,9 @@ const TIMBRES = {
 };
 
 // Series videos: the melody sounds on frame 0 — no whoosh, no lead-in, nothing before the first note.
-// Both playings are dry (a tonic bed would be a hint); the end card gets the tonic bell arpeggio.
+// Both playings are dry (a tonic bed would be a hint). There is no end card; only an entry with a CTA slide (`outroAt`
+// is set) gets the tonic bell arpeggio, as the slide comes in.
 function scoreSeries(c, tl, mix, playMelody) {
-  const third = c.minor ? 3 : 4;
   playMelody(tl.listenAt);
 
   if (!tl.once) {
@@ -30,8 +30,10 @@ function scoreSeries(c, tl, mix, playMelody) {
     playMelody(tl.againAt, tl.againNotes); // slower, so every note can be caught
   }
 
-  const top = 60 + c.tonicPc;
-  [top, top + third, top + 7].forEach((m, i) => mix(bell(m, 2.2), tl.outroAt + 0.05 + i * 0.09, 0.3));
+  if (tl.outroAt !== undefined) {
+    const third = c.minor ? 3 : 4, top = 60 + c.tonicPc;
+    [top, top + third, top + 7].forEach((m, i) => mix(bell(m, 2.2), tl.outroAt + 0.05 + i * 0.09, 0.3));
+  }
 }
 
 // Key quiz: real recorded open-chord strums (`chordNames`, samples/guitar) when the entry has them; otherwise each chord is

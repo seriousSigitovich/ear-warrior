@@ -73,8 +73,12 @@ note count differ).
 ### Series #8–#12 — famous tunes
 
 One Short per melody (`ear-challenge-NN`), YouTube Shorts, English. There are no separate answer videos (tried, cut):
-the end card says "New melody in the next Short → Subscribe", which is the same reason to follow as the old "Follow
+the end card said "New melody in the next Short → Subscribe", which is the same reason to follow as the old "Follow
 for challenge #N" in #1–#7 — so it is **not** a separate hypothesis. Nothing on screen promises an answer.
+**Since 2026-10-11 series videos have no end card at all** (`slides.html`, `timeline.mjs`): nobody watches that part, and
+"next Short" is wrong on TikTok and Instagram, where the same files are posted. The call to subscribe lives in the comments.
+The video now ends on the last note, so lengths dropped by the old 3 s card (e.g. #26: 10.0 s → 7.0 s) — keep that in mind
+when comparing viewed % of older posts with newer ones.
 
 | # | Hook on screen | Melody | Notes | Timbre | Length |
 |---|---|---|---|---|---|
@@ -92,7 +96,7 @@ for challenge #N" in #1–#7 — so it is **not** a separate hypothesis. Nothing
 
 Structure of the quiz: headline + melody from frame 0 (keyboard in frame, each note pulses only its frame — no hint
 which key) → headline swaps to "Write the notes in the comments" while the melody plays again at 70 % speed (`SERIES_SLOW`
-in timeline.mjs) → end card. No countdown and no reveal: the Short is ~2.7 × melody + 4 s, and loops straight back into the melody. Melodies were transcribed from
+in timeline.mjs) → ends. No countdown, no reveal and no end card: the video is ~2.7 × melody + 1 s, and loops straight back into the melody. Melodies were transcribed from
 memory and only the ones I was certain of used; check them against a score before posting. (#15 was read off a score supplied by the author; a first attempt from a web letter-notes table + pitch tracking was wrong and discarded.) Who writes the right
 notes is up to the comments — the tune is never named in the video.
 

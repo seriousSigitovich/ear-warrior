@@ -2,10 +2,11 @@
 // Redesigned onto Nocturne: a Practice/Level header, a per-phase stage, and feedback rendered
 // as a verdict card + note chips (with a non-blocking tuning advisory) or a calm retry state.
 import React, { useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
-import { CalibrationConfig, GradingConfig, SegmentConfig, Session } from '../src/models';
+import { InteractionManager, ScrollView, StyleSheet, View } from 'react-native';
+import { CalibrationConfig, GradingConfig, InputMode, SegmentConfig, Session } from '../src/models';
 import { MAX_RANK } from '../src/services/melody/levels';
 import { STANDARD_TUNING_MIDI } from '../src/features/practice/tuning';
+import { tapStatuses } from '../src/lib/fretboard';
 import { createAudioPlayback } from '../src/services/audio/playback';
 import { createPitchDetector, PitchDetectionConfig } from '../src/services/audio/pitch';
 import { createAudioSession } from '../src/services/audio/session';
@@ -32,7 +33,10 @@ import { Screen } from '../src/components/common/Screen';
 import { Kicker } from '../src/components/common/Kicker';
 import { Tag } from '../src/components/common/Tag';
 import { TransportControls } from '../src/components/controls/TransportControls';
+import { FretboardControls } from '../src/components/controls/FretboardControls';
 import { PracticeStage } from '../src/components/practice/PracticeStage';
+import { FretboardAnswer } from '../src/components/practice/FretboardAnswer';
+import { Fretboard } from '../src/components/fretboard/Fretboard';
 import { VerdictBanner } from '../src/components/feedback/VerdictBanner';
 import { NoteResultChips } from '../src/components/feedback/NoteResultChips';
 import { TuningAdvisory } from '../src/components/feedback/TuningAdvisory';
@@ -67,6 +71,16 @@ const CALIBRATION_CFG: CalibrationConfig = {
 
 const APP_VERSION = '0.1.0';
 
+// How the learner answers. The MVP answers on an on-screen fretboard (no microphone); the
+// microphone pipeline is kept intact and comes back with EXPO_PUBLIC_INPUT_MODE=mic.
+const INPUT_MODE: InputMode = process.env.EXPO_PUBLIC_INPUT_MODE === 'mic' ? 'mic' : 'fretboard';
+
+/** Every pitch the fretboard can sound (E2–G5), rendered ahead of time so a tap plays at once. */
+const FRETBOARD_MIDI = Array.from({ length: 40 }, (_, i) => 40 + i);
+
+/** Fret height on the result view, where the board sits in a scrolling column. */
+const RESULT_FRET_HEIGHT = 26;
+
 // Backend base URL (Node/Postgres). Absent in a build without it → telemetry and sync are no-ops
 // and the app stays fully offline.
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
@@ -85,8 +99,7 @@ export default function Practice() {
   );
   const sessionId = useMemo(() => `s_${Date.now()}`, []);
   const outbox = useMemo(
-    () =>
-      createAttemptLogOutbox(defaultAttemptLogClient(API_URL) ?? createNullAttemptLogClient()),
+    () => createAttemptLogOutbox(defaultAttemptLogClient(API_URL) ?? createNullAttemptLogClient()),
     [],
   );
   const syncClient = useMemo(() => createSyncClient(API_URL), []);
@@ -126,9 +139,21 @@ export default function Practice() {
     };
   }, [syncClient, deviceId, store]);
 
+  const playback = useMemo(() => createAudioPlayback(), []);
+
+  // Tap-to-hear must not stutter: materialize the tones once the screen has settled.
+  useEffect(() => {
+    if (INPUT_MODE !== 'fretboard') return;
+    const task = InteractionManager.runAfterInteractions(() => {
+      void playback.preload(FRETBOARD_MIDI).catch(() => undefined);
+    });
+    return () => task.cancel();
+  }, [playback]);
+
   const deps = useMemo<PracticeLoopDeps>(
     () => ({
-      playback: createAudioPlayback(),
+      inputMode: INPUT_MODE,
+      playback,
       detector: createPitchDetector(),
       session: createAudioSession(),
       pitchCfg: PITCH_CFG,
@@ -153,7 +178,7 @@ export default function Practice() {
         }
       },
     }),
-    [repos, sessionId, outbox, deviceId, session],
+    [playback, repos, sessionId, outbox, deviceId, session],
   );
 
   const loop = usePracticeLoop(deps);
@@ -162,6 +187,9 @@ export default function Practice() {
   const showFeedback = loop.phase === 'feedback' && !!grade;
   const retryOnly = !!grade && (grade.timedOut || grade.lowConfidence);
   const showAdvisory = !!loop.tuning?.outOfTune && !retryOnly;
+  const fretMode = loop.inputMode === 'fretboard';
+  const answering = fretMode && loop.phase === 'awaitingInput';
+  const noteCount = loop.melody?.notes.length ?? loop.level.noteCount;
 
   return (
     <Screen>
@@ -184,26 +212,46 @@ export default function Practice() {
             <VerdictBanner grade={grade!} />
             {loop.rankChange ? <RankChangeBanner change={loop.rankChange} /> : null}
             <NoteResultChips results={grade!.noteResults} />
+            {fretMode ? (
+              <Fretboard
+                taps={loop.answer}
+                statuses={tapStatuses(grade!.noteResults)}
+                rowHeight={RESULT_FRET_HEIGHT}
+              />
+            ) : null}
           </ScrollView>
         )
+      ) : answering ? (
+        <FretboardAnswer noteCount={noteCount} taps={loop.answer} onTap={loop.tapFret} />
       ) : (
         <PracticeStage
           phase={loop.phase}
-          noteCount={loop.melody?.notes.length ?? loop.level.noteCount}
+          noteCount={noteCount}
           progress={loop.progress}
+          inputMode={loop.inputMode}
         />
       )}
 
-      <TransportControls
-        phase={loop.phase}
-        retryOnly={retryOnly}
-        onPlay={loop.next}
-        onBeginAttempt={loop.beginAttempt}
-        onReplay={loop.replay}
-        onRetry={loop.retry}
-        onNext={loop.next}
-        onStop={loop.stopAttempt}
-      />
+      {answering ? (
+        <FretboardControls
+          placed={loop.answer.length}
+          onReplay={loop.replay}
+          onUndo={loop.undoFret}
+          onClear={loop.clearFrets}
+          onCheck={loop.submitAnswer}
+        />
+      ) : (
+        <TransportControls
+          phase={loop.phase}
+          retryOnly={retryOnly}
+          onPlay={loop.next}
+          onBeginAttempt={loop.beginAttempt}
+          onReplay={loop.replay}
+          onRetry={loop.retry}
+          onNext={loop.next}
+          onStop={loop.stopAttempt}
+        />
+      )}
     </Screen>
   );
 }

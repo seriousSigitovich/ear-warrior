@@ -32,6 +32,13 @@ export async function persistGradedAttempt(
 
   // Best-effort, non-blocking telemetry.
   void deps.outbox.log(
-    buildAttemptLogPayload(attempt, melody, level, deps.deviceId, deps.appVersion),
+    buildAttemptLogPayload(
+      attempt,
+      melody,
+      level,
+      deps.deviceId,
+      deps.appVersion,
+      attempt.inputMode,
+    ),
   );
 }

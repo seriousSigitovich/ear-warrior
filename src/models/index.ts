@@ -110,6 +110,13 @@ export interface Melody {
   createdAt: string;
 }
 
+/**
+ * How the learner answers a melody: by playing a real instrument into the microphone, or by
+ * tapping the notes on an on-screen fretboard. Recorded per attempt so the two are never mixed
+ * when reading accuracy (a fretboard answer has no pitch uncertainty).
+ */
+export type InputMode = 'mic' | 'fretboard';
+
 /** One captured reproduction of a melody and its grading (FR-005, FR-006, FR-012). */
 export interface Attempt {
   id: string;
@@ -122,6 +129,8 @@ export interface Attempt {
   confidence: number;
   lowConfidence: boolean;
   timedOut: boolean;
+  /** Absent on attempts recorded before fretboard input existed — those were all `mic`. */
+  inputMode?: InputMode;
   createdAt: string;
 }
 

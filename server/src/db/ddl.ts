@@ -36,6 +36,8 @@ export async function applyDdl(sql: Sql): Promise<void> {
       confidence        real not null,
       octave_mismatch   boolean not null default false
     );
+    -- Added with fretboard input; existing rows were all microphone attempts.
+    alter table attempt_log add column if not exists input_mode text not null default 'mic';
     create index if not exists attempt_log_device_idx on attempt_log (device_id, created_at);
 
     -- Durable mirror of the on-device document store (sessions/attempts/melodies/difficulty/kv).

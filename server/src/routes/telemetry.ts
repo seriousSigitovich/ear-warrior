@@ -19,6 +19,8 @@ const Body = z.object({
   extra_count: z.number().int().nonnegative(),
   confidence: z.number(),
   octave_mismatch: z.boolean(),
+  // Absent from builds that predate fretboard input — those were all microphone attempts.
+  input_mode: z.enum(['mic', 'fretboard']).default('mic'),
 });
 
 export function registerTelemetry(app: FastifyInstance): void {
@@ -42,6 +44,7 @@ export function registerTelemetry(app: FastifyInstance): void {
         extraCount: p.extra_count,
         confidence: p.confidence,
         octaveMismatch: p.octave_mismatch,
+        inputMode: p.input_mode,
       });
       return reply.status(200).send({ ok: true });
     } catch (err) {

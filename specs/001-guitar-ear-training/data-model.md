@@ -107,7 +107,8 @@ One captured reproduction of a melody and its grading (FR-005, FR-006, FR-012).
 | `id` | string (uuid) | |
 | `sessionId` | string → Session.id | |
 | `melodyId` | string → Melody.id | |
-| `detectedNotes` | Note[] | segmented from the pitch stream (R3) |
+| `inputMode` | enum `mic` \| `fretboard` \| absent | how the answer was given (FR-020, R14). **Absent on attempts stored before fretboard input — read as `mic`.** Never pool accuracy across modes |
+| `detectedNotes` | Note[] | `mic`: segmented from the pitch stream (R3). `fretboard`: built from taps (`tapsToDetected`: exact pitch, 0 cents, clarity 1) |
 | `noteResults` | NoteResult[] | per-position grading (below) |
 | `verdict` | enum `correct` \| `incorrect` | overall (FR-005) |
 | `confidence` | number 0–1 | **minimum** per-note clarity (each note = median frame clarity over its window); low → offer retry (FR-017) |
@@ -179,6 +180,19 @@ feedback ─(next)→ playingMelody (new melody)
 awaitingInput ─(timeout)→ feedback(timedOut)
 capturing ─(lowConfidence)→ feedback(offer retry)
 ```
+
+**`fretboard` input mode (FR-020, the MVP default)** skips `capturing`: the learner stays in
+`awaitingInput` while tapping, and **Check** moves directly to `grading → feedback`.
+
+```text
+awaitingInput ─(tap)→ awaitingInput           (answer: FretTap[] grows, capped at the melody's note count)
+awaitingInput ─(undo / clear)→ awaitingInput  (answer shrinks)
+awaitingInput ─(check, ≥ 1 tap)→ grading → feedback
+feedback ─(retry)→ awaitingInput              (answer cleared, same melody)
+```
+
+Transient only: `answer: FretTap[]`, each `{ string, fret, midi, atMs }`. There is no `timedOut` or
+`lowConfidence` transition in this mode.
 
 ## Relationships & integrity
 

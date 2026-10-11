@@ -19,7 +19,8 @@
 
   Series videos (classics.mjs, kind "quiz") reuse the keyboard layout with their own timeline (timeline.mjs,
   seriesTimeline) and `body.ser` rules: the hook headline + the melody from frame 0 → "write the notes in the
-  comments" + the melody again → end card.
+  comments" + the melody again → the video ends. No end card (the call to subscribe lives in the comments); an
+  entry with `cta: { title, sub }` gets one short slide that asks for a comment — no Subscribe pill, no store badge.
 
   Palette mirrors src/theme/nocturne.ts, landing/index.html and the promo.
 -->
@@ -130,7 +131,7 @@
   body.ser #dots.many { left: 96px; right: 96px; flex-wrap: wrap; gap: 12px; }
   body.ser #dots.many .dot { width: 26px; height: 26px; }
   body.ser #outro h1 { font-size: 128px; }
-  body.ser .pill { font-size: 54px; padding: 34px 70px; margin-top: 56px; }
+  body.ser #follow, body.ser .soon { display: none; } /* the CTA slide asks for a comment, nothing else */
 
   /* KEY QUIZ (kind "key"): four answer cards in the mid zone where the dots usually are; dots are not used */
   body.key #dots { display: none; }
@@ -210,7 +211,10 @@
   const IDLE_CHIP = 'rgba(233,233,237,0.6)';
   const KEYQ = C.kind === 'key';           // key quiz: series timing/picture, plus answer cards
   const SER = C.kind === 'quiz' || KEYQ;
-  const END = SER ? TL.outroAt : TL.outroAt + 0.4; // everything but the end card is gone by here
+  // Everything but the end card is gone by here. A series video has no end card unless its entry has a CTA slide
+  // (TL.outroAt is only set then): otherwise nothing ever fades out and the video just ends.
+  const CTA = SER && C.cta;
+  const END = SER ? (CTA ? TL.outroAt : TL.dur + 1) : TL.outroAt + 0.4;
   const ONE = C.layout === 'string';       // series only: ONE string (the high E), 12 numbered frets
   const FRET = C.layout === 'fretboard' || ONE; // series only: a guitar neck in the keyboard's slot, same headline zone and timing
   const KEYS = C.layout === 'keyboard' || FRET;
@@ -276,27 +280,23 @@
     $('hookSub').textContent = C.sub || N + ' notes · listen closely';
     richLines($('turnTitle'), 'Write the notes\n*in the comments*'); fitLines($('turnTitle'), 380);
     $('turnSub').textContent = TL.once ? 'Name each note.' : 'One more time, slower. Name each note.';
-    richLines($('outroTitle'), 'New melody\nin the next\n*Short*');
-    $('outroSub').textContent = 'Write your notes in the comments.';
-    $('follow').textContent = 'Subscribe →';
     if (ONE) { // guitarists answer in frets (0 = open string), so ask for those
       richLines($('turnTitle'), 'Write the frets\n*in the comments*'); fitLines($('turnTitle'), 380);
       $('turnSub').textContent = 'One more time, slower. 0 = open string.';
-      $('outroSub').textContent = 'Write your frets in the comments.';
     }
+  }
+  if (CTA) {
+    richLines($('outroTitle'), C.cta.title);
+    $('outroSub').textContent = C.cta.sub;
   }
   if (SER && C.ask) { // an entry can bring its own second headline (e.g. #25 "The 6th note was wrong.")
     richLines($('turnTitle'), C.ask); fitLines($('turnTitle'), 380);
     if (C.askSub) $('turnSub').textContent = C.askSub;
-    if (C.outroSub) $('outroSub').textContent = C.outroSub;
   }
   if (KEYQ) {
     $('hookSub').textContent = C.sub;
     richLines($('turnTitle'), 'Which *key*\nis it in?'); fitLines($('turnTitle'), 380);
     $('turnSub').textContent = 'Comment ' + 'A, B, C or D.';
-    richLines($('outroTitle'), 'Answer in the\n*pinned comment*');
-    $('outroSub').textContent = 'Same cadence, a new key next time.';
-    $('follow').textContent = 'Follow for the next key →';
     C.options.forEach((k, i) => {
       const o = div('opt', $('opts'));
       div('l', o).textContent = 'ABCD'[i];
@@ -402,15 +402,16 @@
     ['hReveal', TL.turnEnd, END], ['sReveal', TL.turnEnd, END],
     ['kbCard', KEYS ? 0 : TL.turnEnd, END],
   ]).map(([id, a, b]) => [$(id), a, b]);
-  const reveals = [...document.querySelectorAll('[data-in]')];
-  (SER ? [0.15, 0.4, 0.65, 0.9].map(d => END + d) : [TL.outroAt + 0.45, TL.outroAt + 0.65, TL.outroAt + 0.85, TL.outroAt + 1.0])
-    .forEach((at, i) => { reveals[i].dataset.in = at; });
+  // The end card's pieces fade up one after another. A series CTA slide only has the title and the line (the pill and
+  // the badge are hidden); a series video without one has nothing to reveal.
+  const reveals = SER && !CTA ? [] : [...document.querySelectorAll('[data-in]')].slice(0, CTA ? 2 : 4);
+  reveals.forEach((el, i) => { el.dataset.in = SER ? TL.outroAt + [0.1, 0.35][i] : TL.outroAt + [0.45, 0.65, 0.85, 1.0][i]; });
 
   window.renderAt = function (t) {
     if (C.neon) document.body.style.setProperty('--g', (0.5 - 0.5 * Math.cos(2 * Math.PI * t / 1.4)).toFixed(3)); // neon pulse, 1.4 s period
     // phase groups: the hook is already on screen at t=0 (it doubles as the thumbnail), the end card fades in last
     for (const [el, a, b] of phases) el.style.opacity = a === 0 ? 1 - ease(seg(t, b - 0.35, b)) : vis(t, a, b);
-    $('outro').style.opacity = ease(seg(t, END, END + 0.5));
+    $('outro').style.opacity = SER && !CTA ? 0 : ease(seg(t, END, END + 0.5));
     for (const el of reveals) {
       const p = ease(seg(t, +el.dataset.in, +el.dataset.in + 0.55));
       el.style.opacity = p;

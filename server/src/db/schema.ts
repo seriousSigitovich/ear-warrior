@@ -48,6 +48,7 @@ export const attemptLog = pgTable('attempt_log', {
   extraCount: integer('extra_count').notNull(),
   confidence: real('confidence').notNull(),
   octaveMismatch: boolean('octave_mismatch').notNull().default(false),
+  inputMode: text('input_mode').notNull().default('mic'),
 });
 
 /**

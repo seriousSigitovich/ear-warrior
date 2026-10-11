@@ -10,6 +10,7 @@ import {
   DifficultyLevel,
   DifficultySettings,
   GradingConfig,
+  InputMode,
   Melody,
   SegmentConfig,
 } from '../../models';
@@ -32,11 +33,25 @@ import { AudioSession } from '../../services/audio/session';
 import { CaptureConfig, CaptureHandle, runCapture } from './capture';
 import { TuningCheck, evaluateTuning } from './tuning';
 import { midiFromHz } from '../../lib/pitchNote';
+import {
+  FretPosition,
+  FretTap,
+  addTap,
+  makeTap,
+  tapsToDetected,
+  undoTap,
+} from '../../lib/fretboard';
 
 export type LoopPhase =
   'idle' | 'playingMelody' | 'awaitingInput' | 'capturing' | 'grading' | 'feedback';
 
 export interface PracticeLoopDeps {
+  /**
+   * How the learner answers. `fretboard`: tap the notes on an on-screen neck — no microphone, no
+   * capture window; the answer is submitted explicitly. `mic`: play a real instrument. Defaults to
+   * `mic`, the behaviour before fretboard input existed.
+   */
+  inputMode?: InputMode;
   playback: AudioPlayback;
   detector: PitchDetector;
   session: AudioSession;
@@ -88,6 +103,9 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
   const [progress, setProgress] = useState<CaptureProgress>(NO_PROGRESS);
   const [settings, setSettings] = useState<DifficultySettings>(DEFAULT_DIFFICULTY_SETTINGS);
   const [rankChange, setRankChange] = useState<RankChange | null>(null);
+  // Fretboard input only: the notes tapped so far for the current melody, in order.
+  const [answer, setAnswer] = useState<FretTap[]>([]);
+  const inputMode: InputMode = deps.inputMode ?? 'mic';
   const handleRef = useRef<CaptureHandle | null>(null);
   const lastVoicedMsRef = useRef<number | null>(null);
   // Adaptation counts only the FIRST graded attempt per melody (FR-011a). A timed-out or
@@ -97,6 +115,8 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
   // value, without every callback re-creating when the rank moves.
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
+  const answerRef = useRef(answer);
+  answerRef.current = answer;
 
   const level = useMemo(() => getLevelByRank(effectiveRank(settings)), [settings]);
   // Same reason as settingsRef: callbacks read the level in effect at the moment they run.
@@ -130,11 +150,12 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
         confidence: result.confidence,
         lowConfidence: result.lowConfidence,
         timedOut: result.timedOut,
+        inputMode,
         createdAt: (deps.now?.() ?? new Date()).toISOString(),
       };
       deps.onAttemptGraded?.(attempt, m, levelRef.current);
     },
-    [deps],
+    [deps, inputMode],
   );
 
   /** Fold a finished attempt into difficulty state and persist the result (FR-011/011a). */
@@ -165,6 +186,25 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
       setPhase('awaitingInput');
     },
     [deps, level.tempoBpm],
+  );
+
+  /**
+   * Grade the notes an attempt produced and fold the result into feedback, the record and difficulty.
+   * Shared by both input modes: the microphone path hands it segmented notes, the fretboard path
+   * hands it notes built from taps — grading cannot tell them apart.
+   */
+  const finishAttempt = useCallback(
+    async (m: Melody, detected: DetectedNote[], timedOut: boolean) => {
+      setPhase('grading');
+      const result = timedOut
+        ? gradeAttempt(m, [], deps.gradingCfg) // empty → timedOut grade
+        : gradeAttempt(m, detected, deps.gradingCfg);
+      setGrade(result);
+      setPhase('feedback');
+      completeAttempt(m, result, detected);
+      await adapt(result);
+    },
+    [deps.gradingCfg, adapt, completeAttempt],
   );
 
   const captureAndGrade = useCallback(
@@ -216,17 +256,9 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
       );
       const detected = segmentFrames(frames, { ...deps.segmentCfg, clarityThreshold });
       setTuning(evaluateTuning(detected, deps.playback)); // advisory, non-blocking (FR-014)
-
-      setPhase('grading');
-      const result = timedOut
-        ? gradeAttempt(m, [], deps.gradingCfg) // empty → timedOut grade
-        : gradeAttempt(m, detected, deps.gradingCfg);
-      setGrade(result);
-      setPhase('feedback');
-      completeAttempt(m, result, detected);
-      await adapt(result);
+      await finishAttempt(m, detected, timedOut);
     },
-    [deps, adapt, completeAttempt],
+    [deps, adapt, completeAttempt, finishAttempt],
   );
 
   const next = useCallback(async () => {
@@ -236,6 +268,7 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
     setTuning(null);
     setProgress(NO_PROGRESS);
     setRankChange(null);
+    setAnswer([]);
     gradedThisMelodyRef.current = false; // a new melody restarts first-attempt eligibility
     await playMelody(m);
   }, [deps, level, playMelody]);
@@ -245,12 +278,48 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
   }, [melody, playMelody]);
 
   const retry = useCallback(async () => {
-    if (melody) await captureAndGrade(melody); // same melody, fresh grading (FR-008)
-  }, [melody, captureAndGrade]);
+    if (!melody) return;
+    if (inputMode === 'fretboard') {
+      // No capture to rerun: clear the board and let the learner answer again, same melody (FR-008).
+      setGrade(null);
+      setTuning(null);
+      setRankChange(null);
+      setAnswer([]);
+      setPhase('awaitingInput');
+      return;
+    }
+    await captureAndGrade(melody); // same melody, fresh grading (FR-008)
+  }, [melody, inputMode, captureAndGrade]);
 
   const beginAttempt = useCallback(async () => {
     if (melody) await captureAndGrade(melody);
   }, [melody, captureAndGrade]);
+
+  /** Fretboard input: sound the tapped fret and add it to the answer (up to the melody's length). */
+  const tapFret = useCallback(
+    (position: FretPosition) => {
+      if (inputMode !== 'fretboard' || phase !== 'awaitingInput' || !melody) return;
+      const tap = makeTap(position, (deps.now?.() ?? new Date()).getTime());
+      // Hearing the note is the point — it is how the learner compares it with the melody. It plays
+      // even when the answer is already full, so a slot can be auditioned before undoing.
+      deps.playback.playReferenceTone(tap.midi).catch(() => undefined);
+      setAnswer((prev) => addTap(prev, tap, melody.notes.length));
+    },
+    [deps, inputMode, phase, melody],
+  );
+
+  const undoFret = useCallback(() => setAnswer((prev) => undoTap(prev)), []);
+  const clearFrets = useCallback(() => setAnswer([]), []);
+
+  /** Fretboard input: grade the answer as it stands ("Check"). Needs at least one note. */
+  const submitAnswer = useCallback(async () => {
+    const taps = answerRef.current;
+    if (inputMode !== 'fretboard' || phase !== 'awaitingInput' || !melody || taps.length === 0) {
+      return;
+    }
+    setTuning(null);
+    await finishAttempt(melody, tapsToDetected(taps), false);
+  }, [inputMode, phase, melody, finishAttempt]);
 
   /** End the capture window now and grade what was heard ("Stop & check"). */
   const stopAttempt = useCallback(() => {
@@ -260,6 +329,8 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
   return useMemo(
     () => ({
       phase,
+      inputMode,
+      answer,
       melody,
       grade,
       tuning,
@@ -272,9 +343,15 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
       retry,
       beginAttempt,
       stopAttempt,
+      tapFret,
+      undoFret,
+      clearFrets,
+      submitAnswer,
     }),
     [
       phase,
+      inputMode,
+      answer,
       melody,
       grade,
       tuning,
@@ -287,6 +364,10 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
       retry,
       beginAttempt,
       stopAttempt,
+      tapFret,
+      undoFret,
+      clearFrets,
+      submitAnswer,
     ],
   );
 }
