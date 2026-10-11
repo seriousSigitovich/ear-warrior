@@ -15,8 +15,8 @@ type StreakKind = 'correct' | 'incorrect' | 'none';
 
 interface DifficultySettings {
   mode: DifficultyMode;
-  adaptiveRank: number;   // 1–7
-  fixedRank: number;      // 1–7
+  adaptiveRank: number;   // 1–9
+  fixedRank: number;      // 1–9
   streakKind: StreakKind;
   streakCount: number;    // ≥ 0
 }
@@ -65,7 +65,7 @@ invisible to adaptation.
 - `correct` streak reaching **3** → `adaptiveRank + 1`, then `streakKind = 'none'`, `streakCount = 0`.
 - `incorrect` streak reaching **2** → `adaptiveRank − 1`, then `streakKind = 'none'`, `streakCount = 0`.
 - Steps are always exactly ±1 rank.
-- **Clamping**: at rank 7 a completed correct streak leaves the rank at 7; at rank 1 a completed incorrect
+- **Clamping**: at rank 9 a completed correct streak leaves the rank at 9; at rank 1 a completed incorrect
   streak leaves it at 1. The counter still resets, so the learner does not accumulate a hidden backlog that
   fires the instant the boundary is left.
 
@@ -74,7 +74,7 @@ invisible to adaptation.
 - `setFixedRank` writes only `fixedRank`; `adaptiveRank`, `streakKind`, and `streakCount` are untouched.
 - `setMode` writes only `mode`. Switching adaptive → fixed → adaptive therefore resumes at the stored
   `adaptiveRank` (FR-011b).
-- `setFixedRank` accepts any rank 1–7 — there is no unlock gating.
+- `setFixedRank` accepts any rank 1–9 — there is no unlock gating.
 
 **Purity**
 
@@ -84,9 +84,9 @@ invisible to adaptation.
 
 | Condition | Contract |
 |-----------|----------|
-| `rank` outside 1–7 passed to `setFixedRank` | Throw (caller bug — UI must only offer 1–7) |
+| `rank` outside 1–9 passed to `setFixedRank` | Throw (caller bug — UI must only offer 1–9) |
 | `streakCount` negative in input state | Throw (corrupt persisted state) |
-| Rank would move outside 1–7 | Clamp, do not throw (normal boundary case) |
+| Rank would move outside 1–9 | Clamp, do not throw (normal boundary case) |
 
 ## Test intent (required — test-first)
 
@@ -101,7 +101,7 @@ Pure reducer — unit tests MUST cover:
 - Each ineligible outcome (`graded: false`; `isFirstAttemptOnMelody: false`) leaves settings **byte-identical**,
   including the streak counter.
 - Fixed mode never adjusts `adaptiveRank`, whatever the outcome sequence.
-- Clamping: 3 more correct attempts at rank 7 leave rank 7; 2 more incorrect at rank 1 leave rank 1.
+- Clamping: 3 more correct attempts at rank 9 leave rank 9; 2 more incorrect at rank 1 leave rank 1.
 - `setFixedRank` preserves `adaptiveRank`; the adaptive → fixed → adaptive round-trip restores the
   original effective rank.
 - Invalid rank input throws; boundary movement clamps instead of throwing.

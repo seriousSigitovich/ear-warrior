@@ -45,7 +45,9 @@ describe('defaultNativePitch (real react-native-pitchy adapter)', () => {
     // init/start were invoked on the `.default` object — if the adapter used the module namespace,
     // these would be undefined and the call would have thrown.
     expect(mockInit).toHaveBeenCalledTimes(1);
-    expect(mockInit).toHaveBeenCalledWith(expect.objectContaining({ algorithm: 'YIN', minVolume: -60 }));
+    expect(mockInit).toHaveBeenCalledWith(
+      expect.objectContaining({ algorithm: 'YIN', minVolume: -60 }),
+    );
     expect(mockAddListener).toHaveBeenCalledTimes(1);
     expect(mockStart).toHaveBeenCalledTimes(1);
   });

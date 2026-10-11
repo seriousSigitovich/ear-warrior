@@ -96,21 +96,22 @@ Each maps to acceptance criteria in [spec.md](./spec.md). Mark pass/fail per dev
 - **F8 Accessibility & fit**: Every control and fret has a VoiceOver label; fret targets are usable at
   phone width and at the largest font-scaling setting. *(SC-009)* — **not yet validated**
 
+*F1–F7: owner confirmed on a physical device on 2026-10-11 (works normally; no per-scenario record, latency not measured).*
+
 ### US2 — Difficulty (P2)
 
-1. **Fixed level**: set fixed rank *r* → every generated melody has exactly `r + 1` notes, all drawn from
-   C major C4–C5 at 60 BPM, and the rank never moves on its own. *(US2 #1, #4)*
+1. **Fixed level**: set fixed rank *r* → every generated melody matches level *r* of the ladder (R11: note count,
+   scale family, largest leap) at 90 BPM, and the rank never moves on its own. *(US2 #1, #4)*
 2. **Promotion**: in adaptive mode, answer **3 consecutive new melodies** correctly on the first attempt →
-   the next melody has one more note. *(US2 #2)*
-3. **Demotion**: fail **2 consecutive new melodies** on the first attempt → the next melody has one fewer
-   note. *(US2 #3)*
+   the next melody is the next rank up. *(US2 #2)*
+3. **Demotion**: fail **2 consecutive new melodies** on the first attempt → the next melody is one rank down. *(US2 #3)*
 4. **Retries are invisible**: fail a melody, then retry it repeatedly (right or wrong) → the rank does not
    move and the streak is unaffected. *(FR-011a; US2 #6)*
 5. **Noise does not demote**: force two low-confidence captures (play over background noise, or mute the
    guitar) → the app offers retry and the rank stays put. *(FR-011a, FR-017 — the key anti-frustration case)*
 6. **Mode round-trip**: reach adaptive rank 5, switch to fixed rank 2, practice, then switch back to
    adaptive → you resume at rank 5. *(FR-011b; US2 #5)*
-7. **Ceiling**: at rank 7, answer 3 more correctly → rank stays 7, nothing breaks. *(US2 #7)*
+7. **Ceiling**: at rank 9, answer 3 more correctly → rank stays 9, nothing breaks. *(US2 #7)*
 8. **Restart persistence**: force-quit and relaunch → mode, adaptive rank, and fixed selection are all
    preserved. *(FR-011b)*
 

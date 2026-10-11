@@ -31,7 +31,7 @@ pitch-detection accuracy and audio fidelity are validated on-device via `quickst
 - [X] T001 Initialize Expo + TypeScript app with expo-router at repo root (`package.json`, `tsconfig.json`, `app/`)
 - [X] T002 [P] Install runtime deps (`react-native-pitchy`, `expo-audio`, `expo-sqlite`, `@supabase/supabase-js`, `expo-asset`, `expo-file-system`) in `package.json` — note: `@supabase/supabase-js` later **removed** (backend moved to the Node/Postgres server; client uses `fetch`)
 - [X] T003 [P] Configure TypeScript `strict` + ESLint + Prettier (`tsconfig.json`, `.eslintrc.js`, `.prettierrc`)
-- [X] T004 [P] Configure Jest with `jest-expo` preset + React Native Testing Library (`jest.config.js`, `jest.setup.ts`, `test` script in `package.json`)
+- [X] T004 [P] Configure Jest (`jest.config.js`, `test` script in `package.json`) — note: the runner is **`ts-jest` in the node environment**, not the `jest-expo` preset + React Native Testing Library originally planned, so hooks and `.tsx` cannot be unit-tested; their logic is kept in pure `.ts` and screens are validated on-device
 - [X] T005 [P] Create `eas.json` with a `development` (dev client) profile and an internal/ad-hoc distribution profile for iOS + Android
 - [X] T006 [P] Configure `app.config.ts`: iOS/Android bundle IDs, microphone usage strings (`NSMicrophoneUsageDescription`, Android `RECORD_AUDIO`), plugins, and `EXPO_PUBLIC_SUPABASE_*` env — note: env later **renamed** to `EXPO_PUBLIC_API_URL` (single Node backend base URL)
 - [X] T007 Create source-tree scaffolding: `src/{components/{feedback,controls,common},features/{practice,difficulty,progress},services/{audio,melody,grading,storage,logging},models,lib}`, `tests/{unit,contract,fixtures}`, `assets/samples`, `supabase/migrations` — note: `supabase/` **superseded** by `server/` (Fastify + Drizzle + Postgres)
@@ -104,8 +104,8 @@ a correct/incorrect verdict identifying matched/wrong/missed/extra notes, and su
 
 ## Phase 4: User Story 2 - Adjustable & Adaptive Difficulty (Priority: P2)
 
-**Goal**: Difficulty matches ability — 7 ranks differing in melody length only (`noteCount = rank + 1`,
-2→8), auto-adjusting on asymmetric streaks (3 correct → +1, 2 incorrect → −1) or held fixed when the
+**Goal**: Difficulty matches ability — **9 ranks** (revised 2026-09-23, FR-010 / R11; the 7-rank, length-only
+ladder named in the tasks below was the first design), auto-adjusting on asymmetric streaks (3 correct → +1, 2 incorrect → −1) or held fixed when the
 learner chooses, with mode and both rank values persisted across restarts.
 
 **Independent Test**: Select a fixed rank and confirm every melody has `rank + 1` notes and never moves;
@@ -115,6 +115,10 @@ lower it by one, while retries and low-confidence captures leave it untouched.
 **Design refs**: `contracts/difficulty-adaptation.md`, `data-model.md` (DifficultyLevel,
 DifficultySettings), spec FR-010/FR-011/FR-011a/FR-011b, research R11/R13.
 
+> **Superseded by R11 (2026-09-23)**: T036–T041, T038 and T063 below describe the first, 7-rank length-only ladder and
+> are kept as the historical record. The shipped ladder is 9 ranks across several dimensions (research R11,
+> `src/services/melody/levels.ts`, `tests/unit/melody/levels.test.ts`).
+>
 > **Note on IDs**: T036–T041 were re-scoped after the 2026-07-23 clarifications (the old ladder varied
 > range/scale/tempo and had no persistence). T058–T062 are the additional work those decisions introduced;
 > they belong to this phase and run in the order listed, not after Phase 6.
@@ -297,7 +301,24 @@ for it and are no longer MVP blockers.
 - [X] T072 [US1] Wire fretboard input into `usePracticeLoop`: `inputMode` dep (default `mic`), `tapFret` / `undoFret` / `clearFrets` / `submitAnswer`, shared `finishAttempt` for both modes, `retry` clears the board instead of recapturing, `next` clears the answer (FR-020, FR-008)
 - [X] T073 [US1] UI: `Fretboard`, `FretboardAnswer`, `FretboardControls`; result view shows the answer on the neck with per-tap status; idle prompt and home copy reworded for the fretboard; `app/practice.tsx` selects the mode from `EXPO_PUBLIC_INPUT_MODE` and pre-renders the 40 neck pitches (FR-006, FR-020, R14)
 - [X] T074 Record the mode: `inputMode` on each attempt, `input_mode` in the telemetry payload (`src/services/logging/attemptLog.ts`, `persist.ts`), `input_mode` column on the server (`server/src/db/ddl.ts`, `schema.ts`, `routes/telemetry.ts`, default `'mic'` for old builds/rows), asserted in `tests/contract/logging.test.ts` (FR-019, FR-020, `contracts/attempt-log.md`)
-- [ ] T075 [US1] Validate quickstart scenarios **F1–F8** on a real device (tap latency, same-pitch-any-string, entry controls, short answer, result view, retry/next, no mic prompt) and record pass/fail (FR-020)
+- [X] T075 [US1] Validate quickstart scenarios F1–F8 on a real device (FR-020) — **owner-confirmed 2026-10-11: "the fretboard works normally" on a physical device.** This is an informal pass of the working flow; per-scenario pass/fail was not recorded and **p95 tap-to-sound latency (SC-010) was not measured**. F8 (VoiceOver, font scale) is not covered and stays under T076
+- [X] T075A [US1] Tap-to-sound latency (SC-010): **owner accepted the hands-on check on 2026-10-11 instead of a measurement**; SC-010 amended to say so. Re-open with a real measurement if a tap ever feels late
 - [ ] T076 [P] Accessibility pass for the fretboard answer and result view — VoiceOver labels and order across 6 × 16 fret cells, ≥ 44 pt hit targets at phone width, contrast of the matched/wrong/extra tap colours, largest font scale — as an extension of T051 (SC-009)
-- [ ] T077 [US3] **Do not pool input modes in progress**: `src/services/storage/progress.ts` aggregates every attempt, but a fretboard answer is exact and a mic answer is not, so mixed history overstates accuracy. Split or filter `computeProgress` by `inputMode` (absent = `mic`) with a unit test, per FR-020 / R14. *(Spec rule not yet implemented — found while writing this phase.)*
+- [X] T077 [US3] **Do not pool input modes in progress**: `computeProgress`/`loadProgress` in `src/services/storage/progress.ts` take an `inputMode` and count only that mode's attempts in accuracy and weak areas (absent = `mic`); volume and difficulty-reached still count everything. `useProgress` passes the build's mode (`src/features/practice/inputMode.ts`). Tests first in `tests/unit/progress/aggregate.test.ts` and `tests/unit/practice/inputMode.test.ts` (FR-020 / R14)
 - [ ] T078 [P] Decide and record what returns the `mic` mode to the product (e.g. completing T052/T053, a "play it on your guitar" mode beyond the fretboard) so the deferral in R14 has an exit criterion
+
+---
+
+## Phase 10: Spec-Driven Development alignment (2026-10-11, from `/speckit-analyze`)
+
+**Purpose**: Bring the artifacts back in line with the code and the constitution after an analysis found the
+spec lagging the implementation. Findings are referenced by their analysis IDs.
+
+- [X] T079 Format gate (analyze C1): `npm run format:fix` on the four files failing `npm run format`; lint, format, typecheck and the full suite (213 tests) are green — Constitution I
+- [X] T080 Ladder drift (F1): `spec.md`, `plan.md`, `data-model.md`, `contracts/difficulty-adaptation.md`, `contracts/melody-generator.md`, `quickstart.md` and Phase 4 of this file now describe the shipped 9-rank ladder (R11), 90 BPM and per-melody key; the 7-rank text is kept only as marked history
+- [X] T081 Test-runner drift (F2): `plan.md` Testing and T004 state the real runner (ts-jest, node, no RNTL)
+- [X] T082 Performance target (C2): SC-010 and the plan's Performance Goals declare tap-to-sound responsiveness (original target p95 < 200 ms; accepted on the owner's hands-on check, T075A) — Constitution IV
+- [X] T083 Constitution Check re-run for FR-020 in `plan.md` — recorded as a **conditional pass** until T075/T076 close
+- [X] T084 Orphan scope (A1): retroactive specs `specs/002-history-sync/` and `specs/003-landing-waitlist/` for the backend sync and the waitlist landing, which `plan.md` described but no spec owned
+- [ ] T085 Run `/speckit-analyze` again after T076 and confirm no CRITICAL or HIGH findings remain
+- [ ] T086 Decide the branch policy (analyze M2): the spec names branch `001-guitar-ear-training` but work lands on `master`; either branch per feature from now on or amend the header

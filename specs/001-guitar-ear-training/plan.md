@@ -1,6 +1,6 @@
 # Implementation Plan: Guitar Ear Training — Melody Recall & Playback Feedback
 
-**Branch**: `001-guitar-ear-training` | **Date**: 2026-07-22 | **Spec**: [spec.md](./spec.md)
+**Branch**: `001-guitar-ear-training` | **Date**: 2026-07-22 (revised 2026-10-11) | **Spec**: [spec.md](./spec.md)
 
 **Input**: Feature specification from `/specs/001-guitar-ear-training/spec.md`
 
@@ -46,12 +46,13 @@ authoritative offline store), `expo-router` (navigation),
 **Storage**:
 - **Local (offline cache / authoritative in the loop)**: `expo-sqlite` for Sessions, Attempts, and derived
   Progress — works fully offline (FR-013, offline-core-loop assumption).
-- **Remote (Node/Postgres backend, `server/`)**: Fastify + Drizzle + Postgres, no accounts. Insert-only
+- **Remote (Node/Postgres backend, `server/`)** — telemetry is owned by this spec (FR-019); game-history
+  sync is specified in `specs/002-history-sync/` and the waitlist in `specs/003-landing-waitlist/`: Fastify + Drizzle + Postgres, no accounts. Insert-only
   `attempt_log` telemetry (`POST /api/attempts`), `signups` waitlist (`POST /api/subscribe`), and durable
   game-history sync (`POST/GET /api/sync` into `sync_documents`, last-write-wins on `updated_at`).
   Anonymous per-install device id; telemetry is best-effort with an offline outbox queue.
 
-**Testing**: **Jest** with the **`jest-expo`** preset + **React Native Testing Library**. Pure logic
+**Testing**: **Jest** (`ts-jest`, node environment — no `jest-expo`, no React Native Testing Library; hooks and `.tsx` are therefore not unit-testable, so their logic lives in pure `.ts` and the screens are validated on-device via `quickstart.md`). Pure logic
 (grading engine, frame segmentation, pitch↔note math, melody generator) is written **test-first** with
 table-driven unit tests; each service boundary in `contracts/` has contract tests run against mocked
 native modules (`react-native-pitchy`, `expo-audio`) and the injected HTTP transport (attempt-log / sync
@@ -73,6 +74,10 @@ audio output is needed, so it also runs in a simulator; `mic` mode still needs a
 - Correct/incorrect verdict agrees with a human evaluator on **≥ 95%** of attempts under normal
   conditions (SC-002).
 - 60 fps UI during playback and feedback.
+- **Fretboard input (FR-020, SC-010)**: a tap sounds its note without perceptible lag. The original
+  target was **p95 < 200 ms** (the constitution default for interactive operations); it was **not
+  measured** — the owner accepted a hands-on check on a physical device on 2026-10-11 (T075A). The 40 neck
+  pitches are pre-rendered once the screen has settled so no tap pays for synthesis.
 
 **Constraints**:
 - **Offline core loop**: generation, playback, capture, and grading MUST work with no network; backend
@@ -85,12 +90,13 @@ audio output is needed, so it also runs in a simulator; `mic` mode still needs a
   doesn't cascade following notes to wrong (FR-005).
 - **No consecutive identical pitches**: generated melodies never repeat a pitch back-to-back, so notes are
   separable by pitch change without same-pitch onset detection (FR-001/FR-004).
-- **Difficulty ladder (US2)**: exactly **7 ranks differing in melody length only** — `noteCount = rank + 1`
-  (2→8). All ranks share one fixed pitch pool, **C major C4–C5 (MIDI 60–72)**, and a fixed **60 BPM** tempo
-  (FR-010). The one-octave pool means generated targets can never produce an octave-mismatch failure.
+- **Difficulty ladder (US2)**: exactly **9 ranks** (FR-010, research R11) — a sawtooth through scale
+  vocabulary, largest interval, length (3–10 notes), motif and span. All ranks share the register
+  **E3–G5 (MIDI 52–79)** and a fixed **90 BPM** tempo; each melody picks its own key (FR-001). Targets can
+  therefore span octaves, and the octave-mismatch path (FR-016) is live.
 - **Adaptation rule (US2)**: asymmetric consecutive streaks — 3 correct → +1 rank, 2 incorrect → −1 rank,
   steps always ±1, counter resets on every rank change (this is the anti-thrash hysteresis), rank clamps at
-  1 and 7. Only the **first graded attempt per new melody** counts; retries, low-confidence captures, and
+  1 and 9. Only the **first graded attempt per new melody** counts; retries, low-confidence captures, and
   timeouts are excluded entirely and leave the streak untouched (FR-011a). Mode, adaptive rank, and fixed
   selection are three independently persisted values (FR-011b). Implemented as a **pure reducer** in
   `src/features/difficulty/` — see `contracts/difficulty-adaptation.md`.
@@ -141,9 +147,21 @@ satisfied by table-driven unit tests covering every transition, including the ex
 no on-device validation is required for the rule itself. Principle IV: the decision is O(1) arithmetic over a
 5-field record on an already-persisted row, so it cannot threaten the 15 s cycle budget (SC-001); no
 additional performance target is warranted beyond the existing budgets. Principle III: the ladder collapses
-to a single varying dimension and manual mode exposes all 7 ranks ungated, keeping the settings surface
+to a single varying dimension and manual mode exposes all ranks ungated (9 since 2026-09-23), keeping the settings surface
 simple and predictable. Principle I: difficulty logic stays a single-responsibility pure module, separate
 from the storage that persists it. No new gate deviations. ✅
+
+**Post-implementation re-check (2026-10-11, FR-020 fretboard input)**: The change landed before its spec
+(recorded retroactively — see tasks Phase 9 and 10), which the **Specification first** rule forbids; it is
+corrected here, not repeated. Principle I: input-mode selection is one pure function
+(`resolveInputMode`) and the tap model is a pure module (`src/lib/fretboard.ts`); the mic pipeline is kept
+rather than deleted, which is the one added layer — justified in R14 as the planned next phase.
+Principle II: the tap model, mode resolution, mode-aware progress and the telemetry field are unit/contract
+tested; the hook wiring and screens are not executable under ts-jest and are validated manually
+(quickstart F1–F8) — the same boundary the plan already draws for native audio. Principle III: the new
+controls carry accessibility labels, but the baseline (SC-009) is **not yet validated** for the fretboard —
+open task T076; this is a known gap, not a pass. Principle IV: tap-to-sound responsiveness declared above
+(SC-010), accepted on a hands-on check rather than a measurement (T075A). **Status: conditional pass** — T075 passed on a device and the owner accepted the hands-on latency check in place of a measurement (T075A, 2026-10-11); Principle IV is therefore met by an accepted exception, not by data. Closes when T076 (accessibility, Principle III) is done. ⚠️
 
 ## Project Structure
 
@@ -163,7 +181,8 @@ specs/001-guitar-ear-training/
 │   ├── grading-engine.md
 │   ├── difficulty-adaptation.md
 │   ├── tuning-check.md
-│   └── attempt-log.md
+│   ├── attempt-log.md
+│   └── fretboard-input.md
 └── checklists/
     ├── requirements.md
     ├── audio.md

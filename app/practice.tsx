@@ -3,7 +3,8 @@
 // as a verdict card + note chips (with a non-blocking tuning advisory) or a calm retry state.
 import React, { useEffect, useMemo, useState } from 'react';
 import { InteractionManager, ScrollView, StyleSheet, View } from 'react-native';
-import { CalibrationConfig, GradingConfig, InputMode, SegmentConfig, Session } from '../src/models';
+import { CalibrationConfig, GradingConfig, SegmentConfig, Session } from '../src/models';
+import { INPUT_MODE } from '../src/features/practice/inputMode';
 import { MAX_RANK } from '../src/services/melody/levels';
 import { STANDARD_TUNING_MIDI } from '../src/features/practice/tuning';
 import { tapStatuses } from '../src/lib/fretboard';
@@ -70,10 +71,6 @@ const CALIBRATION_CFG: CalibrationConfig = {
 };
 
 const APP_VERSION = '0.1.0';
-
-// How the learner answers. The MVP answers on an on-screen fretboard (no microphone); the
-// microphone pipeline is kept intact and comes back with EXPO_PUBLIC_INPUT_MODE=mic.
-const INPUT_MODE: InputMode = process.env.EXPO_PUBLIC_INPUT_MODE === 'mic' ? 'mic' : 'fretboard';
 
 /** Every pitch the fretboard can sound (E2–G5), rendered ahead of time so a tap plays at once. */
 const FRETBOARD_MIDI = Array.from({ length: 40 }, (_, i) => 40 + i);

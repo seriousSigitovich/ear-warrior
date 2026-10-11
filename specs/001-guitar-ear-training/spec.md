@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-22
 
-**Status**: Draft
+**Status**: Draft — MVP build in progress. **Last updated**: 2026-10-11
 
 **Input**: User description: "Build an application that can help me improve my ears in terms of playing music. I want to build an ability to quickly recognise musical phrases and be able to reproduce it on a guitar. The main idea is to play right after the short generated melody and app should check for the correctness through the feedback."
 
@@ -28,7 +28,7 @@
 - Q: What is the accessibility baseline for the mobile UI (Constitution III)? → A: **WCAG 2.1 AA, mobile-adapted** — all interactive controls carry accessible labels/roles, text contrast ≥ 4.5:1, the UI is fully operable via VoiceOver/TalkBack, touch targets are ≥ 44pt (iOS) / 48dp (Android), and the UI respects OS font-scaling.
 - Q: Which difficulty dimensions vary across levels (FR-010)? → A: **Melody length only.** The ladder is exactly **7 levels (rank 1–7) whose `noteCount` runs 2→8**; the pitch pool (scale + range) and tempo are **identical at every level** and do not vary. Range/scale/tempo variation is explicitly deferred to a later phase. *(Superseded 2026-09-23: 9 multi-dimensional levels — see FR-010, R11.)*
 - Q: What is the single fixed pitch pool and tempo shared by all levels? → A: **C major (diatonic), C4–C5 (MIDI 60–72), 60 BPM.** That window yields 8 distinct pitches (C D E F G A B C), enough for an 8-note melody under the no-consecutive-repeats rule. Confining the pool to **one octave** means a correct note name is never available in a wrong octave, so the default octave-sensitive matching cannot produce octave-mismatch failures in this phase. *(Superseded 2026-09-23: per-melody key in E3–G5 — see FR-001.)*
-- Q: What thresholds raise or lower difficulty in adaptive mode (FR-011)? → A: **Streak-based and asymmetric — 3 consecutive correct attempts raise the level by one rank; 2 consecutive incorrect attempts lower it by one rank.** Steps are always ±1 rank, the streak counter resets to zero on any level change, and the level clamps at rank 1 and rank 7 (a learner already at the boundary simply stays there).
+- Q: What thresholds raise or lower difficulty in adaptive mode (FR-011)? → A: **Streak-based and asymmetric — 3 consecutive correct attempts raise the level by one rank; 2 consecutive incorrect attempts lower it by one rank.** Steps are always ±1 rank, the streak counter resets to zero on any level change, and the level clamps at rank 1 and the top rank (a learner already at the boundary simply stays there). *(Top rank is 9 since 2026-09-23 — see FR-010, R11.)*
 - Q: How do the difficulty mode and level behave across mode switches and app restarts? → A: **Separate persisted state.** The adaptive rank and the manually selected fixed level are **two independent values**; switching adaptive → fixed → adaptive resumes adaptive at the rank it held, unaffected by the fixed selection. The mode and both level values persist across sessions and app restarts. Fixed mode may select **any** of the 7 levels — there is no unlock gating.
 - Q: Which attempt outcomes feed the adaptation streak? → A: **Only the first graded attempt on each newly generated melody.** Retries of the same melody (FR-008), low-confidence ungraded captures (FR-017), and no-input timeouts (FR-015) are **excluded entirely** — they neither extend nor break the streak, leaving it unchanged. An attempt graded after the learner dismissed the out-of-tune advisory (FR-014) counts normally. Rationale: the streak measures first-hearing recall, retries are unlimited and would otherwise let a learner grind one melody into a promotion, and counting ungraded captures would demote a learner for room noise rather than for ability.
 
@@ -86,14 +86,15 @@ improve — so that practice stays challenging but achievable.
 **Why this priority**: Turns a single-loop demo into a sustainable training tool. It multiplies the
 value of US1 but is not required for the app to be usable.
 
-**Independent Test**: Choose or reach a difficulty rank, then verify that generated melodies contain
-exactly that rank's note count, and that 3 consecutive correct first attempts raise the rank by one while
+**Independent Test**: Choose or reach a difficulty rank, then verify that generated melodies match that
+rank's level definition (R11, e.g. its note count), and that 3 consecutive correct first attempts raise the rank by one while
 2 consecutive incorrect first attempts lower it by one.
 
 **Acceptance Scenarios**:
 
-1. **Given** difficulty rank *r* is in effect, **When** a melody is generated, **Then** it contains exactly
-   `r + 1` notes drawn from the fixed C major C4–C5 pool at 60 BPM.
+1. **Given** difficulty rank *r* is in effect, **When** a melody is generated, **Then** it follows that
+   level's definition (R11) — its note count, scale vocabulary, largest interval, span and motif — within the
+   shared register E3–G5 at 90 BPM.
 2. **Given** the learner's first graded attempt is correct on **3 consecutive** new melodies, **When** the
    next melody is generated, **Then** the rank has increased by exactly 1 and the melody contains one more
    note than the previous one.
@@ -106,8 +107,8 @@ exactly that rank's note count, and that 3 consecutive correct first attempts ra
    to adaptive, **Then** adaptive resumes at rank 5.
 6. **Given** an attempt is a retry, a low-confidence ungraded capture, or a no-input timeout, **When** that
    attempt ends, **Then** the streak counter is unchanged and the rank does not move.
-7. **Given** the learner is at rank 7, **When** they answer 3 more melodies correctly, **Then** the rank
-   remains 7.
+7. **Given** the learner is at rank 9, **When** they answer 3 more melodies correctly, **Then** the rank
+   remains 9.
 
 ---
 
@@ -206,7 +207,7 @@ confirm it shows accuracy trends, practice volume, and identified weak areas der
   rule**: **3 consecutive correct** attempts raise the level by **one rank**; **2 consecutive incorrect**
   attempts lower it by **one rank**. Adjustments are always ±1 rank — never a multi-rank jump. The streak
   counter MUST reset to zero whenever the level changes, so a fresh streak is required before the next
-  adjustment. The level MUST clamp at rank 1 and rank 7: further success at rank 7 or failure at rank 1
+  adjustment. The level MUST clamp at rank 1 and rank 9: further success at rank 9 or failure at rank 1
   leaves the level unchanged. The system MUST also allow the learner to fix difficulty manually, in which
   case no automatic adjustment occurs.
 - **FR-011a**: Only the **first graded attempt on each newly generated melody** MUST feed the adaptation
@@ -315,8 +316,9 @@ method and conditions for the accuracy claim are owned by **SC-002 / SC-002a**.
   level values are independent and both survive app restart (FR-011b).
 - **Progress Profile**: Aggregated results across sessions for the single learner, including accuracy
   trends, difficulty reached, practice volume, and weak areas.
-- **Difficulty Level**: One of 7 ranked configurations that differ **only** in melody length
-  (`noteCount` = rank + 1, so 2–8 notes). Pitch pool and tempo are the same constants at every rank.
+- **Difficulty Level**: One of 9 ranked configurations (FR-010, R11) that differ in scale vocabulary,
+  largest interval, length (3–10 notes), motif and span. Register (E3–G5) and tempo (90 BPM) are the same
+  constants at every rank.
 
 ## Success Criteria *(mandatory)*
 
@@ -326,7 +328,7 @@ method and conditions for the accuracy claim are owned by **SC-002 / SC-002a**.
   ready to play.
 - **SC-002** *(`mic` input mode only; a `fretboard` answer has no pitch uncertainty, FR-020)*: Under **defined normal conditions** — guitar in standard tuning to within ±15 cents per
   string (calibratable), ambient noise floor below the calibrated `minVolume` threshold (see Audio
-  capture assumption), melody played at the fixed 60 BPM from the C-major C4–C5 pool — the app's overall
+  capture assumption), melody played at the fixed 90 BPM from a level's own scale pool and register (E3–G5) — the app's overall
   correct/incorrect verdict agrees with a human evaluator on at least **95%** of attempts. Agreement is
   measured against a **fixed labeled evaluation set**, not ad-hoc live play: a corpus of pre-recorded
   attempts, each hand-labeled per-note and overall by a human evaluator, is replayed through the grader
@@ -345,13 +347,14 @@ method and conditions for the accuracy claim are owned by **SC-002 / SC-002a**.
 - **SC-006**: After two weeks of regular practice (e.g., 4+ sessions per week), a returning learner shows
   a measurable improvement in recognition accuracy of at least 25% over their first-session baseline.
 - **SC-007**: At least 90% of learners report the feedback clearly tells them which notes they got wrong.
-- **SC-008**: No microphone audio or PII is ever transmitted off-device; inspection of all outbound
+- **SC-008** *(⚠ conflicts with `002-history-sync`: history sync sends full attempt documents, not just the FR-019 aggregate — decision pending, see that spec's Open Questions)*: No microphone audio or PII is ever transmitted off-device; inspection of all outbound
   network traffic shows only the anonymized attempt-metadata payload defined in FR-019, and the full
   listen → play → feedback loop completes with networking disabled.
 - **SC-009**: The UI meets a **WCAG 2.1 AA, mobile-adapted** baseline — every interactive control exposes
   an accessible label/role, text contrast is ≥ 4.5:1, all core flows are operable end-to-end with
   VoiceOver and TalkBack, touch targets are ≥ 44pt (iOS) / 48dp (Android), and layouts remain usable at
   the OS's largest standard font-scaling setting.
+- **SC-010** *(`fretboard` input mode, FR-020)*: Tapping a fret sounds its note without perceptible lag on a physical device, including the first taps after the screen opens (the neck's pitches are pre-rendered once the screen settles). **Accepted on the owner's hands-on check, 2026-10-11 — no measured figure.** The original target was p95 < 200 ms from touch to audible onset (the constitution default); it was not instrumented, and is to be measured only if a tap ever feels late.
 
 ## Assumptions
 

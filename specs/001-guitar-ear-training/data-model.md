@@ -68,19 +68,19 @@ authoritative state adaptation reads and writes, deliberately **not** derived fr
 | Field | Type | Notes |
 |-------|------|-------|
 | `mode` | enum `adaptive` \| `fixed` | FR-011; persisted across restarts |
-| `adaptiveRank` | int 1–7 | rank adaptive mode last held; **independent** of `fixedRank` |
-| `fixedRank` | int 1–7 | manual selection; any rank, no unlock gating (FR-011b) |
+| `adaptiveRank` | int 1–9 | rank adaptive mode last held; **independent** of `fixedRank` |
+| `fixedRank` | int 1–9 | manual selection; any rank, no unlock gating (FR-011b) |
 | `streakKind` | enum `correct` \| `incorrect` \| `none` | which streak is currently running |
 | `streakCount` | int ≥ 0 | consecutive qualifying attempts of `streakKind` |
 
-**Validation**: both ranks clamp to 1–7. `streakCount` resets to 0 (and `streakKind` to `none`) on any
+**Validation**: both ranks clamp to 1–9. `streakCount` resets to 0 (and `streakKind` to `none`) on any
 rank change. Writing `fixedRank` MUST NOT modify `adaptiveRank` — switching adaptive → fixed → adaptive
 resumes at the stored `adaptiveRank` (FR-011b).
 
 **Effective rank**: `mode === 'fixed' ? fixedRank : adaptiveRank`. This is what the generator receives.
 
 **Defaults on first launch** (no history): `mode: 'adaptive'`, `adaptiveRank: 1`, `fixedRank: 1`,
-`streakKind: 'none'`, `streakCount: 0`. Rank 1 (2 notes) is also the level US1 runs at before US2 ships, so
+`streakKind: 'none'`, `streakCount: 0`. Rank 1 (3 notes) is also the level US1 runs at before US2 ships, so
 the US1-only build and a brand-new learner see the same starting difficulty.
 
 ## Melody (Phrase)
@@ -204,7 +204,7 @@ Transient only: `answer: FretTap[]`, each `{ string, fret, midi, atMs }`. There 
 - `Session.currentDifficultyId → DifficultyLevel.id`
 - `DifficultySettings.adaptiveRank` / `.fixedRank → DifficultyLevel.rank` (singleton row, no session FK)
 - Deleting a Session cascades its Attempts (local only). Backend `attempt_log` rows are independent and immutable.
-- **Level-id stability**: level ids are derived from `rank` (`"L" + rank`) and the ladder is fixed at 7
+- **Level-id stability**: level ids are derived from `rank` (`"L" + rank`) and the ladder is fixed at 9
   ranks, so stored `difficultyId` values stay resolvable. If a future phase renumbers or removes ranks, the
   migration MUST preserve historical `Melody.difficultyId` values — either by keeping retired ids
   resolvable or by remapping stored rows — so past attempts remain readable.

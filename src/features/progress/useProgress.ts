@@ -12,6 +12,7 @@ import {
   createSessionRepository,
 } from '../../services/storage/repositories';
 import { loadProgress } from '../../services/storage/progress';
+import { INPUT_MODE } from '../practice/inputMode';
 
 const EMPTY_PROFILE: ProgressProfile = {
   accuracyTrend: [],
@@ -35,11 +36,15 @@ export function useProgress(): ProgressView {
     useCallback(() => {
       let cancelled = false;
       const store = defaultRowStore();
-      loadProgress({
-        sessions: createSessionRepository(store),
-        attempts: createAttemptRepository(store),
-        melodies: createMelodyRepository(store),
-      })
+      // Accuracy is shown for this build's input mode only; modes are never pooled (FR-020).
+      loadProgress(
+        {
+          sessions: createSessionRepository(store),
+          attempts: createAttemptRepository(store),
+          melodies: createMelodyRepository(store),
+        },
+        INPUT_MODE,
+      )
         .then((p) => {
           if (!cancelled) setProfile(p);
         })

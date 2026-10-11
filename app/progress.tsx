@@ -33,7 +33,9 @@ export default function Progress() {
   const hasHistory = !loading && !!profile && profile.practiceVolume.totalAttempts > 0;
   const latest = trend.length > 0 ? trend[trend.length - 1].accuracyPct : null;
   const delta =
-    trend.length > 1 ? trend[trend.length - 1].accuracyPct - trend[trend.length - 2].accuracyPct : null;
+    trend.length > 1
+      ? trend[trend.length - 1].accuracyPct - trend[trend.length - 2].accuracyPct
+      : null;
 
   return (
     <Screen>

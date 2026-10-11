@@ -2,7 +2,16 @@
 // Pure function, so the whole US3 reporting surface is unit-testable under the ts-jest runner
 // without a store, a hook, or a device. Covers: accuracy trend by session, practice volume, weak
 // areas by melody length and interval size, difficulty reached, and the empty-history case.
-import { Attempt, DetectedNote, Melody, Note, NoteResult, Session, Verdict } from '../../../src/models';
+import {
+  Attempt,
+  DetectedNote,
+  InputMode,
+  Melody,
+  Note,
+  NoteResult,
+  Session,
+  Verdict,
+} from '../../../src/models';
 import { computeProgress } from '../../../src/services/storage/progress';
 
 // ---- fixtures -------------------------------------------------------------
@@ -38,6 +47,7 @@ interface AttemptOpts {
   timedOut?: boolean;
   lowConfidence?: boolean;
   detected?: DetectedNote[];
+  inputMode?: InputMode;
 }
 
 function attempt(
@@ -57,9 +67,62 @@ function attempt(
     confidence: 1,
     lowConfidence: opts.lowConfidence ?? false,
     timedOut: opts.timedOut ?? false,
+    ...(opts.inputMode ? { inputMode: opts.inputMode } : {}),
     createdAt: new Date(0).toISOString(),
   };
 }
+
+describe('computeProgress by input mode (FR-020: modes are never pooled)', () => {
+  const s1 = session('s1', '2026-07-01T10:00:00.000Z', '2026-07-01T10:05:00.000Z');
+  const mel = melody('mel', 1, [60, 62]);
+  // Legacy attempts carry no inputMode and are microphone attempts.
+  const attempts = [
+    attempt('legacy', 's1', 'mel', 'incorrect'),
+    attempt('mic', 's1', 'mel', 'incorrect', { inputMode: 'mic' }),
+    attempt('fret1', 's1', 'mel', 'correct', { inputMode: 'fretboard' }),
+    attempt('fret2', 's1', 'mel', 'correct', { inputMode: 'fretboard' }),
+  ];
+
+  test('filtering to fretboard counts only fretboard attempts in accuracy', () => {
+    const p = computeProgress({
+      sessions: [s1],
+      attempts,
+      melodies: [mel],
+      inputMode: 'fretboard',
+    });
+    expect(p.accuracyTrend).toEqual([{ date: s1.startedAt, accuracyPct: 100 }]);
+  });
+
+  test('an attempt without inputMode is read as mic', () => {
+    const p = computeProgress({ sessions: [s1], attempts, melodies: [mel], inputMode: 'mic' });
+    expect(p.accuracyTrend).toEqual([{ date: s1.startedAt, accuracyPct: 0 }]);
+  });
+
+  test('weak areas are computed within the chosen mode only', () => {
+    const p = computeProgress({
+      sessions: [s1],
+      attempts,
+      melodies: [mel],
+      inputMode: 'fretboard',
+    });
+    expect(p.weakAreas.every((w) => w.missRate === 0)).toBe(true);
+  });
+
+  test('practice volume still counts every attempt, whatever the mode', () => {
+    const p = computeProgress({
+      sessions: [s1],
+      attempts,
+      melodies: [mel],
+      inputMode: 'fretboard',
+    });
+    expect(p.practiceVolume.totalAttempts).toBe(4);
+  });
+
+  test('without a mode the aggregation is unchanged (all attempts)', () => {
+    const p = computeProgress({ sessions: [s1], attempts, melodies: [mel] });
+    expect(p.accuracyTrend).toEqual([{ date: s1.startedAt, accuracyPct: 50 }]);
+  });
+});
 
 describe('computeProgress (US3 aggregation, FR-013)', () => {
   test('empty history yields zeros and no trend/weak areas', () => {
@@ -119,10 +182,7 @@ describe('computeProgress (US3 aggregation, FR-013)', () => {
     const s2 = session('s2', '2026-07-02T10:00:00.000Z', '2026-07-02T10:15:00.000Z'); // 15 min
     const s3 = session('s3', '2026-07-03T10:00:00.000Z', null); // active → 0 min
     const mel = melody('mel', 1, [60, 62]);
-    const attempts = [
-      attempt('a1', 's1', 'mel', 'correct'),
-      attempt('a2', 's2', 'mel', 'correct'),
-    ];
+    const attempts = [attempt('a1', 's1', 'mel', 'correct'), attempt('a2', 's2', 'mel', 'correct')];
     const p = computeProgress({ sessions: [s1, s2, s3], attempts, melodies: [mel] });
     expect(p.practiceVolume).toEqual({ totalAttempts: 2, totalSessions: 3, totalMinutes: 20 });
   });
@@ -131,10 +191,7 @@ describe('computeProgress (US3 aggregation, FR-013)', () => {
     const s1 = session('s1', '2026-07-01T10:00:00.000Z', null);
     const melA = melody('a', 2, [60, 62, 64]);
     const melB = melody('b', 5, [60, 62, 64, 65, 67, 69]);
-    const attempts = [
-      attempt('a1', 's1', 'a', 'correct'),
-      attempt('a2', 's1', 'b', 'incorrect'),
-    ];
+    const attempts = [attempt('a1', 's1', 'a', 'correct'), attempt('a2', 's1', 'b', 'incorrect')];
     const p = computeProgress({ sessions: [s1], attempts, melodies: [melA, melB] });
     expect(p.difficultyReached).toBe(5);
   });

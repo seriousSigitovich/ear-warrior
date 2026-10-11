@@ -6,17 +6,29 @@
 // (`!timedOut && !lowConfidence`) — a timed-out or noisy capture reflects the room, not the ear, and
 // counting it would punish a learner for background noise (same reasoning as FR-011a). Practice
 // *volume* counts every attempt, since even an aborted try is effort spent.
-import { Attempt, Melody, ProgressProfile, Session } from '../../models';
+//
+// Input modes (FR-020): a fretboard answer is exact and a microphone answer is not, so accuracy and weak
+// areas are never pooled across modes. When `inputMode` is given they count only that mode's attempts
+// (an attempt stored before fretboard input has no mode and is read as `mic`); volume and difficulty
+// reached still count everything, since all of it is practice.
+import { Attempt, InputMode, Melody, ProgressProfile, Session } from '../../models';
 
 export interface ProgressInput {
   sessions: Session[];
   attempts: Attempt[];
   melodies: Melody[];
+  /** Restrict accuracy and weak areas to one input mode. Omitted: all attempts. */
+  inputMode?: InputMode;
 }
 
 /** An attempt is graded (counts toward accuracy) only when it was neither timed out nor low-confidence. */
 function isGraded(a: Attempt): boolean {
   return !a.timedOut && !a.lowConfidence;
+}
+
+/** The mode an attempt was answered in; attempts recorded before fretboard input were all `mic`. */
+function modeOf(a: Attempt): InputMode {
+  return a.inputMode ?? 'mic';
 }
 
 /** Rank encoded in a difficulty id of the form `"L{rank}"`; NaN-safe (returns 0 on a bad id). */
@@ -54,12 +66,14 @@ function roundRate(miss: number, total: number): number {
  * in its inputs — the trend is sorted by session start, weak areas by descending miss rate.
  */
 export function computeProgress(input: ProgressInput): ProgressProfile {
-  const { sessions, attempts, melodies } = input;
+  const { sessions, attempts, melodies, inputMode } = input;
+  // Accuracy and weak areas never pool input modes (FR-020); volume and difficulty use every attempt.
+  const scored = inputMode ? attempts.filter((a) => modeOf(a) === inputMode) : attempts;
   const melodyById = new Map(melodies.map((m) => [m.id, m]));
 
   // ---- accuracy trend: one point per session that has ≥1 graded attempt, ordered by start ----
   const gradedBySession = new Map<string, { correct: number; total: number }>();
-  for (const a of attempts) {
+  for (const a of scored) {
     if (!isGraded(a)) continue;
     const acc = gradedBySession.get(a.sessionId) ?? { correct: 0, total: 0 };
     acc.total += 1;
@@ -99,7 +113,7 @@ export function computeProgress(input: ProgressInput): ProgressProfile {
     if (missed) g.miss += 1;
     groups.set(descriptor, g);
   };
-  for (const a of attempts) {
+  for (const a of scored) {
     if (!isGraded(a)) continue;
     const mel = melodyById.get(a.melodyId);
     if (!mel) continue;
@@ -124,11 +138,14 @@ export interface ProgressSources {
 }
 
 /** Fetch all history and aggregate it. All the logic lives in the pure `computeProgress`. */
-export async function loadProgress(sources: ProgressSources): Promise<ProgressProfile> {
+export async function loadProgress(
+  sources: ProgressSources,
+  inputMode?: InputMode,
+): Promise<ProgressProfile> {
   const [sessions, attempts, melodies] = await Promise.all([
     sources.sessions.all(),
     sources.attempts.all(),
     sources.melodies.all(),
   ]);
-  return computeProgress({ sessions, attempts, melodies });
+  return computeProgress({ sessions, attempts, melodies, inputMode });
 }
