@@ -11,6 +11,11 @@ Produces a monophonic target `Melody` for a given `DifficultyLevel` (FR-001, R11
 function generateMelody(level: DifficultyLevel, seed?: number): Melody;
 ```
 
+> **Status (2026-10-11, FR-021)**: this generator is **off in the current version** — the MVP plays a curated
+> set (`src/services/melody/curated.ts`) selected by `EXPO_PUBLIC_MELODY_SOURCE`. The contract below is
+> unchanged and still tested; it applies again when the flag is set to `generator`. Note its register E3–G5
+> is wider than the 12-fret answer neck (E2–E5), so generated F5–G5 cannot be answered on the fretboard.
+
 ## Behavioral contract
 
 - Output `notes.length === level.noteCount`.

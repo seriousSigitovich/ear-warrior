@@ -80,6 +80,7 @@ Each maps to acceptance criteria in [spec.md](./spec.md). Mark pass/fail per dev
 
 **Fretboard input (FR-020, MVP default)** — run these in the default build, on a real device:
 
+- **F0 Melody source**: the melodies come from the curated set (recognisable public-domain tunes, e.g. Hot Cross Buns at level 1) and every note can be found on the 12-fret neck. Starter set drafted from memory — **listen for wrong notes and report them**. *(FR-021)*
 - **F1 Tap sounds**: Tap a fret → that note sounds immediately (no stutter, including the first taps after
   the screen opens) and fills the next slot. *(FR-020; R14 preload)*
 - **F2 Same pitch, any string**: Answer a note on a different string than the obvious one but the same

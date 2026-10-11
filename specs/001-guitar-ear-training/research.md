@@ -273,8 +273,9 @@ same shape and key.*
   writes up to G5 (79), so some generated notes could not be answered. The owner also decided the
   **generator is deferred and not part of the MVP**; melodies come from a **curated set** (FR-021) that is
   written to fit E2–E5. The generator and its register are left untouched, so the neck was shortened first
-  (T087, at the owner's instruction) and the curated set follows (T088/T089). **Until it lands, a generated
-  melody can contain F5–G5, which the neck cannot play** — a known, accepted defect, not a design choice.
+  (T087) and the generator was then switched off in favour of a starter set of curated tunes (T088/T089).
+  The generator's F5–G5 reach is therefore no longer a live defect in the MVP; it returns only if the
+  generator is turned back on with `EXPO_PUBLIC_MELODY_SOURCE=generator`.
 - **Alternatives considered**: Shipping the mic path as-is — rejected for the MVP, it needs the on-device
   calibration spike (T052/T053) to finish first. Piano-keyboard or note-name buttons — rejected, they lose
   the string/fret geometry the target learner (guitarists) actually reads, and make a note a name rather

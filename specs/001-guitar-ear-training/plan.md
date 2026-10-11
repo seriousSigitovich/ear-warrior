@@ -9,6 +9,8 @@
 > **MVP scope change (2026-10-11, FR-020 / R14):** the MVP answers on an **on-screen fretboard**, not the
 > microphone. The text below describes the full design; the microphone capture → segmentation → tuning
 > path is built and kept but is **`mic` input mode**, off by default (`EXPO_PUBLIC_INPUT_MODE=mic`).
+> Likewise the **melody generator is off in this version**: melodies come from a curated starter set
+> (`src/services/melody/curated.ts`, FR-021), and `EXPO_PUBLIC_MELODY_SOURCE=generator` restores it.
 > Everything downstream of "the notes the learner played" — grading, difficulty, persistence, sync,
 > telemetry — is shared. See `contracts/fretboard-input.md`; tasks in tasks.md Phase 9.
 

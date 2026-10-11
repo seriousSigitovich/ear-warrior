@@ -52,6 +52,11 @@ export interface PracticeLoopDeps {
    * `mic`, the behaviour before fretboard input existed.
    */
   inputMode?: InputMode;
+  /**
+   * Where the next melody comes from (FR-021): the curated set in the MVP build. Defaults to the
+   * generator, the behaviour before the curated set existed.
+   */
+  nextMelody?: (level: DifficultyLevel, seed: number) => Melody;
   playback: AudioPlayback;
   detector: PitchDetector;
   session: AudioSession;
@@ -262,7 +267,7 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
   );
 
   const next = useCallback(async () => {
-    const m = generateMelody(level, deps.seed());
+    const m = (deps.nextMelody ?? generateMelody)(level, deps.seed());
     setMelody(m);
     setGrade(null);
     setTuning(null);

@@ -5,6 +5,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { InteractionManager, ScrollView, StyleSheet, View } from 'react-native';
 import { CalibrationConfig, GradingConfig, SegmentConfig, Session } from '../src/models';
 import { INPUT_MODE } from '../src/features/practice/inputMode';
+import { nextMelody } from '../src/features/practice/melodySource';
 import { MAX_RANK } from '../src/services/melody/levels';
 import { STANDARD_TUNING_MIDI } from '../src/features/practice/tuning';
 import { tapStatuses } from '../src/lib/fretboard';
@@ -150,6 +151,7 @@ export default function Practice() {
   const deps = useMemo<PracticeLoopDeps>(
     () => ({
       inputMode: INPUT_MODE,
+      nextMelody,
       playback,
       detector: createPitchDetector(),
       session: createAudioSession(),
