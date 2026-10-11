@@ -38,7 +38,7 @@ export default function Progress() {
       : null;
 
   return (
-    <Screen>
+    <Screen edges={['bottom']}>
       <Kicker>Insights</Kicker>
       <Text style={styles.title}>Progress</Text>
 

@@ -55,7 +55,7 @@ export default function Settings() {
   const fixed = settings.mode === 'fixed';
 
   return (
-    <Screen>
+    <Screen edges={['bottom']}>
       <Kicker>Settings</Kicker>
       <Text style={styles.title}>Difficulty</Text>
 

@@ -191,7 +191,7 @@ export default function Practice() {
   const noteCount = loop.melody?.notes.length ?? loop.level.noteCount;
 
   return (
-    <Screen>
+    <Screen edges={['bottom']}>
       <View style={styles.header}>
         <Kicker>Practice</Kicker>
         <Tag label={`Level ${loop.level.rank} of ${MAX_RANK}`} />
