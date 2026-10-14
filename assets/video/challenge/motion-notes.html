@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Ear Warrior challenge — hopping notes</title>
+<!--
+  Experiment H15, variant 2: a note hops from fret to fret along the neck. Same contract as slides.html / motion.html: render.mjs injects
+  window.CHALLENGE ({ ...challenge, timeline }); everything is a pure function of time via window.renderAt(t); timing comes from timeline.mjs.
+
+  The whole melody sits on ONE string (the high E, as in a tab) — fret = midi − 64, so Für Elise is frets 12 11 12 11 12 7 10 8 5.
+  A glowing "♪" ball lands on the right fret EXACTLY when its note sounds (landing time = note onset) and hops on to the next one; the string
+  rings, the fret lights, a little ♪ floats off. First pass: no labels (watch). Second pass (slower): "?" chips turn into fret numbers as the
+  ball lands on them. Unlike motion.html this shows the pitches — it is a "watch where the notes go" video, not a by-ear quiz.
+  Palette mirrors src/theme/nocturne.ts and slides.html.
+-->
+<style>
+  :root {
+    --bg: #161826; --surface: #232532; --text: #e9e9ed; --muted: rgba(233, 233, 237, 0.6);
+    --accent: #9184d9; --bright: #b5abfc; --line: rgba(233, 233, 237, 0.12);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1080px; height: 1920px; overflow: hidden; background: var(--bg); }
+  body { font-family: -apple-system, "SF Pro Display", "Helvetica Neue", Arial, sans-serif; color: var(--text); -webkit-font-smoothing: antialiased; position: relative; }
+  .abs { position: absolute; }
+  #cv { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; }
+
+  #top { z-index: 50; left: 96px; right: 96px; top: 244px; display: flex; justify-content: space-between; align-items: center; }
+  .brand { display: flex; align-items: center; gap: 18px; font-size: 36px; font-weight: 650; letter-spacing: -0.02em; }
+  .brand img { width: 60px; height: 60px; border-radius: 15px; display: block; }
+  .tag { font-size: 28px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--bright); border: 1.5px solid var(--line); border-radius: 999px; padding: 14px 28px; }
+
+  .snd { z-index: 40; left: 96px; top: 330px; display: flex; align-items: center; gap: 16px; padding: 14px 30px 14px 24px; border-radius: 999px; background: rgba(145, 132, 217, 0.18); border: 2px solid var(--accent); font-size: 34px; font-weight: 650; color: #fff; transform-origin: left center; }
+  .eq { display: flex; align-items: flex-end; gap: 5px; height: 36px; }
+  .eq i { display: block; width: 7px; border-radius: 3px; background: var(--bright); }
+
+  .hl { position: absolute; left: 96px; width: 888px; white-space: nowrap; font-weight: 700; letter-spacing: -0.035em; transform-origin: left center; text-shadow: 0 4px 30px rgba(10, 10, 20, 0.9); }
+  .hl em { font-style: normal; color: #e6e0ff; text-shadow: 0 0 3px #fff, 0 0 calc(5px + 8px * var(--g, 0.3)) #c9bfff, 0 0 calc(12px + 20px * var(--g, 0.3)) #a99bff, 0 0 calc(24px + 36px * var(--g, 0.3)) #8b7bff, 0 0 calc(40px + 60px * var(--g, 0.3)) rgba(139, 123, 255, 0.7); }
+  .hl.sub { font-weight: 500; letter-spacing: -0.01em; color: var(--muted); }
+
+  /* the tab row: nine chips, "?" until the ball lands on them (second pass) */
+  #chips { left: 96px; top: 1496px; width: 888px; display: flex; justify-content: space-between; opacity: 0; }
+  .chip { width: 88px; height: 96px; border-radius: 26px; border: 3px solid rgba(233, 233, 237, 0.22); background: rgba(22, 24, 38, 0.6); display: grid; place-items: center; font-size: 46px; font-weight: 700; color: rgba(233, 233, 237, 0.4); }
+</style>
+</head>
+<body>
+<canvas id="cv" width="1080" height="1920"></canvas>
+<div id="stage"></div>
+
+<header id="top" class="abs">
+  <div class="brand"><img src="../../brand/logo.png" alt="">Ear Warrior</div>
+  <div class="tag" id="tag"></div>
+</header>
+
+<script>
+  const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+  const seg = (t, a, b) => clamp((t - a) / (b - a));
+  const ease = x => 1 - Math.pow(1 - x, 3);
+  const inOut = x => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+  const back = x => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); };
+  const $ = id => document.getElementById(id);
+  const div = (cls, parent) => { const e = document.createElement('div'); e.className = cls; parent.append(e); return e; };
+
+  const C = window.CHALLENGE, TL = C.timeline, N = C.notes.length;
+  const ACCENT = '#9184d9', BRIGHT = '#b5abfc';
+  const DECAY = 7;
+  $('tag').textContent = C.tag;
+
+  // ===== the melody on one string ========================================================================================================
+  const OPEN = 64;                                    // E4, the open high E string
+  const FRETS = C.notes.map(n => n.midi - OPEN);
+  if (FRETS.some(f => f < 1 || f > 12)) throw new Error('melody does not fit frets 1–12 of the high E string: ' + FRETS);
+  // landings: the ball touches fret `fret` at time `t` — the very moment that note sounds. First playing, then the slower second one.
+  const LAND = [
+    ...C.notes.map((_, i) => ({ t: TL.listenAt + TL.notes[i].onset, i, pass: 1 })),
+    ...(TL.once ? [] : C.notes.map((_, i) => ({ t: TL.againAt + TL.againNotes[i].onset, i, pass: 2 }))),
+  ].map(l => ({ ...l, fret: FRETS[l.i] }));
+  const SWAP = TL.againAt - 0.45;                     // the headline changes here
+
+  // ===== geometry =========================================================================================================================
+  const NX0 = 60, NX1 = 930, BOARD = { x: 40, y: 960, w: 910, h: 510 };   // nut, fret 12, the board's rectangle
+  const SY = [0, 1, 2, 3, 4, 5].map(i => 1040 + i * 74);                   // string y, high E on top (as in a tab)
+  const fx = n => NX0 + (NX1 - NX0) * (1 - Math.pow(2, -n / 12)) / 0.5;    // x of fret wire n (real spacing)
+  const cellX = n => (fx(n - 1) + fx(n)) / 2;                               // where a finger sits for fret n
+  LAND.forEach(l => { l.x = cellX(l.fret); });
+
+  const rng = seed => () => { seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const rand = rng(41);
+  const DUST = Array.from({ length: 46 }, () => ({ x: rand() * 1080, y: rand() * 1920, v: 14 + rand() * 40, s: 3 + rand() * 6, ph: rand() * 6.28, a: 0.1 + rand() * 0.25 }));
+  const DRIFT = LAND.map(() => (rand() - 0.5) * 120);                       // sideways drift of each floating ♪
+
+  // per-frame state
+  const X = { t: 0, pulse: 0, cur: -1, since: 9, second: false, start: 0 };
+
+  /** Where the ball is at time t: resting on a fret, or in the air on a parabola between two landings. */
+  function ballAt(t) {
+    let i = -1; LAND.forEach((l, k) => { if (t >= l.t) i = k; });
+    if (i < 0) i = 0;
+    const a = LAND[i], b = LAND[i + 1];
+    const since = t - a.t;
+    const sq = 1 - 0.32 * Math.exp(-Math.max(since, 0) * 20);                 // squash on landing
+    if (!b) return { x: a.x, y: SY[0], sq, air: 0 };
+    const dep = Math.max(a.t, b.t - 0.55);                                    // a long gap = rest, then one lazy hop
+    if (t < dep) return { x: a.x, y: SY[0], sq, air: 0 };
+    const u = clamp((t - dep) / (b.t - dep)), dx = Math.abs(b.x - a.x);
+    const h = clamp(55 + 0.34 * dx, 55, 150);
+    return { x: a.x + (b.x - a.x) * u, y: SY[0] - h * 4 * u * (1 - u), sq: 1 + 0.12 * Math.sin(Math.PI * u), air: Math.sin(Math.PI * u) };
+  }
+
+  // ===== the picture (canvas) =============================================================================================================
+  const cv = $('cv'), g = cv.getContext('2d');
+  function rr(x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+
+  function draw(t) {
+    const { pulse, cur, since } = X;
+    g.clearRect(0, 0, 1080, 1920);
+    // background
+    let gr = g.createLinearGradient(0, 0, 0, 1920);
+    gr.addColorStop(0, '#0d0e18'); gr.addColorStop(0.5, '#1a1830'); gr.addColorStop(1, '#12131f');
+    g.fillStyle = gr; g.fillRect(0, 0, 1080, 1920);
+    gr = g.createRadialGradient(540, 1180, 0, 540, 1180, 900);
+    gr.addColorStop(0, 'rgba(145,132,217,' + (0.3 + 0.28 * pulse) + ')'); gr.addColorStop(1, 'rgba(145,132,217,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, 1080, 1920);
+    // dust
+    for (const d of DUST) {
+      const y = ((d.y - d.v * t) % 1920 + 1920) % 1920, x = d.x + Math.sin(t * 0.6 + d.ph) * 22;
+      g.fillStyle = 'rgba(181,171,252,' + (d.a * (0.55 + 0.45 * Math.sin(t * 1.8 + d.ph)) + 0.3 * pulse * (0.4 + 0.6 * ((d.ph * 7) % 1))).toFixed(3) + ')';
+      g.beginPath(); g.arc(x, y, d.s * (1 + 0.8 * pulse), 0, 6.283); g.fill();
+    }
+
+    // the neck board
+    g.shadowColor = ACCENT; g.shadowBlur = 20 + 70 * pulse;
+    rr(BOARD.x, BOARD.y, BOARD.w, BOARD.h, 34); g.fillStyle = '#1d1e30'; g.fill();
+    g.shadowBlur = 0;
+    g.strokeStyle = 'rgba(145,132,217,' + (0.22 + 0.6 * pulse) + ')'; g.lineWidth = 2; g.stroke();
+    g.save(); rr(BOARD.x, BOARD.y, BOARD.w, BOARD.h, 34); g.clip();
+
+    // lit fret cell on the playing string
+    const hitFret = cur >= 0 ? LAND.find(l => l.pass === (X.second ? 2 : 1) && l.i === cur) : null;
+    if (hitFret) {
+      const k = Math.exp(-since * 4.5), n = hitFret.fret;
+      gr = g.createLinearGradient(0, SY[0] - 46, 0, SY[0] + 46);
+      gr.addColorStop(0, 'rgba(181,171,252,0)'); gr.addColorStop(0.5, 'rgba(181,171,252,' + 0.5 * k + ')'); gr.addColorStop(1, 'rgba(181,171,252,0)');
+      g.fillStyle = gr; g.fillRect(fx(n - 1), SY[0] - 46, fx(n) - fx(n - 1), 92);
+    }
+    // frets, nut, inlays
+    g.fillStyle = 'rgba(233,233,237,0.78)'; g.fillRect(NX0 - 8, BOARD.y, 12, BOARD.h);
+    for (let n = 1; n <= 12; n++) { g.fillStyle = 'rgba(233,233,237,' + (n === 12 ? 0.4 : 0.26) + ')'; g.fillRect(fx(n) - 2, BOARD.y, 4, BOARD.h); }
+    g.fillStyle = 'rgba(233,233,237,0.13)';
+    for (const n of [3, 5, 7, 9]) { g.beginPath(); g.arc(cellX(n), BOARD.y + BOARD.h / 2 - 20, 17, 0, 6.283); g.fill(); }
+    for (const dy of [-90, 50]) { g.beginPath(); g.arc(cellX(12), BOARD.y + BOARD.h / 2 - 20 + dy, 17, 0, 6.283); g.fill(); }
+    // fret numbers; the current one pops
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    for (let n = 1; n <= 12; n++) {
+      const on = hitFret && hitFret.fret === n, pop = on ? 1 + 0.35 * Math.exp(-since * 9) : 1;
+      g.font = '600 ' + Math.round(32 * pop) + 'px -apple-system, "SF Pro Display", "Helvetica Neue", Arial, sans-serif';
+      g.fillStyle = on ? 'rgba(230,224,255,' + (0.5 + 0.5 * Math.exp(-since * 2)) + ')' : 'rgba(233,233,237,0.5)';
+      g.fillText(String(n), cellX(n), BOARD.y + BOARD.h - 34);
+    }
+    // strings; only the high E rings, and only from the fret you are on to the bridge
+    for (let i = 0; i < 6; i++) {
+      g.beginPath();
+      for (let x = 40; x <= 950; x += 10) {
+        let off = 0;
+        if (i === 0 && hitFret && x >= fx(hitFret.fret)) {
+          const x0 = fx(hitFret.fret), env = Math.sin(Math.PI * (x - x0) / (950 - x0));
+          off = Math.sin(since * 150 + x * 0.04) * 9 * Math.exp(-since * 7) * env;
+        }
+        if (x === 40) g.moveTo(x, SY[i] + off); else g.lineTo(x, SY[i] + off);
+      }
+      const hot = i === 0 ? pulse : 0;
+      g.shadowColor = ACCENT; g.shadowBlur = 26 * hot;
+      g.strokeStyle = hot > 0.02 ? 'rgba(214,208,255,' + (0.6 + 0.4 * hot) + ')' : (i >= 3 ? 'rgba(194,161,144,0.72)' : 'rgba(233,233,237,0.6)');
+      g.lineWidth = 2.4 + i * 0.95; g.stroke();
+      g.shadowBlur = 0;
+    }
+    g.restore();
+
+    // a ring leaves each landing
+    for (const l of LAND) {
+      const p = seg(t, l.t, l.t + 0.7);
+      if (!(t >= l.t && p < 1)) continue;
+      g.strokeStyle = 'rgba(181,171,252,' + (0.7 * (1 - p)).toFixed(3) + ')'; g.lineWidth = 4 * (1 - p) + 1;
+      g.beginPath(); g.arc(l.x, SY[0], 26 + 190 * ease(p), 0, 6.283); g.stroke();
+    }
+
+    // floating ♪ that drift off each landing
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    LAND.forEach((l, k) => {
+      const u = seg(t, l.t, l.t + 1.0);
+      if (!(t >= l.t && u < 1)) return;
+      g.font = '700 ' + Math.round(34 + 10 * (1 - u)) + 'px -apple-system, "Helvetica Neue", Arial, sans-serif';
+      g.fillStyle = 'rgba(214,208,255,' + (0.75 * (1 - u)).toFixed(3) + ')';
+      g.shadowColor = ACCENT; g.shadowBlur = 14;
+      g.fillText('♪', l.x + DRIFT[k] * ease(u), SY[0] - 40 - 190 * ease(u));
+      g.shadowBlur = 0;
+    });
+
+    // the ball: a trail of ghosts, then the ball itself
+    for (let k = 7; k >= 1; k--) {
+      const b = ballAt(t - k * 0.022);
+      if (b.air < 0.02 && k > 1) continue;
+      g.fillStyle = 'rgba(181,171,252,' + (0.3 * (1 - k / 8)).toFixed(3) + ')';
+      g.beginPath(); g.arc(b.x, b.y, 28 * (1 - k * 0.07), 0, 6.283); g.fill();
+    }
+    const b = ballAt(t);
+    gr = g.createRadialGradient(b.x, b.y, 0, b.x, b.y, 90);
+    gr.addColorStop(0, 'rgba(181,171,252,0.6)'); gr.addColorStop(1, 'rgba(181,171,252,0)');
+    g.fillStyle = gr; g.beginPath(); g.arc(b.x, b.y, 90, 0, 6.283); g.fill();
+    g.save(); g.translate(b.x, b.y); g.scale(1 / b.sq, b.sq); // squashed = wider and flatter, stretched = taller and thinner
+    g.shadowColor = '#8b7bff'; g.shadowBlur = 24 + 20 * pulse;
+    g.fillStyle = '#d6d0ff'; g.beginPath(); g.arc(0, 0, 34, 0, 6.283); g.fill();
+    g.shadowBlur = 0;
+    g.fillStyle = '#4b3f9c'; g.font = '800 44px -apple-system, "Helvetica Neue", Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText('♪', 1, 2);
+    g.restore();
+  }
+
+  // ===== the headlines + tab chips (DOM) ===================================================================================================
+  function rich(el, text) {
+    text.split('*').forEach((part, j) => {
+      if (!part) return;
+      if (j % 2) { const em = document.createElement('em'); em.textContent = part; el.append(em); } else el.append(part);
+    });
+  }
+  function build(root, lines, y0) {
+    let y = y0;
+    return lines.map(({ text, max, cls }, i) => {
+      const el = div('hl ' + (cls || ''), root);
+      rich(el, text);
+      el.style.fontSize = '100px';
+      const r = document.createRange(); r.selectNodeContents(el);
+      const fs = Math.floor(Math.min(max, 100 * 888 / r.getBoundingClientRect().width));
+      el.style.fontSize = fs + 'px';
+      const lh = Math.round(fs * (i === 0 ? 0.98 : 1.05));
+      el.style.lineHeight = lh + 'px'; el.style.top = y + 'px'; el.style.height = lh + 'px';
+      y += lh;
+      return el;
+    });
+  }
+  const stage = $('stage');
+  const P1 = build(stage, [{ text: '*' + N + '* notes', max: 250 }, { text: 'on *one string*', max: 104 }, { text: 'Watch the frets.', max: 52, cls: 'sub' }], 424);
+  const P2 = build(stage, [{ text: 'Now *you*', max: 250 }, { text: 'play it.', max: 104 }, { text: 'Same notes, slower.', max: 52, cls: 'sub' }], 424);
+  const IN1 = [-0.18, 0.04, 0.16], OUT1 = [0, 0.07, 0.14];
+
+  /** slam in with an overshoot, blur clearing */
+  function slamIn(el, t, tIn, hero) {
+    const p = clamp(back(seg(t, tIn, tIn + 0.42)), 0, 1.25), pe = ease(seg(t, tIn, tIn + 0.3));
+    el.style.opacity = pe;
+    el.style.transform = 'translateY(' + ((1 - p) * 70) + 'px) scale(' + (1 + (1 - p) * (hero ? 0.55 : 0.2) + (hero ? 0.03 * X.pulse : 0)) + ')';
+    el.style.filter = pe < 0.98 ? 'blur(' + ((1 - pe) * 14) + 'px)' : 'none';
+  }
+  /** and glide away upward, blurring out */
+  const slamOut = (el, t, tOut) => {
+    const q = ease(seg(t, tOut, tOut + 0.4));
+    el.style.opacity = 1 - q;
+    el.style.transform = 'translateY(' + (-70 * q) + 'px) scale(' + (1 - 0.12 * q) + ')';
+    el.style.filter = q > 0.02 ? 'blur(' + (q * 12) + 'px)' : 'none';
+  };
+
+  const chipsRow = div('chips abs', stage); chipsRow.id = 'chips';
+  const chips = C.notes.map(() => { const e = div('chip', chipsRow); e.textContent = '?'; return e; });
+
+  const pill = div('snd abs', stage);
+  pill.innerHTML = '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z" fill="#fff"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>Sound on<div class="eq"><i></i><i></i><i></i><i></i></div>';
+  const eq = [...pill.querySelectorAll('i')];
+
+  window.renderAt = function (t) {
+    const second = !TL.once && t >= TL.againAt - 0.15;
+    const start = second ? TL.againAt : TL.listenAt, notes = second ? TL.againNotes : TL.notes;
+    let cur = -1; C.notes.forEach((_, i) => { if (t >= start + notes[i].onset) cur = i; });
+    const since = cur >= 0 ? t - (start + notes[cur].onset) : 9;
+    Object.assign(X, { t, second, start, cur, since, pulse: cur >= 0 ? Math.exp(-since * DECAY) : 0 });
+    document.body.style.setProperty('--g', (0.25 + 0.75 * X.pulse).toFixed(3));
+
+    draw(t);
+
+    // headlines: the first slams in, glides out at SWAP; the second slams in right after
+    P1.forEach((el, i) => { if (t < SWAP) slamIn(el, t, IN1[i], i === 0); else slamOut(el, t, SWAP + OUT1[i]); });
+    P2.forEach((el, i) => { if (t < SWAP + 0.25) { el.style.opacity = 0; } else slamIn(el, t, SWAP + 0.3 + i * 0.14, i === 0); });
+
+    // chips: appear with the second headline; "?" → the fret number as the ball lands on it
+    chipsRow.style.opacity = ease(seg(t, SWAP + 0.4, SWAP + 0.8));
+    chips.forEach((e, i) => {
+      const lit = second && cur >= i, pop = lit && i === cur ? Math.exp(-since * 8) : 0;
+      e.textContent = lit ? FRETS[i] : '?';
+      e.style.background = lit ? ACCENT : 'rgba(22,24,38,0.6)';
+      e.style.borderColor = lit ? BRIGHT : 'rgba(233,233,237,0.22)';
+      e.style.color = lit ? '#fff' : 'rgba(233,233,237,0.4)';
+      e.style.transform = 'scale(' + (1 + 0.25 * pop) + ')';
+      e.style.boxShadow = lit ? '0 0 ' + Math.round(34 * pop + 8) + 'px rgba(145,132,217,0.85)' : 'none';
+    });
+
+    // "Sound on" pill
+    pill.style.opacity = ease(seg(t, 0, 0.25)) * (1 - ease(seg(t, 1.6, 1.95)));
+    pill.style.transform = 'translateY(' + ((1 - ease(seg(t, 0, 0.3))) * -24) + 'px) scale(' + (1 + 0.05 * X.pulse) + ')';
+    eq.forEach((b, i) => { b.style.height = Math.round(8 + 28 * clamp(0.18 + X.pulse * (0.55 + 0.45 * Math.sin(t * 41 + i * 2.1)) + 0.12 * Math.sin(t * 9 + i))) + 'px'; });
+  };
+
+  window.renderAt(0);
+</script>
+</body>
+</html>

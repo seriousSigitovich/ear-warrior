@@ -12,6 +12,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { renderScore } from './score.mjs';
 import { timeline } from './timeline.mjs';
 import { CLASSICS } from './classics.mjs';
+import { MOTION } from './motion.mjs';
 
 // ESM ignores NODE_PATH; a CommonJS require honours it.
 const puppeteer = createRequire(import.meta.url)('puppeteer-core');
@@ -21,7 +22,7 @@ const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const FPS = 30, W = 1080, H = 1920;
 const challenges = JSON.parse(readFileSync(join(here, 'challenges.json'), 'utf8'));
 
-const pool = [...challenges, ...CLASSICS];
+const pool = [...challenges, ...CLASSICS, ...MOTION]; // MOTION (ids 40+): same tunes, own picture (c.page) — not part of `series`
 
 const [mode, which, arg1, arg2] = process.argv.slice(2);
 const pick = which === 'all' ? pool : which === 'series' ? CLASSICS : pool.filter(c => c.id === +which);
@@ -37,7 +38,7 @@ async function open(c) {
   await page.setViewport({ width: W, height: H, deviceScaleFactor: 1 });
   await page.evaluateOnNewDocument(data => { window.CHALLENGE = data; }, { ...c, timeline: timeline(c) });
   page.on('pageerror', e => { throw e; });
-  await page.goto(pathToFileURL(join(here, 'slides.html')).href, { waitUntil: 'load' });
+  await page.goto(pathToFileURL(join(here, c.page ?? 'slides.html')).href, { waitUntil: 'load' });
   await page.evaluate(() => document.fonts.ready);
   return page;
 }

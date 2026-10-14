@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Ear Warrior challenge — motion</title>
+<!--
+  Experiment H15: the "97% of guitarists" Short as ONE CONTINUOUS FLIGHT down a guitar neck. Same contract as slides.html: render.mjs injects
+  window.CHALLENGE ({ ...challenge, timeline }) and every element is a pure function of time via window.renderAt(t). Timing comes from
+  timeline.mjs (series timeline: the melody from frame 0, again slower from `againAt`, the video ends) — never hard-code a second of the melody here.
+
+  There are no cuts and no wipes. The camera sits above a fretboard that runs away to a vanishing point and never stops moving forward:
+    · the neck (canvas): frets rush toward you, six strings, a strike line near the bottom
+    · EVERY NOTE is a glowing bar that travels down the neck and hits the strike line exactly when the note sounds (like a rhythm game), the
+      strings ring, a ring leaves the line, and the camera surges forward a little. The bar spans all six strings, so the picture shows RHYTHM and
+      COUNT, never which pitch (that is the quiz). Nothing shakes the frame.
+    · the headlines (DOM) are billboards in the same space: each one grows out of the vanishing point, holds, then flies past the camera while
+      the next one is already emerging from the same point — so every change of message is the same move, not a new picture.
+  Messages, in order: hook "97% of guitarists…" → "No tabs. Just your ear." → "9 notes" (slots fill with the 2nd playing) → "Write them in the
+  comments" → "97% can't. Can you?" (the video ends there and loops back into the hook).
+  Palette mirrors src/theme/nocturne.ts and slides.html.
+-->
+<style>
+  :root {
+    --bg: #161826; --surface: #232532; --text: #e9e9ed; --muted: rgba(233, 233, 237, 0.6);
+    --accent: #9184d9; --bright: #b5abfc; --line: rgba(233, 233, 237, 0.12);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1080px; height: 1920px; overflow: hidden; background: var(--bg); }
+  body { font-family: -apple-system, "SF Pro Display", "Helvetica Neue", Arial, sans-serif; color: var(--text); -webkit-font-smoothing: antialiased; position: relative; }
+  .abs { position: absolute; }
+  #cv { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; }
+  /* a billboard: everything in it scales about the vanishing point */
+  .bb { position: absolute; inset: 0; transform-origin: 540px 700px; opacity: 0; }
+
+  #top { z-index: 50; left: 96px; right: 96px; top: 244px; display: flex; justify-content: space-between; align-items: center; }
+  .brand { display: flex; align-items: center; gap: 18px; font-size: 36px; font-weight: 650; letter-spacing: -0.02em; }
+  .brand img { width: 60px; height: 60px; border-radius: 15px; display: block; }
+  .tag { font-size: 28px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--bright); border: 1.5px solid var(--line); border-radius: 999px; padding: 14px 28px; }
+
+  /* "Sound on" pill */
+  .snd { z-index: 40; left: 96px; top: 330px; display: flex; align-items: center; gap: 16px; padding: 14px 30px 14px 24px; border-radius: 999px; background: rgba(145, 132, 217, 0.18); border: 2px solid var(--accent); font-size: 34px; font-weight: 650; color: #fff; transform-origin: left center; }
+  .eq { display: flex; align-items: flex-end; gap: 5px; height: 36px; }
+  .eq i { display: block; width: 7px; border-radius: 3px; background: var(--bright); }
+
+  .hl { position: absolute; left: 96px; width: 888px; white-space: nowrap; font-weight: 700; letter-spacing: -0.035em; transform-origin: left center; }
+  .hl em { font-style: normal; color: #e6e0ff; text-shadow: 0 0 3px #fff, 0 0 calc(5px + 8px * var(--g, 0.3)) #c9bfff, 0 0 calc(12px + 20px * var(--g, 0.3)) #a99bff, 0 0 calc(24px + 36px * var(--g, 0.3)) #8b7bff, 0 0 calc(40px + 60px * var(--g, 0.3)) rgba(139, 123, 255, 0.7); }
+  .hl.sub { font-weight: 500; letter-spacing: -0.01em; color: var(--muted); }
+  .hl.dim { text-shadow: 0 4px 30px rgba(10, 10, 20, 0.9); }
+
+  .slots { left: 96px; right: 96px; top: 735px; display: flex; justify-content: center; gap: 14px; }
+  .slot { width: 76px; height: 76px; border-radius: 50%; border: 3px solid rgba(233, 233, 237, 0.22); background: rgba(22, 24, 38, 0.6); display: grid; place-items: center; font-size: 36px; font-weight: 700; color: rgba(233, 233, 237, 0.4); }
+
+  /* a mock comment field */
+  .cbox { left: 96px; top: 790px; width: 888px; height: 132px; border-radius: 66px; background: var(--surface); border: 2px solid var(--line); display: flex; align-items: center; padding: 0 28px 0 48px; gap: 18px; font-size: 42px; color: rgba(233, 233, 237, 0.45); }
+  .cbox .caret { width: 4px; height: 56px; background: var(--bright); border-radius: 2px; }
+  .cbox .send { margin-left: auto; width: 78px; height: 78px; border-radius: 50%; background: var(--accent); display: grid; place-items: center; }
+</style>
+</head>
+<body>
+<canvas id="cv" width="1080" height="1920"></canvas>
+<div id="stage"></div>
+
+<header id="top" class="abs">
+  <div class="brand"><img src="../../brand/logo.png" alt="">Ear Warrior</div>
+  <div class="tag" id="tag"></div>
+</header>
+
+<script>
+  const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+  const seg = (t, a, b) => clamp((t - a) / (b - a));
+  const ease = x => 1 - Math.pow(1 - x, 3);
+  const inOut = x => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+  const back = x => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); };
+  const lerp = (a, b, k) => a + (b - a) * k;
+  const $ = id => document.getElementById(id);
+  const div = (cls, parent) => { const e = document.createElement('div'); e.className = cls; parent.append(e); return e; };
+
+  const C = window.CHALLENGE, TL = C.timeline, N = C.notes.length;
+  const ACCENT = '#9184d9', BRIGHT = '#b5abfc';
+  const DECAY = 7;                                   // pulse = exp(-DECAY * seconds since the last note)
+  $('tag').textContent = C.tag;
+
+  // every note onset, in seconds: the first playing, then the slower second one
+  const HITS1 = C.notes.map((_, i) => TL.listenAt + TL.notes[i].onset);
+  const HITS2 = TL.once ? [] : C.notes.map((_, i) => TL.againAt + TL.againNotes[i].onset);
+  const HITS = [...HITS1, ...HITS2];
+  const FIRST_END = Math.max(...HITS1) + 0.3;        // second-playing bars only appear after the first playing is over
+
+  // per-frame state (filled in renderAt)
+  const X = { t: 0, pulse: 0, hit: 0, since: 9, cur: -1, second: false, start: 0 };
+
+  // ===== THE NECK (canvas) ================================================================================================================
+  // Pinhole camera above the neck: a floor point at depth Z lands at y = VPY + F/Z, x = VPX + xn*HW/Z (xn = -1..1 across the neck).
+  // Z0 = 1 is the strike line (y = VPY + F = 1450, the neck is 860 px wide there); frets slide toward the camera.
+  const cv = $('cv'), g = cv.getContext('2d');
+  const VPX = 540, VPY = 700, F = 750, HW = 430, Z0 = 1, ZN = 0.58, ZF = 40;
+  const Yz = Z => VPY + F / Z, Xz = (xn, Z) => VPX + xn * HW / Z;
+  const fog = Z => clamp(1.25 - (Z - 1) / 8, 0, 1);
+  const SPEED = 4.2;     // world units / s the neck runs toward you
+  const GAP = 0.55;      // between frets
+  const BOOST = 2.5;     // each note kicks the speed up by this much, decaying with DECAY
+  const BAR_AHEAD = 1.9; // seconds a bar is visible before it hits
+
+  /** How far the camera has travelled. Smooth: it only ever speeds up and slows down. */
+  function scrollAt(t) {
+    let s = SPEED * t;
+    for (const h of HITS) if (t > h) s += BOOST * (1 - Math.exp(-DECAY * (t - h))) / DECAY;
+    return s;
+  }
+
+  const rng = seed => () => { seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const rand = rng(97);
+  // a warp field: dust that streams out of the vanishing point as you fly
+  const STARS = Array.from({ length: 90 }, () => { const a = rand() * 6.283, r = 0.35 + Math.pow(rand(), 1.6) * 5; return { cx: Math.cos(a) * r, cy: Math.sin(a) * r * 0.9 - 0.3, z0: rand() * 40, w: 0.8 + rand() * 1.8 }; });
+  const STRING_X = [-0.8, -0.48, -0.16, 0.16, 0.48, 0.8];
+
+  function drawNeck(t) {
+    const { pulse, hit } = X, sc = scrollAt(t);
+    g.clearRect(0, 0, 1080, 1920);
+
+    // sky
+    let gr = g.createLinearGradient(0, 0, 0, 1920);
+    gr.addColorStop(0, '#0d0e18'); gr.addColorStop(0.36, '#1b1832'); gr.addColorStop(1, '#12131f');
+    g.fillStyle = gr; g.fillRect(0, 0, 1080, 1920);
+    gr = g.createRadialGradient(VPX, VPY, 0, VPX, VPY, 950);
+    gr.addColorStop(0, 'rgba(145,132,217,' + (0.42 + 0.3 * pulse) + ')'); gr.addColorStop(0.5, 'rgba(145,132,217,0.1)'); gr.addColorStop(1, 'rgba(145,132,217,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, 1080, 1920);
+
+    // warp dust
+    g.lineCap = 'round';
+    for (const s of STARS) {
+      const z = ((s.z0 - sc * 1.7) % ZF + ZF) % ZF + 0.35, z2 = z + 0.22 + 0.05 * X.pulse * 8;
+      const x1 = VPX + s.cx * 430 / z, y1 = VPY + s.cy * 430 / z, x2 = VPX + s.cx * 430 / z2, y2 = VPY + s.cy * 430 / z2;
+      if (x1 < -40 || x1 > 1120 || y1 < -40 || y1 > 1960) continue;
+      const a = Math.pow(1 - z / ZF, 2) * 0.85;
+      g.strokeStyle = 'rgba(214,208,255,' + a.toFixed(3) + ')'; g.lineWidth = s.w * Math.min(3.2, 2.2 / z + 0.6);
+      g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke();
+    }
+
+    // the neck
+    g.beginPath(); g.moveTo(Xz(-1, ZF), Yz(ZF)); g.lineTo(Xz(-1, ZN), Yz(ZN)); g.lineTo(Xz(1, ZN), Yz(ZN)); g.lineTo(Xz(1, ZF), Yz(ZF)); g.closePath();
+    gr = g.createLinearGradient(0, VPY, 0, 1950);
+    gr.addColorStop(0, 'rgba(34,36,64,0)'); gr.addColorStop(0.35, 'rgba(30,31,54,0.92)'); gr.addColorStop(1, 'rgba(36,37,66,1)');
+    g.fillStyle = gr; g.fill();
+    // rails
+    g.shadowColor = ACCENT; g.shadowBlur = 10 + 40 * pulse;
+    g.strokeStyle = 'rgba(145,132,217,' + (0.45 + 0.5 * pulse) + ')'; g.lineWidth = 5;
+    for (const e of [-1, 1]) { g.beginPath(); g.moveTo(Xz(e, ZF), Yz(ZF)); g.lineTo(Xz(e, ZN), Yz(ZN)); g.stroke(); }
+    g.shadowBlur = 0;
+
+    // frets (+ position dots) rushing toward the camera
+    const phase = ((-sc) % GAP + GAP) % GAP;
+    for (let j = 0; phase + j * GAP < ZF; j++) {
+      const z = phase + j * GAP;
+      if (z < ZN) continue;
+      const m = Math.round((z + sc) / GAP);   // absolute fret index, so the dots stay with their fret
+      g.strokeStyle = 'rgba(233,233,237,' + (0.3 * fog(z)).toFixed(3) + ')'; g.lineWidth = Math.max(0.7, 6 / z);
+      g.beginPath(); g.moveTo(Xz(-1, z), Yz(z)); g.lineTo(Xz(1, z), Yz(z)); g.stroke();
+      if ([3, 5, 7, 9].includes(m % 12) || m % 12 === 0) {
+        const zc = z + GAP / 2, rx = 0.085 * HW / zc;
+        g.fillStyle = 'rgba(233,233,237,' + (0.16 * fog(zc)).toFixed(3) + ')';
+        g.beginPath(); g.ellipse(VPX, Yz(zc), rx, rx * 0.5, 0, 0, 6.283); g.fill();
+      }
+    }
+
+    // the strike line
+    g.shadowColor = BRIGHT; g.shadowBlur = 14 + 50 * pulse;
+    g.strokeStyle = 'rgba(181,171,252,' + (0.35 + 0.65 * pulse) + ')'; g.lineWidth = 4 + 5 * pulse;
+    g.beginPath(); g.moveTo(Xz(-1, Z0), Yz(Z0)); g.lineTo(Xz(1, Z0), Yz(Z0)); g.stroke();
+    g.shadowBlur = 0;
+
+    // note bars: each one reaches the strike line exactly when its note sounds
+    for (const h of HITS) {
+      const dt = h - t, isSecond = h > FIRST_END;
+      if (dt > BAR_AHEAD || dt < -0.3 || (isSecond && t < FIRST_END)) continue;
+      const zc = Z0 + Math.max(dt, -0.1) * SPEED, depth = 0.14;
+      const a = dt >= 0 ? 0.35 + 0.65 * (1 - dt / BAR_AHEAD) : Math.exp(-(-dt) * 16);
+      const y1 = Yz(zc), y2 = Yz(zc + depth), xl1 = Xz(-0.96, zc), xr1 = Xz(0.96, zc), xl2 = Xz(-0.96, zc + depth), xr2 = Xz(0.96, zc + depth);
+      g.shadowColor = '#8b7bff'; g.shadowBlur = 16 + 36 * (dt < 0 ? Math.exp(-(-dt) * 16) : 0);
+      g.fillStyle = 'rgba(' + (dt < 0 ? '230,224,255' : '181,171,252') + ',' + a.toFixed(3) + ')';
+      g.beginPath(); g.moveTo(xl1, y1); g.lineTo(xr1, y1); g.lineTo(xr2, y2); g.lineTo(xl2, y2); g.closePath(); g.fill();
+      g.shadowBlur = 0;
+    }
+
+    // strings: they ring on every note
+    for (let i = 0; i < 6; i++) {
+      const wound = i >= 3, w = 2.2 + i * 0.95;
+      g.beginPath();
+      for (let k = 0; k <= 26; k++) {
+        const z = ZN * Math.pow(30 / ZN, k / 26);
+        const wob = Math.sin((t - X.start) * 120 + i * 1.7 + z * 2.4) * 10 * pulse / Math.pow(z, 1.4) * Math.exp(-(z - 1) * 0.25);
+        const x = Xz(STRING_X[i], z) + wob, y = Yz(z);
+        if (k) g.lineTo(x, y); else g.moveTo(x, y);
+      }
+      g.shadowColor = ACCENT; g.shadowBlur = 30 * pulse;
+      g.strokeStyle = pulse > 0.02 ? 'rgba(' + (wound ? '226,196,176' : '210,204,255') + ',' + (0.55 + 0.45 * pulse) + ')' : (wound ? 'rgba(194,161,144,0.72)' : 'rgba(233,233,237,0.6)');
+      g.lineWidth = w; g.stroke();
+      g.shadowBlur = 0;
+    }
+
+    // a ring leaves the strike line on every note
+    for (const h of HITS) {
+      const p = seg(t, h, h + 0.8);
+      if (!(t >= h && p < 1)) continue;
+      const rx = 60 + 640 * ease(p);
+      g.strokeStyle = 'rgba(181,171,252,' + (0.75 * (1 - p)).toFixed(3) + ')'; g.lineWidth = 5 * (1 - p) + 1;
+      g.beginPath(); g.ellipse(VPX, Yz(Z0), rx, rx * 0.26, 0, 0, 6.283); g.stroke();
+    }
+
+    // haze toward the horizon (also keeps the headlines readable over the far part of the neck)
+    gr = g.createLinearGradient(0, VPY - 320, 0, 1100);
+    gr.addColorStop(0, 'rgba(22,24,38,0)'); gr.addColorStop(0.3, 'rgba(22,24,38,0.7)'); gr.addColorStop(0.42, 'rgba(22,24,38,0.9)'); gr.addColorStop(0.7, 'rgba(22,24,38,0.4)'); gr.addColorStop(1, 'rgba(22,24,38,0)');
+    g.fillStyle = gr; g.fillRect(0, VPY - 320, 1080, 1100 - VPY + 320);
+  }
+
+  // ===== THE HEADLINES (DOM billboards) ===================================================================================================
+  function rich(el, text) {
+    text.split('*').forEach((part, j) => {
+      if (!part) return;
+      if (j % 2) { const em = document.createElement('em'); em.textContent = part; el.append(em); } else el.append(part);
+    });
+  }
+  /** lines: [{ text, max, cls?, top? }]; the first is the hero. Each gets the largest size that fits the 888 px column (capped at max), placed top-down from y0. */
+  function build(root, lines, y0) {
+    let y = y0;
+    return lines.map(({ text, max, cls, top }, i) => {
+      if (top != null) y = top;
+      const el = div('hl dim ' + (cls || ''), root);
+      rich(el, text);
+      el.style.fontSize = '100px';
+      const r = document.createRange(); r.selectNodeContents(el);
+      const fs = Math.floor(Math.min(max, 100 * 888 / r.getBoundingClientRect().width));
+      el.style.fontSize = fs + 'px';
+      const lh = Math.round(fs * (i === 0 ? 0.98 : 1.05));
+      el.style.lineHeight = lh + 'px'; el.style.top = y + 'px'; el.style.height = lh + 'px';
+      y += lh;
+      return el;
+    });
+  }
+  const slam = (el, t, tIn, hero) => {   // the very first frames only: lines hit in one after another
+    const p = clamp(back(seg(t, tIn, tIn + 0.42)), 0, 1.25), pe = ease(seg(t, tIn, tIn + 0.3));
+    el.style.opacity = pe;
+    el.style.transform = 'translateY(' + ((1 - p) * 70) + 'px) scale(' + (1 + (1 - p) * (hero ? 0.55 : 0.2) + (hero ? 0.03 * X.pulse : 0)) + ')';
+    el.style.filter = pe < 0.98 ? 'blur(' + ((1 - pe) * 14) + 'px)' : 'none';
+  };
+  const breathe = (el) => { el.style.transform = 'scale(' + (1 + 0.03 * X.pulse) + ')'; };
+
+  const stage = $('stage');
+  const BBS = [];
+  const bb = (a, b0, b1) => { const root = div('bb', stage); const o = { root, a, b0, b1 }; BBS.push(o); return o; };
+  const hookLines = C.hook.split('\n');
+
+  // 1 · hook — already on screen at t = 0 (it doubles as the thumbnail); flies past at ~2 s
+  const B1 = bb(-9, 1.95, 2.55);
+  B1.lines = build(B1.root, [{ text: hookLines[0], max: 250 }, ...hookLines.slice(1).map(text => ({ text, max: 104 }))], 424);
+  const IN1 = [-0.18, 0.18, 0.36, 0.54];
+
+  // 2 · no tabs
+  const B2 = bb(2.1, 3.35, 3.95);
+  B2.lines = build(B2.root, [{ text: 'No tabs.', max: 120 }, { text: 'Just your *ear.*', max: 120 }], 575);
+
+  // 3 · the count: nine "?" that fill with the second (slower) playing
+  const B3 = bb(TL.againAt - 0.2, 5.10, 5.65);
+  B3.lines = build(B3.root, [{ text: '*' + N + '* notes', max: 250 }, { text: 'Listen again. Slower.', max: 52, cls: 'sub', top: 850 }], 450);
+  { const row = div('slots abs', B3.root); B3.slots = C.notes.map(() => { const e = div('slot', row); e.textContent = '?'; return e; }); }
+
+  // 4 · the ask
+  const B4 = bb(5.3, 6.85, 7.4);
+  B4.lines = build(B4.root, [{ text: 'Write them', max: 128 }, { text: '*in the comments*', max: 128 }], 440);
+  B4.box = div('cbox abs', B4.root);
+  B4.box.innerHTML = 'Add a comment…<div class="caret"></div><div class="send"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></div>';
+  B4.caret = B4.box.querySelector('.caret');
+
+  // 5 · the loop line
+  const B5 = bb(7.1, 99, 100);
+  B5.lines = build(B5.root, [{ text: '*97%* can\'t.', max: 120 }, { text: '*Can you?*', max: 250 }], 515);
+
+  // "Sound on" pill — a muted viewer learns there is music here
+  const pill = div('snd abs', stage);
+  pill.innerHTML = '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z" fill="#fff"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>Sound on<div class="eq"><i></i><i></i><i></i><i></i></div>';
+  const eq = [...pill.querySelectorAll('i')];
+
+  /** Emerge from the vanishing point (a → a+0.7), hold, then fly past the camera (b0 → b1). All of it is scale about (540, 700). */
+  function place(o, t) {
+    const pin = ease(seg(t, o.a, o.a + 0.7)), q = inOut(seg(t, o.b0, o.b1));
+    const s = (0.1 + 0.9 * pin) * (1 + 2.8 * q * q);
+    const op = ease(seg(t, o.a + 0.1, o.a + 0.5)) * (1 - clamp((q - 0.05) / 0.5));
+    o.root.style.visibility = op > 0.004 ? 'visible' : 'hidden';
+    if (op <= 0.004) return false;
+    o.root.style.opacity = op;
+    o.root.style.transform = 'scale(' + s + ')';
+    o.root.style.filter = (1 - pin) * 0.95 > 0.02 || q > 0.02 ? 'blur(' + ((1 - pin) * 9 + q * 12) + 'px)' : 'none';
+    return true;
+  }
+
+  window.renderAt = function (t) {
+    // which playing, which note, how hard the last one hit
+    const second = !TL.once && t >= TL.againAt - 0.15;
+    const start = second ? TL.againAt : TL.listenAt, notes = second ? TL.againNotes : TL.notes;
+    let cur = -1;
+    C.notes.forEach((_, i) => { if (t >= start + notes[i].onset) cur = i; });
+    const since = cur >= 0 ? t - (start + notes[cur].onset) : 9;
+    Object.assign(X, { t, second, start, cur, since, pulse: cur >= 0 ? Math.exp(-since * DECAY) : 0, hit: cur >= 0 ? Math.exp(-since * 14) : 0 });
+    document.body.style.setProperty('--g', (0.25 + 0.75 * X.pulse).toFixed(3));
+
+    drawNeck(t);
+
+    if (place(B1, t)) B1.lines.forEach((el, i) => slam(el, t, IN1[i], i === 0));
+    if (place(B2, t)) breathe(B2.lines[0]);
+    if (place(B3, t)) {
+      breathe(B3.lines[0]);
+      B3.slots.forEach((e, i) => {
+        const lit = second && cur >= i, pop = lit && i === cur ? Math.exp(-since * 8) : 0;
+        e.style.background = lit ? ACCENT : 'rgba(22,24,38,0.6)';
+        e.style.borderColor = lit ? BRIGHT : 'rgba(233,233,237,0.22)';
+        e.style.color = lit ? '#fff' : 'rgba(233,233,237,0.4)';
+        e.textContent = lit ? '♪' : '?';
+        e.style.transform = 'scale(' + (1 + 0.28 * pop) + ')';
+        e.style.boxShadow = lit ? '0 0 ' + Math.round(34 * pop + 8) + 'px rgba(145,132,217,0.85)' : 'none';
+      });
+    }
+    if (place(B4, t)) {
+      breathe(B4.lines[0]);
+      B4.box.style.borderColor = 'rgba(145,132,217,' + (0.25 + 0.7 * X.pulse) + ')';
+      B4.box.style.boxShadow = '0 0 ' + Math.round(14 + 60 * X.pulse) + 'px rgba(145,132,217,' + (0.15 + 0.5 * X.pulse) + ')';
+      B4.caret.style.opacity = Math.floor(t * 2.4) % 2 ? 0 : 1;
+    }
+    if (place(B5, t)) { B5.lines[0].style.transform = 'none'; B5.lines[1].style.transform = 'scale(' + (1 + 0.04 * X.pulse) + ')'; }
+
+    pill.style.opacity = ease(seg(t, 0, 0.25)) * (1 - ease(seg(t, 1.6, 1.95)));
+    pill.style.transform = 'translateY(' + ((1 - ease(seg(t, 0, 0.3))) * -24) + 'px) scale(' + (1 + 0.05 * X.pulse) + ')';
+    eq.forEach((b, i) => { b.style.height = Math.round(8 + 28 * clamp(0.18 + X.pulse * (0.55 + 0.45 * Math.sin(t * 41 + i * 2.1)) + 0.12 * Math.sin(t * 9 + i))) + 'px'; });
+  };
+
+  window.renderAt(0);
+</script>
+</body>
+</html>

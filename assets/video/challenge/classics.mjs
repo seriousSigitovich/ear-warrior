@@ -151,6 +151,44 @@ const SERIES = [
     cta: { title: 'Comment the\n*right note*', sub: 'The one that replaces the wrong one.' },
     notes: 'E4:1 E4:1 F4:1 G4:1 G4:1 F#4:1 E4:1 D4:1',
   },
+  // Experiment H14 (docs/experiments.md): ONE tune taught across four Shorts — Greensleeves (traditional, public domain), E minor, 6/8, eighth note = 1 beat.
+  // Notes checked programmatically against the Mutopia Project's public-domain edition (greensleeves.ly: key signature G major, melody centred on E = E minor):
+  // every part is a slice of that score, rests folded into the previous note (these videos have none), the last note of a part held longer so it hangs.
+  // Each part STARTS on the note where the previous one stopped, and its hook says so; parts 1 and 3 end unresolved (low B) — the music itself is the
+  // "to be continued". The tune is never named on screen.
+  //   1 verse, first half (lines one + two)  2 line one again + the verse's ending  3 the chorus  4 the whole tune
+  ...[
+    {
+      id: 27, hook: 'Learn a famous tune\n*by ear.*\nPart 1 of 4', sub: 'The first half of the verse · you know it',
+      ask: 'Write the notes\n*in the comments*', askSub: 'It ends low and unfinished. Part 2 starts on the last note.',
+      notes: 'E4:1 G4:2 A4:1 B4:1.5 C5:.5 B4:1 A4:2 F#4:1 D4:1.5 E4:.5 F#4:1  G4:2 E4:1 E4:1.5 D#4:.5 E4:1 F#4:3 B3:3',
+    },
+    {
+      id: 28, hook: 'Part 2 of 4\nThe first line is *back.*\nThen it turns.', sub: 'Starts where Part 1 stopped · the verse ends here',
+      ask: 'Write the notes\n*in the comments*', askSub: 'Home at last. Part 3: the big leap.',
+      notes: 'B3:2 E4:1 G4:2 A4:1 B4:1.5 C5:.5 B4:1 A4:2 F#4:1 D4:1.5 E4:.5 F#4:1 G4:1.5 F#4:.5 E4:1 D#4:1.5 C#4:.5 D#4:1 E4:3 E4:3',
+    },
+    {
+      id: 29, hook: 'Part 3 of 4\nHome… then a\n*huge leap up*', sub: 'The chorus · the part everyone sings',
+      ask: 'Write the notes\n*in the comments*', askSub: 'One part left: the whole tune, start to finish.',
+      notes: 'E4:2 D5:3 D5:1.5 C#5:.5 B4:1 A4:2 F#4:1 D4:1.5 E4:.5 F#4:1  G4:2 E4:1 E4:1.5 D#4:.5 E4:1 F#4:2 D#4:1 B3:3',
+    },
+    {
+      // The whole score once (71 notes, 96 eighths = 38 s at 150), single playing: the finale is a memory test, not a transcription drill.
+      id: 30, once: true, hook: 'Part 4 of 4\nNow play it all.\n*From memory.*', sub: 'Verse and chorus · one listen',
+      ask: 'Write it down\n*in the comments*', askSub: 'Every note you got. You learned three parts of this.',
+      notes: [
+        'E4:1 G4:2 A4:1 B4:1.5 C5:.5 B4:1 A4:2 F#4:1 D4:1.5 E4:.5 F#4:1',                                  // line one
+        'G4:2 E4:1 E4:1.5 D#4:.5 E4:1 F#4:3 B3:2',                                                            // line two
+        'E4:1 G4:2 A4:1 B4:1.5 C5:.5 B4:1 A4:2 F#4:1 D4:1.5 E4:.5 F#4:1',                                  // line one again
+        'G4:1.5 F#4:.5 E4:1 D#4:1.5 C#4:.5 D#4:1 E4:3 E4:3',                                                 // the verse's ending (+ the rest before the chorus)
+        'D5:3 D5:1.5 C#5:.5 B4:1 A4:2 F#4:1 D4:1.5 E4:.5 F#4:1',                                            // chorus: the leap
+        'G4:2 E4:1 E4:1.5 D#4:.5 E4:1 F#4:2 D#4:1 B3:3',                                                      // chorus line two (+ rest)
+        'D5:3 D5:1.5 C5:.5 B4:1 A4:2 F#4:1 D4:1.5 E4:.5 F#4:1',                                             // chorus again, C♮ this time
+        'G4:1.5 F#4:.5 E4:1 D#4:1.5 C#4:.5 D#4:1 E4:3 E4:2',                                                 // the ending
+      ].join(' '),
+    },
+  ].map(g => ({ title: `Greensleeves, part ${g.id - 26} of 4`, timbre: 'acoustic', layout: 'fretboard', tag: `Ear series · ${g.id - 26}/4`, tempoBpm: 150, tonicPc: 4, minor: true, key: 'E minor', ...g })),
 ].map(s => ({ kind: 'quiz', coldOpen: true, layout: 'keyboard', ...s, notes: parse(s.notes) }));
 
 // Experiment H9 (docs/experiments.md): "guess the KEY" quiz instead of "play the melody back". kind "key", 10 s:
@@ -172,4 +210,22 @@ const KEYQUIZ = [
   },
 ].map(s => ({ ...s, notes: parse(s.notes) }));
 
-export const CLASSICS = [...SERIES, ...KEYQUIZ];
+// #27–#30 re-cut per platform (docs/experiments.md, "Hook variants for #27–#30"): same notes, tag and timing, only the hook (and `sub`) differs.
+//   #31–#34 YouTube, variant A = the form of #12 ("Everyone knows this one. Can you play it?"); #35–#38 Instagram, variant B = the form of #24
+//   (an instruction, no number, accent on EAR, `neon`). The "Part N of 4" label lives in `sub`, so the hook itself stays pure. #27–#30 keep the neutral first cut.
+const GS_PLATFORM = [
+  { from: 27, yt: ['Everyone\nknows this one.\n*Can you play it?*', 'Part 1 of 4 · the first half of the verse'],
+              ig: ['No tabs. No chords.\nLearn it by *EAR*. 4 parts.', 'Part 1 · the first half of the verse'] },
+  { from: 28, yt: ['You know\nthis line.\n*Where does it turn?*', 'Part 2 of 4 · starts where Part 1 stopped'],
+              ig: ['No tabs. No chords.\nPart 2. Just your *EAR*.', 'Starts where Part 1 stopped'] },
+  { from: 29, yt: ['Everyone\nsings this part.\n*Can you play it?*', 'Part 3 of 4 · the chorus'],
+              ig: ['Still no tabs.\nNow the big leap.\nJust your *EAR*.', 'Part 3 of 4 · the chorus'] },
+  { from: 30, yt: ['Everyone\nknows this one.\n*Play all of it?*', 'Part 4 of 4 · verse and chorus · one listen'],
+              ig: ['No tabs. No chords.\nPlay it all. *From memory.*', 'Part 4 of 4 · verse and chorus · one listen'] },
+];
+const GS_VARIANTS = [
+  ...GS_PLATFORM.map(({ from, yt }, i) => ({ ...SERIES.find(c => c.id === from), id: 31 + i, hook: yt[0], sub: yt[1], title: `Greensleeves, part ${i + 1} of 4 (YouTube hook A)` })),
+  ...GS_PLATFORM.map(({ from, ig }, i) => ({ ...SERIES.find(c => c.id === from), id: 35 + i, hook: ig[0], sub: ig[1], neon: true, title: `Greensleeves, part ${i + 1} of 4 (Instagram hook B)` })),
+];
+
+export const CLASSICS = [...SERIES, ...GS_VARIANTS, ...KEYQUIZ];
