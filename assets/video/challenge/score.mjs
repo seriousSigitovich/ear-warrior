@@ -6,7 +6,7 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { track, pluck, guitarNote, guitarChord, guitarClip, voice, keys, grand, bell, pad, sub, tick, whoosh, writeWav } from '../synth.mjs';
+import { track, SR, pluck, guitarNote, recordedTake, guitarChord, guitarClip, voice, keys, grand, bell, pad, sub, tick, whoosh, writeWav } from '../synth.mjs';
 import { timeline } from './timeline.mjs';
 
 // `tail` is how long the tone is allowed to ring past the note's own length.
@@ -64,7 +64,17 @@ export function renderScore(c, path) {
     return writeWav(path, out);
   }
 
-  const playMelody = (at, timing = tl.notes) => c.notes.forEach((n, i) => {
+  // An entry with `recorded: { first, slow }` (files under assets/video/samples, made from `node midi.mjs <id>`) plays two recorded takes instead of
+  // synthesizing: `first` at the tune's tempo, `slow` for the second playing. Each take is faded out where the next thing starts, so a ringing last
+  // note cannot spill into the whisper before the second playing.
+  const playTake = (at, file, until) => {
+    const take = recordedTake(file), n = Math.min(take.length, Math.round((until - at) * SR)), fade = Math.min(n, Math.round(0.25 * SR)), o = take.slice(0, n);
+    for (let i = 0; i < fade; i++) o[n - 1 - i] *= i / fade;
+    mix(o, at, c.recordedGain ?? 0.9);
+  };
+  const playMelody = c.recorded
+    ? (at, timing) => (timing === undefined ? playTake(at, c.recorded.first, tl.againAt - 0.05) : playTake(at, c.recorded.slow, tl.dur))
+    : (at, timing = tl.notes) => c.notes.forEach((n, i) => {
     const { onset, dur } = timing[i];
     const tail = i === c.notes.length - 1 && T.lastTail != null ? T.lastTail : T.tail;
     mix(T.make(n.midi, dur + tail, i), at + onset, T.gain);

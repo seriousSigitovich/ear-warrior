@@ -138,6 +138,22 @@ export function guitarNote(m, dur, release = 0.12) {
   return o;
 }
 
+/** A recorded take of a whole melody (samples/<dir>/<file>, e.g. a GarageBand export), mono, leading silence trimmed so the first note lands on the beat. */
+const RECORDED_DIR = join(dirname(fileURLToPath(import.meta.url)), 'samples');
+export function recordedTake(file) {
+  const key = 'take/' + file;
+  if (!sampleCache.has(key)) {
+    const raw = execFileSync('ffmpeg', ['-v', 'error', '-i', join(RECORDED_DIR, file), '-ac', '1', '-ar', String(SR), '-f', 'f32le', '-'], { maxBuffer: 1 << 28 });
+    const all = new Float32Array(raw.buffer, raw.byteOffset, raw.length / 4);
+    let peak = 0;
+    for (const v of all) peak = Math.max(peak, Math.abs(v));
+    let on = 0;
+    while (on < all.length && Math.abs(all[on]) < peak * 0.05) on++;
+    sampleCache.set(key, all.slice(Math.max(0, on - Math.round(0.004 * SR))));
+  }
+  return sampleCache.get(key);
+}
+
 /** A whole recorded clip from samples/guitar (wav/mp3), mono. */
 export function guitarClip(file) {
   const key = 'guitar-clip/' + file;

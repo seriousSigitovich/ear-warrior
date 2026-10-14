@@ -1,7 +1,7 @@
 // Renders challenge videos: slides.html frame-by-frame in headless Chrome, muxed with score.mjs's soundtrack.
 //   node render.mjs stills <id> <outDir> 0,2.5,...   → PNG per timestamp (layout review)
 //   node render.mjs video  <id|series|all> [outDir]  → 1080x1920 30 fps H.264 + AAC, ear-challenge-NN.mp4 (default ./out)
-// Needs puppeteer-core (NODE_PATH) and the system Chrome + ffmpeg. Melodies come from challenges.json (generator,
+// Needs puppeteer-core (a devDependency of the app) and the system Chrome + ffmpeg. Melodies come from challenges.json (generator,
 // ids 1–7) and classics.mjs (famous tunes, ids 8+; `series` = all of those).
 import { createRequire } from 'node:module';
 import { spawn } from 'node:child_process';
@@ -14,7 +14,7 @@ import { timeline } from './timeline.mjs';
 import { CLASSICS } from './classics.mjs';
 import { MOTION } from './motion.mjs';
 
-// ESM ignores NODE_PATH; a CommonJS require honours it.
+// createRequire resolves puppeteer-core from the repo's node_modules, like any CommonJS require.
 const puppeteer = createRequire(import.meta.url)('puppeteer-core');
 
 const here = dirname(fileURLToPath(import.meta.url));
