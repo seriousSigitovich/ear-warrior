@@ -9,7 +9,9 @@ const DATABASE_URL =
   'postgres://ear_warrior:ear_warrior@localhost:5432/ear_warrior';
 
 // One pooled client for the whole app. `max` kept modest for a small service.
-export const sql = postgres(DATABASE_URL, { max: 10 });
+// `onnotice` silences the "relation already exists, skipping" notices that the idempotent boot DDL
+// (`create ... if not exists`) makes Postgres print on every start.
+export const sql = postgres(DATABASE_URL, { max: 10, onnotice: () => {} });
 export const db = drizzle(sql, { schema });
 
 /** Ensure the schema exists. Called once at startup. */
