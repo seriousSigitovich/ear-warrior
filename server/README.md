@@ -106,6 +106,38 @@ Without `ADMIN_PASSWORD` the page answers 404. To collect automatically either s
 
 What Instagram gives per post (verified live): views, reach, likes, comments, shares, saves, average watch time. **Follows and profile visits per reel are not available through the API** (story-only metrics); account-level profile views, link taps and 28-day reach are.
 
+## Publishing videos (YouTube Shorts + Instagram Reels)
+
+`npm run publish` takes a rendered video from `assets/video/challenge/out/` and publishes it through the
+official APIs. It is local only: the write credentials live in `server/.env` under their own names and are
+never pushed to Vercel (`scripts/vercel-env.sh` does not list them), so the hosted analytics stays read-only.
+
+```bash
+# 1) PLAN (default): checks the file, shows the final title/description/caption/tags/link, sends nothing
+npm run publish -- --file ../assets/video/challenge/out/H14_youtube-A/ear-challenge-31.mp4 \
+  --title "Everyone knows this one. Can you play it?" \
+  --description "Part 1 of 4. One listen, then play it back by ear. Write the notes below." \
+  --tags "#guitar #eartraining #playbyear"
+
+# 2) PUBLISH: the same command plus --confirm
+npm run publish -- <same arguments> --confirm
+```
+
+Options: `--platforms youtube,instagram` (default both) · `--caption` (Instagram text, defaults to `--description`) ·
+`--no-publish` (Instagram: upload and process, do not publish — a safe rehearsal) · `--force` (publish a file again) ·
+`--video-no` (otherwise read from `ear-challenge-NN` in the file name) · `--category` (YouTube, default 10 Music).
+
+- **YouTube** uploads as **private**: Google forces that for API projects that have not passed its audit, so you press Publish in Studio (the command prints the Studio link). The description gets `#Shorts`, the hashtags and a tracking link `earwarrior.app/?utm_source=youtube&utm_campaign=ear31&utm_content=desc`, which the landing page turns into the signup source `youtube:ear31:desc`.
+- **Instagram** publishes a **public** Reel. Its API only takes a public `video_url` (resumable upload is rejected — verified live), so the file is parked in a Vercel Blob store for the minutes Meta needs, then deleted. The caption has no link (not clickable); the link stays in the bio.
+- Each success is appended to `docs/published.json` (file, experiment number, platform, post id, link, visibility, title, time — no secrets). A file already recorded for a platform is refused unless `--force`.
+- One platform failing does not stop the other; the exit status is 1 if anything failed.
+
+Credentials (one-time): `npm run yt:auth -- --upload` writes `YT_UPLOAD_REFRESH_TOKEN` (consent for the upload permission only).
+For Instagram add `instagram_business_content_publish` to the Meta app (Use cases → Permissions and features), generate a
+token again (API setup with Instagram login → Generate token) and put it in `.env` as `IG_PUBLISH_TOKEN`. Create a Vercel Blob store
+(`vercel blob create-store ear-warrior-publish`) and keep its read-write token in `.env` as `BLOB_READ_WRITE_TOKEN` (local only).
+Spec: `specs/007-video-publishing/`.
+
 ## Deploy to Vercel (backend + daily collection)
 
 The backend runs on Vercel as one serverless function (`api/index.js` → compiled Fastify app); a daily
