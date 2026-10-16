@@ -75,13 +75,13 @@ All paths are relative to the repository root; the backend is `server/` (see pla
 **Independent Test**: from a clean state follow the README → a collection returns the channel's posts; Instagram token renews itself.
 
 - [x] T014 [US4] YouTube collector `server/src/social/youtube.ts` (Data API counters + Analytics API watch behaviour, analytics failure non-fatal); tests in `server/src/social/collectors.test.ts`; **verified live 2026-10-16**
-- [x] T015 [US4] Instagram collector `server/src/social/instagram.ts` (token refresh persisted in `social_tokens`, per-metric fallback, account insights non-fatal, no token in errors); tests in `server/src/social/collectors.test.ts` against scripted responses — **not verified live (see T026)**
+- [x] T015 [US4] Instagram collector `server/src/social/instagram.ts` (token refresh persisted in `social_tokens`, per-metric fallback, account insights non-fatal, no token in errors); tests in `server/src/social/collectors.test.ts` against scripted responses; **verified live 2026-10-16 (T026)** — metric set corrected after a live probe
 - [x] T016 [US4] One-time YouTube authorization: pure helpers `server/src/social/oauth.ts` + CLI `server/src/youtube-auth.ts` (`npm run yt:auth`, loopback callback, state check, token written to `.env`, never printed); helper tests in `server/src/social/collectors.test.ts`; used successfully on 2026-10-16
 - [x] T017 [US4] Google Cloud setup: project `ear-warrior-analytics`, YouTube Data + Analytics APIs enabled, consent screen branded and **published to Production**, Web client with redirect `http://localhost:8765/callback`; steps in `server/README.md` → "Connect YouTube"
 - [x] T018 [US4] Privacy page required by the consent screen (FR-016): `landing/privacy/index.html` (+ footer link in `landing/index.html`, `landing/sitemap.xml`), deployed to production, `https://earwarrior.app/privacy/` → 200
 - [ ] T023 [US4] Test `youtube-auth.ts`: extract the callback handling into a function in `server/src/social/oauth.ts` (state mismatch → 400 and exit code 1, missing `code`, no `refresh_token` in the response → explicit message and `.env` untouched, success → only `YT_REFRESH_TOKEN` line changed) and cover it in `server/src/social/oauth.test.ts`
 - [ ] T034 [US4] Make `landing/privacy/index.html` match reality (analyze I4): list only the signup sinks that are actually live — check which of `KV_REST_API_URL`/`UPSTASH_*` (Upstash), `SMTP_USER` (email notification) and `API_URL` (own server) are set with `npx vercel env ls` in `landing/`, remove processors that are not used, update the "Last updated" date, redeploy with `npx vercel deploy --prod --yes`, and confirm `https://earwarrior.app/privacy/` returns 200 with the new text
-- [ ] T026 [US4] Connect Instagram live: create the Meta app (Instagram API with Instagram Login), generate the long-lived token for the Business account, set `IG_ACCESS_TOKEN` in `server/.env`, run `npm run collect`; fix any mismatch between the documented and actual response shapes in `server/src/social/instagram.ts` and add a regression test for each; record the result in `spec.md` → Verification status
+- [x] T026 [US4] Connect Instagram live — done 2026-10-16: Meta app «Ear Warrior Analytics» (Instagram API with Instagram Login), permissions `instagram_business_basic` + `instagram_business_manage_insights`, tester role accepted for `earwarrior`, token in `server/.env`; `npm run collect` → 22 posts. Live probe found `follows`/`profile_visits`/`profile_activity` unsupported for reels → removed from the request (`server/src/social/instagram.ts`), regression test in `server/src/social/collectors.test.ts`; result recorded in `spec.md`
 - [ ] T027 [US4] Decide where the daily collector runs in production (the server currently runs only on the author's machine): options — deploy `server/` (Dockerfile exists) with `SOCIAL_COLLECT_INTERVAL_HOURS`, or an external scheduler calling `node dist/collect.js`. Record the decision in `specs/006-social-analytics/plan.md` and, if a deploy is chosen, add its steps to `server/README.md`
 
 ## Phase 7: User Story 5 — Keep it private and safe (P3)
@@ -130,15 +130,15 @@ All paths are relative to the repository root; the backend is `server/` (see pla
 
 ## Implementation strategy
 
-**MVP = US1 + US2** (built; YouTube live). Next increment, in order: **T021 → T022 → T023 → T031** (close the test gaps and measure them), **T027** (host — without it nothing accumulates), **T032** (stale-data honesty), **T026** (Instagram), **T034** (privacy accuracy), then T020/T024/T025/T033, and finally the product-value tasks T028/T029 that tie views to hypotheses and signups.
+**MVP = US1 + US2** (built; YouTube live). Next increment, in order: **T021 → T022 → T023 → T031** (close the test gaps and measure them), **T027** (host — without it nothing accumulates), **T032** (stale-data honesty), **T034** (privacy accuracy), then T020/T024/T025/T033, and finally the product-value tasks T028/T029 that tie views to hypotheses and signups.
 
 ## Summary
 
 | | Count |
 |---|---|
 | Total tasks | 34 |
-| Built `[x]` | 20 (T001–T019, T030) |
-| Open `[ ]` | 14 (T020–T029, T031–T034) |
+| Built `[x]` | 21 (T001–T019, T026, T030) |
+| Open `[ ]` | 13 (T020–T025, T027–T029, T031–T034) |
 | Setup / Foundational / Polish | 4 / 3 / 6 |
 | US1 / US2 / US3 / US4 / US5 | 2 / 5 / 3 / 9 / 2 |
 

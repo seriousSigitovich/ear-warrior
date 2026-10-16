@@ -5,7 +5,7 @@
 **Created**: 2026-10-16 (**retroactive**: built before this spec; requirements are read from `server/src/social/`,
 `server/src/routes/social.ts` and the commits `fea8436`, `10d5cd3`, `0d41b16`)
 
-**Status**: Implemented — **YouTube verified live (2026-10-16), Instagram never run against the live API**; open questions below
+**Status**: Implemented — **YouTube and Instagram both verified live (2026-10-16)**; open questions below
 
 **Input**: The author runs hook experiments on short videos (`docs/experiments.md`, H1–H14) and today reads each
 platform's studio by hand, one screen at a time. They want one private page that shows the essence at a glance and the
@@ -19,6 +19,7 @@ details on demand, and that can later be tied to the experiments and to waitlist
 - Q: Build or buy? → A: **Own collector + own page** (chosen over Metricool/Looker Studio/Sheets) so the numbers live next to the app's own data and can be joined with experiments and signups later.
 - Q: Why can't growth just be read from the platform? → A: Platforms report **cumulative** totals ("1 143 views"). A weekly figure is the difference between two daily snapshots, so it only exists from the day collection started; before that the page shows lifetime totals instead of inventing a number.
 - Q: Which metric from the experiments log is unavailable? → A: YouTube Studio's **"viewed vs swiped away"** is not exposed by the Analytics API; it stays manual in `docs/experiments.md`.
+- Q: Which per-post metrics does Instagram actually give? → A: Verified live: views, reach, likes, comments, shares, saves, average watch time. **Follows and profile visits per post are NOT available** for reels/feed posts through the API (story-only metrics); profile visits per reel exist only in Instagram's web insights. Account-level profile views, link taps and reach (28 days) are available.
 - Q: Who may see the page? → A: Only the owner (single shared password). With no password configured the page does not exist.
 - Q: How does the owner connect YouTube without handling secrets? → A: A one-time local helper (`npm run yt:auth`) runs the Google consent in the owner's browser and stores the resulting token itself; the owner never copies it.
 
@@ -113,7 +114,7 @@ As the author, I want the page to be reachable only by me and safe against hosti
 
 ### Functional Requirements
 
-- **FR-001**: The system MUST collect, for every post on each connected platform, the metrics that platform provides among: views, likes, comments, shares, saves, reach, average watch time, average watch percentage, follows gained from the post, profile visits from the post.
+- **FR-001**: The system MUST collect, for every post on each connected platform, the metrics that platform provides among: views, likes, comments, shares, saves, reach, average watch time, average watch percentage, follows gained from the post, profile visits from the post (the last two exist only where the platform provides them — YouTube yes for follows, Instagram neither for reels).
 - **FR-002**: The system MUST collect account-level figures: followers on both platforms; on Instagram also profile views, link taps and reach over the last 28 days.
 - **FR-003**: The system MUST keep one snapshot per post per UTC day; a second collection on the same day replaces that day's values.
 - **FR-004**: A metric a platform does not report MUST be stored and shown as unknown, never as zero.
@@ -165,11 +166,11 @@ As the author, I want the page to be reachable only by me and safe against hosti
 - **Join with the waitlist.** Signup `source` tags (`youtube:ear16`) are not yet shown next to views, so conversion per video is still computed by hand.
 - **Deleted posts and retention.** Deleted posts keep their history forever and snapshots are never pruned. Acceptable at this volume?
 - **TikTok.** Manual import (CSV/paste) or stay out?
-- **Instagram is unverified live.** Needs a Meta app and token; the collector was only exercised against recorded response shapes.
+- **Instagram per-post profile visits and follows.** The API does not provide them for reels; the owner reads them in Instagram's web insights today. Accept the gap, or add a manual/Chrome-assisted import?
 
 ## Verification status
 
 - **Automated**: 22 tests (`npm test` in `server/`): window/growth rules and sorting, both collectors against scripted API responses (including rejected metrics, failing analytics, token refresh, no secret in errors), page escaping, the authorization helpers.
-- **Live**: YouTube collected 27 posts, 9 516 views, 7 subscribers on 2026-10-16 and rendered on the page. The page's look was checked on synthetic data on desktop and phone widths.
-- **Not verified**: Instagram live; scheduled collection over several days; accessibility of the page (contrast/keyboard) beyond the native `<details>` controls.
+- **Live (2026-10-16)**: YouTube — 27 posts, 9 516 views, 7 subscribers. Instagram (`earwarrior`) — 22 posts, 9 623 views, 97 followers, account reach 7 424 / profile views 105 / link taps 14 over 28 days. Both rendered on the page; a full collection of both platforms took ≈ 20 s. The page's look was checked on synthetic data on desktop and phone widths.
+- **Not verified**: scheduled collection over several days; accessibility of the page (contrast/keyboard) beyond the native `<details>` controls.
 - **Constitution**: tests were written alongside, not before, the implementation (II); the server has no linter configured (I); performance targets were not declared (IV) — recorded in `plan.md` and `tasks.md`.

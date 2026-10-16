@@ -96,17 +96,15 @@ Without `ADMIN_PASSWORD` the page answers 404. To collect automatically either s
    never printed.
 5. `npm run collect`, then open the page.
 
-### Connect Instagram (one-time, ~15 min)
+### Connect Instagram (one-time, as done on 2026-10-16)
 
-1. [developers.facebook.com](https://developers.facebook.com) → create an app (type Business) → add
-   the **Instagram** product → "API setup with Instagram login".
-2. Add the Business account as an Instagram tester/account, accept the invite in the Instagram app
-   (Settings → Apps and websites), then **Generate token** for it with permissions
-   `instagram_business_basic` and `instagram_business_manage_insights`. For your own account in
-   development mode no app review is needed.
-3. Put the token in `IG_ACCESS_TOKEN`. It is long-lived (60 days) and is refreshed automatically;
-   after the first run the current token lives in the `social_tokens` table, the env var only seeds it.
+1. [developers.facebook.com](https://developers.facebook.com) → **Create app** → use case **"Manage messaging & content on Instagram"** (Instagram API with Instagram Login), no business portfolio needed. Meta asks for your Facebook password once more at the end.
+2. Use cases → Customize → **Permissions and features**: add `instagram_business_basic` and `instagram_business_manage_insights`.
+3. App roles → **Add people** → role **Instagram Tester** → your Business account's username. Then, logged in to that account on instagram.com, open Settings → Apps and websites → **Tester invitations** → **Accept** (until you do, the role stays "pending" and no token can be made).
+4. Use cases → Customize → **API setup with Instagram login** → step 2 → expand → **Generate token** for the account (log in and grant permissions in the Instagram window; the "Token generated" dialog can appear a few seconds late). It is shown **once**: tick "I understand", copy it, put it in `.env` as `IG_ACCESS_TOKEN`.
+5. `npm run collect`. After the first run the token is refreshed automatically and kept in the `social_tokens` table; the env var only seeds it.
 
-> The collectors were written against the documented API shapes and tested with fakes. Run
-> `npm run collect` once with real credentials and check the status chips on the page: an API
-> change or a missing permission shows up there as the exact error text.
+What Instagram gives per post (verified live): views, reach, likes, comments, shares, saves, average watch time. **Follows and profile visits per reel are not available through the API** (story-only metrics); account-level profile views, link taps and 28-day reach are.
+
+> Both collectors are verified against the live APIs (2026-10-16). If an API changes or a permission
+> is missing, the status chip on the page shows the platform's exact error text.

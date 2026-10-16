@@ -20,7 +20,7 @@ Decisions as taken between 2026-10-16 (build session). Format: Decision / Ration
 ## R4. Instagram: "Instagram API with Instagram Login" (graph.instagram.com)
 - **Decision**: use the Instagram-Login flavour of the Graph API with a long-lived token.
 - **Rationale**: works for a Business/Creator account without a Facebook Page; insights per media (`views, reach, saved, shares, ig_reels_avg_watch_time, follows, profile_visits`) and account insights over 28 days.
-- **Risk**: written from documentation, **never run live**; Meta rejects a whole insights call if one metric is invalid for that media, hence the per-metric fallback (see contracts).
+- **Verified live 2026-10-16.** Meta rejects a whole insights call if one metric is invalid for that media, hence the per-metric fallback (see contracts). The live probe showed `follows`, `profile_visits`, `profile_activity` and `impressions` are not supported for reels (story-only), so the normal request is now `views, reach, saved, shares, ig_reels_avg_watch_time` — one call per post.
 
 ## R5. Rotating credential lives in the database
 - **Decision**: Instagram's 60-day token is kept in `social_tokens`; `IG_ACCESS_TOKEN` only seeds it; refreshed when < 20 days remain or expiry unknown.

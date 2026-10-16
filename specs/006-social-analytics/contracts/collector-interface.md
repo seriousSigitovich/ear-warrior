@@ -25,6 +25,6 @@ interface Collector {
 | Config | `YT_CLIENT_ID`, `YT_CLIENT_SECRET`, `YT_REFRESH_TOKEN` | `IG_ACCESS_TOKEN` (seed; then DB) |
 | Auth | OAuth refresh → access token per run | long-lived token; refresh when expiry unknown or < 20 days |
 | Posts | `channels` → uploads playlist → `playlistItems` → `videos` (batches of 50) | `/me/media` (50 per page) |
-| Metrics | views, likes, comments (Data); shares, follows (= subscribersGained), avgWatchS, avgWatchPct (Analytics) | views, reach, saved, shares, `ig_reels_avg_watch_time` (ms → s), follows, profile_visits; likes/comments from media fields |
+| Metrics | views, likes, comments (Data); shares, follows (= subscribersGained), avgWatchS, avgWatchPct (Analytics) | views, reach, saved, shares, `ig_reels_avg_watch_time` (ms → s); likes/comments from media fields; **no per-post follows/profile visits** (story-only, verified live) |
 | Account | subscriberCount | followers_count; profile_views / website_clicks / reach over 28 d |
 | Kind | `short` if duration ≤ 180 s | `REELS` → `reel`, else `post` |
