@@ -71,7 +71,7 @@ As a visitor, I want to see how many founding spots are left, so that I understa
 
 ## Assumptions
 
-- Hosting is Vercel; the Redis store comes from the Vercel Marketplace (Upstash). The public domain `earwarrior.app` is **not registered yet**.
+- Hosting is Vercel; the Redis store comes from the Vercel Marketplace (Upstash). The public domain `earwarrior.app` is **live on Vercel** (answers 200 since 2026-10-11) and now links a privacy policy at `/privacy/` (2026-10-16, see spec 006 FR-016).
 - Traffic is bursty (a video can go viral), so reads are cached and writes are O(1).
 
 ## Open Questions (not decided — owner to resolve)
