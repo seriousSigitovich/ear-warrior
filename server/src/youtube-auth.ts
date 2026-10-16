@@ -8,7 +8,7 @@ import { execFile } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { getJson } from './social/http.js';
-import { buildAuthUrl, setEnvVar } from './social/oauth.js';
+import { buildAuthUrl, setEnvVar, YT_SCOPES, YT_UPLOAD_SCOPES } from './social/oauth.js';
 
 const PORT = 8765;
 const REDIRECT = `http://localhost:${PORT}/callback`;
@@ -19,8 +19,13 @@ if (!clientId || !clientSecret) {
   process.exit(1);
 }
 
+// `npm run yt:auth` -> read-only analytics token (YT_REFRESH_TOKEN);
+// `npm run yt:auth -- --upload` -> upload-only token (YT_UPLOAD_REFRESH_TOKEN) for `npm run publish`.
+const upload = process.argv.includes('--upload');
+const ENV_KEY = upload ? 'YT_UPLOAD_REFRESH_TOKEN' : 'YT_REFRESH_TOKEN';
+
 const state = randomBytes(16).toString('hex');
-const url = buildAuthUrl({ clientId, redirectUri: REDIRECT, state });
+const url = buildAuthUrl({ clientId, redirectUri: REDIRECT, state, scopes: upload ? YT_UPLOAD_SCOPES : YT_SCOPES });
 
 const server = createServer(async (req, res) => {
   const u = new URL(req.url ?? '/', REDIRECT);
@@ -50,9 +55,9 @@ const server = createServer(async (req, res) => {
       }),
     });
     if (!tok.refresh_token) return fail(500, 'Google returned no refresh token. Revoke the app at myaccount.google.com/permissions and retry.');
-    writeFileSync('.env', setEnvVar(readFileSync('.env', 'utf8'), 'YT_REFRESH_TOKEN', tok.refresh_token));
-    res.writeHead(200, { 'content-type': 'text/plain; charset=utf-8' }).end('Done. YT_REFRESH_TOKEN saved to server/.env — you can close this tab.');
-    console.log('YT_REFRESH_TOKEN saved to .env');
+    writeFileSync('.env', setEnvVar(readFileSync('.env', 'utf8'), ENV_KEY, tok.refresh_token));
+    res.writeHead(200, { 'content-type': 'text/plain; charset=utf-8' }).end(`Done. ${ENV_KEY} saved to server/.env — you can close this tab.`);
+    console.log(`${ENV_KEY} saved to .env`);
     server.close();
   } catch (err) {
     fail(500, `Token exchange failed: ${(err as Error).message}`);

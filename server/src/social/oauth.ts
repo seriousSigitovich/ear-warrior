@@ -5,13 +5,16 @@ export const YT_SCOPES = [
   'https://www.googleapis.com/auth/yt-analytics.readonly',
 ] as const;
 
+/** Upload only — a separate consent so the analytics token can never post and the upload token can never read. */
+export const YT_UPLOAD_SCOPES = ['https://www.googleapis.com/auth/youtube.upload'] as const;
+
 /** `access_type=offline` + `prompt=consent` is what makes Google hand back a refresh token. */
-export function buildAuthUrl(p: { clientId: string; redirectUri: string; state: string }): string {
+export function buildAuthUrl(p: { clientId: string; redirectUri: string; state: string; scopes?: readonly string[] }): string {
   const q = new URLSearchParams({
     client_id: p.clientId,
     redirect_uri: p.redirectUri,
     response_type: 'code',
-    scope: YT_SCOPES.join(' '),
+    scope: (p.scopes ?? YT_SCOPES).join(' '),
     access_type: 'offline',
     prompt: 'consent',
     state: p.state,

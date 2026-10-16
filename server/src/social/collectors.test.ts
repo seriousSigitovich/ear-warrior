@@ -197,7 +197,7 @@ test('instagram: errors never contain the access token', async () => {
   });
 });
 
-import { buildAuthUrl, setEnvVar } from './oauth.js';
+import { buildAuthUrl, setEnvVar, YT_UPLOAD_SCOPES } from './oauth.js';
 
 test('oauth: auth URL asks for offline access, both read-only scopes and echoes state', () => {
   const u = new URL(buildAuthUrl({ clientId: 'cid', redirectUri: 'http://localhost:8765/callback', state: 'st' }));
@@ -211,4 +211,11 @@ test('oauth: auth URL asks for offline access, both read-only scopes and echoes 
 test('setEnvVar replaces one line, appends when missing, keeps the rest', () => {
   assert.equal(setEnvVar('A=1\nYT_REFRESH_TOKEN=\nB=2\n', 'YT_REFRESH_TOKEN', 'x$&y'), 'A=1\nYT_REFRESH_TOKEN=x$&y\nB=2\n');
   assert.equal(setEnvVar('A=1', 'K', 'v'), 'A=1\nK=v\n');
+});
+
+test('oauth: the upload consent asks for the upload scope only, and the analytics consent never gets it', () => {
+  const up = new URL(buildAuthUrl({ clientId: 'c', redirectUri: 'http://localhost:8765/callback', state: 's', scopes: YT_UPLOAD_SCOPES }));
+  assert.equal(up.searchParams.get('scope'), 'https://www.googleapis.com/auth/youtube.upload');
+  const read = new URL(buildAuthUrl({ clientId: 'c', redirectUri: 'http://localhost:8765/callback', state: 's' }));
+  assert.doesNotMatch(read.searchParams.get('scope') ?? '', /upload/);
 });

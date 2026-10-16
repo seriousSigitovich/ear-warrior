@@ -16,11 +16,12 @@ export function scrubUrl(url: string): string {
   return url.replace(/([?&](?:access_token|client_secret|refresh_token|token)=)[^&]*/gi, '$1***');
 }
 
-export async function getJson<T>(
+/** Like getJson but also hands back the Response (headers) and the raw text; throws HttpError on non-2xx. */
+export async function fetchChecked(
   fetchFn: typeof fetch,
   url: string,
   init?: RequestInit,
-): Promise<T> {
+): Promise<{ res: Response; text: string; body: unknown }> {
   const res = await fetchFn(url, init);
   const text = await res.text();
   let body: unknown;
@@ -33,7 +34,11 @@ export async function getJson<T>(
     const apiMsg = extractApiMessage(body) ?? text.slice(0, 200);
     throw new HttpError(res.status, `${res.status} from ${scrubUrl(url).split('?')[0]}: ${apiMsg}`);
   }
-  return body as T;
+  return { res, text, body };
+}
+
+export async function getJson<T>(fetchFn: typeof fetch, url: string, init?: RequestInit): Promise<T> {
+  return (await fetchChecked(fetchFn, url, init)).body as T;
 }
 
 /** Google: {error:{message}}; Meta: {error:{message,code}}; OAuth: {error_description}. */
