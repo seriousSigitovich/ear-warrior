@@ -41,8 +41,11 @@ interface InsightsResponse {
 }
 
 // Metric sets per media kind. `ig_reels_avg_watch_time` is reported in milliseconds.
-const REEL_METRICS = ['views', 'reach', 'saved', 'shares', 'ig_reels_avg_watch_time', 'follows', 'profile_visits'];
-const POST_METRICS = ['views', 'reach', 'saved', 'shares', 'follows', 'profile_visits'];
+// Verified against the live API (2026-10-16): `follows`, `profile_visits` and `profile_activity` are
+// story-only — the Media Insights API rejects them for reels and feed posts, so profile visits per
+// reel exist only in the Instagram web insights, not here.
+const REEL_METRICS = ['views', 'reach', 'saved', 'shares', 'ig_reels_avg_watch_time'];
+const POST_METRICS = ['views', 'reach', 'saved', 'shares'];
 
 async function currentToken(ctx: CollectorContext): Promise<string> {
   const stored = await ctx.tokens.get('instagram');
@@ -158,8 +161,6 @@ export const instagram: Collector = {
       m.reach = ins.reach ?? null;
       m.saves = ins.saved ?? null;
       m.shares = ins.shares ?? null;
-      m.follows = ins.follows ?? null;
-      m.profileVisits = ins.profile_visits ?? null;
       m.avgWatchS = ins.ig_reels_avg_watch_time !== undefined ? ins.ig_reels_avg_watch_time / 1000 : null;
       m.likes = item.like_count ?? null;
       m.comments = item.comments_count ?? null;

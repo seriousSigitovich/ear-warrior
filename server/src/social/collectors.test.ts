@@ -138,8 +138,6 @@ test('instagram: reels get views/reach/saves/watch time, token is refreshed and 
           { name: 'saved', values: [{ value: 10 }] },
           { name: 'shares', values: [{ value: 2 }] },
           { name: 'ig_reels_avg_watch_time', values: [{ value: 4920 }] },
-          { name: 'follows', values: [{ value: 2 }] },
-          { name: 'profile_visits', values: [{ value: 8 }] },
         ],
       }),
     ],
@@ -160,7 +158,8 @@ test('instagram: reels get views/reach/saves/watch time, token is refreshed and 
   assert.equal(p.metrics.saves, 10);
   assert.equal(p.metrics.avgWatchS, 4.92); // API gives milliseconds
   assert.equal(p.metrics.likes, 12);
-  assert.equal(p.metrics.profileVisits, 8);
+  assert.equal(p.metrics.follows, null); // story-only metric: unknown for reels, never 0
+  assert.equal(p.metrics.profileVisits, null);
 });
 
 test('instagram: a metric Meta rejects for one media is left null, the rest survive', async () => {
@@ -172,7 +171,7 @@ test('instagram: a metric Meta rejects for one media is left null, the rest surv
       /\/9\/insights$/,
       (url) => {
         const metric = url.searchParams.get('metric') ?? '';
-        if (metric.includes(',') || metric === 'follows') {
+        if (metric.includes(',') || metric === 'shares') {
           return new Response(JSON.stringify({ error: { message: 'metric not supported' } }), { status: 400 });
         }
         return { data: [{ name: metric, values: [{ value: 5 }] }] };
@@ -182,7 +181,7 @@ test('instagram: a metric Meta rejects for one media is left null, the rest surv
   ]);
   const r = await instagram.collect(ctx(f, { IG_ACCESS_TOKEN: 'T' }));
   assert.equal(r.posts[0]!.metrics.views, 5);
-  assert.equal(r.posts[0]!.metrics.follows, null);
+  assert.equal(r.posts[0]!.metrics.shares, null); // rejected for this media, the rest survive
   assert.deepEqual(r.account.extra, {});
 });
 
