@@ -48,6 +48,7 @@ All paths are relative to the repository root; the backend is `server/` (see pla
 
 - [x] T008 [US1] Render in `server/src/social/page.ts`: period selector (7/28/90), platform cards with growth / change vs previous window / followers delta / best post, "what worked" list with sparklines, lifetime fallback text; tests in `server/src/social/page.test.ts` (empty state, `ago`)
 - [x] T009 [US1] `GET /admin/social` in `server/src/routes/social.ts` (query parsing with safe fallbacks, `no-store`), registered in `server/src/app.ts`; verified on real YouTube data 2026-10-16 (27 posts, 9 516 views, 7 subscribers) and on synthetic data at desktop and phone width
+- [ ] T035 [US1] Label growth honestly when the baseline snapshot is older than the window: with manual or irregular collection `windowGain` uses the last snapshot at or before the window start, however old, so a figure labelled «за 7 дн» may span many more days. Return the baseline's date from `windowGain` (`server/src/social/summary.ts`), show «за N дн» (the real span) or a marker on cards and in the post list (`server/src/social/page.ts`), and test it in `server/src/social/summary.test.ts` and `page.test.ts` (baseline exactly at start; baseline 20 days earlier)
 
 ## Phase 4: User Story 2 — Trust that the numbers are current (P1)
 
@@ -58,7 +59,7 @@ All paths are relative to the repository root; the backend is `server/` (see pla
 - [x] T011 [P] [US2] CLI `server/src/collect.ts` (`npm run collect`, exit code 1 if any configured platform failed)
 - [x] T012 [P] [US2] Optional in-process scheduler (`SOCIAL_COLLECT_INTERVAL_HOURS`) in `server/src/server.ts`
 - [ ] T032 [US2] Show the age of the last **good** data when the latest run failed (spec FR-007): add a query for the latest `ok = true` run per platform in `server/src/social/store.ts`, pass it into `statusStrip` in `server/src/social/page.ts` so a failed chip reads e.g. «ошибка последнего сбора · последние данные: 3 дн назад», and test both branches (never succeeded; succeeded earlier then failed) in `server/src/social/page.test.ts`
-- [ ] T022 [US2] Integration test of `store.ts` + `collect.ts` against a real Postgres (docker compose): same-day overwrite keeps one row, a failing collector records `ok=false` with a scrubbed message while the other platform's data is saved, cooldown reads `lastRunStartedAt`. File: `server/src/social/store.integration.test.ts`, run via a separate `npm run test:integration` so `npm test` stays database-free
+- [ ] T022 [US2] Integration test of `store.ts` + `collect.ts` + the route success paths against a real Postgres (docker compose): same-day overwrite keeps one row, a failing collector records `ok=false` with a scrubbed message while the other platform's data is saved, cooldown reads `lastRunStartedAt` (303 for HTML / 429 for JSON), `GET /admin/social` with correct credentials → 200 HTML with `no-store` and invalid `days`/`sort`/`platform` fall back to defaults, `GET /api/cron/social` with the right bearer runs the collectors. File: `server/src/social/store.integration.test.ts`, run via a separate `npm run test:integration` so `npm test` stays database-free
 
 ## Phase 5: User Story 3 — Drill into one post (P2)
 
@@ -82,7 +83,8 @@ All paths are relative to the repository root; the backend is `server/` (see pla
 - [ ] T023 [US4] Test `youtube-auth.ts`: extract the callback handling into a function in `server/src/social/oauth.ts` (state mismatch → 400 and exit code 1, missing `code`, no `refresh_token` in the response → explicit message and `.env` untouched, success → only `YT_REFRESH_TOKEN` line changed) and cover it in `server/src/social/oauth.test.ts`
 - [ ] T034 [US4] Make `landing/privacy/index.html` match reality (analyze I4): list only the signup sinks that are actually live — check which of `KV_REST_API_URL`/`UPSTASH_*` (Upstash), `SMTP_USER` (email notification) and `API_URL` (own server) are set with `npx vercel env ls` in `landing/`, remove processors that are not used, update the "Last updated" date, redeploy with `npx vercel deploy --prod --yes`, and confirm `https://earwarrior.app/privacy/` returns 200 with the new text
 - [x] T026 [US4] Connect Instagram live — done 2026-10-16: Meta app «Ear Warrior Analytics» (Instagram API with Instagram Login), permissions `instagram_business_basic` + `instagram_business_manage_insights`, tester role accepted for `earwarrior`, token in `server/.env`; `npm run collect` → 22 posts. Live probe found `follows`/`profile_visits`/`profile_activity` unsupported for reels → removed from the request (`server/src/social/instagram.ts`), regression test in `server/src/social/collectors.test.ts`; result recorded in `spec.md`
-- [ ] T027 [US4] Decide where the daily collector runs in production (the server currently runs only on the author's machine): options — deploy `server/` (Dockerfile exists) with `SOCIAL_COLLECT_INTERVAL_HOURS`, or an external scheduler calling `node dist/collect.js`. Record the decision in `specs/006-social-analytics/plan.md` and, if a deploy is chosen, add its steps to `server/README.md`
+- [x] T027 [US4] Decide where the collector runs — decided 2026-10-16: **deploy `server/` to Vercel** (project `ear-warrior-api`, serverless function `server/api/index.js` over the compiled Fastify app, `server/vercel.json`), Postgres from Neon via the Vercel integration, **daily collection by Vercel Cron** (`GET /api/cron/social`, `CRON_SECRET`) plus the page's refresh button. First preview deploy verified (`/health` 200, DB routes fail cleanly without a database). Local stays the dev environment. Recorded in `plan.md`; steps in `server/README.md` → "Deploy to Vercel"
+- [x] T036 [US4] Production deploy — done 2026-10-16: Neon database `neon-amber-branch` attached to `ear-warrior-api` (`DATABASE_URL`, pooled), secrets pushed with `scripts/vercel-env.sh` (run in the owner's terminal), `vercel deploy --prod` → https://ear-warrior-api.vercel.app. Verified: `/health` 200; `/admin/social` 401 without and 200 with Basic credentials; manual collect → YouTube 27 + Instagram 22 posts in ≈ 15 s; immediate second collect → 429; `/api/cron/social` 401 without bearer; cron `0 6 * * *` registered on the deployment. **Open follow-ups:** the first scheduled run (06:00 UTC tomorrow) must show up in `social_runs`; Vercel Deployment Protection (Vercel Authentication) is still on, so the URL is only reachable with a Vercel login or the bypass of `vercel curl` — decide whether to make the API public (needed for the mobile app and the phone) and then point `EXPO_PUBLIC_API_URL` and the landing's `API_URL` at it
 
 ## Phase 7: User Story 5 — Keep it private and safe (P3)
 
@@ -90,7 +92,7 @@ All paths are relative to the repository root; the backend is `server/` (see pla
 **Independent Test**: request with no/wrong credentials and with no password configured; render markup in a title.
 
 - [x] T019 [US5] Basic auth (constant-time compare), 404 without `ADMIN_PASSWORD`, `noindex`, escaping of all platform text, token scrubbing in errors — `server/src/routes/social.ts`, `server/src/social/page.ts`, `server/src/social/http.ts`; tests for escaping in `server/src/social/page.test.ts` and for token-free errors in `server/src/social/collectors.test.ts`; 401/401/200 checked manually on 2026-10-16
-- [ ] T021 [US5] Route tests with Fastify `inject` in `server/src/routes/social.test.ts`: no password configured → 404 on both routes; missing/wrong credentials → 401 with `WWW-Authenticate`; correct credentials → 200 HTML with `no-store`; invalid `days`/`sort`/`platform` fall back to defaults; cooldown → 429 JSON / 303 for HTML (store functions stubbed). Add the file to the `npm test` glob in `server/package.json`
+- [x] T021 [US5] Route tests with Fastify `inject` in `server/src/routes/social.test.ts` (in the `npm test` glob): no password → 404 on page and manual collect; missing/malformed/wrong credentials → 401 + Basic challenge; `ADMIN_USER` override; cron route 404 without `CRON_SECRET`, 401 without/with a wrong bearer; admin password and cron secret are not interchangeable; `/health` without a database. **Remaining success-path checks (200 + `no-store`, query fallback, 303/429 cooldown) need Postgres → folded into T022**
 
 ---
 
@@ -110,7 +112,7 @@ All paths are relative to the repository root; the backend is `server/` (see pla
 - Setup (T001–T004) → Foundational (T005–T007) → stories. US1 and US2 (both P1) share only Foundational; US3–US5 need T008/T009 for the page.
 - T021, T022, T023 are independent of each other ([P]-able) and unblock "Definition of Done" for US5/US2/US4. T031 needs T021–T023 to report meaningful coverage; T022 must reconcile with the constitution's "single command" rule (analyze C3): either `npm test` runs it when Postgres is reachable and skips otherwise, or the deviation is recorded in `plan.md`.
 - T032 needs T005 (store) and T008 (page); T034 needs no code but a production redeploy of `landing/`.
-- T026 → T015 live verification; T027 gates trusting any trend (without a host, history has gaps).
+- T036 (production deploy) is what makes history gap-free: until the daily cron runs, snapshots exist only on days the owner pressed the refresh button, which is what T035 makes visible.
 - T028/T029 each begin with a decision recorded in `spec.md`, then implementation.
 
 ## Parallel opportunities
@@ -136,10 +138,10 @@ All paths are relative to the repository root; the backend is `server/` (see pla
 
 | | Count |
 |---|---|
-| Total tasks | 34 |
-| Built `[x]` | 21 (T001–T019, T026, T030) |
-| Open `[ ]` | 13 (T020–T025, T027–T029, T031–T034) |
+| Total tasks | 36 |
+| Built `[x]` | 24 (T001–T019, T021, T026, T027, T030, T036) |
+| Open `[ ]` | 12 (T020, T022–T025, T028, T029, T031–T035) |
 | Setup / Foundational / Polish | 4 / 3 / 6 |
-| US1 / US2 / US3 / US4 / US5 | 2 / 5 / 3 / 9 / 2 |
+| US1 / US2 / US3 / US4 / US5 | 3 / 5 / 3 / 10 / 2 |
 
-IDs T031–T034 were added after `/speckit-analyze` on 2026-10-16 (C2 → T031, I1 → T032, G1 → T033, I4 → T034); T020–T030 keep the numbers `plan.md` refers to.
+IDs T031–T034 were added after `/speckit-analyze` on 2026-10-16 (C2 → T031, I1 → T032, G1 → T033, I4 → T034); T035–T036 after the manual-collection / Vercel decisions the same day. T020–T030 keep the numbers `plan.md` refers to.

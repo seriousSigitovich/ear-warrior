@@ -106,5 +106,24 @@ Without `ADMIN_PASSWORD` the page answers 404. To collect automatically either s
 
 What Instagram gives per post (verified live): views, reach, likes, comments, shares, saves, average watch time. **Follows and profile visits per reel are not available through the API** (story-only metrics); account-level profile views, link taps and 28-day reach are.
 
+## Deploy to Vercel (backend + daily collection)
+
+The backend runs on Vercel as one serverless function (`api/index.js` → compiled Fastify app); a daily
+Vercel Cron call collects both platforms, and the page's "refresh now" button collects on demand.
+
+```bash
+cd server
+npx vercel link --yes --project ear-warrior-api      # once (done 2026-10-16; production: https://ear-warrior-api.vercel.app)
+npx vercel integration add neon                      # Postgres; you accept the marketplace terms; sets DATABASE_URL
+sh scripts/vercel-env.sh                             # pushes ADMIN_PASSWORD, YT_*, IG_ACCESS_TOKEN, CRON_SECRET… (DRY_RUN=1 to preview;
+                                                     # VERCEL_BIN=/path/to/vercel avoids a slow or broken `npx` cache)
+npx vercel deploy --prod
+```
+
+Notes: Hobby plans allow one cron run per day (06:00 UTC, see `vercel.json`); `DB_POOL_MAX=1` and
+`DB_PREPARE=false` are set for Neon's pooled connection; the Instagram token is refreshed into the hosted
+database, so treat production as the primary and the local database as a dev copy. Changing an env var needs
+a redeploy. Check a preview without exposing it: `npx vercel curl /health --deployment <url>`.
+
 > Both collectors are verified against the live APIs (2026-10-16). If an API changes or a permission
 > is missing, the status chip on the page shows the platform's exact error text.

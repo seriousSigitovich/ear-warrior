@@ -24,6 +24,17 @@ Runs every configured collector (same auth rules as above).
 `status` ∈ `ok | failed | skipped` (`skipped`: not configured, or another run in progress).
 The cooldown exists because a browser that cached Basic credentials sends them on cross-site form posts; the endpoint can only refresh data, and at most once per cooldown.
 
+## GET /api/cron/social
+Scheduler hook (Vercel Cron, daily; `vercel.json`). Runs the same collectors as the button, without cooldown.
+
+| Condition | Response |
+|---|---|
+| `CRON_SECRET` unset | `404 {"ok":false,"error":"not_found"}` |
+| missing / wrong `Authorization: Bearer <CRON_SECRET>` | `401 {"ok":false,"error":"unauthorized"}` |
+| ok | `200 {"ok":bool,"reports":[…]}` as for the manual route |
+
+The admin password and the cron secret are separate credentials; neither opens the other's route.
+
 ## CLIs
 - `npm run collect` — one pass; prints `platform: status (n posts) — error`; exit code 1 if any configured platform failed.
 - `npm run yt:auth` — one-time YouTube authorization; exit code 1 on state mismatch, missing refresh token, timeout (5 min).

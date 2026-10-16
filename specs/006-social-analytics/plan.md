@@ -20,7 +20,7 @@ A collector pulls per-post metrics from YouTube (Data API for counters + Analyti
 
 **Testing**: `node:test` run through `tsx` (`npm test` in `server/`) — the repo's Jest runner covers only `src/` of the app; collectors are tested against a scripted fake `fetch`
 
-**Target Platform**: Linux container (existing Dockerfile) / macOS dev; **no production host is recorded yet** (see spec Open Questions)
+**Target Platform**: Vercel serverless function (Node 20+, project `ear-warrior-api`, Neon Postgres, Vercel Cron) — decided 2026-10-16; macOS + Docker Postgres for development; the Dockerfile still works for a container host
 
 **Project Type**: web-service (extends `server/`; page is server-rendered HTML, no client JS)
 
@@ -81,7 +81,11 @@ server/
 │   │   └── *.test.ts                   # node:test
 │   ├── collect.ts                      # CLI: npm run collect
 │   └── youtube-auth.ts                 # CLI: npm run yt:auth (loopback OAuth)
-├── README.md                           # "Social analytics" section, setup steps
+├── api/index.js                        # Vercel entry: builds the Fastify app once per instance, lazy schema bootstrap
+├── vercel.json                         # framework off, build `npm run build`, 60 s function, rewrite → /api, daily cron
+├── public/robots.txt                   # static output dir required by Vercel; disallows crawling
+├── scripts/vercel-env.sh               # owner-run: pushes secrets from .env to Vercel (never printed)
+├── README.md                           # "Social analytics" + "Deploy to Vercel" sections, setup steps
 └── .env.example
 landing/privacy/index.html              # dependency: OAuth consent needs a privacy policy URL
 ```

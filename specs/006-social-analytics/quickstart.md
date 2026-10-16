@@ -37,5 +37,14 @@ curl -s -o /dev/null -w "%{http_code}\n" -X POST -u admin:$PW localhost:8080/adm
 ## 6. Growth after a week (SC-005)
 Run `npm run collect` daily (or set `SOCIAL_COLLECT_INTERVAL_HOURS=6` and keep the server up). After 7 days the 7-day card shows "+N views" and the change against the previous window once 14 days exist.
 
-## 7. Instagram (not yet validated live)
-Follow `server/README.md` → "Connect Instagram", set `IG_ACCESS_TOKEN`, `npm run collect`, and check the status chip for the platform's error text if it fails.
+## 7. Instagram
+Follow `server/README.md` → "Connect Instagram", set `IG_ACCESS_TOKEN`, `npm run collect`; the status chip shows the platform's error text if it fails (verified live 2026-10-16).
+
+## 8. Production on Vercel (T036)
+```bash
+cd server
+npx vercel integration add neon     # owner accepts the marketplace terms; sets DATABASE_URL
+sh scripts/vercel-env.sh            # owner runs: pushes secrets, never prints them
+npx vercel deploy --prod
+```
+Then: `GET <prod>/health` → 200; `<prod>/admin/social` asks for the Basic password; "refresh now" updates both platforms; the next morning `social_runs` has a row from the cron (06:00 UTC).

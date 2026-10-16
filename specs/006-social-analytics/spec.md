@@ -5,7 +5,7 @@
 **Created**: 2026-10-16 (**retroactive**: built before this spec; requirements are read from `server/src/social/`,
 `server/src/routes/social.ts` and the commits `fea8436`, `10d5cd3`, `0d41b16`)
 
-**Status**: Implemented — **YouTube and Instagram both verified live (2026-10-16)**; open questions below
+**Status**: Implemented — **YouTube and Instagram verified live; deployed to production on Vercel (2026-10-16)**; open questions below
 
 **Input**: The author runs hook experiments on short videos (`docs/experiments.md`, H1–H14) and today reads each
 platform's studio by hand, one screen at a time. They want one private page that shows the essence at a glance and the
@@ -157,11 +157,11 @@ As the author, I want the page to be reachable only by me and safe against hosti
 - Instagram is a Business/Creator account; both platforms' APIs are available at no cost for reading own data.
 - Volume is small (hundreds of posts × at most 90 days of snapshots), so no pagination or caching is needed.
 - Platforms' own data lags (YouTube watch-behaviour ~2 days); numbers are "as of the last collection", not real time.
-- The page lives on the existing Ear Warrior server and database.
+- The page lives on the existing Ear Warrior server and database; in production that is a Vercel deployment with a hosted Postgres, locally a Docker Postgres.
 
 ## Open Questions (not decided — owner to resolve)
 
-- **Who runs the daily collection?** Snapshots exist only while the collector runs. As of 2026-10-16 the server runs only on the author's machine (Docker Postgres); no production host is recorded. Without a continuously running host the history has gaps and growth stays unknown. Pick a host (or a scheduler) before relying on trends.
+- **Who runs the daily collection?** *Decided and done 2026-10-16:* the backend runs on Vercel with a daily Vercel Cron call, and the page's refresh button stays for on-demand updates (tasks T027, T036). Until the first scheduled runs accumulate, snapshots exist only for the days collected, so growth over a window can be based on an old baseline (T035).
 - **Tie posts to hypotheses.** The experiment number is only parsed from titles; most existing titles carry none. Should posts be mapped to `docs/experiments.md` rows (H-ids / video numbers) by hand, by a rule, or by editing titles?
 - **Join with the waitlist.** Signup `source` tags (`youtube:ear16`) are not yet shown next to views, so conversion per video is still computed by hand.
 - **Deleted posts and retention.** Deleted posts keep their history forever and snapshots are never pruned. Acceptable at this volume?
@@ -172,5 +172,6 @@ As the author, I want the page to be reachable only by me and safe against hosti
 
 - **Automated**: 22 tests (`npm test` in `server/`): window/growth rules and sorting, both collectors against scripted API responses (including rejected metrics, failing analytics, token refresh, no secret in errors), page escaping, the authorization helpers.
 - **Live (2026-10-16)**: YouTube — 27 posts, 9 516 views, 7 subscribers. Instagram (`earwarrior`) — 22 posts, 9 623 views, 97 followers, account reach 7 424 / profile views 105 / link taps 14 over 28 days. Both rendered on the page; a full collection of both platforms took ≈ 20 s. The page's look was checked on synthetic data on desktop and phone widths.
-- **Not verified**: scheduled collection over several days; accessibility of the page (contrast/keyboard) beyond the native `<details>` controls.
+- **Production (2026-10-16)**: https://ear-warrior-api.vercel.app — health, Basic-auth page, manual collect (27 + 22 posts, ≈ 15 s), cooldown 429 and the cron guard checked; the cron is registered for 06:00 UTC daily.
+- **Not verified**: the first scheduled run and collection over several days; accessibility of the page (contrast/keyboard) beyond the native `<details>` controls.
 - **Constitution**: tests were written alongside, not before, the implementation (II); the server has no linter configured (I); performance targets were not declared (IV) — recorded in `plan.md` and `tasks.md`.

@@ -43,6 +43,13 @@ Decisions as taken between 2026-10-16 (build session). Format: Decision / Ration
 - **Rationale**: no build step, no second deployable, nothing to leak to a CDN; all third-party text escaped in one place.
 - **Alternatives**: React/Next admin — a second app for one page; a Vercel page reading the API — needs a read API and public exposure.
 
+## R10. Host the backend on Vercel; collect with Vercel Cron
+- **Decision (2026-10-16)**: deploy `server/` as a Vercel serverless function (`api/index.js` hands every request to the compiled Fastify app; `vercel.json` rewrites all paths to it), Postgres from Neon through the Vercel integration, one daily cron call to `GET /api/cron/social` guarded by `CRON_SECRET`; the page's refresh button runs the same collectors on demand (≈ 20 s, inside the 60 s function limit).
+- **Rationale**: the owner asked to deploy the backend "if Vercel can do it"; the landing already lives there; no server to keep running; history becomes gap-free without the laptop; the app will need the same backend (`/api/sync`, telemetry).
+- **Serverless adjustments**: no in-process timer (cron instead); `DB_POOL_MAX=1` and `DB_PREPARE=false` for the pooled Neon URL; schema bootstrap runs lazily on the first non-`/health` request of an instance and is retried if it failed; framework auto-detection is turned off (`"framework": null`) because Vercel's zero-config Fastify mode expects an app entry in the output directory.
+- **Alternatives**: keep it local and press the button (works today, history has gaps); GitHub Actions cron into a hosted DB (no server, but the page still needs a host); a container host (Fly/Railway/Render) with the existing Dockerfile (always-on, paid, nothing the owner asked for).
+- **Limits to remember**: Hobby crons run at most once a day at an hour-level precision; each instance holds its own pool; the Instagram token is refreshed into the hosted database (the local database keeps its own copy).
+
 ## R9. Pure core, thin edges
 - **Decision**: `summary.ts`, `page.ts`, `oauth.ts` are pure; collectors take an injected `fetch`, token store and clock.
 - **Rationale**: the rules that decide what the owner believes are testable without network or database (constitution II).
