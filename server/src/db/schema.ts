@@ -11,7 +11,9 @@
 
 import { sql } from 'drizzle-orm';
 import {
+  bigserial,
   boolean,
+  date,
   doublePrecision,
   integer,
   jsonb,
@@ -72,6 +74,77 @@ export const syncDocuments = pgTable(
     pk: primaryKey({ columns: [t.deviceId, t.collection, t.docId] }),
   }),
 );
+
+/** One row per published post (YouTube video / Instagram reel). */
+export const socialPosts = pgTable(
+  'social_posts',
+  {
+    platform: text('platform').notNull(),
+    externalId: text('external_id').notNull(),
+    title: text('title').notNull().default(''),
+    url: text('url').notNull().default(''),
+    kind: text('kind').notNull().default('video'),
+    durationS: integer('duration_s'),
+    publishedAt: timestamp('published_at', { withTimezone: true }).notNull(),
+    videoNo: integer('video_no'),
+    firstSeenAt: timestamp('first_seen_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.platform, t.externalId] }) }),
+);
+
+/** Cumulative metrics of a post as of one UTC day. NULL = not reported by the platform. */
+export const socialSnapshots = pgTable(
+  'social_snapshots',
+  {
+    platform: text('platform').notNull(),
+    externalId: text('external_id').notNull(),
+    day: date('day', { mode: 'string' }).notNull(),
+    views: integer('views'),
+    likes: integer('likes'),
+    comments: integer('comments'),
+    shares: integer('shares'),
+    saves: integer('saves'),
+    reach: integer('reach'),
+    avgWatchS: real('avg_watch_s'),
+    avgWatchPct: real('avg_watch_pct'),
+    follows: integer('follows'),
+    profileVisits: integer('profile_visits'),
+    collectedAt: timestamp('collected_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.platform, t.externalId, t.day] }) }),
+);
+
+/** Channel / account level numbers per UTC day (followers + platform-specific extras). */
+export const socialAccountSnapshots = pgTable(
+  'social_account_snapshots',
+  {
+    platform: text('platform').notNull(),
+    day: date('day', { mode: 'string' }).notNull(),
+    followers: integer('followers'),
+    extra: jsonb('extra').$type<Record<string, number>>().notNull().default({}),
+    collectedAt: timestamp('collected_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.platform, t.day] }) }),
+);
+
+/** Rotating credentials (Instagram long-lived token). */
+export const socialTokens = pgTable('social_tokens', {
+  platform: text('platform').primaryKey(),
+  value: text('value').notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Collector run log. */
+export const socialRuns = pgTable('social_runs', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  platform: text('platform').notNull(),
+  startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
+  finishedAt: timestamp('finished_at', { withTimezone: true }),
+  ok: boolean('ok'),
+  posts: integer('posts'),
+  error: text('error'),
+});
 
 /** Idempotent DDL applied at boot (see db/ddl.ts). Kept here next to the schema for reference. */
 export const RAW_DDL = sql``;

@@ -1,6 +1,7 @@
 // Entry point: bootstrap the schema, then start listening.
 import { buildApp } from './app.js';
 import { initDb, sql } from './db/client.js';
+import { runCollectors } from './social/collect.js';
 
 const PORT = Number(process.env.PORT ?? 8080);
 
@@ -15,6 +16,15 @@ async function main(): Promise<void> {
   };
   process.on('SIGTERM', shutdown);
   process.on('SIGINT', shutdown);
+
+  // Optional in-process scheduler for social analytics. Snapshots are keyed by UTC day, so
+  // overlapping or repeated runs are harmless; an external cron hitting the CLI works just as well.
+  const everyHours = Number(process.env.SOCIAL_COLLECT_INTERVAL_HOURS ?? 0);
+  if (everyHours > 0) {
+    const tick = () => runCollectors().catch((err) => app.log.error({ err }, 'social collect failed'));
+    setInterval(tick, everyHours * 3_600_000).unref();
+    void tick();
+  }
 
   await app.listen({ port: PORT, host: '0.0.0.0' });
 }

@@ -4,6 +4,7 @@ import cors from '@fastify/cors';
 import { registerSubscribe } from './routes/subscribe.js';
 import { registerTelemetry } from './routes/telemetry.js';
 import { registerSync } from './routes/sync.js';
+import { registerSocial } from './routes/social.js';
 
 export function buildApp(): FastifyInstance {
   const app = Fastify({
@@ -23,6 +24,7 @@ export function buildApp(): FastifyInstance {
   registerSubscribe(app);
   registerTelemetry(app);
   registerSync(app);
+  registerSocial(app);
 
   return app;
 }
