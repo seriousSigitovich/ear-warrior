@@ -6,12 +6,13 @@
   "type": "module",
   "main": "dist/server.js",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
+    "dev": "tsx watch --env-file=.env src/server.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "tsx --test src/social/*.test.ts",
-    "collect": "tsx src/collect.ts",
+    "collect": "tsx --env-file=.env src/collect.ts",
+    "yt:auth": "tsx --env-file=.env src/youtube-auth.ts",
     "db:generate": "drizzle-kit generate",
     "db:studio": "drizzle-kit studio"
   },

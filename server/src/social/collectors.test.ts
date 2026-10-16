@@ -197,3 +197,19 @@ test('instagram: errors never contain the access token', async () => {
     return true;
   });
 });
+
+import { buildAuthUrl, setEnvVar } from './oauth.js';
+
+test('oauth: auth URL asks for offline access, both read-only scopes and echoes state', () => {
+  const u = new URL(buildAuthUrl({ clientId: 'cid', redirectUri: 'http://localhost:8765/callback', state: 'st' }));
+  assert.equal(u.searchParams.get('access_type'), 'offline');
+  assert.equal(u.searchParams.get('prompt'), 'consent');
+  assert.equal(u.searchParams.get('state'), 'st');
+  assert.match(u.searchParams.get('scope') ?? '', /youtube\.readonly yt-analytics\.readonly|yt-analytics\.readonly/);
+  assert.ok(!(u.searchParams.get('scope') ?? '').includes('youtube.force-ssl'));
+});
+
+test('setEnvVar replaces one line, appends when missing, keeps the rest', () => {
+  assert.equal(setEnvVar('A=1\nYT_REFRESH_TOKEN=\nB=2\n', 'YT_REFRESH_TOKEN', 'x$&y'), 'A=1\nYT_REFRESH_TOKEN=x$&y\nB=2\n');
+  assert.equal(setEnvVar('A=1', 'K', 'v'), 'A=1\nK=v\n');
+});

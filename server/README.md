@@ -71,7 +71,8 @@ Instagram Graph API ──────────┘        one row per post pe
 ### Run
 
 ```bash
-ADMIN_PASSWORD=choose-one npm run dev     # page: http://localhost:8080/admin/social (user: admin)
+cp -n .env.example .env                   # scripts read .env via --env-file; set ADMIN_PASSWORD in it
+npm run dev                               # page: http://localhost:8080/admin/social (user: admin)
 npm run collect                           # one collection pass from the CLI (exit 1 on failure)
 npm test                                  # collectors run against a fake fetch, no network
 ```
@@ -80,19 +81,20 @@ Without `ADMIN_PASSWORD` the page answers 404. To collect automatically either s
 `SOCIAL_COLLECT_INTERVAL_HOURS=6` (in-process timer) or call `node dist/collect.js` / `POST
 /admin/social/collect` from any scheduler. Repeated runs on the same UTC day overwrite that day.
 
-### Connect YouTube (one-time, ~15 min)
+### Connect YouTube (one-time)
 
-1. [Google Cloud Console](https://console.cloud.google.com) → new project → enable **YouTube Data API v3**
+1. [Google Cloud Console](https://console.cloud.google.com) → project → enable **YouTube Data API v3**
    and **YouTube Analytics API**.
-2. OAuth consent screen → External → add your Google account as a test user. **Then publish the app
-   ("In production")**: in "Testing" status refresh tokens expire after 7 days. An unverified app
-   with your own account works, you just click through the warning once.
-3. Credentials → OAuth client ID → type **Web application**, authorized redirect URI
-   `https://developers.google.com/oauthplayground` → `YT_CLIENT_ID`, `YT_CLIENT_SECRET`.
-4. [OAuth Playground](https://developers.google.com/oauthplayground) → ⚙ "Use your own OAuth
-   credentials" → scopes `https://www.googleapis.com/auth/youtube.readonly` and
-   `https://www.googleapis.com/auth/yt-analytics.readonly` → authorize with the channel owner
-   account → "Exchange authorization code" → copy the **refresh token** → `YT_REFRESH_TOKEN`.
+2. Google Auth Platform → Branding: home page, privacy policy link (`https://earwarrior.app/privacy/`),
+   authorised domain. Audience → **Publish app** ("In production"): in "Testing" status refresh
+   tokens expire after 7 days. An unverified app with your own account works, you click through the
+   warning once.
+3. Clients → Create → **Web application**, redirect URI `http://localhost:8765/callback`. Put the ids in
+   `.env` as `YT_CLIENT_ID` and `YT_CLIENT_SECRET` (the secret is shown only once).
+4. `npm run yt:auth` — opens Google's consent screen (sign in with the account that owns the
+   channel), catches the redirect on localhost and writes `YT_REFRESH_TOKEN` to `.env`. The token is
+   never printed.
+5. `npm run collect`, then open the page.
 
 ### Connect Instagram (one-time, ~15 min)
 
