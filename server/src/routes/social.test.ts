@@ -80,3 +80,17 @@ test('the admin password is not accepted as the cron secret and vice versa', asy
   assert.equal((await app.inject({ method: 'GET', url: '/admin/social', headers: { authorization: basic('admin', 'cronsecret') } })).statusCode, 401);
   await app.close();
 });
+
+test('the refresh button posts a urlencoded form: it reaches the auth check instead of failing with 415', async () => {
+  process.env.ADMIN_PASSWORD = 'pw';
+  const app = buildApp();
+  const form = { 'content-type': 'application/x-www-form-urlencoded' };
+  // wrong credentials -> 401 (the handler ran), not 415 (body rejected before it)
+  const res = await app.inject({ method: 'POST', url: '/admin/social/collect', headers: { ...form, authorization: basic('admin', 'wrong') }, payload: '' });
+  assert.equal(res.statusCode, 401);
+  // without a configured password the route still does not exist
+  delete process.env.ADMIN_PASSWORD;
+  const gone = await app.inject({ method: 'POST', url: '/admin/social/collect', headers: form, payload: '' });
+  assert.equal(gone.statusCode, 404);
+  await app.close();
+});

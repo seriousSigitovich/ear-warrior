@@ -54,7 +54,14 @@ const Query = z.object({
   sort: z.enum(['gain', 'views', 'date']).catch('gain'),
 });
 
-export function registerSocial(app: FastifyInstance): void {
+export function registerSocial(root: FastifyInstance): void {
+  // Encapsulated so the extra parser below only applies to these routes.
+  root.register(async (app) => {
+    // The "refresh now" button is a plain HTML <form method="post">: browsers send it with
+    // Content-Type: application/x-www-form-urlencoded (empty body), which Fastify rejects with 415
+    // unless a parser exists. The body carries nothing we need, so accept it and ignore it.
+    app.addContentTypeParser('application/x-www-form-urlencoded', { parseAs: 'string' }, (_req, _body, done) => done(null, {}));
+
   app.get('/admin/social', async (req, reply) => {
     if (!authorize(req, reply)) return reply;
     const q = Query.parse(req.query ?? {});
@@ -87,5 +94,6 @@ export function registerSocial(app: FastifyInstance): void {
     const reports = await runCollectors();
     if (accept.includes('text/html')) return reply.redirect('/admin/social', 303);
     return reply.send({ ok: reports.every((r) => r.status !== 'failed'), reports });
+  });
   });
 }
