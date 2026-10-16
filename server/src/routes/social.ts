@@ -1,5 +1,6 @@
 // GET  /admin/social          -> the analytics dashboard (HTML).
-// POST /admin/social/collect  -> run the collectors now (also the hook for an external scheduler).
+// POST /admin/social/collect  -> run the collectors now (the page's "refresh now" button).
+// GET  /api/cron/social       -> run the collectors from a scheduler (Bearer CRON_SECRET; 404 if unset).
 // Both sit behind HTTP Basic auth (ADMIN_USER / ADMIN_PASSWORD). With no ADMIN_PASSWORD configured
 // they answer 404, so a fresh deploy never exposes the page by accident.
 import { createHash, timingSafeEqual } from 'node:crypto';
@@ -34,6 +35,19 @@ function authorize(req: FastifyRequest, reply: FastifyReply): boolean {
   return false;
 }
 
+/** Vercel Cron sends `Authorization: Bearer $CRON_SECRET`; without CRON_SECRET the route does not exist. */
+function authorizeCron(req: FastifyRequest, reply: FastifyReply): boolean {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) {
+    void reply.status(404).send({ ok: false, error: 'not_found' });
+    return false;
+  }
+  const header = req.headers.authorization ?? '';
+  if (header.startsWith('Bearer ') && safeEqual(header.slice(7), secret)) return true;
+  void reply.status(401).send({ ok: false, error: 'unauthorized' });
+  return false;
+}
+
 const Query = z.object({
   days: z.coerce.number().int().refine((n) => [7, 28, 90].includes(n)).catch(7),
   platform: z.enum(['youtube', 'instagram']).optional().catch(undefined),
@@ -52,6 +66,13 @@ export function registerSocial(app: FastifyInstance): void {
       .header('cache-control', 'no-store')
       .type('text/html; charset=utf-8')
       .send(renderPage({ dashboard, runs, configured, platformFilter: q.platform ?? null, sort: q.sort, now }));
+  });
+
+  // Scheduled collection (Vercel Cron, once a day). No cooldown: the scheduler is the only caller.
+  app.get('/api/cron/social', async (req, reply) => {
+    if (!authorizeCron(req, reply)) return reply;
+    const reports = await runCollectors();
+    return reply.send({ ok: reports.every((r) => r.status !== 'failed'), reports });
   });
 
   app.post('/admin/social/collect', async (req, reply) => {

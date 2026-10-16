@@ -11,7 +11,13 @@ const DATABASE_URL =
 // One pooled client for the whole app. `max` kept modest for a small service.
 // `onnotice` silences the "relation already exists, skipping" notices that the idempotent boot DDL
 // (`create ... if not exists`) makes Postgres print on every start.
-export const sql = postgres(DATABASE_URL, { max: 10, onnotice: () => {} });
+// Serverless (Vercel) opens a pool per instance, so DB_POOL_MAX=1 there; behind a transaction pooler
+// (Neon's pooled URL, pgbouncer) prepared statements are unsupported, so DB_PREPARE=false.
+export const sql = postgres(DATABASE_URL, {
+  max: Number(process.env.DB_POOL_MAX ?? 10),
+  prepare: process.env.DB_PREPARE !== 'false',
+  onnotice: () => {},
+});
 export const db = drizzle(sql, { schema });
 
 /** Ensure the schema exists. Called once at startup. */
