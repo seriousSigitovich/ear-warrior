@@ -28,5 +28,7 @@ for (const file of files) {
   writeFileSync(props, JSON.stringify(tune, null, 2));
   const mp4 = join(here, 'out', `${tune.id}.mp4`);
   execFileSync(join(here, 'node_modules', '.bin', 'remotion'), ['render', 'src/index.ts', 'Tune', mp4, `--props=${props}`, '--log=error'], { cwd: here, stdio: 'inherit' });
-  console.log(`${tune.id}: → ${mp4}`);
+  const cover = join(here, 'out', `${tune.id}-cover.png`);
+  execFileSync(join(here, 'node_modules', '.bin', 'remotion'), ['still', 'src/index.ts', 'Cover', cover, `--props=${props}`, '--log=error'], { cwd: here, stdio: 'inherit' });
+  console.log(`${tune.id}: → ${mp4}  + cover ${cover}`);
 }
