@@ -16,7 +16,6 @@ Copy follows `docs/voice.md`: direct, calm, sentence case, no exclamation marks,
 UTM links (the landing turns these into `source:campaign:content`, `landing/index.html:643`):
 
 - Instagram bio: `https://earwarrior.app/?utm_source=instagram&utm_campaign=bio&utm_content=profile`
-- Instagram DM reply: `…?utm_source=instagram&utm_campaign=dm&utm_content=beta`
 - YouTube channel link: `…?utm_source=youtube&utm_campaign=channel&utm_content=profile`
 - YouTube long video: `…?utm_source=youtube&utm_campaign=long01&utm_content=desc`
 
@@ -41,14 +40,9 @@ UTM links (the landing turns these into `source:campaign:content`, `landing/inde
 
 **In-video label** (small, whole video, not an end card; replaces nothing in the hook): `Early access for guitarists → bio`
 
-**Caption line** (last line of every reel caption): `Early access for guitarists. Comment BETA and I’ll send you the link.`
+**Caption line** (last line of every reel caption): `Early access for guitarists → link in profile.`
 
-**Auto-reply / DM** (send manually while volume is low; automate later, e.g. Meta private replies):
-
-> Here’s the link: [UTM dm link]
-> Ear Warrior plays you a melody once; you play it back on an on-screen fretboard and it shows which notes landed. [Early access: platform / what you get — D1, D2]
-
-(No question in the DM, on purpose: the ask is the link, not a conversation.)
+(The "Comment BETA, I’ll DM the link" ask and its DM auto-reply were dropped 2026-10-18: the ask is the profile link only.)
 
 **Partner message** to small guitar teachers / creators (1–10 K followers), sent as a DM:
 

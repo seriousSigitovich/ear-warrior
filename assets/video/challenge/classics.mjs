@@ -152,7 +152,7 @@ const SERIES = [
     notes: 'E4:1 E4:1 F4:1 G4:1 G4:1 F#4:1 E4:1 D4:1',
   },
   // Experiment H16 (docs/experiments.md): not a quiz — a direct ask for early-access signups. The melody is only the demo: the theme of Mozart's Eine kleine Nachtmusik
-  // (K. 525, public domain), G major, ONE playing, then the headline swap names the product loop, then a slide asks for the comment "BETA" (the link goes out by DM).
+  // (K. 525, public domain), G major, ONE playing, then the headline swap names the product loop, then a slide points to the link in the profile (the comment-"BETA" ask was dropped 2026-10-18).
   // Notes read from the Mutopia Project's public-domain MIDI (first violin, bars 1–2: G5 D5 G5 D5 | G5 D5 G5 B5 D6), dropped an octave to fit the neck (E2–E5);
   // rests folded into the previous note, the last D held. No stat, no promise but the one already on the landing (first 100 get lifetime access).
   {
@@ -160,7 +160,7 @@ const SERIES = [
     tempoBpm: 120, tonicPc: 7, minor: false, key: 'G major',
     hook: 'Guitarists —\nI need *testers.*', sub: 'An app that trains playing by ear',
     ask: 'Hear it once.\n*Play it back.*', askSub: 'The app shows which notes landed.',
-    cta: { title: 'Comment\n*BETA*', sub: 'I’ll send you the link. First 100 get lifetime access.' },
+    cta: { title: 'Early access\n*link in profile*', sub: 'First 100 get lifetime access.' },
     notes: 'G4:1.5 D4:.5 G4:1.5 D4:.5 G4:.5 D4:.5 G4:.5 B4:.5 D5:2',
   },
   // Experiment H14 (docs/experiments.md): ONE tune taught across four Shorts — Greensleeves (traditional, public domain), E minor, 6/8, eighth note = 1 beat.

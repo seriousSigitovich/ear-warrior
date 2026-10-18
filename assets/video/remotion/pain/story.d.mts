@@ -1,0 +1,23 @@
+export const FPS: number;
+export const DURATION: number;
+export const OPEN: number[];
+export const STRING_LETTERS: string[];
+export const T: { room: number; hookSplit: number; legend: number; party: number; ask: number; phone: number; fail: number; silence: number; pass: number; quiet: number; end: number };
+export interface PNote { t: number; midi: number; dur: number; s: number; f: number; ok?: boolean; attempt?: number; bar?: number; harmony?: boolean }
+export function fretFor(midi: number, maxFret?: number): { s: number; f: number };
+export const RIFF: PNote[];
+export const ODE: number[];
+export const ODE_BEATS: number[];
+export const ATTEMPTS: PNote[];
+export const RESTARTS: number[];
+export const WRONG_AT: number[];
+export const QUIET_BEAT: number;
+export const QUIET_START: number;
+export const QUIET_MELODY: PNote[];
+export const QUIET_LINE2: PNote[];
+export const QUIET_HARMONY: PNote[];
+export const QUIET_CHORD_AT: number;
+export const END_BEAT: number;
+export const END_START: number;
+export const END_MELODY: PNote[];
+export const END_CHORD_AT: number;

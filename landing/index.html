@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Ear Warrior — Hear it once. Play it back by ear.</title>
-<meta name="description" content="A melody plays once — a famous tune or a fresh one. You play it back by ear on a virtual fretboard, and we show which notes landed. Coming soon on iOS &amp; Android." />
+<title>Ear Warrior — Guitar Ear Training App: Hear It Once, Play It Back</title>
+<meta name="description" content="Guitar ear training app. Hear a melody once, play it back by ear on a virtual fretboard, and see which notes landed. Coming soon on iOS &amp; Android." />
 <meta name="theme-color" content="#161826" />
 <meta name="robots" content="index, follow" />
 
@@ -13,7 +13,7 @@
 
 <!-- Open Graph / social -->
 <meta property="og:site_name" content="Ear Warrior" />
-<meta property="og:title" content="Ear Warrior — Hear it once. Play it back by ear." />
+<meta property="og:title" content="Ear Warrior — Guitar ear training: hear it once, play it back" />
 <meta property="og:description" content="A melody plays once — a famous tune or a fresh one. You play it back by ear on a virtual fretboard, and we show which notes landed." />
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://earwarrior.app/" />
@@ -26,7 +26,7 @@
 
 <!-- Twitter / X -->
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="Ear Warrior — Hear it once. Play it back by ear." />
+<meta name="twitter:title" content="Ear Warrior — Guitar ear training: hear it once, play it back" />
 <meta name="twitter:description" content="A melody plays once. You play it back on a virtual fretboard. We show which notes landed." />
 <meta name="twitter:image" content="https://earwarrior.app/og-image.png" />
 
@@ -42,7 +42,57 @@
   "description": "Guitar ear training app — hear a melody once, find it by ear on a virtual fretboard, and get note-by-note feedback.",
   "applicationCategory": "MusicApplication",
   "operatingSystem": "iOS, Android",
-  "url": "https://earwarrior.app/"
+  "url": "https://earwarrior.app/",
+  "image": "https://earwarrior.app/og-image.png",
+  "inLanguage": "en"
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "What is guitar ear training?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Guitar ear training is practice at connecting what you hear to what you play, so you can work out a melody on the fretboard without tabs or sheet music."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How is Ear Warrior different from other ear training apps?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Most ear training apps ask you to name what you hear: an interval, a chord quality, a note name. Ear Warrior asks you to play the melody back, which is what you actually do at a jam or when learning a song by ear."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Do I need to read tab or know music theory?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. You answer by tapping a virtual fretboard, and any fret that sounds the right pitch counts. The app shows which notes landed and which did not."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Which melodies will I practise on?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "It starts with tunes you already know, like Ode to Joy and Twinkle, Twinkle, then moves to slightly harder ones as you get them right."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "When does Ear Warrior launch, and what does it cost?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Ear Warrior is coming soon on iOS and Android. The first 100 people on the waitlist get lifetime access with every feature, free. Pricing for everyone else has not been announced yet."
+      }
+    }
+  ]
 }
 </script>
 
@@ -332,6 +382,33 @@
   .form-err { display: none; margin: 12px 0 0; font-size: 14px; color: #ff8f8f; }
   .form-err.show { display: block; }
 
+
+  /* ---------- below the fold: how it works / who it's for / FAQ (crawlable text) ---------- */
+  .seo { padding: clamp(48px, 7vw, 96px) 0 clamp(24px, 4vw, 48px); border-top: 1px solid var(--border); }
+  .seo-block { max-width: 680px; margin: 0 0 clamp(40px, 6vw, 64px); }
+  .seo h2 { margin: 0 0 18px; font-weight: 600; font-size: clamp(24px, 3vw, 32px); line-height: 1.15; letter-spacing: -0.02em; }
+  .seo p { margin: 0 0 14px; color: var(--muted); }
+  .seo p strong { color: var(--text); font-weight: 500; }
+  .steps { list-style: none; counter-reset: step; margin: 0; padding: 0; display: grid; gap: 14px; }
+  .steps li { counter-increment: step; position: relative; padding: 0 0 0 44px; color: var(--muted); }
+  .steps li::before {
+    content: counter(step);
+    position: absolute; left: 0; top: 1px;
+    width: 28px; height: 28px; border-radius: 50%;
+    display: grid; place-items: center;
+    font-size: 13px; font-weight: 600; color: var(--accent-bright);
+    background: var(--accent-tint); border: 1px solid var(--accent);
+  }
+  .steps strong { color: var(--text); font-weight: 500; }
+  .faq details { border-top: 1px solid var(--border); padding: 14px 0; }
+  .faq details:last-child { border-bottom: 1px solid var(--border); }
+  .faq summary { cursor: pointer; font-weight: 500; color: var(--text); list-style: none; padding-right: 28px; position: relative; }
+  .faq summary::-webkit-details-marker { display: none; }
+  .faq summary::after { content: "+"; position: absolute; right: 4px; top: 0; color: var(--accent-bright); font-weight: 400; }
+  .faq details[open] summary::after { content: "\2212"; }
+  .faq summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 4px; }
+  .faq details p { margin: 10px 0 0; font-size: 16px; }
+
   /* ---------- footer ---------- */
   footer { border-top: 1px solid var(--border); padding: 28px 0 40px; }
   .footer-inner { color: var(--muted-soft); font-size: 14px; }
@@ -339,8 +416,9 @@
   /* ---------- desktop: everything fits one viewport, no scrolling ---------- */
   @media (min-width: 861px) {
     .wrap { min-height: 100vh; min-height: 100svh; display: flex; flex-direction: column; }
-    main { flex: 1; display: flex; align-items: center; }
+    main { flex: none; min-height: calc(100svh - 132px); display: flex; flex-direction: column; justify-content: center; }
     main .hero { width: 100%; padding: 0; }
+    main .seo { padding-top: 72px; }
     footer { padding: 16px 0 20px; }
   }
 
@@ -369,7 +447,7 @@
       <div class="container hero-grid">
 
         <div>
-          <span class="eyebrow">Ear training, by playing it back</span>
+          <p class="eyebrow">Guitar ear training app</p>
           <h1>Hear it once. <em>Play it back by ear.</em></h1>
           <p class="hero-body">
             A melody plays &mdash; a tune you know, like <strong>Ode to Joy</strong> or
@@ -429,6 +507,52 @@
 
       </div>
     </section>
+
+    <div class="seo">
+      <div class="container">
+
+        <section class="seo-block" aria-labelledby="how">
+          <h2 id="how">How guitar ear training works in Ear Warrior</h2>
+          <ol class="steps">
+            <li><strong>Hear it once.</strong> A short melody plays one time, a tune you know like Ode to Joy or Twinkle, Twinkle.</li>
+            <li><strong>Play it back by ear.</strong> Find the notes on a virtual guitar fretboard. Tap a fret to hear it before you commit.</li>
+            <li><strong>See what landed.</strong> Every note is marked right, wrong or missed, so you know exactly where your ear slipped.</li>
+            <li><strong>Get a slightly harder one.</strong> Each round builds on the last, so the ear gets trained by doing, not by memorising names.</li>
+          </ol>
+        </section>
+
+        <section class="seo-block" aria-labelledby="who">
+          <h2 id="who">Made for guitarists who can&rsquo;t play without tabs</h2>
+          <p>Most ear training apps ask you to <strong>name</strong> what you hear: an interval, a chord, a note. That is recognition. At a jam, or when you want to pick out a song, you have to <strong>play it</strong>.</p>
+          <p>Ear Warrior trains that skill directly. You hear a melody, find it on the neck, and get feedback on every note. No tab, no sheet music, no theory required.</p>
+        </section>
+
+        <section class="seo-block faq" aria-labelledby="faq">
+          <h2 id="faq">Frequently asked questions</h2>
+          <details>
+            <summary>What is guitar ear training?</summary>
+            <p>Guitar ear training is practice at connecting what you hear to what you play, so you can work out a melody on the fretboard without tabs or sheet music.</p>
+          </details>
+          <details>
+            <summary>How is Ear Warrior different from other ear training apps?</summary>
+            <p>Most ear training apps ask you to name what you hear: an interval, a chord quality, a note name. Ear Warrior asks you to play the melody back, which is what you actually do at a jam or when learning a song by ear.</p>
+          </details>
+          <details>
+            <summary>Do I need to read tab or know music theory?</summary>
+            <p>No. You answer by tapping a virtual fretboard, and any fret that sounds the right pitch counts. The app shows which notes landed and which did not.</p>
+          </details>
+          <details>
+            <summary>Which melodies will I practise on?</summary>
+            <p>It starts with tunes you already know, like Ode to Joy and Twinkle, Twinkle, then moves to slightly harder ones as you get them right.</p>
+          </details>
+          <details>
+            <summary>When does Ear Warrior launch, and what does it cost?</summary>
+            <p>Ear Warrior is coming soon on iOS and Android. The first 100 people on the waitlist get lifetime access with every feature, free. Pricing for everyone else has not been announced yet.</p>
+          </details>
+        </section>
+
+      </div>
+    </div>
   </main>
 
   <footer>
