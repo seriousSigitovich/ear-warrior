@@ -1,6 +1,6 @@
 # Ear Warrior — "hear it / see it / play it back" Short (Remotion)
 
-7 s, 1080×1920, 60 fps. Scenes of 2 s: **Hear it** (sound contour) → **Every note has a fret** (neck tour) → **Now play it back** (numbered answer markers) → **N/N** result (1 s).
+7 s, 1080×1920, 60 fps. Scenes of 2 s (the cuts are pushes — scenes slide off left/up and the next slides in, `src/Move.tsx`, 16 frames, no flash): **Hear it** (sound contour) → **Every note has a fret** (neck tour) → **Now play it back** (numbered answer markers) → **N/N** result (1 s).
 
 ```bash
 npm run render -- tunes/turkish-march.json            # → out/turkish-march.mp4

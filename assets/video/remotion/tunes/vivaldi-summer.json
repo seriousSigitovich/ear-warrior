@@ -1,0 +1,9 @@
+{
+  "id": "vivaldi-summer",
+  "title": "Summer (L'estate, Vivaldi, Op. 8 No. 2, RV 315), 3rd movement Presto 'Storm' — public domain. listen = the descending G-minor run of bar 10 (D5→G3, 16ths, played at 100 bpm so each note is 0.15 s); tour = the opening motif G4 F4 Eb4 D4 over the G3 pedal, with the pedal cut from 11 repeats to 2. Notes read from the Mutopia MIDI (summer-score-2.mid, violin I).",
+  "bpm": 100,
+  "key": "G minor",
+  "listen": "D5:.25 C5:.25 Bb4:.25 A4:.25 G4:.25 F#4:.25 E4:.25 D4:.25 C4:.25 Bb3:.25 A3:.25 G3:.25",
+  "tour": "G4:.25 G3:.25 G3:.25 F4:.25 G3:.25 G3:.25 Eb4:.25 G3:.25 G3:.25 D4:.25 G3:.5",
+  "copy": { "tagline": "Early access · link in profile" }
+}
