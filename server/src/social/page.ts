@@ -5,6 +5,7 @@
 import { PLATFORMS, type Platform, type PostMetrics } from './types.js';
 import type { Dashboard, PostView, SortKey } from './summary.js';
 import { sortPosts } from './summary.js';
+import { totalLeads, type Leads } from './signups.js';
 
 export interface RunInfo {
   platform: string;
@@ -17,6 +18,8 @@ export interface RunInfo {
 export interface PageModel {
   dashboard: Dashboard;
   runs: RunInfo[];
+  /** Waitlist signups by source (T029); null/undefined = no store answered. */
+  leads?: Leads | null;
   configured: Record<Platform, boolean>;
   platformFilter: Platform | null;
   sort: SortKey;
@@ -120,7 +123,9 @@ function platformCard(m: PageModel, p: Dashboard['platforms'][number]): string {
       const pct = Math.round(((p.gain - p.prevGain) / p.prevGain) * 100);
       vs = ` · ${pct >= 0 ? '+' : '−'}${Math.abs(pct)} % к прошлым ${d.days} дн`;
     }
-    sub = `просмотров за ${d.days} дн${vs}`;
+    // T035: the gain may span more days than the window when the baseline snapshot is old.
+    const span = p.gainSpanDays !== null && p.gainSpanDays > d.days ? p.gainSpanDays : d.days;
+    sub = `просмотров за ${span} дн${span > d.days ? ` (снимка ровно ${d.days} дн назад нет — реальный период)` : ''}${vs}`;
   } else {
     big = fmt(p.totalViews);
     sub = `просмотров всего · прирост за ${d.days} дн появится, когда накопится история${d.historyFrom ? ` (собираем с ${esc(d.historyFrom)})` : ''}`;
@@ -140,11 +145,25 @@ function platformCard(m: PageModel, p: Dashboard['platforms'][number]): string {
   return `<article class="card"><h2>${NAMES[p.platform]}</h2><div class="big">${esc(big)}</div><div class="muted small">${sub}</div><div class="kv">${rows.join('')}</div>${best}</article>`;
 }
 
+function leadsCard(leads: Leads | null | undefined): string {
+  if (!leads) {
+    return `<article class="card"><h2>Лиды · waitlist</h2><div class="muted small">Источник не подключён: нужны KV_REST_API_URL / KV_REST_API_TOKEN (Upstash, куда пишет лендинг) или таблица signups в Postgres.</div></article>`;
+  }
+  const rows = leads.counts.slice(0, 12).map((c) => `<tr><td>${esc(c.source)}</td><td>${fmt(c.count)}</td></tr>`).join('');
+  return `<article class="card"><h2>Лиды · waitlist</h2><div class="big">${fmt(totalLeads(leads.counts))}</div>
+<div class="muted small">по источникам (${leads.via === 'upstash' ? 'Upstash — туда пишет лендинг' : 'таблица signups в Postgres'}); номер ролика берётся из метки «earNN»</div>
+<div class="leads">${rows ? `<table>${rows}</table>` : '<span class="muted small">пока никого</span>'}</div></article>`;
+}
+
 function postTitle(v: PostView): string {
   const t = v.post.title.trim() || '(без названия)';
-  // The number is parsed out of the title, so only prefix it when the title does not already show it.
-  return v.post.videoNo !== null && !t.includes(`#${v.post.videoNo}`) ? `#${v.post.videoNo} · ${t}` : t;
+  // The number comes from the manual map (post-labels.ts) or the title; prefix it unless the title already shows it.
+  if (v.post.videoNo !== null) return !t.includes(`#${v.post.videoNo}`) ? `#${v.post.videoNo} · ${t}` : t;
+  return v.post.label ? `${v.post.label} · ${t}` : t;
 }
+
+const hypChip = (v: PostView): string => (v.post.hypothesis ? ` <span class="tag">${esc(v.post.hypothesis)}</span>` : '');
+const leadsChip = (v: PostView): string => (v.leads ? ` <span class="tag lead">${v.leads} лид${v.leads === 1 ? '' : v.leads < 5 ? 'а' : 'ов'}</span>` : '');
 
 function postItem(v: PostView, days: number): string {
   const l = v.latest;
@@ -157,9 +176,9 @@ function postItem(v: PostView, days: number): string {
   return `<details class="post">
   <summary>
     <span class="badge ${esc(v.post.platform)}">${esc(NAMES[v.post.platform as Platform] ?? v.post.platform)}</span>
-    <span class="t">${esc(postTitle(v))}</span>
+    <span class="t">${esc(postTitle(v))}${hypChip(v)}${leadsChip(v)}</span>
     <span class="num"><b>${fmt(l?.views)}</b><small>просм.</small></span>
-    <span class="num gain">${v.gain === null ? '<b class="muted">—</b>' : `<b>${signed(v.gain)}</b>`}<small>за ${days} дн</small></span>
+    <span class="num gain">${v.gain === null ? '<b class="muted">—</b>' : `<b>${signed(v.gain)}</b>`}<small>за ${v.gain !== null && v.gainSpanDays !== null && v.gainSpanDays > 0 && v.gainSpanDays !== days ? `${v.gainSpanDays} дн*` : `${days} дн`}</small></span>
     <span class="num hide-s"><b>${fmt(l?.likes)}</b><small>лайки</small></span>
     <span class="num hide-s"><b>${fmt(l?.comments)}</b><small>комм.</small></span>
     <span class="spark-wrap hide-s">${sparkline(v.series)}</span>
@@ -214,6 +233,8 @@ button:hover{background:var(--tint)}
 .sort{margin:0 0 10px;font-size:13px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .top{list-style:none;margin:0;padding:0;display:grid;gap:6px}
 .top li{display:grid;grid-template-columns:auto 1fr auto 100px;gap:12px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:9px 14px}
+.tag{display:inline-block;font-size:11px;padding:0 7px;margin-left:6px;border-radius:999px;background:var(--tint);color:var(--accent);font-weight:600;vertical-align:1px}.tag.lead{background:var(--warm-bg);color:var(--warm-text)}
+.leads{margin-top:12px}.leads table{border-collapse:collapse;font-size:13px}.leads td{padding:2px 14px 2px 0}.leads td:last-child{text-align:right;font-weight:600}
 .empty{padding:20px;border:1px dashed var(--line);border-radius:12px;color:var(--muted)}
 @media(max-width:720px){.post summary{grid-template-columns:auto 1fr auto auto}.hide-s{display:none}.big{font-size:28px}}
 `;
@@ -250,12 +271,12 @@ export function renderPage(m: PageModel): string {
   </div>
 </header>
 ${statusStrip(m)}
-${cards.length ? `<div class="cards">${cards.map((p) => platformCard(m, p)).join('')}</div>` : `<div class="empty">Данных пока нет. Подключи платформы (см. README → Social analytics) и нажми «Обновить сейчас».</div>`}
-${top.length ? `<h3>Что сработало за ${d.days} дн</h3><ol class="top">${top.map((v) => `<li><span class="badge ${esc(v.post.platform)}">${esc(NAMES[v.post.platform as Platform] ?? v.post.platform)}</span><span class="t">${esc(postTitle(v))}</span><b>${signed(v.gain ?? 0)}</b><span>${sparkline(v.series)}</span></li>`).join('')}</ol>` : ''}
+${cards.length ? `<div class="cards">${cards.map((p) => platformCard(m, p)).join('')}${m.platformFilter ? '' : leadsCard(m.leads)}</div>` : `<div class="empty">Данных пока нет. Подключи платформы (см. README → Social analytics) и нажми «Обновить сейчас».</div>`}
+${top.length ? `<h3>Что сработало за ${d.days} дн</h3><ol class="top">${top.map((v) => `<li><span class="badge ${esc(v.post.platform)}">${esc(NAMES[v.post.platform as Platform] ?? v.post.platform)}</span><span class="t">${esc(postTitle(v))}${hypChip(v)}${leadsChip(v)}</span><b>${signed(v.gain ?? 0)}</b><span>${sparkline(v.series)}</span></li>`).join('')}</ol>` : ''}
 <h3>Все публикации · ${visible.length}</h3>
 <div class="sort muted">Сортировка ${sortLinks(m)}</div>
 ${ranked.length ? ranked.map((v) => postItem(v, d.days)).join('') : `<div class="empty">Публикаций пока нет.</div>`}
-<p class="muted small" style="margin-top:28px">Просмотры по дням считаются как разница суточных снимков (UTC), поэтому прирост виден только там, где есть снимок на начало периода. «Продолжили смотреть» (viewed vs swiped) из Studio через API недоступно — оно остаётся в docs/experiments.md.</p>`;
+<p class="muted small" style="margin-top:28px">Просмотры по дням считаются как разница суточных снимков (UTC), поэтому прирост виден только там, где есть снимок на начало периода; «N дн*» — снимка ровно на начало периода нет, прирост посчитан за реальный срок. Номер и гипотеза ролика — из ручной таблицы post-labels.ts. «Продолжили смотреть» (viewed vs swiped) из Studio через API недоступно — оно остаётся в docs/experiments.md.</p>`;
 
   return `<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Соцсети — Ear Warrior</title><style>${CSS}</style></head><body><main>${body}</main></body></html>`;
 }

@@ -10,6 +10,7 @@ import {
   socialSnapshots,
   socialTokens,
 } from '../db/schema.js';
+import type { SourceCount } from './signups.js';
 import type { CollectResult, Platform, TokenStore } from './types.js';
 
 export const utcDay = (d: Date): string => d.toISOString().slice(0, 10);
@@ -110,4 +111,10 @@ export async function loadAll() {
     db.select().from(socialAccountSnapshots).orderBy(socialAccountSnapshots.day),
   ]);
   return { posts, snapshots, accounts };
+}
+
+/** Waitlist signups per source tag in the server's own table (counts only — no emails leave the query). */
+export async function signupSourceCountsPg(): Promise<SourceCount[]> {
+  const rows = await db.execute(dsql`select coalesce(source, 'landing') as source, count(*)::int as n from signups group by 1`);
+  return (rows as unknown as { source: string; n: number }[]).map((r) => ({ source: r.source, count: r.n }));
 }

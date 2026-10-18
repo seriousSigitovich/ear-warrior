@@ -8,7 +8,9 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { runCollectors, COLLECTORS } from '../social/collect.js';
 import { renderPage } from '../social/page.js';
-import { lastRunStartedAt, latestRuns, loadAll, utcDay } from '../social/store.js';
+import { applyLabels } from '../social/post-labels.js';
+import { loadLeads } from '../social/signups.js';
+import { lastRunStartedAt, latestRuns, loadAll, signupSourceCountsPg, utcDay } from '../social/store.js';
 import { buildDashboard } from '../social/summary.js';
 import type { Platform } from '../social/types.js';
 
@@ -66,13 +68,17 @@ export function registerSocial(root: FastifyInstance): void {
     if (!authorize(req, reply)) return reply;
     const q = Query.parse(req.query ?? {});
     const now = new Date();
-    const [data, runs] = await Promise.all([loadAll(), latestRuns()]);
-    const dashboard = buildDashboard(data, utcDay(now), q.days);
+    const [data, runs, leads] = await Promise.all([
+      loadAll(),
+      latestRuns(),
+      loadLeads(process.env, (url, init) => fetch(url, init), signupSourceCountsPg),
+    ]);
+    const dashboard = buildDashboard({ ...data, posts: applyLabels(data.posts) }, utcDay(now), q.days, leads ? leads.counts : null);
     const configured = Object.fromEntries(COLLECTORS.map((c) => [c.platform, c.isConfigured(process.env)])) as Record<Platform, boolean>;
     return reply
       .header('cache-control', 'no-store')
       .type('text/html; charset=utf-8')
-      .send(renderPage({ dashboard, runs, configured, platformFilter: q.platform ?? null, sort: q.sort, now }));
+      .send(renderPage({ dashboard, runs, leads, configured, platformFilter: q.platform ?? null, sort: q.sort, now }));
   });
 
   // Scheduled collection (Vercel Cron, once a day). No cooldown: the scheduler is the only caller.

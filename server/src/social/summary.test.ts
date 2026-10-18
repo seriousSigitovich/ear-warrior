@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { buildDashboard, sortPosts, windowGain, type PostRow, type SnapshotRow } from './summary.js';
+import { buildDashboard, sortPosts, windowGain, windowGainDetail, type PostRow, type SnapshotRow } from './summary.js';
 import { emptyMetrics } from './types.js';
 
 const pt = (day: string, value: number) => ({ day, value });
@@ -99,4 +99,42 @@ test('sortPosts: known growth first, unknown last by lifetime views', () => {
     sortPosts(d.posts, 'gain').map((v) => v.post.externalId),
     ['hot', 'big', 'old'],
   );
+});
+
+test('windowGainDetail: baseline exactly at the window start spans the window', () => {
+  const s = [pt('2026-10-08', 100), pt('2026-10-15', 400)];
+  assert.deepEqual(windowGainDetail(s, '2026-09-01', '2026-10-08', '2026-10-15'), { gain: 300, spanDays: 7 });
+});
+
+test('windowGainDetail: an old baseline is reported with its real span (T035)', () => {
+  const s = [pt('2026-09-25', 100), pt('2026-10-15', 400)];
+  assert.deepEqual(windowGainDetail(s, '2026-09-01', '2026-10-08', '2026-10-15'), { gain: 300, spanDays: 20 });
+});
+
+test('windowGainDetail: a post born in the window spans since publication', () => {
+  const s = [pt('2026-10-12', 300), pt('2026-10-15', 340)];
+  assert.deepEqual(windowGainDetail(s, '2026-10-11', '2026-10-08', '2026-10-15'), { gain: 340, spanDays: 4 });
+});
+
+test('buildDashboard: platform card carries the longest real span', () => {
+  const d = buildDashboard(
+    { posts: [post('a', '2026-09-01')], snapshots: [snap('a', '2026-09-25', 100), snap('a', '2026-10-15', 400)], accounts: [] },
+    '2026-10-15',
+    7,
+  );
+  assert.equal(d.platforms[0]!.gain, 300);
+  assert.equal(d.platforms[0]!.gainSpanDays, 20);
+  assert.equal(d.posts[0]!.gainSpanDays, 20);
+});
+
+test('buildDashboard: leads per post come from the earNN campaign of the source tag (T029)', () => {
+  const posts = [{ ...post('a', '2026-10-10'), videoNo: 44 }, post('b', '2026-10-10')];
+  const d = buildDashboard(
+    { posts, snapshots: [snap('a', '2026-10-15', 10), snap('b', '2026-10-15', 10)], accounts: [] },
+    '2026-10-15',
+    7,
+    [{ source: 'youtube:ear44:desc', count: 2 }, { source: 'instagram:ear44', count: 5 }, { source: 'youtube:bio:profile', count: 3 }],
+  );
+  assert.equal(d.posts.find((v) => v.post.externalId === 'a')!.leads, 2); // same platform + number only
+  assert.equal(d.posts.find((v) => v.post.externalId === 'b')!.leads, null); // no number -> unknowable
 });

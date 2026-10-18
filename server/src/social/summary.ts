@@ -5,6 +5,7 @@
 // dashboard wants GROWTH ("+340 this week"). Growth is a difference between two snapshots, and it
 // is only knowable when we have a snapshot at the start of the window. Where we don't, the answer
 // is `null` ("unknown"), never a made-up number — the page then falls back to lifetime totals.
+import { leadsForPost, type SourceCount } from './signups.js';
 import type { Platform, PostMetrics } from './types.js';
 
 export interface PostRow {
@@ -16,6 +17,9 @@ export interface PostRow {
   durationS: number | null;
   publishedAt: Date;
   videoNo: number | null;
+  /** From post-labels.ts (the manual map), not from the platform. */
+  hypothesis?: string | null;
+  label?: string | null;
 }
 export interface SnapshotRow extends PostMetrics {
   platform: string;
@@ -39,6 +43,10 @@ export interface PostView {
   latest: SnapshotRow | null;
   /** Views gained in the window; null = no snapshot at the window start, so unknown. */
   gain: number | null;
+  /** Days between the two snapshots `gain` was measured over (T035); can exceed the window. */
+  gainSpanDays: number | null;
+  /** Waitlist signups whose source tag carries this post's `earNN` campaign; null = unknowable. */
+  leads: number | null;
   /** Cumulative views per collected day, oldest first. */
   series: Point[];
 }
@@ -48,6 +56,8 @@ export interface PlatformSummary {
   postCount: number;
   totalViews: number;
   gain: number | null;
+  /** The longest span any post's gain was measured over; > days means the window label would lie. */
+  gainSpanDays: number | null;
   prevGain: number | null;
   followers: number | null;
   followersDelta: number | null;
@@ -80,18 +90,32 @@ const lastAtOrBefore = (series: Point[], day: string): Point | null => {
   return found;
 };
 
+export interface GainResult {
+  gain: number;
+  /** Days between the snapshots (or publish day) the gain was measured over. */
+  spanDays: number;
+}
+
+const dayDiff = (a: string, b: string): number => Math.round((Date.parse(`${a}T00:00:00Z`) - Date.parse(`${b}T00:00:00Z`)) / 86_400_000);
+
 /**
  * Growth of a cumulative counter over (startDay, endDay].
  *  - end value  = last snapshot on/before endDay
  *  - base value = last snapshot on/before startDay; or 0 if the post was born after startDay
- * Returns null when the base cannot be known.
+ * Returns null when the base cannot be known. `spanDays` is the real distance between the two
+ * points, which is longer than the window when the baseline snapshot is old (irregular collection).
  */
-export function windowGain(series: Point[], publishedDay: string, startDay: string, endDay: string): number | null {
+export function windowGainDetail(series: Point[], publishedDay: string, startDay: string, endDay: string): GainResult | null {
   const end = lastAtOrBefore(series, endDay);
-  if (!end) return publishedDay > endDay ? 0 : null; // not born yet vs. simply no data
+  if (!end) return publishedDay > endDay ? { gain: 0, spanDays: 0 } : null; // not born yet vs. simply no data
   const base = lastAtOrBefore(series, startDay);
-  if (base) return Math.max(0, end.value - base.value);
-  return publishedDay > startDay ? Math.max(0, end.value) : null;
+  if (base) return { gain: Math.max(0, end.value - base.value), spanDays: dayDiff(end.day, base.day) };
+  if (publishedDay > startDay) return { gain: Math.max(0, end.value), spanDays: Math.max(0, dayDiff(end.day, publishedDay)) };
+  return null;
+}
+
+export function windowGain(series: Point[], publishedDay: string, startDay: string, endDay: string): number | null {
+  return windowGainDetail(series, publishedDay, startDay, endDay)?.gain ?? null;
 }
 
 const sumOrNull = (xs: (number | null)[]): number | null =>
@@ -101,6 +125,7 @@ export function buildDashboard(
   data: { posts: PostRow[]; snapshots: SnapshotRow[]; accounts: AccountRow[] },
   today: string,
   days: number,
+  signups: SourceCount[] | null = null,
 ): Dashboard {
   const startDay = addDays(today, -days);
   const prevStartDay = addDays(today, -2 * days);
@@ -118,10 +143,13 @@ export function buildDashboard(
     const snaps = (snapsByPost.get(key) ?? []).sort((a, b) => (a.day < b.day ? -1 : 1));
     const series = snaps.filter((s) => s.views !== null).map((s) => ({ day: s.day, value: s.views as number }));
     const publishedDay = post.publishedAt.toISOString().slice(0, 10);
+    const g = windowGainDetail(series, publishedDay, startDay, today);
     views.push({
       post,
       latest: snaps[snaps.length - 1] ?? null,
-      gain: windowGain(series, publishedDay, startDay, today),
+      gain: g?.gain ?? null,
+      gainSpanDays: g?.spanDays ?? null,
+      leads: signups ? leadsForPost(post, signups) : null,
       series,
     });
     prevGains.set(key, windowGain(series, publishedDay, prevStartDay, startDay));
@@ -142,6 +170,7 @@ export function buildDashboard(
       postCount: mine.length,
       totalViews: mine.reduce((s, v) => s + (v.latest?.views ?? 0), 0),
       gain: sumOrNull(mine.map((v) => v.gain)),
+      gainSpanDays: mine.reduce<number | null>((m, v) => (v.gainSpanDays === null ? m : Math.max(m ?? 0, v.gainSpanDays)), null),
       prevGain: sumOrNull(mine.map((v) => prevGains.get(`${v.post.platform}/${v.post.externalId}`) ?? null)),
       followers: latestAcc?.followers ?? null,
       followersDelta:
