@@ -36,20 +36,21 @@ async function getCount() {
 }
 
 /**
- * Registers an email (idempotent). Returns { count, position } or null when no store is configured.
+ * Registers an email (idempotent). Returns { count, position, isNew } or null when no store is configured.
  * `source` (e.g. "youtube:ear16") is kept in a hash next to the set; HSETNX keeps the FIRST touch, so a
  * repeat submit from another platform doesn't overwrite where the person originally came from.
  * Read it back with: HGETALL signup_sources
  */
 async function addSignup(email, source) {
   if (!configured()) return null;
-  const [, rank, n] = await pipeline([
+  const [added, rank, n] = await pipeline([
     ['ZADD', KEY, 'NX', Date.now(), email],
     ['ZRANK', KEY, email],
     ['ZCARD', KEY],
     ['HSETNX', SOURCES_KEY, email, source || 'landing'],
   ]);
-  return { count: n + base(), position: rank + 1 + base() };
+  // ZADD NX returns 1 only when the email was not in the set yet.
+  return { count: n + base(), position: rank + 1 + base(), isNew: added === 1 };
 }
 
 module.exports = { CAP, configured, getCount, addSignup };

@@ -824,14 +824,19 @@
         if (typeof data.position === "number") {
           renderMeter(data.count, data.cap);
           if (data.position <= (data.cap || CAP)) {
-            document.getElementById("okText").innerHTML =
-              "You&rsquo;re founding member <b>#" + data.position + "</b>. Lifetime access is yours &mdash; we&rsquo;ll email you at launch.";
+            document.getElementById("okText").innerHTML = data.duplicate
+              ? "This email is already on the list &mdash; you&rsquo;re founding member <b>#" + data.position + "</b>. No need to sign up again."
+              : "You&rsquo;re founding member <b>#" + data.position + "</b>. Lifetime access is yours &mdash; we&rsquo;ll email you at launch.";
+          } else if (data.duplicate) {
+            document.getElementById("okText").textContent = "This email is already on the list. No need to sign up again.";
           }
+        } else if (data.duplicate) {
+          document.getElementById("okText").textContent = "This email is already on the list. No need to sign up again.";
         }
         form.style.display = "none";
         document.getElementById("fineprint").style.display = "none";
         ok.classList.add("show");
-        track("signup-ok");
+        if (!data.duplicate) track("signup-ok");
       })
       .catch(function () {
         btn.disabled = false;

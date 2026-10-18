@@ -55,6 +55,11 @@ module.exports = async (req, res) => {
   }
   const founding = stored ? { position: stored.position, count: stored.count, cap: CAP } : {};
 
+  // Repeat submit: already on the list, so don't notify or forward it again.
+  if (stored && !stored.isNew) {
+    return res.status(200).json({ ok: true, duplicate: true, ...founding });
+  }
+
   // Simplest path: email the signup to the owner over SMTP (e.g. Gmail + an app password).
   if (process.env.SMTP_USER && process.env.SMTP_PASS) {
     try {
