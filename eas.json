@@ -14,11 +14,13 @@
       "distribution": "internal",
       "ios": { "simulator": false },
       "android": { "buildType": "apk" },
-      "channel": "preview"
+      "channel": "preview",
+      "env": { "EXPO_PUBLIC_API_URL": "https://ear-warrior-api.vercel.app" }
     },
     "production": {
       "distribution": "store",
-      "channel": "production"
+      "channel": "production",
+      "env": { "EXPO_PUBLIC_API_URL": "https://ear-warrior-api.vercel.app" }
     }
   },
   "submit": {

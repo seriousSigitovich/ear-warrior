@@ -16,16 +16,21 @@ const config: ExpoConfig = {
   },
   android: {
     package: 'com.earwarrior.app',
-    permissions: ['RECORD_AUDIO'],
+    // The MVP answers on the on-screen fretboard (R14), so the Android build declares no microphone
+    // access. react-native-pitchy's own manifest adds RECORD_AUDIO, so it is blocked explicitly
+    // (manifest merger `tools:node="remove"`). Restore both with the `mic` input mode (T078).
+    blockedPermissions: ['android.permission.RECORD_AUDIO'],
   },
   plugins: [
     'expo-router',
-    // expo-audio config plugin sets the microphone permission strings (FR-004).
+    // expo-audio config plugin sets the iOS microphone string (FR-004); `recordAudioAndroid: false`
+    // keeps RECORD_AUDIO out of the Android manifest.
     [
       'expo-audio',
       {
         microphonePermission:
           'Ear Warrior listens through your microphone to detect the notes you play on the guitar.',
+        recordAudioAndroid: false,
         enableBackgroundPlayback: false,
       },
     ],
