@@ -44,27 +44,45 @@ function arm(s: V, target: V, upper: number, fore: number, side: 1 | -1): { elbo
 }
 
 const rad = (d: number) => (d * Math.PI) / 180;
-const GA = 24;                                       // guitar tilt, degrees
-const GX = 30, GY = -5;                              // guitar origin in person space
+const GA = 36;                                       // guitar tilt, degrees
+const GX = 0, GY = 14;                             // guitar origin in person space
 const gpt = (x: number, y: number): V => [GX + x * Math.cos(rad(GA)) - y * Math.sin(rad(GA)), GY + x * Math.sin(rad(GA)) + y * Math.cos(rad(GA))];
 /** Point on the neck, u = 0 (body) … 1 (headstock). */
 export const neckPoint = (u: number): V => gpt(-110 - u * 300, 0);
 export const strumPoint = (k: number): V => gpt(55 + 8 * k, -34 * k + 8);
 
+// A classical guitar: waisted body (smaller upper bout, wider lower bout), wide flat neck, slotted headstock with side tuners.
+// Local x: headstock −475 … nut −410 … body joint −118 … tail 168; y symmetric around 0.
+const BODY_HALF = 'M -118 -60 C -112 -86 -80 -92 -52 -88 C -24 -84 -6 -70 14 -69 C 40 -68 58 -108 104 -108 C 148 -108 170 -72 170 0';
+const BODY = `${BODY_HALF} C 170 72 148 108 104 108 C 58 108 40 68 14 69 C -6 70 -24 84 -52 88 C -80 92 -112 86 -118 60 Z`;
 export const GuitarShape: React.FC<{ glow?: number }> = ({ glow = 0 }) => (
   <g>
-    <rect x={-475} y={-15} width={70} height={30} rx={9} fill="#3a2418" />
-    {[0, 1, 2].map((i) => <circle key={i} cx={-450 + i * 20} cy={i === 1 ? -6 : 5} r={4} fill="#cfcfd6" />)}
-    <rect x={-410} y={-17} width={310} height={34} fill="#6b4226" />
-    {Array.from({ length: 9 }, (_, i) => <rect key={i} x={-405 + i * 33 + i * i * 0.4} y={-17} width={3} height={34} fill="#cfcfd6" opacity={0.75} />)}
-    <circle cx={-40} cy={0} r={82} fill="#8f5a2d" />
-    <circle cx={62} cy={0} r={103} fill="#8f5a2d" />
-    <circle cx={-40} cy={0} r={76} fill="#c9894f" />
-    <circle cx={62} cy={0} r={97} fill="#c9894f" />
-    <circle cx={40} cy={0} r={31} fill="#2a1a12" />
-    <circle cx={40} cy={0} r={34} fill="none" stroke="#8f5a2d" strokeWidth={5} />
-    <rect x={112} y={-26} width={14} height={52} rx={5} fill="#3a2418" />
-    {[-9, -3, 3, 9].map((y) => <line key={y} x1={-405} y1={y} x2={118} y2={y} stroke={`rgba(235,235,245,${0.55 + glow * 0.4})`} strokeWidth={1.6} />)}
+    {/* neck + fretboard */}
+    <rect x={-412} y={-20} width={300} height={40} fill="#b8844f" />
+    <rect x={-412} y={-18} width={300} height={36} fill="#3a2418" />
+    {Array.from({ length: 9 }, (_, i) => <rect key={i} x={-405 + i * 33 + i * i * 0.4} y={-18} width={2.6} height={36} fill="#d6d6dd" opacity={0.8} />)}
+    {/* slotted headstock: cheeks, slot, three tuners each side */}
+    <rect x={-478} y={-24} width={70} height={48} rx={10} fill="#4a2c1a" />
+    <rect x={-462} y={-9} width={46} height={18} rx={9} fill="#1b110b" />
+    {[0, 1, 2].map((i) => (
+      <g key={i}>
+        <rect x={-472 + i * 20} y={-35} width={9} height={14} rx={3} fill="#cfcfd6" />
+        <rect x={-472 + i * 20} y={21} width={9} height={14} rx={3} fill="#cfcfd6" />
+      </g>
+    ))}
+    {/* body: rim, top, soft shade on the lower edge, binding line */}
+    <path d={BODY} fill="#7a4a22" transform="translate(0 4)" />
+    <path d={BODY} fill="#e0a860" stroke="#8b5524" strokeWidth={7} strokeLinejoin="round" />
+    <path d={BODY} fill="none" stroke="#f2cf92" strokeWidth={2.5} transform="scale(0.93 0.9) translate(10 0)" opacity={0.7} />
+    {/* sound hole with rosette */}
+    <circle cx={14} cy={0} r={39} fill="none" stroke="#6a3f1d" strokeWidth={4} />
+    <circle cx={14} cy={0} r={33} fill="none" stroke="#f2cf92" strokeWidth={3} />
+    <circle cx={14} cy={0} r={29} fill="#24160e" />
+    {/* bridge */}
+    <rect x={112} y={-34} width={22} height={68} rx={6} fill="#3a2418" />
+    <rect x={112} y={-34} width={22} height={9} rx={4} fill="#5a3a24" />
+    {/* strings */}
+    {[-12, -7.2, -2.4, 2.4, 7.2, 12].map((y, i) => <line key={y} x1={-412} y1={y * 0.9} x2={118} y2={y * 1.25} stroke={`rgba(240,240,250,${0.5 + glow * 0.45})`} strokeWidth={i < 3 ? 1.3 : 1.9} />)}
   </g>
 );
 
@@ -195,29 +213,43 @@ export const Person: React.FC<PersonProps> = (p) => {
     const sp = strumPoint(Math.sin(Math.PI * Math.min(1, p.guitar.strum)));
     rt = [sp[0] + j * 0.4 * nn(3), sp[1] + j * 0.4 * nn(4)];
   }
-  const L = arm(SL, lt, 122, 118, 1), R = arm(SR, rt, 122, 118, -1);
+  // Fretting arm: with a guitar the elbow hangs down and the forearm comes up to the neck from below (not over it).
+  let L = arm(SL, lt, 122, 118, 1);
+  if (p.guitar) {
+    // Fretting arm: the upper arm hangs straight down and the elbow points at the floor; the forearm only swings up to the neck
+    // from below. (A two-bone solve throws the elbow sideways and drags the forearm across the guitar.)
+    L = { elbow: [SL[0] - 22, SL[1] + 120], hand: lt };
+  }
+  let R = arm(SR, rt, 122, 118, -1);
+  if (p.guitar) {
+    // Strumming arm: the upper arm hangs down along the body and the elbow rests on the guitar's upper bout; the forearm only
+    // swings to the strings (a plain two-bone solve throws the elbow out to the side like a wing).
+    const sw = Math.sin(Math.PI * Math.min(1, p.guitar.strum));
+    R = { elbow: [SR[0] + 24 + 4 * sw, SR[1] + 118 - 3 * sw], hand: rt };
+  }
   const sleeveDark = shade(shirt, 0.72);
   const armPath = (a: { elbow: V; hand: V }, s: V) => `M ${s[0]} ${s[1]} L ${a.elbow[0]} ${a.elbow[1]} L ${a.hand[0]} ${a.hand[1]}`;
   const longSleeves = (p.sleeves ?? 'long') === 'long';
-  const drawArm = (a: { elbow: V; hand: V }, s: V, hold: Hold) => {
+  const drawArm = (a: { elbow: V; hand: V }, s: V, hold: Hold, part: 'all' | 'limb' | 'hand' = 'all') => {
     const d = armPath(a, s);
     const shortPath = `M ${s[0]} ${s[1]} L ${s[0] + (a.elbow[0] - s[0]) * 0.55} ${s[1] + (a.elbow[1] - s[1]) * 0.55}`;
+    if (part === 'hand') return <circle cx={a.hand[0]} cy={a.hand[1]} r={25} fill={skin} stroke={shade(skin, 0.8)} strokeWidth={3} />;
     return (
       <g>
         <path d={d} stroke={longSleeves ? sleeveDark : shade(skin, 0.8)} strokeWidth={54} strokeLinecap="round" strokeLinejoin="round" fill="none" />
         <path d={d} stroke={longSleeves ? shirt : skin} strokeWidth={44} strokeLinecap="round" strokeLinejoin="round" fill="none" />
         {!longSleeves && <path d={shortPath} stroke={shirt} strokeWidth={50} strokeLinecap="round" fill="none" />}
-        {hold === 'cup' && (
+        {part === 'all' && hold === 'cup' && (
           <g transform={`translate(${a.hand[0]} ${a.hand[1]})`}>
             <path d="M -19 -52 L 19 -52 L 15 8 L -15 8 Z" fill="#e8445a" /><rect x={-21} y={-58} width={42} height={9} rx={4} fill="#f7f3ff" />
           </g>
         )}
-        {hold === 'phone' && (
+        {part === 'all' && hold === 'phone' && (
           <g transform={`translate(${a.hand[0]} ${a.hand[1] - 10}) rotate(${a.hand[0] < 0 ? 12 : -12})`}>
             <rect x={-24} y={-48} width={48} height={86} rx={9} fill="#14151f" /><rect x={-20} y={-43} width={40} height={74} rx={5} fill="#7e8cff" opacity={0.9} />
           </g>
         )}
-        <circle cx={a.hand[0]} cy={a.hand[1]} r={hold ? 21 : 25} fill={skin} stroke={shade(skin, 0.8)} strokeWidth={3} />
+        {part === 'all' && <circle cx={a.hand[0]} cy={a.hand[1]} r={hold ? 21 : 25} fill={skin} stroke={shade(skin, 0.8)} strokeWidth={3} />}
       </g>
     );
   };
@@ -233,8 +265,10 @@ export const Person: React.FC<PersonProps> = (p) => {
       <path d="M -94 -168 Q -108 -80 -96 140 L 96 140 Q 108 -80 94 -168 Q 44 -198 0 -198 Q -44 -198 -94 -168 Z" fill={shirt} stroke={sleeveDark} strokeWidth={4} />
       <ellipse cx={0} cy={-190} rx={52} ry={16} fill={sleeveDark} />
       <rect x={-21} y={-216} width={42} height={36} rx={14} fill={shade(skin, 0.88)} />
+      {/* fretting arm sits BEHIND the guitar and its neck; only the palm shows on top of the neck */}
+      {p.guitar && drawArm(L, SL, undefined, 'limb')}
       {(p.guitar || p.showGuitar) && <Guitar glow={p.guitar?.glow} />}
-      {drawArm(L, SL, p.guitar ? undefined : p.leftHold)}
+      {p.guitar ? drawArm(L, SL, undefined, 'hand') : drawArm(L, SL, p.leftHold)}
       {drawArm(R, SR, p.guitar ? undefined : p.rightHold)}
       {/* head */}
       <g transform="translate(0 -262)">
