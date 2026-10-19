@@ -24,6 +24,13 @@ test('buildYoutube: title, description with tracking link, #Shorts and hashtags;
   assert.deepEqual(y.tags, ['guitar', 'eartraining']);
 });
 
+test('buildYoutube with short: false is a regular video — no #Shorts hashtag', () => {
+  const y = buildYoutube({ title: 'T', description: 'D', tags: ['guitar'], videoNo: 45, short: false });
+  assert.doesNotMatch(y.description, /#Shorts/);
+  assert.match(y.description, /#guitar$/);
+  assert.match(y.description, /utm_campaign=ear45/);
+});
+
 test('buildYoutube refuses over-long titles and empty titles, naming the limit', () => {
   assert.throws(() => buildYoutube({ title: 'x'.repeat(101), description: 'd', tags: [], videoNo: 1 }), (e: Error) => e instanceof PublishError && /101/.test(e.message) && /100/.test(e.message));
   assert.throws(() => buildYoutube({ title: '  ', description: 'd', tags: [], videoNo: 1 }), /title/i);

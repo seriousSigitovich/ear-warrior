@@ -48,13 +48,17 @@ export function parseProbe(json: unknown): Probe {
 }
 
 /** Plain-language problems that would make `platform` reject or mishandle the file; [] = fine. */
-export function validateForPlatform(p: Probe, platform: PlatformName): string[] {
+export function validateForPlatform(p: Probe, platform: PlatformName, opts: { longForm?: boolean } = {}): string[] {
   const problems: string[] = [];
   const ratio = p.height > 0 ? p.width / p.height : 0;
-  if (!(ratio >= 0.5 && ratio <= 0.6)) problems.push(`not vertical 9:16 (${p.width}x${p.height})`);
+  // YouTube turns anything vertical or square and up to 3 minutes into a Short, so a regular (long-form) video must be wide.
+  const longForm = platform === 'youtube' && opts.longForm === true;
+  if (longForm) {
+    if (ratio < 1.6) problems.push(`not horizontal 16:9 (${p.width}x${p.height}) — YouTube would make it a Short`);
+  } else if (!(ratio >= 0.5 && ratio <= 0.6)) problems.push(`not vertical 9:16 (${p.width}x${p.height})`);
   if (p.videoCodec !== 'h264') problems.push(`video codec is ${p.videoCodec ?? 'unknown'}, need H.264`);
   if (p.audioCodec !== null && p.audioCodec !== 'aac') problems.push(`audio codec is ${p.audioCodec}, need AAC`);
-  if (platform === 'youtube' && p.durationS > MAX_SECONDS) {
+  if (platform === 'youtube' && !longForm && p.durationS > MAX_SECONDS) {
     problems.push(`${Math.round(p.durationS)} s is longer than 3 minutes — not a Short`);
   }
   if (platform === 'instagram') {

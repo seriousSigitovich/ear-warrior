@@ -36,6 +36,7 @@ const OPTIONS = {
   confirm: { type: 'boolean', default: false },
   'no-publish': { type: 'boolean', default: false },
   force: { type: 'boolean', default: false },
+  long: { type: 'boolean', default: false },
 } as const;
 
 const NAMES: Record<PlatformName, string> = { youtube: 'YouTube', instagram: 'Instagram' };
@@ -78,6 +79,10 @@ async function run(values: ReturnType<typeof parseArgs<{ options: typeof OPTIONS
     out(`✗ --platforms must be a comma list of youtube, instagram (got "${values.platforms}")`);
     return 2;
   }
+  if (values.long && platforms.some((p) => p !== 'youtube')) {
+    out('✗ --long is a regular (16:9) YouTube video; publish the vertical file to Instagram in a separate run (--platforms instagram)');
+    return 2;
+  }
   if (platforms.includes('youtube') && !values.title) {
     out('✗ --title is required for YouTube');
     return 2;
@@ -94,10 +99,10 @@ async function run(values: ReturnType<typeof parseArgs<{ options: typeof OPTIONS
 
   const planned: Planned[] = [];
   for (const platform of platforms) {
-    const plan: Planned = { platform, blocked: validateForPlatform(probe, platform) };
+    const plan: Planned = { platform, blocked: validateForPlatform(probe, platform, { longForm: values.long }) };
     try {
       if (platform === 'youtube') {
-        plan.youtube = buildYoutube({ title: values.title ?? '', description: values.description ?? '', tags, videoNo });
+        plan.youtube = buildYoutube({ title: values.title ?? '', description: values.description ?? '', tags, videoNo, short: !values.long });
       } else {
         plan.instagram = buildInstagram({ caption: values.caption ?? values.description ?? '', tags });
       }
@@ -108,7 +113,7 @@ async function run(values: ReturnType<typeof parseArgs<{ options: typeof OPTIONS
     if (prior && !values.force) plan.blocked.push(`already published: ${prior.url} (use --force to publish again)`);
     planned.push(plan);
 
-    out(`── ${NAMES[platform]} (${platform === 'youtube' ? 'Short, uploaded private' : values['no-publish'] ? 'Reel, stage only' : 'Reel'})`);
+    out(`── ${NAMES[platform]} (${platform === 'youtube' ? (values.long ? 'regular video, uploaded private' : 'Short, uploaded private') : values['no-publish'] ? 'Reel, stage only' : 'Reel'})`);
     if (plan.youtube) {
       out(`   title: ${plan.youtube.title}`);
       out(`   description:\n${indent(plan.youtube.description, '     ')}`);
@@ -133,7 +138,7 @@ async function run(values: ReturnType<typeof parseArgs<{ options: typeof OPTIONS
       if (plan.platform === 'youtube' && plan.youtube) {
         const r = await uploadToYoutube(
           { fetchFn: deps.fetchFn, env: deps.env },
-          { bytes, title: plan.youtube.title, description: plan.youtube.description, tags: plan.youtube.tags, categoryId: values.category },
+          { bytes, title: plan.youtube.title, description: plan.youtube.description, tags: plan.youtube.tags, categoryId: values.category, short: !values.long },
         );
         addEntry(deps.ledgerPath, { file: rel, videoNo, platform: 'youtube', postId: r.id, url: r.url, visibility: 'private', title: plan.youtube.title, publishedAt: deps.now().toISOString() });
         out(`✓ YouTube: ${r.url} (uploaded PRIVATE — publish it in Studio: ${r.studioUrl})`);

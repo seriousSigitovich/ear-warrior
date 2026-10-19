@@ -79,3 +79,13 @@ test('a rejected refresh token is explained', async () => {
   const h = harness([[/oauth2\.googleapis\.com\/token/, () => json({ error: 'invalid_grant', error_description: 'Token has been expired or revoked.' }, { status: 400 })]]);
   await assert.rejects(uploadToYoutube({ fetchFn: h.fetchFn, env }, meta), /expired or revoked/);
 });
+
+test('a regular (non-Short) upload links to the watch page', async () => {
+  const h = harness([
+    [/oauth2\.googleapis\.com\/token/, () => json({ access_token: 'AT' })],
+    [/upload\/youtube\/v3\/videos/, () => new Response('', { status: 200, headers: { location: 'https://upload.example/session/2' } })],
+    [/upload\.example\/session\/2/, () => json({ id: 'vid43' })],
+  ]);
+  const r = await uploadToYoutube({ fetchFn: h.fetchFn, env }, { ...meta, short: false });
+  assert.equal(r.url, 'https://www.youtube.com/watch?v=vid43');
+});

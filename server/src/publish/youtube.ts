@@ -18,6 +18,8 @@ export interface YoutubeUpload {
   tags: string[];
   /** 10 = Music, 27 = Education. */
   categoryId?: string;
+  /** false = a regular watch page link instead of /shorts/. Default true. */
+  short?: boolean;
 }
 
 export interface YoutubeResult {
@@ -73,5 +75,5 @@ export async function uploadToYoutube(ctx: YoutubeContext, p: YoutubeUpload): Pr
   });
   const id = (done.body as { id?: string } | null)?.id;
   if (!id) throw new PublishError('YouTube accepted the upload but returned no video id');
-  return { id, url: `https://www.youtube.com/shorts/${id}`, studioUrl: `https://studio.youtube.com/video/${id}/edit` };
+  return { id, url: p.short === false ? `https://www.youtube.com/watch?v=${id}` : `https://www.youtube.com/shorts/${id}`, studioUrl: `https://studio.youtube.com/video/${id}/edit` };
 }

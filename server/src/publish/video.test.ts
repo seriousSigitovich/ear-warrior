@@ -52,3 +52,11 @@ test('Instagram refuses files over 100 MB, YouTube does not', () => {
   assert.ok(validateForPlatform(big, 'instagram').some((m) => /100 MB/.test(m)));
   assert.deepEqual(validateForPlatform(big, 'youtube'), []);
 });
+
+test('long-form YouTube wants a wide picture and has no 3-minute limit; Shorts rules are unchanged', () => {
+  const wide: Probe = { ...good, width: 1920, height: 1080, durationS: 600 };
+  assert.deepEqual(validateForPlatform(wide, 'youtube', { longForm: true }), []);
+  assert.ok(validateForPlatform(good, 'youtube', { longForm: true }).some((m) => /not horizontal/i.test(m)));
+  assert.ok(validateForPlatform(wide, 'youtube').some((m) => /not vertical/i.test(m)));
+  assert.ok(validateForPlatform(wide, 'instagram', { longForm: true }).some((m) => /not vertical/i.test(m)));
+});

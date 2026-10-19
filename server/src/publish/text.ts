@@ -32,13 +32,15 @@ export function utmUrl(p: { platform: PlatformName; videoNo: number | null; cont
   return `${SITE}?${q}`;
 }
 
-export function buildYoutube(p: { title: string; description: string; tags: string[]; videoNo: number | null }) {
+/** `short: false` is a regular long-form video: no #Shorts hashtag. */
+export function buildYoutube(p: { title: string; description: string; tags: string[]; videoNo: number | null; short?: boolean }) {
   const title = p.title.trim();
   if (!title) throw new PublishError('YouTube title is empty');
   if (title.length > YT_TITLE_MAX) throw new PublishError(`YouTube title is ${title.length} characters; the limit is ${YT_TITLE_MAX}`);
 
-  const tags = normalizeTags(['Shorts', ...p.tags]).filter((t) => t.toLowerCase() !== 'shorts');
-  const hashtags = ['Shorts', ...tags];
+  const isShort = p.short !== false;
+  const tags = normalizeTags(isShort ? ['Shorts', ...p.tags] : p.tags).filter((t) => t.toLowerCase() !== 'shorts');
+  const hashtags = isShort ? ['Shorts', ...tags] : tags;
   if (hashtags.length > YT_HASHTAGS_MAX) {
     throw new PublishError(`YouTube ignores all hashtags when a video has more than ${YT_HASHTAGS_MAX}; this one has ${hashtags.length}`);
   }
