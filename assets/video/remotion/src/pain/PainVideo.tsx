@@ -1,7 +1,8 @@
 // "Tabs guy" — 60 s animated sketch. One timeline (../../pain/story.mjs) drives the soundtrack and every frame here.
 // All coordinates are scene space (1080×1920); the camera shifts/zooms the scene group, the lower panel and the text sit on top of it.
 import React from 'react';
-import { AbsoluteFill, Audio, Sequence, spring, staticFile, useCurrentFrame, useVideoConfig } from 'remotion';
+import { AbsoluteFill, Audio, spring, staticFile, useVideoConfig } from 'remotion';
+import { ClockProvider, Seq, useCurrentFrame, useFx } from '../clock';
 import { C, alpha, FONT } from '../theme';
 import { clamp, easeInOut, easeOut, lerp } from '../util';
 import { Background } from '../Background';
@@ -15,6 +16,7 @@ import { Person, GuitarShape, GUITAR_POSE, type Mood, type V, type PersonProps }
 import { RoomBg, RoomFront, PartyBg } from './Rooms';
 import { Bubble, TabScreen, PhoneCard, SearchPhone, Floaters, Chip, Caption } from './Items';
 import { Inset } from './Inset';
+import { srcAt } from '../../pain/cut.mjs';
 
 void AT;
 const FPS = 60;
@@ -120,11 +122,21 @@ function guitarProp(t: number): { x: number; y: number; rot: number; s: number }
 const PartyScene: React.FC<{ t: number }> = ({ t }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
+  const fx = useFx();
   const sp = (at: number, cfg = { damping: 13, stiffness: 190, mass: 0.8 }) => spring({ frame: frame - at * fps, fps, config: cfg });
 
   // camera: slide up when the panel arrives, slow push-in during the fail
   const camY = -170 * smooth(16.5, 17.3, t);
-  const push = 1 + 0.08 * smooth(17, 37, t) - 0.08 * smooth(39.5, 41.5, t);
+  const push = 1 + 0.08 * smooth(17, 37, t) - 0.08 * smooth(39.5, 41.5, t) + (fx ? 0.06 * smooth(43.5, 50.5, t) : 0);
+  // cut only: a wrong note punches the camera in on the loser's face (with a shake), then lets go; the grade goes cold, then warm
+  const lastWrong = WRONG_AT.filter((w) => t >= w).pop();
+  const wd = lastWrong === undefined ? 9 : t - lastWrong;
+  const zoomK = fx && wd < 1.4 ? Math.min(1, wd / 0.07) * Math.exp(-Math.max(0, wd - 0.07) * 2.8) : 0;
+  const shakeK = fx && wd < 0.6 ? Math.exp(-wd * 8) : 0;
+  const shx = Math.sin(t * 95) * 9 * shakeK, shy = Math.cos(t * 83) * 7 * shakeK;
+  const pv = tabPos(t), pvx = pv[0], pvy = pv[1] - 230 * pv[2];
+  const cold = fx ? smooth(17, 18.5, t) * (1 - smooth(39.5, 41, t)) : 0;
+  const warm = fx ? smooth(41.5, 44, t) : 0;
   const panel = smooth(16.6, 17.3, t);
 
   // --- main characters
@@ -148,6 +160,7 @@ const PartyScene: React.FC<{ t: number }> = ({ t }) => {
   if (t >= 20 && t < 37) tabSweat = (((t - 20) * 0.45) % 1);
   if (t >= 36.0 && t < 39.6) { tabMood = 'sad'; tabLook = [0.4, 0.9]; tabSweat = 0; }
   if (t >= 39.6) { tabMood = 'sad'; tabLook = [0, 0.9]; tabSweat = 0; }
+  if (fx && t >= 45.3) { tabMood = 'worry'; tabLook = [1, 0.35]; }                 // his search finds nothing: he turns away
   const failHand = handFor(ATTEMPTS, t);
   const frozen = t > 33.8 && t < 34.9;
   const jitter = t >= T.fail && t < 37 ? 3 + 7 * Math.abs(Math.sin(t * 0.7)) + (frozen ? 6 : 0) : 0;
@@ -231,8 +244,9 @@ const PartyScene: React.FC<{ t: number }> = ({ t }) => {
 
   return (
     <>
-      <svg width={1080} height={1920} style={{ position: 'absolute', inset: 0 }}>
+      <svg width={1080} height={1920} style={{ position: 'absolute', inset: 0, filter: fx ? `saturate(${1 - 0.35 * cold + 0.3 * warm}) brightness(${1 - 0.1 * cold + 0.04 * warm})` : undefined }}>
         <g transform={`translate(0 ${camY}) translate(540 900) scale(${push}) translate(-540 -900)`}>
+          <g transform={`translate(${shx} ${shy}) translate(${pvx} ${pvy}) scale(${1 + 0.2 * zoomK}) translate(${-pvx} ${-pvy})`}>
           <PartyBg t={t} />
           {items.map((it, i) => <g key={i}>{it.node}</g>)}
           {/* the standing / travelling guitar */}
@@ -253,11 +267,12 @@ const PartyScene: React.FC<{ t: number }> = ({ t }) => {
           })}
           {t >= 41 && t < 42.6 && <Floaters t={t} t0={41} t1={42.4} cx={qp[0] - 140} cy={qp[1] - 262 * qp[2] - 20} spread={40} every={0.35} kind="note" rise={160} size={0.9} />}
           {/* the loser googles it */}
-          <SearchPhone cx={925} cy={640} p={t >= 43.8 && t < 52.5 ? sp(43.8) : 0} text={t < 44.4 ? 'ode to jo|' : t < 45.2 ? 'ode to joy ta|' : 'ode to joy tab'} />
+          <SearchPhone cx={925} cy={640} p={t >= 43.8 && t < 52.5 ? sp(43.8) : 0} text={t < 44.4 ? 'ode to jo|' : t < 45.2 ? 'ode to joy ta|' : 'ode to joy tab'} status={fx && t >= 45.7 ? 'No signal' : undefined} />
           <Floaters t={t} t0={43} t1={53} cx={qp[0] + 30} cy={qp[1] - 250 * qp[2]} spread={170} every={0.42} kind="note" rise={420} size={1.1} />
           {hearts && <Floaters t={t} t0={46.4} t1={53} cx={300} cy={820} spread={90} every={0.5} kind="heart" rise={260} />}
           {hearts && <Floaters t={t} t0={46.9} t1={53} cx={790} cy={830} spread={90} every={0.5} kind="heart" rise={260} />}
           <Dim o={dim} />
+          </g>
         </g>
         <PhoneCard cx={540} cy={820} p={t >= T.phone && t < 16.3 ? Math.min(sp(T.phone), clamp((16.3 - t) / 0.25)) : 0} t={t} />
         {/* lower panel */}
@@ -266,14 +281,35 @@ const PartyScene: React.FC<{ t: number }> = ({ t }) => {
           <rect x={0} y={1310} width={1080} height={4} fill={alpha(C.accent3, 0.45)} />
         </g>
       </svg>
+      {fx && <Grade t={t} cold={cold} warm={warm} />}
       <PartyHud t={t} panel={panel} />
     </>
+  );
+};
+
+/** Cut only: cold vignette while he fails, a warm spotlight and swinging party lights once the quiet guy plays. */
+const Grade: React.FC<{ t: number; cold: number; warm: number }> = ({ t, cold, warm }) => {
+  const lights = warm * clamp((t - 46.0) / 1.2);
+  const beat = Math.exp(-((t % 0.5) / 0.5) * 5);
+  return (
+    <div style={{ position: 'absolute', left: 0, top: 0, width: 1080, height: 1310, pointerEvents: 'none', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', inset: 0, background: `radial-gradient(ellipse 760px 760px at 50% 62%, rgba(255,184,107,${0.2 * warm}) 0%, transparent 70%)`, mixBlendMode: 'screen' }} />
+      <div style={{ position: 'absolute', inset: 0, background: `radial-gradient(ellipse 80% 70% at 50% 58%, transparent 40%, rgba(6,5,18,${0.42 * cold + 0.22 * warm}) 100%)` }} />
+      {lights > 0.01 && [0, 1].map((i) => (
+        <div key={i} style={{ position: 'absolute', left: i ? 600 + 120 * Math.sin(t * 2.3 + 1) : -120 + 120 * Math.sin(t * 1.9), top: -160, width: 560, height: 960, mixBlendMode: 'screen', transform: `rotate(${i ? -14 : 14}deg)`,
+          background: `radial-gradient(closest-side, ${i ? 'rgba(90,220,255,' : 'rgba(255,90,170,'}${0.34 * lights * (0.65 + 0.35 * beat)}) 0%, transparent 100%)` }} />
+      ))}
+    </div>
   );
 };
 
 const PartyHud: React.FC<{ t: number; panel: number }> = ({ t, panel }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
+  const fx = useFx();
+  const lastW = last(WRONG_AT.filter((w) => t >= w));
+  const kickW = fx && lastW !== undefined ? 1.1 * Math.exp(-(t - lastW) * 7) : 0;
+  const crowdPct = Math.round(100 * easeOut(clamp((t - 43.2) / 6.4)));
   const pop = (at: number) => spring({ frame: frame - at * fps, fps, config: { damping: 12, stiffness: 220 } });
   const restarts = RESTARTS.filter((r) => t >= r).length;
   const wrongs = WRONG_AT.filter((w) => t >= w).length;
@@ -294,18 +330,20 @@ const PartyHud: React.FC<{ t: number; panel: number }> = ({ t, panel }) => {
           <Caption lines={['The notes were *right there.*']} from={25.5} to={35.8} top={1344} size={56} />
           <Caption lines={['…']} from={T.silence + 0.3} to={T.quiet - 0.2} top={1332} size={96} />
           <Caption lines={['He didn’t read it.']} from={T.quiet + 0.4} to={45.6} top={1344} size={64} />
-          <Caption lines={['He *heard* it.']} from={45.8} to={T.end - 0.15} top={1344} size={74} />
+          <Caption lines={['He *heard* it.']} from={45.8} to={fx ? 47.0 : T.end - 0.15} top={1344} size={74} />
+          {fx && <Caption lines={['The room *lights up.*']} from={47.1} to={50.9} top={1344} size={64} />}
           <Inset x={(1080 - 920 * 0.4) / 2} y={1450} k={0.4} t={t} notes={board} dim={dim} hold={quietMode ? 0.55 : 0.85} />
           {(inFail || t >= T.silence) && !quietMode && (
             <>
               <Chip x={24} y={1490} w={340} label="Restarts" value={String(restarts)} pop={pop(RESTARTS[0] - 0.4)} color={C.accent4} />
-              <Chip x={716} y={1490} w={340} label="Wrong notes" value={String(wrongs)} color="#ff7a8d" pop={pop(WRONG_AT[0])} />
+              <Chip x={716} y={1490} w={340} label="Wrong notes" value={String(wrongs)} color="#ff7a8d" pop={pop(WRONG_AT[0]) + kickW} />
             </>
           )}
           {quietMode && (
             <>
               <Chip x={24} y={1490} w={340} label="Tabs used" value="0" pop={pop(T.quiet + 0.2)} color={C.accent3} />
               <Chip x={716} y={1490} w={340} label="Wrong notes" value="0" pop={pop(T.quiet + 0.4)} color={C.accent3} />
+              {fx && <Chip x={270} y={120} w={540} label="Crowd energy" value={`${crowdPct}%`} color="#8dffb4" pop={pop(43.0)} />}
             </>
           )}
         </>
@@ -320,15 +358,17 @@ const PartyHud: React.FC<{ t: number; panel: number }> = ({ t, panel }) => {
 const EndCard: React.FC<{ t: number }> = ({ t }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
+  const fx = useFx();
   const sp = (at: number) => spring({ frame: frame - (T.end + at) * fps, fps, config: { damping: 14, stiffness: 190, mass: 0.85 } });
-  const l2 = sp(2.0), cta = sp(3.8), url = sp(4.1), tag = sp(4.5);
+  const l2 = sp(2.0), cta = sp(3.8), url = sp(fx ? END_CHORD_AT - T.end - 0.05 : 4.1), tag = sp(4.5);
+  const hit = fx ? Math.exp(-Math.max(0, t - END_CHORD_AT) * 9) : 0;                       // the URL lands on the resolving chord
   const done = clamp((t - END_CHORD_AT) / 0.25);
   return (
     <AbsoluteFill>
       <Background beat={0.5} brand="EAR WARRIOR" />
-      <Sequence from={Math.round(T.end * FPS)} durationInFrames={Math.round(7 * FPS)}>
+      <Seq from={Math.round(T.end * FPS)} durationInFrames={Math.round(7 * FPS)}>
         <Headline lines={['Play what you', '*hear.*']} top={190} size={112} />
-      </Sequence>
+      </Seq>
       <div style={{ position: 'absolute', left: 80, right: 80, top: 450, fontFamily: FONT, fontSize: 62, fontWeight: 600, letterSpacing: -1.5, color: alpha(C.text, 0.62), opacity: clamp(l2 * 1.5), transform: `translateY(${(1 - l2) * 40}px)` }}>
         Not just what you <span style={{ textDecoration: 'line-through', textDecorationColor: alpha(C.accent3, 0.9), textDecorationThickness: 5 }}>read.</span>
       </div>
@@ -338,7 +378,7 @@ const EndCard: React.FC<{ t: number }> = ({ t }) => {
       </div>
       <div style={{ position: 'absolute', left: 0, right: 0, top: 1360, textAlign: 'center', fontFamily: FONT }}>
         <div style={{ display: 'inline-block', padding: '16px 44px', borderRadius: 60, background: `linear-gradient(90deg, ${C.accent3}, ${C.accent})`, color: C.bg, fontSize: 48, fontWeight: 700, letterSpacing: 1, opacity: clamp(cta * 1.5), transform: `scale(${0.7 + 0.3 * cta})` }}>Early access</div>
-        <div style={{ marginTop: 28, fontSize: 98, fontWeight: 650, letterSpacing: -3, color: C.text, opacity: clamp(url * 1.5), transform: `translateY(${(1 - url) * 40}px)`, textShadow: `0 0 50px ${alpha(C.accent, 0.7)}` }}>
+        <div style={{ marginTop: 28, fontSize: 98, fontWeight: 650, letterSpacing: -3, color: C.text, opacity: clamp(url * 1.5), transform: `translateY(${(1 - url) * 40}px) scale(${1 + 0.1 * hit})`, textShadow: `0 0 50px ${alpha(C.accent, 0.7)}` }}>
           <Rich text="ear*warrior*.app" />
         </div>
         <div style={{ marginTop: 18, fontSize: 40, color: alpha(C.text, 0.68), opacity: clamp(tag * 1.5) }}>Play it by ear. On guitar.</div>
@@ -348,17 +388,17 @@ const EndCard: React.FC<{ t: number }> = ({ t }) => {
 };
 
 // ===================================================================================================================================
-export const PainVideo: React.FC = () => {
+export const PainVideo: React.FC<{ silent?: boolean }> = ({ silent }) => {
   const frame = useCurrentFrame();
   const t = frame / FPS;
   return (
     <AbsoluteFill style={{ background: C.bg }}>
-      <Audio src={staticFile('ear-pain.wav')} />
+      {!silent && <Audio src={staticFile('ear-pain.wav')} />}
       {t < T.party && <RoomScene t={t} />}
       {t >= T.party && t < T.end && <PartyScene t={t} />}
       {t >= T.end && <EndCard t={t} />}
-      <Sequence from={0} durationInFrames={Math.round(T.hookSplit * FPS)}><Headline lines={['7 years', 'of *guitar.*']} instant top={190} size={112} /></Sequence>
-      <Sequence from={Math.round(T.hookSplit * FPS)} durationInFrames={Math.round((T.legend - T.hookSplit) * FPS)}><Headline lines={['*Zero* songs', 'without tabs.']} top={190} size={112} /></Sequence>
+      <Seq from={0} durationInFrames={Math.round(T.hookSplit * FPS)}><Headline lines={['7 years', 'of *guitar.*']} instant top={190} size={112} /></Seq>
+      <Seq from={Math.round(T.hookSplit * FPS)} durationInFrames={Math.round((T.legend - T.hookSplit) * FPS)}><Headline lines={['*Zero* songs', 'without tabs.']} top={190} size={112} /></Seq>
       <Caption lines={['With tabs:', 'a *legend.*']} from={T.legend + 0.15} to={T.party - 0.15} top={1545} size={88} />
       <Wipe at={T.party * FPS} />
       <Wipe at={T.end * FPS} />
@@ -366,3 +406,13 @@ export const PainVideo: React.FC = () => {
   );
 };
 void QUIET_CHORD_AT;
+
+/** The short cut (pain/cut.mjs): the same 60 s picture played through a clock that speeds up and jumps (src/clock.tsx). */
+export const PainCut: React.FC = () => (
+  <AbsoluteFill style={{ background: C.bg }}>
+    <Audio src={staticFile('ear-pain-cut.wav')} />
+    <ClockProvider warp={(f) => srcAt(f / FPS) * FPS} fx>
+      <PainVideo silent />
+    </ClockProvider>
+  </AbsoluteFill>
+);

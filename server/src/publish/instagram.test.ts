@@ -101,3 +101,14 @@ test('API errors surface the platform message without the token', async () => {
     return true;
   });
 });
+
+test('a cover image is passed to Instagram as cover_url; without one the field is absent', async () => {
+  const withCover = happy(['FINISHED']);
+  await publishReel({ fetchFn: withCover.fetchFn, env, sleep: noSleep }, { videoUrl, coverUrl: 'https://blob.example/publish/cover-Xy.jpg', caption: 'c', publish: false });
+  const form = new URLSearchParams(String(withCover.calls.find((c) => /\/me\/media$/.test(c.url))!.body));
+  assert.equal(form.get('cover_url'), 'https://blob.example/publish/cover-Xy.jpg');
+
+  const without = happy(['FINISHED']);
+  await publishReel({ fetchFn: without.fetchFn, env, sleep: noSleep }, { videoUrl, caption: 'c', publish: false });
+  assert.equal(new URLSearchParams(String(without.calls.find((c) => /\/me\/media$/.test(c.url))!.body)).get('cover_url'), null);
+});

@@ -30,6 +30,7 @@ const OPTIONS = {
   title: { type: 'string' },
   description: { type: 'string' },
   caption: { type: 'string' },
+  cover: { type: 'string' },
   tags: { type: 'string' },
   'video-no': { type: 'string' },
   category: { type: 'string' },
@@ -93,6 +94,7 @@ async function run(values: ReturnType<typeof parseArgs<{ options: typeof OPTIONS
   const probe = await deps.probe(abs);
   const videoNo = values['video-no'] ? Number(values['video-no']) : videoNoFromFile(abs);
   const tags = normalizeTags(values.tags);
+  const coverAbs = values.cover ? resolve(values.cover) : undefined;
   const ledger = loadLedger(deps.ledgerPath);
 
   out(`Video: ${rel} (${probe.durationS.toFixed(1)} s, ${probe.width}x${probe.height}, ${probe.videoCodec}/${probe.audioCodec ?? 'no audio'}, ${(probe.sizeBytes / 1024 / 1024).toFixed(1)} MB)${videoNo !== null ? ` — experiment #${videoNo}` : ''}`);
@@ -109,6 +111,7 @@ async function run(values: ReturnType<typeof parseArgs<{ options: typeof OPTIONS
     } catch (err) {
       plan.blocked.push((err as Error).message);
     }
+    if (platform === 'instagram' && coverAbs && !/\.jpe?g$/i.test(coverAbs)) plan.blocked.push('--cover must be a JPEG (.jpg) — Instagram takes JPEG covers only');
     const prior = findEntry(ledger, rel, platform);
     if (prior && !values.force) plan.blocked.push(`already published: ${prior.url} (use --force to publish again)`);
     planned.push(plan);
@@ -120,6 +123,8 @@ async function run(values: ReturnType<typeof parseArgs<{ options: typeof OPTIONS
       out(`   tags: ${plan.youtube.tags.join(', ') || '(none)'}`);
     }
     if (plan.instagram) out(`   caption:\n${indent(plan.instagram.caption, '     ')}`);
+    if (platform === 'instagram' && coverAbs) out(`   cover: ${relativeFile(coverAbs, deps.repoRoot)}`);
+    if (platform === 'youtube' && coverAbs) out('   (the cover is Instagram only — set a Shorts thumbnail in Studio)');
     for (const b of plan.blocked) out(`   ✗ ${b}`);
     if (plan.blocked.length === 0) out('   ✓ ready');
   }
@@ -146,11 +151,12 @@ async function run(values: ReturnType<typeof parseArgs<{ options: typeof OPTIONS
         const publish = !values['no-publish'];
         // Meta downloads the video from a temporary public copy; take it down whatever happens.
         const hosted = await deps.host(bytes, rel.split('/').pop() ?? 'video.mp4');
+        const cover = coverAbs ? await deps.host(await deps.readFile(coverAbs), coverAbs.split('/').pop() ?? 'cover.jpg', 'image/jpeg').catch(async (e) => { await hosted.remove().catch(() => {}); throw e; }) : undefined;
         let r;
         try {
-          r = await publishReel({ fetchFn: deps.fetchFn, env: deps.env, sleep: deps.sleep }, { videoUrl: hosted.url, caption: plan.instagram.caption, publish });
+          r = await publishReel({ fetchFn: deps.fetchFn, env: deps.env, sleep: deps.sleep }, { videoUrl: hosted.url, coverUrl: cover?.url, caption: plan.instagram.caption, publish });
         } finally {
-          await hosted.remove().catch(() => out('   (could not delete the temporary copy — remove it from the Blob store)'));
+          for (const h of [hosted, cover]) await h?.remove().catch(() => out('   (could not delete a temporary copy — remove it from the Blob store)'));
         }
         if (!publish || !r.mediaId) {
           out(`✓ Instagram: staged (not published) — container ${r.containerId} is uploaded and processed`);

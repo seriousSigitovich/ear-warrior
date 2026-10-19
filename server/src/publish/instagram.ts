@@ -21,6 +21,8 @@ export interface ReelUpload {
   /** Public https address Meta can download the video from (temporary). */
   videoUrl: string;
   caption: string;
+  /** Public https address of the cover image (JPEG) shown for the Reel; omitted = Instagram picks a frame. */
+  coverUrl?: string;
   /** false = stage only: upload and process, but do not publish. */
   publish: boolean;
 }
@@ -53,6 +55,7 @@ export async function publishReel(ctx: InstagramContext, p: ReelUpload): Promise
       video_url: p.videoUrl,
       share_to_feed: 'true',
       caption: p.caption,
+      ...(p.coverUrl ? { cover_url: p.coverUrl } : {}),
       access_token: token,
     }),
   });

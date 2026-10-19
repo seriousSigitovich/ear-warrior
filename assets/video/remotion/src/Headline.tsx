@@ -1,5 +1,6 @@
 import React from 'react';
-import { spring, useCurrentFrame, useVideoConfig } from 'remotion';
+import { spring, useVideoConfig } from 'remotion';
+import { useCurrentFrame } from './clock';
 import { C, alpha, FONT } from './theme';
 import { clamp } from './util';
 

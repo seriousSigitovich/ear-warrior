@@ -9,8 +9,8 @@ export interface TempHosted {
   remove: () => Promise<void>;
 }
 
-/** Uploads `bytes` and returns where Meta can fetch them, plus a way to take the copy down. */
-export type TempHost = (bytes: Uint8Array, name: string) => Promise<TempHosted>;
+/** Uploads `bytes` (a video unless `contentType` says otherwise, e.g. the Reel cover) and returns where Meta can fetch them, plus a way to take the copy down. */
+export type TempHost = (bytes: Uint8Array, name: string, contentType?: string) => Promise<TempHosted>;
 
 /** The slice of @vercel/blob this module uses (injectable so tests need no network). */
 export interface BlobApi {
@@ -40,7 +40,7 @@ async function sweep(api: BlobApi, token: string, now: number): Promise<void> {
 }
 
 export function blobHost(env: Record<string, string | undefined>, api: BlobApi = realApi, now: () => number = Date.now): TempHost {
-  return async (bytes, name) => {
+  return async (bytes, name, contentType = 'video/mp4') => {
     const token = env.BLOB_READ_WRITE_TOKEN;
     if (!token) {
       throw new PublishError(
@@ -49,7 +49,7 @@ export function blobHost(env: Record<string, string | undefined>, api: BlobApi =
       );
     }
     await sweep(api, token, now());
-    const blob = await api.put(`${PREFIX}${name}`, Buffer.from(bytes), { access: 'public', addRandomSuffix: true, contentType: 'video/mp4', token });
+    const blob = await api.put(`${PREFIX}${name}`, Buffer.from(bytes), { access: 'public', addRandomSuffix: true, contentType, token });
     return { url: blob.url, remove: () => api.del(blob.url, { token }) };
   };
 }

@@ -41,15 +41,18 @@ function platforms(fail?: 'youtube' | 'instagram') {
 const hostSpy = {
   uploaded: 0,
   removed: 0,
-  host: async () => {
+  types: [] as string[],
+  host: async (_bytes: Uint8Array, _name: string, contentType = 'video/mp4') => {
     hostSpy.uploaded++;
-    return { url: 'https://blob.example/publish/x.mp4', remove: async () => void hostSpy.removed++ };
+    hostSpy.types.push(contentType);
+    return { url: `https://blob.example/publish/x${hostSpy.uploaded}`, remove: async () => void hostSpy.removed++ };
   },
 };
 
 function setup(over: Partial<Deps> = {}) {
   hostSpy.uploaded = 0;
   hostSpy.removed = 0;
+  hostSpy.types = [];
   const dir = mkdtempSync(join(tmpdir(), 'ew-cli-'));
   const out: string[] = [];
   const p = platforms();
@@ -175,4 +178,35 @@ test('the temporary public copy is created only for Instagram and always deleted
   const dry = setup();
   await runPublish(args(), dry.deps);
   assert.deepEqual([hostSpy.uploaded, hostSpy.removed], [0, 0], 'a dry run hosts nothing');
+});
+
+test('--cover is hosted as a JPEG next to the video, handed to Instagram, and both copies are deleted', async () => {
+  const bodies: string[] = [];
+  const p = platforms();
+  const spy = (async (input: string | URL, init?: RequestInit) => {
+    if (/\/me\/media$/.test(String(input))) bodies.push(String(init?.body));
+    return p.fetchFn(input, init);
+  }) as typeof fetch;
+  const s = setup({ fetchFn: spy });
+  const code = await runPublish(args('--confirm', '--platforms', 'instagram', '--cover', '/repo/assets/video/remotion/out/cover.jpg'), s.deps);
+  assert.equal(code, 0);
+  assert.deepEqual(hostSpy.types, ['video/mp4', 'image/jpeg']);
+  assert.deepEqual([hostSpy.uploaded, hostSpy.removed], [2, 2]);
+  assert.equal(new URLSearchParams(bodies[0]).get('cover_url'), 'https://blob.example/publish/x2');
+});
+
+test('the plan shows the cover; a non-JPEG cover blocks Instagram with the reason; YouTube ignores it', async () => {
+  const ok = setup();
+  await runPublish(args('--cover', '/repo/assets/video/remotion/out/cover.jpg'), ok.deps);
+  assert.ok(ok.out.some((l) => /cover: assets\/video\/remotion\/out\/cover\.jpg/.test(l)));
+
+  const png = setup();
+  const code = await runPublish(args('--confirm', '--platforms', 'instagram', '--cover', '/repo/cover.png'), png.deps);
+  assert.equal(code, 1);
+  assert.ok(png.out.some((l) => /must be a JPEG/.test(l)));
+  assert.equal(hostSpy.uploaded, 0);
+
+  const yt = setup();
+  await runPublish(args('--confirm', '--platforms', 'youtube', '--cover', '/repo/cover.png'), yt.deps);
+  assert.equal(hostSpy.uploaded, 0);
 });

@@ -1,5 +1,5 @@
 import React from 'react';
-import { useCurrentFrame } from 'remotion';
+import { useCurrentFrame } from './clock';
 import { C } from './theme';
 import { easeInOut } from './util';
 

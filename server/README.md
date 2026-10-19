@@ -124,7 +124,7 @@ npm run publish -- <same arguments> --confirm
 ```
 
 Options: `--platforms youtube,instagram` (default both) · `--caption` (Instagram text, defaults to `--description`) ·
-`--no-publish` (Instagram: upload and process, do not publish — a safe rehearsal) · `--force` (publish a file again) ·
+`--no-publish` (Instagram: upload and process, do not publish — a safe rehearsal) · `--cover <file.jpg>` (Instagram: the Reel's cover, JPEG only; hosted temporarily next to the video and deleted with it; YouTube Shorts thumbnails are set in Studio) · `--force` (publish a file again) ·
 `--long` (YouTube only: a regular long-form video — needs a 16:9 file, no `#Shorts`, no 3-minute limit; YouTube turns any vertical or square video up to 3 min into a Short, so a vertical file cannot be a regular video; publish the vertical file to Instagram in a separate run) ·
 `--video-no` (otherwise read from `ear-challenge-NN` in the file name) · `--category` (YouTube, default 10 Music).
 

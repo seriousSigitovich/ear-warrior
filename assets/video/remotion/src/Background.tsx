@@ -1,5 +1,6 @@
 import React from 'react';
-import { AbsoluteFill, useCurrentFrame, useVideoConfig } from 'remotion';
+import { AbsoluteFill, useVideoConfig } from 'remotion';
+import { useCurrentFrame } from './clock';
 import { C, alpha, FONT } from './theme';
 import { rng } from './util';
 

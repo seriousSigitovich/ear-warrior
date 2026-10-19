@@ -1,6 +1,7 @@
 // Props around the people: speech bubbles, the tab on a tablet, the dying phone, hearts and notes, counter chips, captions.
 import React from 'react';
-import { spring, useCurrentFrame, useVideoConfig } from 'remotion';
+import { spring, useVideoConfig } from 'remotion';
+import { useCurrentFrame, useFx } from '../clock';
 import { C, alpha, FONT } from '../theme';
 import { clamp, easeOut } from '../util';
 import { Rich } from '../Headline';
@@ -102,7 +103,7 @@ export const PhoneCard: React.FC<{ cx: number; cy: number; p: number; t: number 
 };
 
 /** A phone in the loser's hand in the last scene: typing a search. */
-export const SearchPhone: React.FC<{ cx: number; cy: number; text: string; p: number }> = ({ cx, cy, text, p }) => {
+export const SearchPhone: React.FC<{ cx: number; cy: number; text: string; p: number; status?: string }> = ({ cx, cy, text, p, status }) => {
   if (p <= 0.01) return null;
   return (
     <g transform={`translate(${cx} ${cy}) scale(${0.85 * (0.7 + 0.3 * p)})`} opacity={clamp(p * 2)}>
@@ -111,6 +112,7 @@ export const SearchPhone: React.FC<{ cx: number; cy: number; text: string; p: nu
       <rect x={-136} y={-150} width={272} height={58} rx={29} fill={alpha(C.text, 0.12)} />
       <text x={-114} y={-111} fontFamily={FONT} fontSize={27} fill={C.text}>{text}</text>
       {[0, 1, 2].map((i) => <rect key={i} x={-136} y={-60 + i * 74} width={272} height={52} rx={14} fill={alpha(C.text, 0.07)} />)}
+      {status && <text x={0} y={-24} textAnchor="middle" fontFamily={FONT} fontWeight={700} fontSize={34} fill="#ff7a8d">{status}</text>}
     </g>
   );
 };
@@ -157,8 +159,30 @@ export const Caption: React.FC<{ lines: string[]; from: number; to: number; top:
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const t = frame / fps;
+  const fx = useFx();
   if (t < from || t > to) return null;
   const out = clamp((to - t) / 0.15);
+  if (fx) {
+    // short-form style: the words land one by one, the newest one lit
+    const words = lines.map((l) => l.split(/(\*[^*]+\*)/).flatMap((part) => (part.startsWith('*') ? part.slice(1, -1) : part).split(' ').filter(Boolean).map((w) => ({ w, a: part.startsWith('*') }))));
+    let k = 0;
+    return (
+      <div style={{ position: 'absolute', left, right, top, textAlign: 'center', fontFamily: FONT, fontWeight: 650, fontSize: size, lineHeight: 1.06, letterSpacing: -2, color: C.text, opacity: out }}>
+        {words.map((ws, i) => (
+          <div key={i}>
+            {ws.map((x, j) => {
+              const at = from + k++ * 0.13;
+              const p = spring({ frame: frame - at * fps, fps, config: { damping: 11, stiffness: 260, mass: 0.7 } });
+              const live = t >= at && t < at + 0.3;
+              return (
+                <span key={j} style={{ display: 'inline-block', margin: '0 0.13em', transform: `translateY(${(1 - p) * 44}px) scale(${0.6 + 0.4 * p + (live ? 0.07 : 0)})`, opacity: clamp(p * 2), color: x.a || live ? C.accent3 : C.text, textShadow: x.a || live ? `0 0 34px ${alpha(C.accent, 0.8)}, 0 4px 20px rgba(8,8,18,0.8)` : '0 4px 30px rgba(8,8,18,0.85), 0 2px 6px rgba(8,8,18,0.9)' }}>{x.w}</span>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    );
+  }
   return (
     <div style={{ position: 'absolute', left, right, top, textAlign: 'center', fontFamily: FONT, fontWeight: 650, fontSize: size, lineHeight: 1.06, letterSpacing: -2, color: C.text, opacity: out }}>
       {lines.map((l, i) => {

@@ -60,3 +60,9 @@ test('a failing sweep never blocks the upload', async () => {
   const hosted = await blobHost({ BLOB_READ_WRITE_TOKEN: 't' }, f.api, () => NOW)(new Uint8Array(1), 'x.mp4');
   assert.ok(hosted.url);
 });
+
+test('a cover goes up with its own content type', async () => {
+  const f = fakeApi();
+  await blobHost({ BLOB_READ_WRITE_TOKEN: 't' }, f.api, () => NOW)(new Uint8Array(10), 'cover.jpg', 'image/jpeg');
+  assert.ok(f.log.includes('put publish/cover.jpg access=public suffix=true type=image/jpeg'));
+});
