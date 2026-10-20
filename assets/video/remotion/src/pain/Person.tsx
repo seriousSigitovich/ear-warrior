@@ -187,14 +187,18 @@ export interface PersonProps {
   mood: Mood; look?: V; talk?: number; sweat?: number; t: number; seed?: number;
   /** Hand targets in person space. Ignored when `guitar` is set (hands then follow the guitar). */
   left?: V; right?: V; leftHold?: Hold; rightHold?: Hold;
-  /** u: fretting-hand position on the neck (0.1–0.9), strum: 0…1 pick stroke phase, jitter: px of nervous hand tremor. */
-  guitar?: { u: number; strum: number; jitter?: number; glow?: number };
+  /** u: fretting-hand position on the neck (0.1–0.9), strum: 0…1 pick stroke phase, jitter: px of nervous hand tremor,
+   *  ear: 0…1 raises the strumming hand to the right ear, cupped (listening); values past 1 overshoot, which is what a spring wants. */
+  guitar?: { u: number; strum: number; jitter?: number; glow?: number; ear?: number };
+  /** The head moves on its own (px / degrees, about the neck), so it can lag or lead the body. */
+  head?: { x?: number; y?: number; rot?: number };
   /** Draw the guitar but leave the hands free (e.g. while reaching for a phone). */
   showGuitar?: boolean;
   extras?: React.ReactNode;
 }
 
 const REST_L: V = [-112, 40], REST_R: V = [112, 40];
+const EAR_R: V = [104, -262];                          // where the right hand sits when it cups the ear
 
 export const Person: React.FC<PersonProps> = (p) => {
   const { skin, shirt, t } = p;
@@ -212,6 +216,8 @@ export const Person: React.FC<PersonProps> = (p) => {
     lt = [np[0] + j * nn(1), np[1] + j * 0.7 * nn(2)];
     const sp = strumPoint(Math.sin(Math.PI * Math.min(1, p.guitar.strum)));
     rt = [sp[0] + j * 0.4 * nn(3), sp[1] + j * 0.4 * nn(4)];
+    const e = p.guitar.ear ?? 0;
+    if (e) rt = [rt[0] + (EAR_R[0] - rt[0]) * e, rt[1] + (EAR_R[1] - rt[1]) * e];
   }
   // Fretting arm: with a guitar the elbow hangs down and the forearm comes up to the neck from below (not over it).
   let L = arm(SL, lt, 122, 118, 1);
@@ -226,6 +232,12 @@ export const Person: React.FC<PersonProps> = (p) => {
     // swings to the strings (a plain two-bone solve throws the elbow out to the side like a wing).
     const sw = Math.sin(Math.PI * Math.min(1, p.guitar.strum));
     R = { elbow: [SR[0] + 24 + 4 * sw, SR[1] + 118 - 3 * sw], hand: rt };
+    const e = p.guitar.ear ?? 0;
+    if (e) {
+      // raised to the ear the elbow swings out and up: blend from the hanging pose to a real two-bone solve (side +1: the vector points up)
+      const up = arm(SR, rt, 122, 118, 1);
+      R = { elbow: [R.elbow[0] + (up.elbow[0] - R.elbow[0]) * e, R.elbow[1] + (up.elbow[1] - R.elbow[1]) * e], hand: rt };
+    }
   }
   const sleeveDark = shade(shirt, 0.72);
   const armPath = (a: { elbow: V; hand: V }, s: V) => `M ${s[0]} ${s[1]} L ${a.elbow[0]} ${a.elbow[1]} L ${a.hand[0]} ${a.hand[1]}`;
@@ -271,7 +283,7 @@ export const Person: React.FC<PersonProps> = (p) => {
       {p.guitar ? drawArm(L, SL, undefined, 'hand') : drawArm(L, SL, p.leftHold)}
       {drawArm(R, SR, p.guitar ? undefined : p.rightHold)}
       {/* head */}
-      <g transform="translate(0 -262)">
+      <g transform={`translate(${p.head?.x ?? 0} ${-262 + (p.head?.y ?? 0)}) rotate(${p.head?.rot ?? 0})`}>
         <circle cx={-64} cy={8} r={13} fill={skin} /><circle cx={64} cy={8} r={13} fill={skin} />
         <circle cx={0} cy={0} r={65} fill={skin} />
         <Face mood={p.mood} look={look} talk={p.talk ?? 0} blink={blink} skin={skin} sweat={p.sweat ?? 0} t={t} />
