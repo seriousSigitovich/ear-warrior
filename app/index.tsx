@@ -1,6 +1,6 @@
 // Home screen (T035): start a practice session and navigate into the core loop.
 // Redesigned onto Nocturne — hero heading, waveform motif, quick stats, outlined actions.
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { MAX_RANK, getLevelByRank } from '../src/services/melody/levels';
@@ -12,6 +12,7 @@ import { Button } from '../src/components/common/Button';
 import { Card } from '../src/components/common/Card';
 import { Kicker } from '../src/components/common/Kicker';
 import { Waveform, HERO_BARS } from '../src/components/common/Waveform';
+import { ensureAuthReady, getAuthService } from '../src/features/auth/authService';
 import { colors, font, textAlpha } from '../src/theme/nocturne';
 
 export default function Home() {
@@ -34,6 +35,20 @@ export default function Home() {
       };
     }, []),
   );
+
+  // The sign-in offer (spec 005 FR-003): once, on the first launch, never blocking — the screen has Skip.
+  // Moves to onboarding when that lands (docs/beta-checklist.md).
+  useEffect(() => {
+    let cancelled = false;
+    void ensureAuthReady()
+      .then(() => getAuthService().shouldOfferSignIn())
+      .then((offer) => {
+        if (offer && !cancelled) router.push('/sign-in');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   return (
     <Screen style={styles.screen}>
@@ -73,7 +88,7 @@ export default function Home() {
       />
       <View style={styles.secondaryRow}>
         <Button
-          label="Difficulty"
+          label="Settings"
           variant="secondary"
           onPress={() => router.push('/settings')}
           style={styles.grow}

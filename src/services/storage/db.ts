@@ -63,8 +63,17 @@ export function createInMemoryRowStore(): RowStore {
  * Stores each row as a JSON document (`id TEXT PRIMARY KEY, data TEXT`) so it survives app restarts
  * (FR-013, interrupted-session edge case). NOTE: US3 aggregate reporting migrates these to typed
  * columns; confirmed on-device during the spike.
+ *
+ * One shared store per app run: every screen and the auth service ask for it, and opening several
+ * connections to the same file at once raced on the very first run, when each one was still creating
+ * the tables (an `execAsync` NullPointerException on a fresh install).
  */
+let sharedRowStore: RowStore | undefined;
 export function defaultRowStore(): RowStore {
+  return (sharedRowStore ??= openSqliteRowStore());
+}
+
+function openSqliteRowStore(): RowStore {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const SQLite = require('expo-sqlite');
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped expo-sqlite handle

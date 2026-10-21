@@ -2,7 +2,8 @@
 // mode toggle and the level picker take real effect and survive restart (FR-011b). In fixed mode the
 // ladder is tappable and every rank is selectable — there is no unlock gating.
 import React, { useCallback, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { DifficultyMode, DifficultySettings } from '../src/models';
 import {
   MAX_RANK,
@@ -21,6 +22,10 @@ import {
 import { defaultRowStore } from '../src/services/storage/db';
 import { createDifficultySettingsRepository } from '../src/services/storage/repositories';
 import { Screen } from '../src/components/common/Screen';
+import { Button } from '../src/components/common/Button';
+import { getAuthService } from '../src/features/auth/authService';
+import { useAuth } from '../src/features/auth/useAuth';
+import { describeError } from '../src/services/auth/messages';
 import { Kicker } from '../src/components/common/Kicker';
 import { Card } from '../src/components/common/Card';
 import { colors, font, radius, textAlpha } from '../src/theme/nocturne';
@@ -56,60 +61,144 @@ export default function Settings() {
 
   return (
     <Screen edges={['bottom']}>
-      <Kicker>Settings</Kicker>
-      <Text style={styles.title}>Difficulty</Text>
+      <ScrollView contentContainerStyle={styles.scroll}>
+        <Kicker>Settings</Kicker>
+        <Text style={styles.title}>Difficulty</Text>
 
-      <View style={styles.seg} accessibilityRole="radiogroup">
-        <SegOption
-          label="Adaptive"
-          active={!fixed}
-          onPress={() => commit(setMode(settings, 'adaptive' as DifficultyMode))}
-        />
-        <SegOption
-          label="Fixed"
-          active={fixed}
-          onPress={() => commit(setMode(settings, 'fixed' as DifficultyMode))}
-          last
-        />
-      </View>
-
-      <View style={styles.dots} accessibilityRole="radiogroup">
-        {RANKS.map((r) => (
-          <LevelDot
-            key={r}
-            rank={r}
-            state={r < rank ? 'done' : r === rank ? 'current' : 'todo'}
-            selectable={fixed}
-            onPress={() => commit(setFixedRank(settings, r))}
+        <View style={styles.seg} accessibilityRole="radiogroup">
+          <SegOption
+            label="Adaptive"
+            active={!fixed}
+            onPress={() => commit(setMode(settings, 'adaptive' as DifficultyMode))}
           />
-        ))}
-      </View>
-      <Text style={styles.ladderCaption}>
-        {fixed
-          ? `Level ${rank} of ${MAX_RANK} — tap to change`
-          : `Level ${rank} of ${MAX_RANK} — adjusts as you practice`}
-      </Text>
+          <SegOption
+            label="Fixed"
+            active={fixed}
+            onPress={() => commit(setMode(settings, 'fixed' as DifficultyMode))}
+            last
+          />
+        </View>
 
-      <Card style={styles.levelCard}>
-        <Text style={styles.cardKicker}>Current level</Text>
-        <Text style={styles.cardTitle}>
-          Level {rank} · {level.noteCount} notes
+        <View style={styles.dots} accessibilityRole="radiogroup">
+          {RANKS.map((r) => (
+            <LevelDot
+              key={r}
+              rank={r}
+              state={r < rank ? 'done' : r === rank ? 'current' : 'todo'}
+              selectable={fixed}
+              onPress={() => commit(setFixedRank(settings, r))}
+            />
+          ))}
+        </View>
+        <Text style={styles.ladderCaption}>
+          {fixed
+            ? `Level ${rank} of ${MAX_RANK} — tap to change`
+            : `Level ${rank} of ${MAX_RANK} — adjusts as you practice`}
         </Text>
-        <View style={styles.hr} />
-        <Row label="Notes per melody" value={`${level.noteCount}`} />
-        <Row label="Scale" value={describeScales(level)} />
-        <Row label="Largest leap" value={describeLeap(level.maxLeap)} />
-        <Row label="Structure" value={describeMotif(level.motif)} />
-        <Row label="Tempo" value={`${level.tempoBpm} BPM`} />
-      </Card>
 
-      <View style={styles.spacer} />
-      <Text style={styles.footnote}>
-        {fixed
-          ? 'Fixed mode keeps this level until you change it. Your adaptive level is remembered separately.'
-          : 'Adaptive mode raises the level after 3 correct melodies in a row and lowers it after 2 missed. Retries and unclear recordings don’t count.'}
-      </Text>
+        <Card style={styles.levelCard}>
+          <Text style={styles.cardKicker}>Current level</Text>
+          <Text style={styles.cardTitle}>
+            Level {rank} · {level.noteCount} notes
+          </Text>
+          <View style={styles.hr} />
+          <Row label="Notes per melody" value={`${level.noteCount}`} />
+          <Row label="Scale" value={describeScales(level)} />
+          <Row label="Largest leap" value={describeLeap(level.maxLeap)} />
+          <Row label="Structure" value={describeMotif(level.motif)} />
+          <Row label="Tempo" value={`${level.tempoBpm} BPM`} />
+        </Card>
+
+        <Text style={styles.footnote}>
+          {fixed
+            ? 'Fixed mode keeps this level until you change it. Your adaptive level is remembered separately.'
+            : 'Adaptive mode raises the level after 3 correct melodies in a row and lowers it after 2 missed. Retries and unclear recordings don’t count.'}
+        </Text>
+
+        <AccountSection />
+      </ScrollView>
     </Screen>
+  );
+}
+
+/** Optional email sign-in (spec 005). Hidden in a build without a backend; practice never depends on it. */
+function AccountSection() {
+  const router = useRouter();
+  const { state, available } = useAuth();
+  if (!available) return null;
+
+  const fail = (error: Parameters<typeof describeError>[0]) => {
+    const { title, hint } = describeError(error);
+    Alert.alert(title, hint);
+  };
+  const confirmSignOut = () =>
+    Alert.alert(
+      'Sign out?',
+      'Your practice history stays on this phone. You can sign in again any time.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Sign out', onPress: () => void getAuthService().signOut() },
+      ],
+    );
+  const confirmDelete = () =>
+    Alert.alert(
+      'Delete your account?',
+      'This removes your email and its link to your usage data. Practice history on this phone stays. This can’t be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete account',
+          style: 'destructive',
+          onPress: () =>
+            void getAuthService()
+              .deleteAccount()
+              .then((res) => {
+                if (!res.ok) fail(res.error);
+              }),
+        },
+      ],
+    );
+
+  return (
+    <View style={styles.account}>
+      <Kicker>Account</Kicker>
+      <Card style={styles.accountCard}>
+        {state.status === 'signedIn' ? (
+          <>
+            <Text style={styles.accountLabel}>Signed in as</Text>
+            <Text style={styles.accountEmail} accessibilityLabel={`Signed in as ${state.email}`}>
+              {state.email}
+            </Text>
+            <View style={styles.accountButtons}>
+              <Button
+                label="Sign out"
+                variant="secondary"
+                onPress={confirmSignOut}
+                style={styles.grow}
+              />
+              <Button
+                label="Delete account"
+                variant="secondary"
+                onPress={confirmDelete}
+                style={styles.grow}
+              />
+            </View>
+          </>
+        ) : (
+          <>
+            <Text style={styles.accountLabel}>
+              You’re practising anonymously. Signing in is optional — it only lets us follow up with
+              you about feedback.
+            </Text>
+            <Button
+              label="Sign in with email"
+              variant="secondary"
+              onPress={() => router.push('/sign-in')}
+            />
+          </>
+        )}
+      </Card>
+    </View>
   );
 }
 
@@ -231,6 +320,13 @@ const styles = StyleSheet.create({
   rowLabel: { color: textAlpha[65], fontSize: 13 },
   rowValue: { color: colors.text, fontSize: 13 },
 
-  spacer: { flex: 1 },
-  footnote: { color: textAlpha[45], fontSize: 12, lineHeight: 18 },
+  scroll: { flexGrow: 1 },
+  footnote: { color: textAlpha[45], fontSize: 12, lineHeight: 18, marginTop: 24 },
+
+  account: { marginTop: 32, gap: 10 },
+  accountCard: { padding: 16, gap: 12 },
+  accountLabel: { color: textAlpha[65], fontSize: 13, lineHeight: 19 },
+  accountEmail: { color: colors.text, fontSize: 16, fontWeight: font.weightHeading },
+  accountButtons: { flexDirection: 'row', gap: 10 },
+  grow: { flex: 1 },
 });
