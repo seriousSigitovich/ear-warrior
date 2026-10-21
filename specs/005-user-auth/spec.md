@@ -1,10 +1,10 @@
 # Feature Specification: Optional Email Sign-In
 
-**Feature Branch**: `005-user-auth` (not created — decide at plan time; T086 says one branch per feature)
+**Feature Branch**: `005-user-auth` (created 2026-10-21 from `master`, per T086: one branch per feature)
 
 **Created**: 2026-10-19
 
-**Status**: Draft — clarified 2026-10-19, ready for planning
+**Status**: Implemented 2026-10-21 (server + app + web); deploy and on-device checks pending — see tasks.md
 
 **Input**: Ear Warrior goes into a closed Android beta with 14 people from the waitlist. The owner needs to know *who is who* in the usage and crash data, and wants a real (not self-declared) identity. Sign-in must never get in the way of practising: the app works fully without it. Google sign-in is out of scope for now.
 

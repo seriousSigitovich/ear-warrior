@@ -1,6 +1,6 @@
 # Implementation Plan: Optional Email Sign-In
 
-**Branch**: `005-user-auth` (not created — see Complexity Tracking, "branch policy") | **Date**: 2026-10-19 | **Spec**: [spec.md](./spec.md)
+**Branch**: `005-user-auth` (created 2026-10-21 from `master`) | **Date**: 2026-10-19 | **Spec**: [spec.md](./spec.md)
 
 **Input**: Feature specification from `/specs/005-user-auth/spec.md`
 
@@ -141,5 +141,5 @@ concrete. Gate result remains **PASS**.
 |-----------------------|------------|--------------------------------------|
 | New native module `expo-secure-store` | A session token is a credential; it must not sit in the plain SQLite file the sync pushes to the server | Reusing the SQLite key-value table would put the credential in a store that is copied by backups and read by the sync code path |
 | `AuthStore` + `Mailer` interfaces on the server | Constitution II needs deterministic route tests without Postgres or SMTP | Calling Drizzle and nodemailer directly in routes (as `subscribe.ts` does) leaves rate limits, attempt limits and expiry untestable — those are the security rules of this feature |
-| Branch policy (T086: branch per feature) not applied yet | The owner commits spec work on `master` today (specs 002, 003, 006 landed that way) | Creating `005-user-auth` is cheap; decide before implementation starts — recorded here so it is a choice, not an omission |
+| Branch policy (T086: branch per feature) | Applied: `005-user-auth` was created from `master` when implementation started (2026-10-21) | — |
 | Native dependency must ship in the **first** AAB | Adding a native module later needs a new store build and another Play review cycle for every tester | Shipping sign-in via OTA only is impossible for a native module |

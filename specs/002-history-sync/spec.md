@@ -15,7 +15,7 @@ must keep working with no network.
 ### Session 2026-10-11 (recorded from the implementation — confirm or correct)
 
 - Q: Which side is authoritative? → A: The **device's SQLite is the practice loop's authoritative local store**; the server (Postgres) is the **durable, cross-install copy**. Practice never waits on the network (offline-core-loop, spec 001).
-- Q: Who owns an account? → A: **Nobody — there are no accounts.** History is keyed by the anonymous per-install `device_id` (spec 001 FR-019). Consequence: history follows the install, not a person; see Open Questions.
+- Q: Who owns an account? → A: **Nobody — there are no accounts.** *(Amended 2026-10-21 by spec 005: an optional email account may now exist; sync is still keyed by `device_id` and does not change.)* History is keyed by the anonymous per-install `device_id` (spec 001 FR-019). Consequence: history follows the install, not a person; see Open Questions.
 - Q: How are conflicts resolved? → A: **Last-write-wins per document on `updated_at`** (client wall-clock ms). A push older than what the server holds is ignored, so replays and retries are safe.
 
 ## User Scenarios & Testing *(mandatory)*

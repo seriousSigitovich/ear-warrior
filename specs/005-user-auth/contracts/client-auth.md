@@ -10,8 +10,9 @@ Pure logic is unit-tested with Jest (node env, no React Native). `.tsx` files on
 | `src/services/auth/client.ts` | `AuthClient { requestCode, verify, me, signOut, deleteAccount }` over `fetch`; `createAuthClient(baseUrl)` returns `null` when `EXPO_PUBLIC_API_URL` is unset (sign-in then hidden — app stays anonymous) | `tests/contract/authClient.test.ts` (mocked fetch) |
 | `src/services/auth/flow.ts` | pure state machine, see below; resend-cooldown and attempts-left math over an injected clock | `tests/unit/auth/flow.test.ts` |
 | `src/services/auth/messages.ts` | server error code → `{ title, hint }` copy | `tests/unit/auth/messages.test.ts` |
-| `src/services/auth/session.ts` | `SessionStore { get, set, clear }`; secure-store adapter required lazily | adapter untested natively; interface used by tests as an in-memory fake |
-| `src/features/auth/useAuth.ts` | React hook wiring the above; exposes `state`, `signIn`, `verify`, `signOut`, `deleteAccount`, `onAuthChange(listener)` | manual (quickstart) |
+| `src/services/auth/session.ts` | `SessionStore { get, set, clear }` holding `{ token, email }` as one secure-store entry (so a cold, offline start can still show who is signed in); adapter required lazily | adapter untested natively; interface used by tests as an in-memory fake |
+| `src/services/auth/service.ts` | the lifecycle rules below as a pure `createAuthService({ client, session, kv, getDeviceId, now })`; owns `AuthState`, `onAuthChange`, `init`, `revalidateIfStale`, `verify`, `signOut`, `deleteAccount`, `shouldOfferSignIn` | `tests/unit/auth/service.test.ts` |
+| `src/features/auth/{authService,useAuth}.ts` | the app's single service instance wired to real device pieces, and the React binding (`useAuth`, `useAuthLifecycle`) | manual (quickstart) |
 
 ## Auth state (public)
 
@@ -62,8 +63,8 @@ that is not 6 digits.
 - **Settings → Account** (`app/settings.tsx`): signed out → "Sign in with email"; signed in → the email,
   "Sign out", and "Delete account". Sign out and Delete each open a confirmation; Delete states that the email
   and its link to your usage data are removed and that practice history on this phone stays.
-- **First-launch offer**: shown once (flag `ew.signInOfferSeen`) by the onboarding work when it lands; until
-  then, once from Home. Always dismissible.
+- **First-launch offer**: shown once (flag `ew.signInOfferSeen`, set when the sign-in screen opens) by the onboarding work
+  when it lands; until then, once from Home (`app/index.tsx`). The Home secondary button is now labelled "Settings" since Account lives there. Always dismissible.
 
 ## Accessibility (spec 004 baseline, FR-020)
 
