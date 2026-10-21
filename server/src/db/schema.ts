@@ -146,5 +146,47 @@ export const socialRuns = pgTable('social_runs', {
   error: text('error'),
 });
 
+/** Optional email sign-in (spec 005). An account is a verified email; created on first correct code. */
+export const users = pgTable('users', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  email: text('email').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** One-time sign-in codes (HMAC-hashed). Also the request log for the rate limits. */
+export const loginCodes = pgTable('login_codes', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  email: text('email').notNull(),
+  codeHash: text('code_hash').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  attempts: integer('attempts').notNull().default(0),
+  usedAt: timestamp('used_at', { withTimezone: true }),
+  supersededAt: timestamp('superseded_at', { withTimezone: true }),
+  sourceHash: text('source_hash').notNull(),
+});
+
+/** Signed-in sessions; only sha256(token) is stored. */
+export const authSessions = pgTable('auth_sessions', {
+  tokenHash: text('token_hash').primaryKey(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  deviceId: text('device_id').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
+});
+
+/** Which account an install belonged to, and when (open link = unlinked_at null). */
+export const deviceLinks = pgTable('device_links', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  deviceId: text('device_id').notNull(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  linkedAt: timestamp('linked_at', { withTimezone: true }).notNull().defaultNow(),
+  unlinkedAt: timestamp('unlinked_at', { withTimezone: true }),
+});
+
 /** Idempotent DDL applied at boot (see db/ddl.ts). Kept here next to the schema for reference. */
 export const RAW_DDL = sql``;
