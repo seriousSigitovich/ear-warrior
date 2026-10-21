@@ -10,7 +10,8 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "tsx --test src/social/*.test.ts src/routes/*.test.ts src/publish/*.test.ts",
+    "test": "tsx --test src/social/*.test.ts src/routes/*.test.ts src/auth/*.test.ts src/publish/*.test.ts",
+    "delete-user": "tsx --env-file=.env src/delete-user.ts",
     "collect": "tsx --env-file=.env src/collect.ts",
     "yt:auth": "tsx --env-file=.env src/youtube-auth.ts",
     "publish": "tsx --env-file=.env src/publish.ts",
@@ -22,11 +23,13 @@
     "@vercel/blob": "^2.8.2",
     "drizzle-orm": "^0.36.4",
     "fastify": "^5.1.0",
+    "nodemailer": "^6.10.1",
     "postgres": "^3.4.5",
     "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/node": "^20.11.30",
+    "@types/nodemailer": "^6.4.24",
     "drizzle-kit": "^0.28.1",
     "tsx": "^4.19.2",
     "typescript": "~5.6.3"

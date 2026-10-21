@@ -112,5 +112,69 @@ export async function applyDdl(sql: Sql): Promise<void> {
       error       text
     );
     create index if not exists social_runs_platform_idx on social_runs (platform, started_at desc);
+
+    -- Optional email sign-in (spec 005). Attribution of events to an account is a read-time join through
+    -- device_links, so attempt_log / sync_documents stay anonymous and are never rewritten.
+    create table if not exists users (
+      id          uuid primary key default gen_random_uuid(),
+      email       text not null check (position('@' in email) > 1 and char_length(email) <= 320),
+      created_at  timestamptz not null default now()
+    );
+    create unique index if not exists users_email_lower_idx on users (lower(email));
+
+    -- Not a foreign key: the account may not exist yet. Doubles as the request log for the rate limits.
+    create table if not exists login_codes (
+      id             uuid primary key default gen_random_uuid(),
+      email          text not null,
+      code_hash      text not null,
+      created_at     timestamptz not null default now(),
+      expires_at     timestamptz not null,
+      attempts       int not null default 0,
+      used_at        timestamptz,
+      superseded_at  timestamptz,
+      source_hash    text not null
+    );
+    create index if not exists login_codes_email_idx on login_codes (email, created_at desc);
+    create index if not exists login_codes_source_idx on login_codes (source_hash, created_at desc);
+
+    create table if not exists auth_sessions (
+      token_hash  text primary key,
+      user_id     uuid not null references users (id) on delete cascade,
+      device_id   text not null,
+      created_at  timestamptz not null default now(),
+      revoked_at  timestamptz
+    );
+    create index if not exists auth_sessions_user_idx on auth_sessions (user_id);
+
+    create table if not exists device_links (
+      id          bigserial primary key,
+      device_id   text not null,
+      user_id     uuid not null references users (id) on delete cascade,
+      linked_at   timestamptz not null default now(),
+      unlinked_at timestamptz
+    );
+    create index if not exists device_links_user_idx on device_links (user_id);
+    -- At most one open link per install.
+    create unique index if not exists device_links_open_idx on device_links (device_id) where unlinked_at is null;
+
+    -- Owner's view: attempt_log with the account each row belongs to (data-model.md "Attribution rule").
+    -- A row before a device's first link belongs to whoever linked first; otherwise to the link that was
+    -- open at its time; a gap after sign-out is anonymous (user_id / email are null).
+    create or replace view attempt_log_attributed as
+    select a.id, a.device_id, a.created_at, a.difficulty_id, a.verdict, a.input_mode, u.id as user_id, u.email
+    from attempt_log a
+    left join lateral (
+      select l.user_id
+      from device_links l
+      where l.device_id = a.device_id
+        and (
+          (l.linked_at <= a.created_at and (l.unlinked_at is null or a.created_at < l.unlinked_at))
+          or (a.created_at < l.linked_at
+              and not exists (select 1 from device_links p where p.device_id = l.device_id and p.linked_at < l.linked_at))
+        )
+      order by l.linked_at desc
+      limit 1
+    ) hit on true
+    left join users u on u.id = hit.user_id;
   `);
 }

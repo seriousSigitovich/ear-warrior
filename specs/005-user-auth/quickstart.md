@@ -42,7 +42,7 @@ the same code again → `401 no_code`; `GET /api/auth/me` with the token → the
 | 6 requests for one address within an hour | 6th → `429 rate_limited` with `retry_after_s` |
 | Two requests within 60 s | 2nd → `429` |
 | Request for an address with an account vs. without | byte-identical bodies |
-| Request a new code, then use the old one | `no_code` (superseded) |
+| Request a new code, then use the old one | `wrong_code` (only the newest code is live; the old value is just a wrong guess) |
 
 ## 4. Attribution and deletion
 
@@ -75,7 +75,7 @@ sent and the session works. Then unset both, redeploy, and confirm the same pair
 ## 7. Web deletion route
 
 `landing/delete-account/` is reachable without signing in, states the 7-day completion time, and the
-privacy page links to it. Run `cd server && npm run delete-user -- me@example.com` and confirm the same
+privacy page links to it. Run `cd server && npm run delete-user -- me@example.com` (`server/src/delete-user.ts`) and confirm the same
 removals as in 4.
 
 ## 8. Release gate for this feature

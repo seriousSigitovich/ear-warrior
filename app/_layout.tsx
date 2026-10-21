@@ -4,9 +4,11 @@ import React from 'react';
 import { Stack } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import { useAuthLifecycle } from '../src/features/auth/useAuth';
 import { colors } from '../src/theme/nocturne';
 
 export default function RootLayout() {
+  useAuthLifecycle();
   return (
     <SafeAreaProvider>
       <StatusBar style="light" />
@@ -23,6 +25,7 @@ export default function RootLayout() {
         <Stack.Screen name="practice" />
         <Stack.Screen name="settings" />
         <Stack.Screen name="progress" />
+        <Stack.Screen name="sign-in" />
       </Stack>
     </SafeAreaProvider>
   );

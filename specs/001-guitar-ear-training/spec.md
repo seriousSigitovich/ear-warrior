@@ -275,6 +275,8 @@ confirm it shows accuracy trends, practice volume, and identified weak areas der
   account. Remote logging is best-effort and non-blocking; the core loop functions fully offline (see the
   offline-core-loop assumption). The metadata also carries the attempt's **input mode** (`mic` |
   `fretboard`, FR-020) — one enum, no PII.
+
+> **Amendment 2026-10-21 (spec 005)**: an account may now exist — optional email sign-in. For a signed-out learner this requirement is unchanged. A signed-in learner's device is linked to the account server-side; `attempt_log` itself stays anonymous (the link is a read-time join). See `specs/005-user-auth/`.
 - **FR-020**: System MUST support two answer **input modes**, selected at build time by
   `EXPO_PUBLIC_INPUT_MODE`: **`fretboard`** (the MVP default) and **`mic`** (the microphone pipeline of
   FR-004/FR-014/FR-015/FR-017, kept intact and re-enabled by setting the flag to `mic`).
