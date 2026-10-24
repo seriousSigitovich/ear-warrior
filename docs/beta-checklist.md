@@ -16,7 +16,7 @@
 ## 1. До первой сборки AAB
 
 ### Сборка и конфиг
-- [ ] **OTA:** добавить `expo-updates`, `runtimeVersion`, `updates.url` в `app.config.ts`; канал `production` уже есть. Без этого в первом бинарнике JS-фиксы потом не доставить
+- [~] **OTA:** `expo-updates` установлен, плагин и `runtimeVersion` (fingerprint) в `app.config.ts` есть (2026-10-22). Осталось: `eas login` → `eas init` → вписать id в `EAS_PROJECT_ID` (без него EAS-сборка падает намеренно); после первой сборки проверить `eas update --channel preview`
 - [ ] **Краш-аналитика:** подключить Sentry (нативный SDK, поэтому до сборки) — решение принято владельцем 2026-10-19
 - [ ] **Вход по коду из письма** — отдельный блок ниже («Вход по почте»)
 - [ ] `android.versionCode` в `app.config.ts` (+ инкремент при каждой загрузке; `appVersionSource: local`)

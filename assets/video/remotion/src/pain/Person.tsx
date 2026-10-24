@@ -1,10 +1,11 @@
 // A flat, waist-up cartoon person built from SVG primitives: two-bone arms that reach targets (so a hand can follow a guitar neck),
 // a face driven by a mood table, five hair styles, an optional acoustic guitar. Local origin = centre of the waist, +y down, head ≈ y −262.
 import React from 'react';
+import { WindHair, type HairVariant } from './WindHair';
 
 export type V = [number, number];
 export type Mood = 'smug' | 'happy' | 'grin' | 'neutral' | 'bored' | 'tense' | 'worry' | 'cringe' | 'sad' | 'awe' | 'love' | 'yawn' | 'focus' | 'zen';
-export type HairStyle = 'short' | 'long' | 'bun' | 'cap' | 'curly' | 'beanie';
+export type HairStyle = 'short' | 'long' | 'bun' | 'cap' | 'curly' | 'beanie' | 'windy';
 export type Hold = 'cup' | 'phone' | undefined;
 
 const FONT_DARK = '#2a1d33';
@@ -86,16 +87,39 @@ export const GuitarShape: React.FC<{ glow?: number }> = ({ glow = 0 }) => (
   </g>
 );
 
-const Guitar: React.FC<{ glow?: number }> = ({ glow = 0 }) => (
-  <g transform={`translate(${GX} ${GY}) rotate(${GA})`}><GuitarShape glow={glow} /></g>
+// A solid-body electric with the same geometry as the classical one (neck −412 … −112, strings to a bridge at x ≈ 118), so the hands fit.
+// Double-cutaway body, two humbuckers, a black pickguard, a black headstock with six tuners.
+const E_BODY = 'M -118 -46 L -108 -90 Q -102 -118 -76 -114 Q -52 -108 -38 -84 C -20 -62 6 -80 34 -98 C 72 -122 136 -112 158 -76 C 176 -46 176 -18 170 0 C 176 18 176 46 158 76 C 136 112 72 122 34 98 C 6 80 -20 62 -38 84 Q -52 108 -76 114 Q -102 118 -108 90 L -118 46 Z';
+export const ElectricShape: React.FC<{ glow?: number; color?: string }> = ({ glow = 0, color = '#d62839' }) => (
+  <g>
+    <rect x={-412} y={-20} width={300} height={40} fill="#d9b46c" />
+    <rect x={-412} y={-18} width={300} height={36} fill="#2a1a12" />
+    {Array.from({ length: 12 }, (_, i) => <rect key={i} x={-405 + i * 25 + i * i * 0.25} y={-18} width={2.4} height={36} fill="#d6d6dd" opacity={0.85} />)}
+    {[3, 5, 7, 9].map((f) => <circle key={f} cx={-405 + f * 25 + f * f * 0.25 - 12} cy={0} r={4} fill="#e9e1c8" opacity={0.85} />)}
+    <path d="M -482 -24 L -406 -19 L -406 19 L -482 26 Q -494 0 -482 -24 Z" fill="#17121c" stroke="#3a3346" strokeWidth={3} />
+    {[0, 1, 2].map((i) => <g key={i}><circle cx={-470 + i * 22} cy={-29} r={6} fill="#cfcfd6" /><circle cx={-470 + i * 22} cy={31} r={6} fill="#cfcfd6" /></g>)}
+    <path d={E_BODY} fill="#6e0f1c" transform="translate(0 6)" />
+    <path d={E_BODY} fill={color} stroke="#8f1523" strokeWidth={6} strokeLinejoin="round" />
+    <path d={E_BODY} fill="none" stroke="#ff9aa5" strokeWidth={3.5} transform="translate(5 -4) scale(0.95 0.93)" opacity={0.6} />
+    <path d="M -96 -52 Q -40 -66 30 -48 Q 82 -30 82 0 Q 82 30 30 48 Q -40 66 -96 52 Z" fill="#17131c" opacity={0.92} />
+    {[-52, 8].map((x) => <g key={x}><rect x={x} y={-35} width={22} height={70} rx={7} fill="#d4d8e6" stroke="#2a2a3a" strokeWidth={3} /><rect x={x + 5} y={-29} width={12} height={58} rx={4} fill="#14121c" /></g>)}
+    <rect x={102} y={-36} width={20} height={72} rx={6} fill="#d4d8e6" stroke="#2a2a3a" strokeWidth={3} />
+    {[[56, 64], [86, 72]].map(([x, y], i) => <circle key={i} cx={x} cy={y} r={11} fill="#e9e9ed" stroke="#4a4a5a" strokeWidth={3} />)}
+    {[-12, -7.2, -2.4, 2.4, 7.2, 12].map((y, i) => <line key={y} x1={-412} y1={y * 0.9} x2={118} y2={y * 1.25} stroke={`rgba(240,240,250,${0.5 + glow * 0.45})`} strokeWidth={i < 3 ? 1.3 : 1.9} />)}
+  </g>
+);
+
+const Guitar: React.FC<{ glow?: number; electric?: boolean }> = ({ glow = 0, electric }) => (
+  <g transform={`translate(${GX} ${GY}) rotate(${GA})`}>{electric ? <ElectricShape glow={glow} /> : <GuitarShape glow={glow} />}</g>
 );
 
 export const GUITAR_POSE = { x: GX, y: GY, rot: GA };
 
 // --- hair -----------------------------------------------------------------------------------------------------------------------------
-const Hair: React.FC<{ style: HairStyle; color: string; accent: string; layer: 'back' | 'front' }> = ({ style, color, accent, layer }) => {
+const Hair: React.FC<{ style: HairStyle; color: string; accent: string; layer: 'back' | 'front'; t?: number; wind?: number; variant?: HairVariant }> = ({ style, color, accent, layer, t = 0, wind = 0, variant }) => {
   const dark = shade(color, 0.82);
   if (layer === 'back') {
+    if (style === 'windy') return <WindHair color={color} t={t} wind={wind} layer="back" variant={variant} />;
     if (style === 'long') return <path d="M -76 -6 C -84 -86 84 -86 76 -6 L 88 112 Q 0 134 -88 112 Z" fill={dark} />;
     if (style === 'bun') return <circle cx={0} cy={-82} r={27} fill={dark} />;
     if (style === 'curly') return <g fill={dark}>{Array.from({ length: 9 }, (_, i) => { const a = Math.PI + (i / 8) * Math.PI; return <circle key={i} cx={Math.cos(a) * 66} cy={Math.sin(a) * 62} r={26} />; })}</g>;
@@ -103,6 +127,7 @@ const Hair: React.FC<{ style: HairStyle; color: string; accent: string; layer: '
   }
   const fringe = 'M -67 -2 C -72 -62 -30 -80 0 -78 C 34 -80 72 -60 67 -2 C 60 -28 30 -42 0 -42 C -30 -42 -58 -26 -67 -2 Z';
   switch (style) {
+    case 'windy': return <WindHair color={color} t={t} wind={wind} layer="front" variant={variant} />;
     case 'short': return <path d={fringe} fill={color} />;
     case 'long': return <path d="M -67 -2 C -72 -62 -30 -80 0 -78 C 34 -80 72 -60 67 -2 C 58 -32 20 -50 -12 -44 C -34 -40 -56 -22 -67 -2 Z" fill={color} />;
     case 'bun': return <path d={fringe} fill={color} />;
@@ -194,6 +219,14 @@ export interface PersonProps {
   head?: { x?: number; y?: number; rot?: number };
   /** Draw the guitar but leave the hands free (e.g. while reaching for a phone). */
   showGuitar?: boolean;
+  /** Free hands only: bend the elbows away from the head (hands on top of the head, elbows out) instead of toward it. */
+  elbowsOut?: boolean;
+  /** Draw a red solid-body electric instead of the classical guitar. */
+  electric?: boolean;
+  /** 0…1: how hard the wind blows the 'windy' hair (to the right). */
+  wind?: number;
+  /** Which wind-blown hair design to draw (see WindHair.tsx). */
+  hairVariant?: HairVariant;
   extras?: React.ReactNode;
 }
 
@@ -220,13 +253,13 @@ export const Person: React.FC<PersonProps> = (p) => {
     if (e) rt = [rt[0] + (EAR_R[0] - rt[0]) * e, rt[1] + (EAR_R[1] - rt[1]) * e];
   }
   // Fretting arm: with a guitar the elbow hangs down and the forearm comes up to the neck from below (not over it).
-  let L = arm(SL, lt, 122, 118, 1);
+  let L = arm(SL, lt, 122, 118, p.elbowsOut ? -1 : 1);
   if (p.guitar) {
     // Fretting arm: the upper arm hangs straight down and the elbow points at the floor; the forearm only swings up to the neck
     // from below. (A two-bone solve throws the elbow sideways and drags the forearm across the guitar.)
     L = { elbow: [SL[0] - 22, SL[1] + 120], hand: lt };
   }
-  let R = arm(SR, rt, 122, 118, -1);
+  let R = arm(SR, rt, 122, 118, p.elbowsOut ? 1 : -1);
   if (p.guitar) {
     // Strumming arm: the upper arm hangs down along the body and the elbow rests on the guitar's upper bout; the forearm only
     // swings to the strings (a plain two-bone solve throws the elbow out to the side like a wing).
@@ -272,22 +305,23 @@ export const Person: React.FC<PersonProps> = (p) => {
       opacity={p.opacity ?? 1}
       style={g ? { filter: `saturate(${1 - g * 0.8}) brightness(${1 - g * 0.25})` } : undefined}
     >
-      <Hair style={p.hair} color={p.hairColor} accent={p.accent ?? '#e8445a'} layer="back" />
+      {p.hair !== 'windy' && <Hair style={p.hair} color={p.hairColor} accent={p.accent ?? '#e8445a'} layer="back" t={t} wind={p.wind ?? 0} variant={p.hairVariant} />}
       {/* torso */}
       <path d="M -94 -168 Q -108 -80 -96 140 L 96 140 Q 108 -80 94 -168 Q 44 -198 0 -198 Q -44 -198 -94 -168 Z" fill={shirt} stroke={sleeveDark} strokeWidth={4} />
       <ellipse cx={0} cy={-190} rx={52} ry={16} fill={sleeveDark} />
       <rect x={-21} y={-216} width={42} height={36} rx={14} fill={shade(skin, 0.88)} />
       {/* fretting arm sits BEHIND the guitar and its neck; only the palm shows on top of the neck */}
       {p.guitar && drawArm(L, SL, undefined, 'limb')}
-      {(p.guitar || p.showGuitar) && <Guitar glow={p.guitar?.glow} />}
+      {(p.guitar || p.showGuitar) && <Guitar glow={p.guitar?.glow} electric={p.electric} />}
       {p.guitar ? drawArm(L, SL, undefined, 'hand') : drawArm(L, SL, p.leftHold)}
       {drawArm(R, SR, p.guitar ? undefined : p.rightHold)}
       {/* head */}
       <g transform={`translate(${p.head?.x ?? 0} ${-262 + (p.head?.y ?? 0)}) rotate(${p.head?.rot ?? 0})`}>
+        {p.hair === 'windy' && <Hair style="windy" color={p.hairColor} accent={p.accent ?? '#e8445a'} layer="back" t={t} wind={p.wind ?? 0} variant={p.hairVariant} />}
         <circle cx={-64} cy={8} r={13} fill={skin} /><circle cx={64} cy={8} r={13} fill={skin} />
         <circle cx={0} cy={0} r={65} fill={skin} />
         <Face mood={p.mood} look={look} talk={p.talk ?? 0} blink={blink} skin={skin} sweat={p.sweat ?? 0} t={t} />
-        <Hair style={p.hair} color={p.hairColor} accent={p.accent ?? '#e8445a'} layer="front" />
+        <Hair style={p.hair} color={p.hairColor} accent={p.accent ?? '#e8445a'} layer="front" t={t} wind={p.wind ?? 0} variant={p.hairVariant} />
       </g>
       {p.extras}
     </g>

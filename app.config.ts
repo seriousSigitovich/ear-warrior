@@ -3,6 +3,15 @@ import type { ExpoConfig } from 'expo/config';
 // Expo app configuration (T006). Microphone permission strings are required for pitch capture (FR-004).
 // The backend base URL is supplied via EXPO_PUBLIC_API_URL at build time and points at the
 // Ear Warrior Node/Postgres server (server/). Absent → telemetry and sync are no-ops (offline-only).
+
+// EAS project id (`eas init` prints it). OTA updates are served from https://u.expo.dev/<id>.
+const EAS_PROJECT_ID = '';
+
+// On EAS builds an empty id would ship a binary that can never receive an OTA update, so fail loudly.
+if (!EAS_PROJECT_ID && process.env.EAS_BUILD_PROFILE && process.env.EAS_BUILD_PROFILE !== 'development') {
+  throw new Error('app.config.ts: set EAS_PROJECT_ID (run `eas init`) before building — OTA needs it.');
+}
+
 const config: ExpoConfig = {
   name: 'Ear Warrior',
   slug: 'ear-warrior',
@@ -23,6 +32,7 @@ const config: ExpoConfig = {
   },
   plugins: [
     'expo-router',
+    'expo-updates',
     // expo-audio config plugin sets the iOS microphone string (FR-004); `recordAudioAndroid: false`
     // keeps RECORD_AUDIO out of the Android manifest.
     [
@@ -35,8 +45,13 @@ const config: ExpoConfig = {
       },
     ],
   ],
+  // Fingerprint policy: an OTA only reaches binaries whose native layer matches, so JS updates never
+  // land on a build that lacks a native module they need (e.g. before the expo-secure-store rebuild).
+  runtimeVersion: { policy: 'fingerprint' },
+  updates: EAS_PROJECT_ID ? { url: `https://u.expo.dev/${EAS_PROJECT_ID}` } : undefined,
   extra: {
     apiUrl: process.env.EXPO_PUBLIC_API_URL,
+    eas: EAS_PROJECT_ID ? { projectId: EAS_PROJECT_ID } : undefined,
   },
 };
 
