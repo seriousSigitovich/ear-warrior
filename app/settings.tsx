@@ -2,7 +2,16 @@
 // mode toggle and the level picker take real effect and survive restart (FR-011b). In fixed mode the
 // ladder is tappable and every rank is selectable — there is no unlock gating.
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Alert,
+  Linking,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { DifficultyMode, DifficultySettings } from '../src/models';
 import {
@@ -19,7 +28,9 @@ import {
   setFixedRank,
   setMode,
 } from '../src/features/difficulty/adapt';
-import { defaultRowStore } from '../src/services/storage/db';
+import { KEY_VALUE_TABLE, defaultRowStore } from '../src/services/storage/db';
+import { getOrCreateDeviceId, keyValueOverRowStore } from '../src/lib/deviceId';
+import { FEEDBACK_EMAIL, buildFeedbackUrl } from '../src/lib/feedback';
 import { createDifficultySettingsRepository } from '../src/services/storage/repositories';
 import { Screen } from '../src/components/common/Screen';
 import { Button } from '../src/components/common/Button';
@@ -116,6 +127,7 @@ export default function Settings() {
         </Text>
 
         <AccountSection />
+        <FeedbackSection />
       </ScrollView>
     </Screen>
   );
@@ -197,6 +209,39 @@ function AccountSection() {
             />
           </>
         )}
+      </Card>
+    </View>
+  );
+}
+
+/** Opens the mail app with the context pre-filled; falls back to showing the address when there is no mail app. */
+function FeedbackSection() {
+  const write = async () => {
+    let deviceId: string | null = null;
+    try {
+      deviceId = await getOrCreateDeviceId(
+        keyValueOverRowStore(defaultRowStore(), KEY_VALUE_TABLE),
+      );
+    } catch {
+      // The mail still goes out, just without the install id.
+    }
+    try {
+      await Linking.openURL(
+        buildFeedbackUrl({ platform: Platform.OS, osVersion: Platform.Version, deviceId }),
+      );
+    } catch {
+      Alert.alert('No mail app found', `Write to us at ${FEEDBACK_EMAIL}.`);
+    }
+  };
+
+  return (
+    <View style={styles.account}>
+      <Kicker>Feedback</Kicker>
+      <Card style={styles.accountCard}>
+        <Text style={styles.accountLabel}>
+          Something broke, or something annoyed you? Tell us — we read every message.
+        </Text>
+        <Button label="Write to us" variant="secondary" onPress={() => void write()} />
       </Card>
     </View>
   );

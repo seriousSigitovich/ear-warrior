@@ -1,6 +1,7 @@
 // Crash and error reporting (Sentry). Inert without EXPO_PUBLIC_SENTRY_DSN, so local and test builds send nothing.
 import * as Sentry from '@sentry/react-native';
 import type { AuthState } from '../auth/service';
+import { sentryUserFor } from './sentryUser';
 
 const DSN = process.env.EXPO_PUBLIC_SENTRY_DSN;
 
@@ -22,9 +23,9 @@ export function initSentry(): void {
 /** The signed-in email, or the anonymous device id, becomes the Sentry user (beta-checklist). */
 export function setSentryUser(state: AuthState, deviceId: string | null): void {
   if (!started) return;
-  if (state.status === 'signedIn') Sentry.setUser({ id: deviceId ?? undefined, email: state.email });
-  else Sentry.setUser(deviceId ? { id: deviceId } : null);
+  Sentry.setUser(sentryUserFor(state, deviceId));
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const wrapWithSentry = <T extends React.ComponentType<any>>(component: T): T =>
   started ? (Sentry.wrap(component) as unknown as T) : component;

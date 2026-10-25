@@ -8,8 +8,14 @@ import type { ExpoConfig } from 'expo/config';
 const EAS_PROJECT_ID = 'aa205069-4373-4d4f-aeed-d38c53e33380';
 
 // On EAS builds an empty id would ship a binary that can never receive an OTA update, so fail loudly.
-if (!EAS_PROJECT_ID && process.env.EAS_BUILD_PROFILE && process.env.EAS_BUILD_PROFILE !== 'development') {
-  throw new Error('app.config.ts: set EAS_PROJECT_ID (run `eas init`) before building — OTA needs it.');
+if (
+  !EAS_PROJECT_ID &&
+  process.env.EAS_BUILD_PROFILE &&
+  process.env.EAS_BUILD_PROFILE !== 'development'
+) {
+  throw new Error(
+    'app.config.ts: set EAS_PROJECT_ID (run `eas init`) before building — OTA needs it.',
+  );
 }
 
 const config: ExpoConfig = {
@@ -23,8 +29,17 @@ const config: ExpoConfig = {
     bundleIdentifier: 'com.earwarrior.app',
     supportsTablet: true,
   },
+  icon: './assets/app/icon.png',
   android: {
     package: 'com.earwarrior.app',
+    // Play rejects an upload whose versionCode was already used. appVersionSource is `local` (eas.json),
+    // so bump this by one before every AAB upload.
+    versionCode: 1,
+    adaptiveIcon: {
+      foregroundImage: './assets/app/adaptive-fg.png',
+      monochromeImage: './assets/app/adaptive-fg.png',
+      backgroundColor: '#f5f3ee',
+    },
     // The MVP answers on the on-screen fretboard (R14), so the Android build declares no microphone
     // access. react-native-pitchy's own manifest adds RECORD_AUDIO, so it is blocked explicitly
     // (manifest merger `tools:node="remove"`). Restore both with the `mic` input mode (T078).
@@ -33,6 +48,11 @@ const config: ExpoConfig = {
   plugins: [
     'expo-router',
     'expo-updates',
+    // Cream ear on the Nocturne ground (src/theme/nocturne.ts `bg`), so launch does not flash light.
+    [
+      'expo-splash-screen',
+      { image: './assets/app/splash.png', backgroundColor: '#161826', imageWidth: 200 },
+    ],
     // Sentry native SDK + source-map upload. Upload needs SENTRY_AUTH_TOKEN (EAS secret); without it the build still succeeds.
     [
       '@sentry/react-native/expo',

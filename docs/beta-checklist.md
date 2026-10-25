@@ -16,11 +16,11 @@
 ## 1. До первой сборки AAB
 
 ### Сборка и конфиг
-- [~] **OTA:** `expo-updates` установлен, плагин и `runtimeVersion` (fingerprint) в `app.config.ts` есть (2026-10-22). `eas init` сделан, id вписан в `EAS_PROJECT_ID` (2026-10-25). Осталось: пересобрать нативный бинарь (`eas build`), затем проверить `eas update --channel preview` на устройстве
-- [~] **Краш-аналитика:** Sentry в коде (2026-10-25): приложение `@sentry/react-native` (плагин, `metro.config.js`, `src/services/observability/sentry.ts`, user = email/deviceId), сервер `@sentry/node` (`server/src/observability.ts`). Проекты созданы 2026-10-25 (org `sigitovich-solutions`: `ear-warrior-app`, `ear-warrior-api`); DSN приложения в `eas.json` (preview/production), `SENTRY_DSN` сервера в Vercel (Production). API задеплоен (2026-10-25). Осталось: `SENTRY_AUTH_TOKEN` (EAS secret) + `SENTRY_ORG`/`SENTRY_PROJECT` для source maps, пересобрать нативный бинарь, проверить тестовой ошибкой
+- [~] **OTA:** `expo-updates` установлен, плагин и `runtimeVersion` (fingerprint) в `app.config.ts` есть (2026-10-22). `eas init` сделан, id вписан в `EAS_PROJECT_ID` (2026-10-25). Preview-сборка Android поставлена в очередь 2026-10-25 (канал `preview`, keystore создан на EAS). Осталось: поставить APK на устройство, затем проверить `eas update --channel preview`
+- [~] **Краш-аналитика:** Sentry в коде (2026-10-25): приложение `@sentry/react-native` (плагин, `metro.config.js`, `src/services/observability/sentry.ts`, user = email/deviceId), сервер `@sentry/node` (`server/src/observability.ts`). Проекты созданы 2026-10-25 (org `sigitovich-solutions`: `ear-warrior-app`, `ear-warrior-api`); DSN приложения в `eas.json` (preview/production), `SENTRY_DSN` сервера в Vercel (Production). API задеплоен (2026-10-25). Осталось: `SENTRY_AUTH_TOKEN` (EAS secret) + `SENTRY_ORG`/`SENTRY_PROJECT` для source maps (первая preview-сборка ушла без них — стек-трейсы из неё будут нечитаемыми), проверить тестовой ошибкой
 - [ ] **Вход по коду из письма** — отдельный блок ниже («Вход по почте»)
-- [ ] `android.versionCode` в `app.config.ts` (+ инкремент при каждой загрузке; `appVersionSource: local`)
-- [ ] Иконка (`icon`), adaptive icon, splash в `app.config.ts` (сейчас стандартные Expo)
+- [x] `android.versionCode: 1` в `app.config.ts` (2026-10-25); инкремент на 1 перед каждой загрузкой AAB (`appVersionSource: local`)
+- [x] Иконка, adaptive icon (+ monochrome для тем Android 13) и splash в `app.config.ts` (2026-10-25): `assets/app/*.png`, нарисованы из `assets/brand/logo.svg`; splash — светлое ухо на `#161826` (`expo-splash-screen` добавлен). Не проверено на устройстве
 - [ ] Убедиться, что в манифесте AAB нет `RECORD_AUDIO` (после сборки: `aapt dump permissions` или Play Console → App bundle explorer)
 
 ### Вход по почте (passwordless, код из 6 цифр; Google позже)
@@ -36,7 +36,7 @@
 - [x] Приложение: экран «Введи почту» → «Введи код», кнопка «Пропустить», повторная отправка кода с таймером
 - [x] Токен хранить в `expo-secure-store` (нативный модуль — добавить до первой сборки)
 - [x] Привязать текущий `deviceId` к пользователю после входа, чтобы события и история склеились
-- [ ] События и Sentry: `user = email` вошедшего (или `deviceId`, если пропустил) — в приложении готов `getAuthService().onAuthChange(...)`; осталось подписать Sentry/события, когда они появятся
+- [x] Sentry: `user = email` вошедшего (или `deviceId`, если пропустил) — `useSentryUser` в `app/_layout.tsx`, логика в `sentryUser.ts` с тестами. События (продуктовая аналитика) подпишутся на `onAuthChange`, когда появятся
 - [x] Выход из аккаунта и удаление данных по запросу — в `app/settings.tsx` (нужно для Play и privacy)
 - [x] Тесты первым делом (чистая логика в `.ts`, как принято в проекте): срок кода, число попыток, лимиты, одноразовость
 - [ ] Privacy-страница и Data Safety: email, userId, способ входа — страница `landing/privacy` и `landing/delete-account` обновлены 2026-10-21 (деплой лендинга — за владельцем); Data Safety форма в консоли — позже
@@ -46,7 +46,7 @@
 ### Продукт в приложении
 - [ ] **Онбординг** (2–3 экрана): послушай → найди на грифе → ответь; показывается один раз при первом запуске
 - [ ] **Продуктовая аналитика** (свои события в свой Postgres): сначала записать главный вопрос беты (например: «доля тестеров с ≥ 3 сессиями за неделю» и возврат на 2-й день), потом события под него: `app_open`, `onboarding_done`, `session_start`, `session_end`, ответы и результат, день возврата
-- [ ] Кнопка «Написать нам» в `app/settings.tsx` (mailto или форма)
+- [x] Кнопка «Write to us» в `app/settings.tsx` (2026-10-25): mailto на `golovsha@gmail.com` с платформой и device id в теле; нет почтового приложения → алерт с адресом. Не проверено на устройстве
 - [ ] Сыграть каждую кураторскую мелодию с гитарой хотя бы раз и поправить ноты (T088)
 
 ### Проверка на устройстве
