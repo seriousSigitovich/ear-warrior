@@ -89,12 +89,14 @@ server/
 ├── src/
 │   ├── auth/
 │   │   ├── policy.ts          # constants: code TTL 10 min, 5 attempts, 5/h per email, 20/h per source, 60 s resend
+│   │   ├── defaults.ts        # production wiring of the auth dependencies
+│   │   ├── pgStore.ts         # Postgres AuthStore (Drizzle)
 │   │   ├── codes.ts           # generate 6 digits, HMAC hash, constant-time compare
 │   │   ├── limits.ts          # pure decisions from counts + clock → allow / retry_after
 │   │   ├── tokens.ts          # session token generate / sha256 hash / bearer parse
 │   │   ├── email.ts           # normalize + validate (mirrors src/lib/email.ts on the app)
 │   │   ├── mailer.ts          # Mailer interface + nodemailer implementation + console/null mailers
-│   │   ├── store.ts           # AuthStore interface + Drizzle (Postgres) implementation
+│   │   ├── store.ts           # AuthStore interface
 │   │   ├── memoryStore.ts     # in-memory AuthStore used by route tests
 │   │   └── *.test.ts          # codes, limits, tokens, email, memoryStore parity
 │   ├── routes/
@@ -102,7 +104,7 @@ server/
 │   │   └── auth.test.ts       # inject-based contract + abuse tests
 │   ├── db/{schema.ts,ddl.ts}  # + four tables (idempotent DDL, same style as existing)
 │   ├── app.ts                 # register auth routes; add DELETE to CORS methods
-│   └── scripts/delete-user.ts # owner CLI for web deletion requests (npm run delete-user -- <email>)
+│   └── delete-user.ts         # owner CLI for web deletion requests (npm run delete-user -- <email>)
 src/                            # Expo app
 ├── lib/email.ts                # normalizeEmail / isPlausibleEmail (pure)
 ├── services/auth/

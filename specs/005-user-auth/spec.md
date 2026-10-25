@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-19
 
-**Status**: Implemented 2026-10-21 (server + app + web); deploy and on-device checks pending — see tasks.md
+**Status**: Implemented and deployed 2026-10-21 (server + app + web). Open: p95 measurement, TalkBack on a real phone, Play Data Safety, product events — see tasks.md
 
 **Input**: Ear Warrior goes into a closed Android beta with 14 people from the waitlist. The owner needs to know *who is who* in the usage and crash data, and wants a real (not self-declared) identity. Sign-in must never get in the way of practising: the app works fully without it. Google sign-in is out of scope for now.
 
@@ -143,7 +143,7 @@ The owner can switch on a fixed test account (one known email with one known cod
 
 - **FR-001**: The app MUST offer sign-in by email one-time code and MUST NOT require a password.
 - **FR-002**: Sign-in MUST be optional: every existing feature (practice, progress, settings, offline use) MUST work for a learner who never signs in, with no gated content.
-- **FR-003**: The sign-in offer MUST be shown once on first launch with a one-tap "Skip", and MUST be reachable again from Settings at any time.
+- **FR-003**: The sign-in offer MUST be shown once, when the Home screen first opens, with a one-tap "Skip", and MUST be reachable again from Settings at any time.
 - **FR-004**: The system MUST treat an email as the same address regardless of letter case or surrounding spaces, and MUST reject malformed addresses before sending anything.
 - **FR-005**: A code MUST be 6 digits, valid for 10 minutes, usable once, and replaced by any newer code requested for the same email.
 - **FR-006**: A code MUST stop being accepted after 5 wrong attempts; the learner MUST be told how many attempts remain and that a new code is needed once they run out.
@@ -196,4 +196,4 @@ The owner can switch on a fixed test account (one known email with one known cod
 - Account data, usage events and crash data stay with the project's existing backend and crash tool; no new data processor beyond what the crash tool (decided 2026-10-19) already adds.
 - The signed-in state lasts until sign-out or deletion; there is no expiry prompt during the beta.
 - Out of scope: Google or any other provider sign-in, passwords, profile editing, mandatory sign-in, changing the email on an account, and restoring progress on a new install (decided 2026-10-19: later, with Google sign-in).
-- Dependencies: spec 001 FR-019 / SC-008 and spec 002 ("no accounts") need an amendment note pointing here; the onboarding screen (see `docs/beta-checklist.md`) hosts the first sign-in offer; the product-events work reads the account email from this feature.
+- Dependencies: spec 001 FR-019 / SC-008 and spec 002 ("no accounts") need an amendment note pointing here; the Home screen hosts the first sign-in offer (there is no separate onboarding screen); the product-events work reads the account email from this feature.
