@@ -15,12 +15,20 @@
       "ios": { "simulator": false },
       "android": { "buildType": "apk" },
       "channel": "preview",
-      "env": { "EXPO_PUBLIC_API_URL": "https://ear-warrior-api.vercel.app" }
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://ear-warrior-api.vercel.app",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://460ff0d817869a3ed5c53eb7a8e9889d@o4512317559472128.ingest.de.sentry.io/4512317581033552",
+        "EXPO_PUBLIC_APP_ENV": "preview"
+      }
     },
     "production": {
       "distribution": "store",
       "channel": "production",
-      "env": { "EXPO_PUBLIC_API_URL": "https://ear-warrior-api.vercel.app" }
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://ear-warrior-api.vercel.app",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://460ff0d817869a3ed5c53eb7a8e9889d@o4512317559472128.ingest.de.sentry.io/4512317581033552",
+        "EXPO_PUBLIC_APP_ENV": "production"
+      }
     }
   },
   "submit": {
