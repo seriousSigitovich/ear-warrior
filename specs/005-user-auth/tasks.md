@@ -20,6 +20,8 @@ Do not build or submit the first AAB until T108 (Constitution IV), T121b (FR-021
 - [x] T107a [US1] [FR-001] Deployed 2026-10-21 with `AUTH_PEPPER` set (`ear-warrior-api`); live endpoints answer
 - [x] T107b [US1] [FR-001, SC-003] `SMTP_USER`, `SMTP_PASS` set on `ear-warrior-api` and redeployed 2026-10-21 (via `server/scripts/copy-smtp.sh`). Real mail verified end to end on production: request → email arrived → verify → `me` → delete account
 - [ ] T107c [US6] [FR-017, SC-009] Optional `AUTH_TEST_EMAIL` + `AUTH_TEST_CODE` for the Play reviewer, only if the store asks
+- [x] T109a [US3] [FR-011, SC-006] Owner page `GET /admin/users` (same Basic auth as `/admin/social`, 404 without `ADMIN_PASSWORD`): per account email, created, devices, attempts (all / last 7 days / correct), last attempt, read from `attempt_log_attributed`; plus a row for anonymous attempts. Tests first: page rendering/escaping, route access + happy path with an injected loader; SQL aggregation test (`auth/usage.test.ts`) runs only against a local Postgres — written, not yet run: no local Postgres on 2026-10-25, so check `/admin/users` once on the deployed server (T109b)
+- [ ] T109b [US3] [SC-006] Live check: sign in on a phone, practise, force a test crash → the account shows on `/admin/users` and its email on the Sentry event; sign out, practise → new attempts land in the anonymous row
 - [ ] T108 [US1] [SC-003, SC-004] Measure `verify` p95 < 500 ms and mail delivery ≤ 60 s against the deployed server (quickstart §2)
 
 ## App (`src/`, `app/`)

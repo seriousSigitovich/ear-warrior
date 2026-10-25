@@ -26,7 +26,7 @@ export interface PageModel {
   now: Date;
 }
 
-const esc = (s: unknown): string =>
+export const esc = (s: unknown): string =>
   String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
 const nf = new Intl.NumberFormat('ru-RU');
@@ -191,7 +191,7 @@ function postItem(v: PostView, days: number): string {
 </details>`;
 }
 
-const CSS = `
+export const CSS = `
 :root{color-scheme:light dark;--bg:#f6f5f1;--surface:#fcfbf8;--text:#26312e;--muted:#66726e;--line:#d9ddd6;--tint:#e3ece8;--accent:#3f6b60;--on-accent:#fff;--warm-bg:#efe6d4;--warm-text:#7a5c25;--ok:#3f6b60;--warn:#b08a4e;--bad:#a24a3d}
 @media(prefers-color-scheme:dark){:root{--bg:#161d1b;--surface:#1d2624;--text:#dfe6e2;--muted:#9aa8a2;--line:#2e3a37;--tint:#24332f;--accent:#8fc0b0;--on-accent:#10201b;--warm-bg:#3a3123;--warm-text:#d1ac6b;--ok:#8fc0b0;--warn:#d1ac6b;--bad:#e09a8b}}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Inter","Segoe UI",sans-serif}
@@ -266,7 +266,7 @@ export function renderPage(m: PageModel): string {
   const body = `
 <header>
   <h1>Соцсети · Ear Warrior</h1>
-  <div class="controls">${periodLinks(m)}${platformLinks(m)}
+  <div class="controls"><a href="/admin/users">Тестеры</a>${periodLinks(m)}${platformLinks(m)}
     <form method="post" action="/admin/social/collect" style="margin:0"><button type="submit">Обновить сейчас</button></form>
   </div>
 </header>

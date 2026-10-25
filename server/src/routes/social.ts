@@ -1,11 +1,10 @@
 // GET  /admin/social          -> the analytics dashboard (HTML).
 // POST /admin/social/collect  -> run the collectors now (the page's "refresh now" button).
 // GET  /api/cron/social       -> run the collectors from a scheduler (Bearer CRON_SECRET; 404 if unset).
-// Both sit behind HTTP Basic auth (ADMIN_USER / ADMIN_PASSWORD). With no ADMIN_PASSWORD configured
-// they answer 404, so a fresh deploy never exposes the page by accident.
-import { createHash, timingSafeEqual } from 'node:crypto';
+// Both sit behind HTTP Basic auth (admin/basicAuth.ts).
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
+import { authorize, safeEqual } from '../admin/basicAuth.js';
 import { runCollectors, COLLECTORS } from '../social/collect.js';
 import { renderPage } from '../social/page.js';
 import { applyLabels } from '../social/post-labels.js';
@@ -15,27 +14,6 @@ import { buildDashboard } from '../social/summary.js';
 import type { Platform } from '../social/types.js';
 
 const MANUAL_COOLDOWN_MS = 2 * 60 * 1000;
-
-const sha = (s: string): Buffer => createHash('sha256').update(s).digest();
-const safeEqual = (a: string, b: string): boolean => timingSafeEqual(sha(a), sha(b));
-
-/** Returns true if the request may proceed; otherwise it has already replied. */
-function authorize(req: FastifyRequest, reply: FastifyReply): boolean {
-  const password = process.env.ADMIN_PASSWORD;
-  if (!password) {
-    void reply.status(404).send({ ok: false, error: 'not_found' });
-    return false;
-  }
-  const user = process.env.ADMIN_USER ?? 'admin';
-  const header = req.headers.authorization ?? '';
-  if (header.startsWith('Basic ')) {
-    const decoded = Buffer.from(header.slice(6), 'base64').toString('utf8');
-    const i = decoded.indexOf(':');
-    if (i > 0 && safeEqual(decoded.slice(0, i), user) && safeEqual(decoded.slice(i + 1), password)) return true;
-  }
-  void reply.header('www-authenticate', 'Basic realm="ear-warrior admin", charset="UTF-8"').status(401).send('Authentication required');
-  return false;
-}
 
 /** Vercel Cron sends `Authorization: Bearer $CRON_SECRET`; without CRON_SECRET the route does not exist. */
 function authorizeCron(req: FastifyRequest, reply: FastifyReply): boolean {

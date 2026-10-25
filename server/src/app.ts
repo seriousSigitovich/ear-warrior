@@ -6,12 +6,17 @@ import { registerTelemetry } from './routes/telemetry.js';
 import { registerSync } from './routes/sync.js';
 import { registerSocial } from './routes/social.js';
 import { registerAuth, type AuthDeps } from './routes/auth.js';
+import { registerUsers } from './routes/users.js';
 import { defaultAuthDeps } from './auth/defaults.js';
+import { loadUsageReport } from './auth/usage.js';
+import type { UsageReport } from './auth/usagePage.js';
 import { setupFastifyErrorHandler } from './observability.js';
 
 export interface BuildOptions {
   /** Replaces the production auth wiring (tests pass an in-memory store and a recording mailer). */
   auth?: AuthDeps;
+  /** Replaces the Postgres read behind /admin/users (tests). */
+  usage?: (now: Date) => Promise<UsageReport>;
   logger?: FastifyServerOptions['logger'];
 }
 
@@ -37,6 +42,7 @@ export function buildApp(opts: BuildOptions = {}): FastifyInstance {
   registerSync(app);
   registerSocial(app);
   registerAuth(app, opts.auth ?? defaultAuthDeps());
+  registerUsers(app, opts.usage ?? loadUsageReport);
 
   return app;
 }
