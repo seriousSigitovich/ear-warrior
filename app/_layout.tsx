@@ -1,14 +1,37 @@
 // Root navigation shell (T015). expo-router Stack inside the safe-area provider.
 // Nocturne: dark ground, headerless Home, slim accent-tinted back headers on inner screens.
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useAuthLifecycle } from '../src/features/auth/useAuth';
 import { colors } from '../src/theme/nocturne';
+import { initSentry, setSentryUser, wrapWithSentry } from '../src/services/observability/sentry';
+import { getAuthService } from '../src/features/auth/authService';
+import { getOrCreateDeviceId, keyValueOverRowStore } from '../src/lib/deviceId';
+import { KEY_VALUE_TABLE, defaultRowStore } from '../src/services/storage/db';
 
-export default function RootLayout() {
+initSentry();
+
+// Tags every report with the signed-in email, or the anonymous device id for a guest.
+function useSentryUser(): void {
+  useEffect(() => {
+    let deviceId: string | null = null;
+    const apply = () => setSentryUser(getAuthService().getState(), deviceId);
+    const unsubscribe = getAuthService().onAuthChange(apply);
+    getOrCreateDeviceId(keyValueOverRowStore(defaultRowStore(), KEY_VALUE_TABLE))
+      .then((id) => {
+        deviceId = id;
+        apply();
+      })
+      .catch(() => apply());
+    return unsubscribe;
+  }, []);
+}
+
+function RootLayout() {
   useAuthLifecycle();
+  useSentryUser();
   return (
     <SafeAreaProvider>
       <StatusBar style="light" />
@@ -30,3 +53,5 @@ export default function RootLayout() {
     </SafeAreaProvider>
   );
 }
+
+export default wrapWithSentry(RootLayout);

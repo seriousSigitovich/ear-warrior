@@ -7,6 +7,7 @@ import { registerSync } from './routes/sync.js';
 import { registerSocial } from './routes/social.js';
 import { registerAuth, type AuthDeps } from './routes/auth.js';
 import { defaultAuthDeps } from './auth/defaults.js';
+import { setupFastifyErrorHandler } from './observability.js';
 
 export interface BuildOptions {
   /** Replaces the production auth wiring (tests pass an in-memory store and a recording mailer). */
@@ -20,6 +21,8 @@ export function buildApp(opts: BuildOptions = {}): FastifyInstance {
     // Trust the proxy so client IPs/UA are read correctly behind a load balancer.
     trustProxy: true,
   });
+
+  setupFastifyErrorHandler(app); // reports unhandled route errors (5xx) when Sentry is configured
 
   const origin = process.env.CORS_ORIGIN ?? '*';
   app.register(cors, {

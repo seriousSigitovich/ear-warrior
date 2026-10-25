@@ -33,6 +33,11 @@ const config: ExpoConfig = {
   plugins: [
     'expo-router',
     'expo-updates',
+    // Sentry native SDK + source-map upload. Upload needs SENTRY_AUTH_TOKEN (EAS secret); without it the build still succeeds.
+    [
+      '@sentry/react-native/expo',
+      { organization: process.env.SENTRY_ORG, project: process.env.SENTRY_PROJECT },
+    ],
     // expo-audio config plugin sets the iOS microphone string (FR-004); `recordAudioAndroid: false`
     // keeps RECORD_AUDIO out of the Android manifest.
     [
