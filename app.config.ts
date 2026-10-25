@@ -5,7 +5,7 @@ import type { ExpoConfig } from 'expo/config';
 // Ear Warrior Node/Postgres server (server/). Absent → telemetry and sync are no-ops (offline-only).
 
 // EAS project id (`eas init` prints it). OTA updates are served from https://u.expo.dev/<id>.
-const EAS_PROJECT_ID = '';
+const EAS_PROJECT_ID = 'aa205069-4373-4d4f-aeed-d38c53e33380';
 
 // On EAS builds an empty id would ship a binary that can never receive an OTA update, so fail loudly.
 if (!EAS_PROJECT_ID && process.env.EAS_BUILD_PROFILE && process.env.EAS_BUILD_PROFILE !== 'development') {

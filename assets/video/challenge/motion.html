@@ -265,15 +265,20 @@
 
   // 3 · the count: one "?" per note, filled by the second (slower) playing
   const B3 = bb(TL.againAt - 0.2, T3out, T3out + 0.55);
-  B3.lines = build(B3.root, [{ text: '*' + N + '* notes', max: 250 }, { text: 'Listen again. Slower.', max: 52, cls: 'sub', top: N > 10 ? 940 : 850 }], 450);
-  { const row = div('slots abs', B3.root); B3.slots = C.notes.map(() => { const e = div('slot', row); e.textContent = '?'; return e; }); }
+  // `riff` entries (a riff to play, not a tune to write down): no count, no slots — the second playing is simply "Listen again. Slower."
+  if (C.riff) { B3.lines = build(B3.root, [{ text: '*Listen* again.', max: 150 }, { text: 'Slower. Catch the gallop.', max: 60, cls: 'sub', top: 620 }], 450); B3.slots = []; }
+  else {
+    B3.lines = build(B3.root, [{ text: '*' + N + '* notes', max: 250 }, { text: 'Listen again. Slower.', max: 52, cls: 'sub', top: N > 10 ? 940 : 850 }], 450);
+    const row = div('slots abs', B3.root); B3.slots = C.notes.map(() => { const e = div('slot', row); e.textContent = '?'; return e; });
+  }
 
   // 4 · the ask
   const B4 = bb(T4, T5 - 0.25, T5 + 0.3);
-  B4.lines = build(B4.root, [{ text: 'Write them', max: 128 }, { text: '*in the comments*', max: 128 }], 440);
+  B4.lines = build(B4.root, C.riff ? [{ text: '*Play it*', max: 190 }, { text: 'back.', max: 190 }] : [{ text: 'Write them', max: 128 }, { text: '*in the comments*', max: 128 }], 440);
   B4.box = div('cbox abs', B4.root);
-  B4.box.innerHTML = 'Add a comment…<div class="caret"></div><div class="send"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></div>';
+  B4.box.innerHTML = (C.riff ? 'Tell me if you got it…' : 'Add a comment…') + '<div class="caret"></div><div class="send"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></div>';
   B4.caret = B4.box.querySelector('.caret');
+  if (C.riff) B4.box.style.top = '900px';
 
   // 5 · the loop line
   const B5 = bb(T5, 99, 100);

@@ -23,6 +23,25 @@ const PAGANINI = {
   ].join(' ')),
 };
 
+// Variant 5 (#48): the same Short and picture on the user's own GarageBand riff — `assets/solo/garage/01-chug-gallop-e.mid` played on a distorted guitar
+// (E minor, ♩ = 148, 4 bars + a power-chord stab). The notes below are that MIDI; the audio export (`1 galop.mp3`) was checked against it by pitch tracking
+// per 16th (every slot matches). Palm-muted E2 chugs, a G / Bb / A turnaround, then the same shape a fifth up on B2 (B–D–E–D–C–Bb–A). The last E2 stands
+// for the E5 power chord (E2 B2 E3), held a beat and a half. 54 note onsets in 6.3 s — a riff to PLAY, not to write down, so the page swaps the count
+// ("54 notes") and the comment box for "Listen again. Slower." and "Play it back" (`riff: true`). Second playing = the same take time-stretched to 0.7×.
+const GALLOP = {
+  id: 48, title: 'Gallop riff (motion, electric)', page: 'motion.html', kind: 'quiz', coldOpen: true, riff: true,
+  timbre: 'acoustic', layout: 'fretboard', tag: 'Ear series', tempoBpm: 148, tonicPc: 4, minor: true, key: 'E minor',
+  hook: '*97%*\nof guitarists\ncan\'t play this\nby *EAR*',
+  recorded: { first: 'guitar-electric/galop-48.wav', slow: 'guitar-electric/galop-48-slow.wav' },
+  notes: parse([
+    'E2:.25 E2:.25 E2:.25 G2:.25 E2:.25 E2:.25 Bb2:.25 A2:.25 E2:.25 E2:.25 E2:.25 G2:.25 A2:.5 G2:.25 E2:.25',     // A
+    'B2:.25 B2:.25 B2:.25 D3:.25 B2:.25 B2:.25 E3:.25 D3:.25 B2:.25 B2:.25 B2:.25 D3:.25 C3:.5 Bb2:.25 A2:.25',    // B: a fifth up
+    'E2:.25 E2:.25 E2:.25 G2:.25 E2:.25 E2:.25 Bb2:.25 A2:.25 E2:.25 E2:.25 E2:.25 G2:.25 A2:.5 G2:.25 E2:.25',     // A again
+    'E2:.25 E2:.25 E2:.25 G2:.25 E2:.25 E2:.25 Bb2:.25 A2:.25',                                                       // A, cut short by the stab
+    'E2:1.5',                                                                                                         // power chord
+  ].join(' ')),
+};
+
 export const MOTION = [
   {
     ...elise, id: 40, title: 'Für Elise (motion)', page: 'motion.html',
@@ -39,4 +58,5 @@ export const MOTION = [
   // Variant 4: #42 with the sound swapped — an electric guitar played from this very MIDI (`node midi.mjs 42`) on a GarageBand instrument, two takes
   // (the tune at ♩ = 140, then at 98 for the slower second playing). Picture, hook, notes and timing are #42's, so only the sound differs.
   { ...PAGANINI, id: 43, title: 'Paganini Caprice 24 (motion, electric)', recorded: { first: 'guitar-electric/electric-42.wav', slow: 'guitar-electric/electric-42-slow.wav' } },
+  GALLOP,
 ];

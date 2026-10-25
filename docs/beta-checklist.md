@@ -16,7 +16,7 @@
 ## 1. До первой сборки AAB
 
 ### Сборка и конфиг
-- [~] **OTA:** `expo-updates` установлен, плагин и `runtimeVersion` (fingerprint) в `app.config.ts` есть (2026-10-22). Осталось: `eas login` → `eas init` → вписать id в `EAS_PROJECT_ID` (без него EAS-сборка падает намеренно); после первой сборки проверить `eas update --channel preview`
+- [~] **OTA:** `expo-updates` установлен, плагин и `runtimeVersion` (fingerprint) в `app.config.ts` есть (2026-10-22). `eas init` сделан, id вписан в `EAS_PROJECT_ID` (2026-10-25). Осталось: пересобрать нативный бинарь (`eas build`), затем проверить `eas update --channel preview` на устройстве
 - [~] **Краш-аналитика:** Sentry в коде (2026-10-25): приложение `@sentry/react-native` (плагин, `metro.config.js`, `src/services/observability/sentry.ts`, user = email/deviceId), сервер `@sentry/node` (`server/src/observability.ts`). Осталось: создать проекты в Sentry, DSN → `EXPO_PUBLIC_SENTRY_DSN` (EAS env) и `SENTRY_DSN` (Vercel), `SENTRY_AUTH_TOKEN`/`SENTRY_ORG`/`SENTRY_PROJECT` для source maps, пересобрать нативный бинарь, проверить тестовой ошибкой
 - [ ] **Вход по коду из письма** — отдельный блок ниже («Вход по почте»)
 - [ ] `android.versionCode` в `app.config.ts` (+ инкремент при каждой загрузке; `appVersionSource: local`)
