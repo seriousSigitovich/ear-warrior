@@ -1,11 +1,11 @@
 # Contract: Audio Playback Service
 
 **Module**: `src/services/audio/playback.ts` (plays runtime-synthesized tones via `expo-audio`)
-**Consumers**: `features/practice` (playingMelody state), tuning reference (R5)
+**Consumers**: `features/practice` (playingMelody state, tapped-fret tones)
 
 Plays a target `Melody` by **synthesizing a plucked-string tone per note at runtime** (Karplus–Strong,
 `src/services/audio/synth.ts`), caching each as a WAV, and sequencing playback with `expo-audio`. Also
-plays single reference tones for tuning. **No audio samples are bundled** (R6).
+plays single tones for tapped frets. **No audio samples are bundled** (R6).
 
 ## Interface
 

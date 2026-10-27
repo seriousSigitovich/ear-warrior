@@ -4,12 +4,11 @@
 
 Automated unit + contract tests cover the pure logic and service boundaries (see the Testing section of
 [plan.md](./plan.md) and each file in [contracts/](./contracts)). This guide is the **on-device
-validation gate** for behavior unit tests cannot reach — real pitch-detection accuracy, audio fidelity,
-microphone permissions, and the offline loop — validating each user story against its acceptance
-scenarios on a physical device.
+validation gate** for behavior unit tests cannot reach — audio fidelity, the fretboard interaction and the
+offline loop — validating each user story against its acceptance scenarios on a device.
 
-> Requires a **physical iOS/Android device** (microphone + speakers) and a **guitar in standard tuning**.
-> Pitch detection does not work on simulators without mic input.
+> Needs a device (or simulator/emulator) with **audio output**. The app uses no microphone, so no guitar
+> is needed.
 
 ## Prerequisites
 
@@ -51,34 +50,29 @@ Install the resulting build on each tester device (TestFlight invite for iOS; in
 npx expo start --dev-client
 ```
 
-Open the app from the installed dev client. The MVP default is **`fretboard` input** (FR-020): no
-microphone permission is requested. To validate the microphone pipeline instead, start with
-`EXPO_PUBLIC_INPUT_MODE=mic` and grant the **microphone permission** when prompted.
-
-> **Which scenarios apply (2026-10-11).** In `fretboard` mode, "play" in the US1 scenarios means *tap the
-> notes on the fretboard, then Check*; scenarios 8 (timeout) and 9 (out-of-tune) are **`mic` only** and
-> cannot occur. SC-002 (95 % verdict agreement) is a `mic` claim. Run the extra US1 scenarios F1–F8 below.
+Open the app from the installed dev client. The app answers on the fretboard (FR-020) and declares **no
+microphone permission**, so no permission prompt ever appears.
 
 ## Validation scenarios
 
 Each maps to acceptance criteria in [spec.md](./spec.md). Mark pass/fail per device.
 
-### US1 — Listen, play back, get feedback (P1, MVP)
+### US1 — Listen, answer, get feedback (P1, MVP)
+
+In these scenarios "answer" means *tap the notes on the fretboard, then Check*.
 
 1. **Turn signal**: Start a session → app plays a melody → a clear "your turn" cue appears when playback
    ends. *(FR-002, FR-003; US1 #1)*
-2. **Correct attempt**: Play the exact notes in order → verdict = **correct**, all notes shown matched.
-   *(US1 #2; SC-002)*
-3. **Wrong attempt**: Play a wrong note → verdict = **incorrect**, the specific note flagged
+2. **Correct attempt**: Answer the exact notes in order → verdict = **correct**, all notes shown matched.
+   *(US1 #2)*
+3. **Wrong attempt**: Answer a wrong note → verdict = **incorrect**, the specific note flagged
    wrong/missed/extra. *(US1 #3)*
 4. **Replay**: Trigger replay → identical melody plays. *(US1 #4)*
 5. **Retry**: Retry → same melody re-graded fresh. *(US1 #5)*
 6. **Next**: Continue → a new melody is presented. *(US1 #6)*
-7. **Latency**: Feedback appears **within 2 s** of finishing playing. *(SC-003)*
-8. **Timeout**: Don't play → app prompts replay/retry, does not grade an empty attempt. *(FR-015)*
-9. **Out-of-tune**: Detune a string → app warns and offers a reference tone. *(FR-014)*
+7. **Latency**: Feedback appears **within 2 s** of pressing Check. *(SC-003)*
 
-**Fretboard input (FR-020, MVP default)** — run these in the default build, on a real device:
+**Fretboard input (FR-020)** — run these on a real device:
 
 - **F0 Melody source**: the melodies come from the curated set (recognisable public-domain tunes, e.g. Hot Cross Buns at level 1) and every note can be found on the 12-fret neck. Starter set drafted from memory — **listen for wrong notes and report them**. *(FR-021)*
 - **F1 Tap sounds**: Tap a fret → that note sounds immediately (no stutter, including the first taps after
@@ -92,7 +86,9 @@ Each maps to acceptance criteria in [spec.md](./spec.md). Mark pass/fail per dev
 - **F5 Result view**: After Check the neck shows each tapped note coloured matched / wrong / extra,
   consistent with the note chips. *(FR-006)*
 - **F6 Retry / next**: Retry → board cleared, same melody; Next → new melody, board cleared. *(FR-008/009)*
-- **F7 Mode label & no mic**: No microphone prompt appears; the attempt is recorded and logged with
+- **F7 Mode label & no mic**: No microphone prompt appears and the installed app requests no
+  microphone permission (Android: `aapt2 dump permissions app.apk` has no `RECORD_AUDIO`; iOS:
+  `Info.plist` has no `NSMicrophoneUsageDescription`); the attempt is recorded and logged with
   `input_mode = fretboard`. *(FR-019/020)*
 - **F8 Accessibility & fit**: Every control and fret has a VoiceOver label; fret targets are usable at
   phone width and at the largest font-scaling setting. *(SC-009)* — **not yet validated**
@@ -101,19 +97,17 @@ Each maps to acceptance criteria in [spec.md](./spec.md). Mark pass/fail per dev
 
 ### US2 — Difficulty (P2)
 
-1. **Fixed level**: set fixed rank *r* → every generated melody matches level *r* of the ladder (R11: note count,
-   scale family, largest leap) at 90 BPM, and the rank never moves on its own. *(US2 #1, #4)*
+1. **Fixed level**: set fixed rank *r* → every melody is a curated tune of level *r* (the level's note count) at
+   90 BPM, and the rank never moves on its own. *(US2 #1, #4)*
 2. **Promotion**: in adaptive mode, answer **3 consecutive new melodies** correctly on the first attempt →
    the next melody is the next rank up. *(US2 #2)*
 3. **Demotion**: fail **2 consecutive new melodies** on the first attempt → the next melody is one rank down. *(US2 #3)*
 4. **Retries are invisible**: fail a melody, then retry it repeatedly (right or wrong) → the rank does not
    move and the streak is unaffected. *(FR-011a; US2 #6)*
-5. **Noise does not demote**: force two low-confidence captures (play over background noise, or mute the
-   guitar) → the app offers retry and the rank stays put. *(FR-011a, FR-017 — the key anti-frustration case)*
-6. **Mode round-trip**: reach adaptive rank 5, switch to fixed rank 2, practice, then switch back to
+5. **Mode round-trip**: reach adaptive rank 5, switch to fixed rank 2, practice, then switch back to
    adaptive → you resume at rank 5. *(FR-011b; US2 #5)*
-7. **Ceiling**: at rank 9, answer 3 more correctly → rank stays 9, nothing breaks. *(US2 #7)*
-8. **Restart persistence**: force-quit and relaunch → mode, adaptive rank, and fixed selection are all
+6. **Ceiling**: at rank 9, answer 3 more correctly → rank stays 9, nothing breaks. *(US2 #7)*
+7. **Restart persistence**: force-quit and relaunch → mode, adaptive rank, and fixed selection are all
    preserved. *(FR-011b)*
 
 ### US3 — Progress (P3)
@@ -126,12 +120,11 @@ Each maps to acceptance criteria in [spec.md](./spec.md). Mark pass/fail per dev
 ### Telemetry & offline
 
 1. **Online logging**: Complete an attempt → a matching row appears in the backend `attempt_log` table
-   (`POST /api/attempts`) with no PII/audio. *(contracts/attempt-log.md)*
-2. **Offline core loop**: Enable airplane mode → the full listen→play→feedback loop still works; logs
+   (`POST /api/attempts`) with no PII. *(contracts/attempt-log.md)*
+2. **Offline core loop**: Enable airplane mode → the full listen→answer→feedback loop still works; logs
    queue locally and flush after reconnecting. *(offline-core-loop constraint, R9)*
-3. **No audio / PII egress**: with a network proxy or device traffic inspector, confirm outbound traffic
-   carries only the anonymized `attempt_log` payload — no audio, raw frames, note-by-note pitches, or
-   PII. *(SC-008, FR-019)*
+3. **No PII egress**: with a network proxy or device traffic inspector, confirm outbound traffic carries
+   only the anonymized `attempt_log` payload — no note-by-note pitches or PII. *(SC-008, FR-019)*
 4. **History sync**: complete a few attempts online, then clear the app's local data (or reinstall the dev
    client) and relaunch → prior sessions/attempts are pulled back from the backend (`GET /api/sync`), so
    Postgres is the durable source of truth while the device stays an offline cache. *(R8/R9)*
@@ -147,7 +140,6 @@ Each maps to acceptance criteria in [spec.md](./spec.md). Mark pass/fail per dev
 
 ## Expected outcome
 
-All US1 scenarios pass on both an iOS and an Android tester device, with verdicts matching a human
-listener on the introductory difficulty (SC-002), the offline loop fully functional, no audio/PII leaving
-the device (SC-008), and the accessibility baseline met (SC-009). US2/US3 pass once those stories are
+All US1 scenarios pass on both an iOS and an Android tester device, the offline loop is fully functional,
+no PII leaves the device (SC-008), and the accessibility baseline is met (SC-009). US2/US3 pass once those stories are
 implemented. Record failures against the specific FR/SC for follow-up.

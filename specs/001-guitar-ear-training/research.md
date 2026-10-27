@@ -20,6 +20,8 @@ Alternatives considered**.
 
 ## R2. Monophonic pitch detection — react-native-pitchy (YIN)
 
+> **Superseded 2026-10-27**: the microphone and `react-native-pitchy` were removed (FR-020). Kept as the decision record.
+
 - **Decision**: Use `react-native-pitchy` in continuous/streaming mode to receive `{ pitch (Hz),
   confidence/clarity }` frames from the microphone, at the library's supported frame rate. Treat frames
   below a clarity threshold, or outside the guitar band (~80–1320 Hz), as silence.
@@ -40,6 +42,8 @@ Alternatives considered**.
   reproduction assumption).
 
 ## R3. Note onset & segmentation (turning a pitch stream into a note sequence)
+
+> **Superseded 2026-10-27**: there is no pitch stream to segment (FR-004 withdrawn). Kept as the decision record.
 
 - **Decision**: Segment the continuous pitch stream into discrete notes with a **stability + gap**
   heuristic: a note is emitted when clarity is high and the detected pitch stays within a tolerance band
@@ -68,6 +72,8 @@ Alternatives considered**.
 
 ## R4. Pitch → note mapping and match tolerance
 
+> **Partly superseded 2026-10-27**: matching is now by exact MIDI number (FR-016); the ±50-cent window applied to microphone pitch. Kept as the decision record.
+
 - **Decision**: Convert frequency to the nearest note via `note = round(12·log2(f/440)) + 69` (MIDI),
   and compute cents deviation. A detected note **matches** a target note when it maps to the same MIDI
   note number, i.e. within **±50 cents** (nearest-note quantization — fixed per the FR-016 clarification,
@@ -80,6 +86,8 @@ Alternatives considered**.
   perceptually uniform across the range.
 
 ## R5. Tuning check (FR-014)
+
+> **Superseded 2026-10-27**: the tuning check was removed with the microphone (FR-014 withdrawn). Kept as the decision record.
 
 - **Decision**: Before/around grading, if detected notes show a **consistent** cents offset from their
   nearest notes across a short reference play, warn the learner and offer a reference tone (synthesized on
@@ -107,6 +115,8 @@ Alternatives considered**.
   coupling, deprecated API). Pre-render each full melody — rejected, combinatorial asset explosion.
 
 ## R7. Audio session (playback then capture)
+
+> **Partly superseded 2026-10-27**: only the playback half remains (`enterPlayback`); there is no capture stage. Kept as the decision record.
 
 - **Decision**: Configure the audio session so melody playback completes and the output stream is torn
   down **before** starting microphone capture (sequential listen-then-play), and request/verify mic
@@ -169,6 +179,8 @@ Alternatives considered**.
   release — rejected, premature for a 10–15 person feasibility test.
 
 ## R11. Melody generation parameters
+
+> **Superseded 2026-10-27**: the generator was removed; only the nine-rank note-count ladder remains (FR-010, FR-021). Kept as the decision record.
 
 *Revised 2026-09-23. The first ladder (7 ranks, length only, C major C4–C5, one beat per note) produced
 phrases that felt like mush: no rhythm to group notes, no repetition to hold on to, and every phrase the

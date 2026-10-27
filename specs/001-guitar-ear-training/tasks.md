@@ -11,8 +11,13 @@ description: "Task list for Guitar Ear Training — Melody Recall & Playback Fee
 
 **Tests**: REQUIRED. Per Constitution Principle II (Test-First, NON-NEGOTIABLE) and plan.md, all pure
 logic (grading, pitch↔note, curated library, difficulty, progress) is developed test-first, and
-each service boundary in `contracts/` has a contract test against mocked native modules. Native
-pitch-detection accuracy and audio fidelity are validated on-device via `quickstart.md`.
+each service boundary in `contracts/` has a contract test against mocked native modules. Audio
+fidelity is validated on-device via `quickstart.md`.
+
+> **History note (2026-10-27)**: the microphone pipeline (pitch detector, capture window, segmenter,
+> calibration, tuning check, `react-native-pitchy`) and the melody generator were **deleted** (T078, T093,
+> T094). Checked tasks in Phases 1–8 that name those files (T002, T006, T014, T017–T023, T026, T029, T030,
+> T055, T063 …) record what was built at the time and are kept as history; the files no longer exist.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing.
 
@@ -187,8 +192,8 @@ shows accuracy trend, practice volume, and identified weak areas derived from re
 - [X] T049 Implement the Supabase attempt-log outbox service (anon insert, offline queue, non-blocking flush; anonymized payload only) in `src/services/logging/attemptLog.ts` to pass T048 (depends on T013)
 - [X] T050 Wire non-blocking attempt logging into attempt completion in `src/features/practice/persist.ts` (depends on T033, T049)
 - [ ] T051 [P] Accessibility pass (the fretboard part is T076 and is included here) to the **WCAG 2.1 AA, mobile-adapted** baseline (SC-009): accessible label + role on every interactive control, text/icon contrast ≥ 4.5:1, logical focus/announcement order, touch targets ≥ 44pt (iOS)/48dp (Android), and layouts intact at the largest OS font scale — across `src/components/` (Constitution Principle III)
-- [ ] T052 [P] On-device performance validation vs budgets (detection < 100 ms/frame, feedback < 2 s, full cycle < 15 s) — record results (SC-001/002/003)
-- [ ] T053 Run `quickstart.md` manual validation (US1 core loop on an iOS and an Android device; offline loop; telemetry row appears; **no audio/PII egress** per SC-008; **VoiceOver/TalkBack screen-reader walkthrough** per SC-009)
+- [X] T052 Withdrawn 2026-10-27: it measured the microphone detector (detection < 100 ms/frame, SC-002); the cycle and feedback budgets (SC-001/003) moved to T092
+- [ ] T053 Run `quickstart.md` manual validation (US1 core loop on an iOS and an Android device; offline loop; telemetry row appears; **no PII egress** and no microphone permission per SC-008 / FR-020; **VoiceOver/TalkBack screen-reader walkthrough** per SC-009)
 - [ ] T054 [P] Build & distribute via EAS (development dev client + internal/TestFlight) to 10–15 testers
 
 ---
@@ -252,8 +257,7 @@ Task T021: "Contract test for audio playback in tests/contract/playback.test.ts"
 
 - [P] = different files, no dependency on an incomplete task.
 - Tests are written FIRST and must FAIL before implementation (Constitution Principle II).
-- Native pitch-detection accuracy and audio fidelity cannot be unit-tested — they are validated on-device via `quickstart.md` (T052/T053).
-- The empirical tuning constants (clarity threshold, segmentation stability/gap, tuning-offset threshold) are calibrated during on-device validation and exposed as config, per research.md.
+- Audio fidelity cannot be unit-tested — it is validated on-device via `quickstart.md` (T053).
 - Commit after each task or logical group; stop at any checkpoint to validate a story independently.
 
 ---
@@ -293,8 +297,8 @@ T051–T054, T021C, T055, T056), which converge does not duplicate.
 **Purpose**: Record the 2026-10-11 simplification: the MVP answers on an on-screen fretboard instead of the
 microphone. Written after the fact (the code landed first); the checked tasks are what is in the working
 tree, the unchecked ones are what the change still owes. Design: `contracts/fretboard-input.md`.
-The microphone pipeline is **kept** behind `EXPO_PUBLIC_INPUT_MODE=mic` — T021C, T052 and T053 remain open
-for it and are no longer MVP blockers.
+The microphone pipeline was first kept behind `EXPO_PUBLIC_INPUT_MODE=mic`; it was deleted on 2026-10-27
+(T078, T094), which also closed T052.
 
 - [X] T070 [US1] Pure fretboard model in `src/lib/fretboard.ts` — geometry (6 × 13, E2–E5; was 6 × 16, E2–G5 until the 12-fret change, T087), `fretMidi`, `positionsForMidi`, `makeTap`/`addTap`/`undoTap`, `tapsToDetected` (taps → the segmenter's note shape), `tapStatuses` — with tests in `tests/unit/lib/fretboard.test.ts` (FR-020)
 - [X] T071 [US1] Add `InputMode = 'mic' | 'fretboard'` and optional `Attempt.inputMode` to `src/models/index.ts`; `STANDARD_TUNING_MIDI` now derives from `OPEN_STRING_MIDI` (FR-020, `data-model.md`)
@@ -320,7 +324,7 @@ spec lagging the implementation. Findings are referenced by their analysis IDs.
 - [X] T082 Performance target (C2): SC-010 and the plan's Performance Goals declare tap-to-sound responsiveness (original target p95 < 200 ms; accepted on the owner's hands-on check, T075A) — Constitution IV
 - [X] T083 Constitution Check re-run for FR-020 in `plan.md` — recorded as a **conditional pass** until T075/T076 close
 - [X] T084 Orphan scope (A1): retroactive specs `specs/002-history-sync/` and `specs/003-landing-waitlist/` for the backend sync and the waitlist landing, which `plan.md` described but no spec owned
-- [ ] T085 Run `/speckit-analyze` again after T076 and confirm no CRITICAL or HIGH findings remain — second pass run 2026-10-11 (after T087–T089): 1 CRITICAL (T076/SC-009), 5 HIGH, of which all but the SC-008 conflict were fixed in T090; the rest wait on T076, T092 and the SC-008 decision
+- [ ] T085 Run `/speckit-analyze` again after T076 and confirm no CRITICAL or HIGH findings remain — second pass run 2026-10-11 (after T087–T089): 1 CRITICAL (T076/SC-009), 5 HIGH, of which all but the SC-008 conflict were fixed in T090; the rest wait on T076, T092 and the SC-008 decision. Third pass 2026-10-27 (after the microphone and generator removals): 1 CRITICAL (FR-020 still described `mic`), 4 HIGH, 3 MEDIUM — fixed in T094
 - [X] T086 Branch policy (analyze M2): **branch per feature from now on** — `001-guitar-ear-training` was created from `master` on 2026-10-11 (history before that is on `master`); `002-history-sync` and `003-landing-waitlist` stay unbranched retroactive specs
 - [X] T087 [US1] **12-fret neck (owner decision 2026-10-11)**: `FRET_COUNT` 16 → 13 and inlays `[3,5,7,9]` + 12 in `src/lib/fretboard.ts`; 37 pitches pre-rendered in `app/practice.tsx`; `tests/unit/lib/fretboard.test.ts` updated first and seen failing, then green (neck spans E2–E5, 13 positions). Checked in the simulator: 12 frets, last fret labelled 12 with the double inlay. The generator is **not** touched. The generator's F5–G5 reach is closed by switching it off (T088/T089) — done ahead of the curated set at the owner's instruction
 - [X] T088 [US1] **Curated melody set (FR-021, owner decision 2026-10-11)** — starter set in `src/services/melody/curated.ts` (public-domain tunes drafted from memory, ≥ 1 per level 1–9, **owner to verify**) with `curatedMelody(level, seed)`; tests first in `tests/unit/melody/curated.test.ts`: every note inside the neck (E2–E5) and playable, every level 1–9 has a tune, every note belongs to the tune's scale (catches transcription typos), selection is deterministic per seed. Final content, size and ordering rule remain **open questions** in the spec
@@ -334,5 +338,6 @@ spec lagging the implementation. Findings are referenced by their analysis IDs.
 
 - [X] T090 Artifact drift fixed (analyze I1, I2, I3, M1–M4, L1–L3, C2 record): `plan.md` (test runner in three places, 37 pitches, repeats rule scoped to generator and `mic`, summary, project tree, Complexity Tracking now lists the real exceptions), `spec.md` (FR-001 / FR-021 repeats and the `mic` → generator rule, US2 scenarios 1–3 source-neutral, SC-005 scoped to the generator ladder, status line, repeats Open Question closed, implementation detail out of FR-021), `data-model.md` (curated `Melody`), T073 / T051 / T086 here
 - [X] T091 Withdrawn 2026-10-27: moot — the generator and the `mic` mode were both removed.
-- [ ] T092 Measure SC-001 (< 15 s cycle) and SC-003 (< 2 s feedback) in `fretboard` mode on a device and record the numbers; T052 stays for the `mic` budgets (analyze C2)
+- [ ] T092 Measure SC-001 (< 15 s cycle) and SC-003 (< 2 s feedback) in `fretboard` mode on a device and record the numbers (analyze C2)
 - [X] T093 [US1] **Remove the melody generator (owner, 2026-10-27)**: deleted `src/services/melody/generator.ts`, `src/features/practice/melodySource.ts` (and the `EXPO_PUBLIC_MELODY_SOURCE` flag), `contracts/melody-generator.md` and their tests; `DifficultyLevel` keeps only `id`, `rank`, `noteCount`, `tempoBpm`; the Settings level card no longer lists scale / largest leap / structure; `usePracticeLoop` takes `nextMelody` as a required dependency (`curatedMelody`). The curated library (`curated.ts`) stays; the owner assembles it (FR-021). FR-001 withdrawn; FR-010, FR-021, SC-005 rewritten
+- [X] T094 [US1] **Spec cleanup after the removals (analyze pass 2026-10-27)**: `spec.md` — FR-004/014/015/017 and SC-002/002a withdrawn, FR-010/011a/016/019/020/021, entities, edge cases and assumptions rewritten for a fretboard-only app with a curated library; `plan.md` and `quickstart.md` rewritten the same way; `contracts/pitch-detection.md`, `contracts/tuning-check.md` and `tests/fixtures/README.md` deleted; T052 closed, T053/T092 re-scoped

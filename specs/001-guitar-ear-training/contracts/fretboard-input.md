@@ -4,14 +4,13 @@
 `src/components/fretboard/`, `src/components/practice/FretboardAnswer.tsx`,
 `src/components/controls/FretboardControls.tsx` (UI)
 **Spec**: FR-020 · **Research**: R14 · **Scope**: pure, deterministic, no IO — the one microphone-free
-answer path of the MVP. It produces the **same note shape** as the segmenter (`contracts/pitch-detection.md`),
-so `contracts/grading-engine.md` is unchanged.
+answer path of the app (the microphone input was removed on 2026-10-27). It produces `DetectedNote[]`,
+the shape `contracts/grading-engine.md` consumes.
 
-## Selection
+## Input mode
 
-`EXPO_PUBLIC_INPUT_MODE` — `fretboard` (default) or `mic`. Anything other than `mic` resolves to
-`fretboard`. In the loop, `PracticeLoopDeps.inputMode` defaults to **`mic`** when omitted (the behaviour
-before this feature), so existing loop tests and callers are unaffected.
+Fretboard is the only input. `PracticeLoopDeps` has no `inputMode`; every attempt is recorded with
+`inputMode: 'fretboard'`. (`EXPO_PUBLIC_INPUT_MODE` and the `mic` mode were deleted on 2026-10-27.)
 
 ## Geometry
 
@@ -43,18 +42,16 @@ tapStatuses(noteResults): NoteStatus[]                // grade results aligned b
 - Grading is **by MIDI, not by position**: two positions sounding one pitch are the same answer.
 - `tapStatuses` drops `missed` results (they consume no played note), leaving one status per tap, in order.
 
-## Loop behaviour (`inputMode === 'fretboard'`)
+## Loop behaviour
 
 - `tapFret(position)` — only in `awaitingInput` with a melody. **Always sounds** the note
   (`playback.playReferenceTone(midi)`, errors swallowed), then adds it via `addTap` — so a full answer can
   still be auditioned before undoing.
 - `undoFret()`, `clearFrets()` — edit the answer.
 - `submitAnswer()` — no-op unless `awaitingInput`, a melody exists and the answer has ≥ 1 note; otherwise
-  `finishAttempt(melody, tapsToDetected(taps), false)` — the **same** grade → persist → adapt path the mic
-  capture uses.
-- `retry()` — clears grade/tuning/rank-change and the answer, returns to `awaitingInput`; does **not**
-  rerun a capture. `next()` also clears the answer.
-- No capture, no mic permission, no tuning check (`tuning` stays `null`); never `timedOut`/`lowConfidence`.
+  `finishAttempt(melody, tapsToDetected(taps))` — grade → persist → adapt.
+- `retry()` — clears grade/rank-change and the answer, returns to `awaitingInput`. `next()` also clears the answer.
+- No capture, no mic permission, no tuning check; never `timedOut`/`lowConfidence`.
 - Every graded attempt carries `inputMode: 'fretboard'` (→ `Attempt.inputMode`, telemetry `input_mode`).
 
 ## Audio

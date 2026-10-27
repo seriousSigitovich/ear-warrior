@@ -1,5 +1,7 @@
 # Audio & Pitch Correctness Checklist: Guitar Ear Training — Melody Recall & Playback Feedback
 
+> **Historical (2026-10-27)**: this checklist reviewed the microphone-era requirements (FR-004, FR-014, FR-015, FR-017, SC-002), which were withdrawn when the microphone was removed. Kept as the review record.
+
 **Purpose**: Validate the quality, clarity, completeness, and consistency of the **audio & pitch-detection
 correctness requirements** (note matching, segmentation, tuning, octave, monophony) before implementation.
 This is a requirements-quality gate ("unit tests for the spec"), not an implementation test.

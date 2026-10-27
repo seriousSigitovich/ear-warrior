@@ -114,13 +114,13 @@ One captured reproduction of a melody and its grading (FR-005, FR-006, FR-012).
 | `id` | string (uuid) | |
 | `sessionId` | string → Session.id | |
 | `melodyId` | string → Melody.id | |
-| `inputMode` | enum `mic` \| `fretboard` \| absent | how the answer was given (FR-020, R14). **Absent on attempts stored before fretboard input — read as `mic`.** Never pool accuracy across modes |
-| `detectedNotes` | Note[] | `mic`: segmented from the pitch stream (R3). `fretboard`: built from taps (`tapsToDetected`: exact pitch, 0 cents, clarity 1) |
+| `inputMode` | enum `mic` \| `fretboard` \| absent | how the answer was given (FR-020, R14). New attempts are always `fretboard`; `mic` survives only so rows stored before 2026-10-27 read back correctly (**absent = `mic`**). Never pool accuracy across modes |
+| `detectedNotes` | Note[] | built from taps (`tapsToDetected`: exact pitch, 0 cents, clarity 1); rows before 2026-10-27 hold notes segmented from the microphone |
 | `noteResults` | NoteResult[] | per-position grading (below) |
 | `verdict` | enum `correct` \| `incorrect` | overall (FR-005) |
-| `confidence` | number 0–1 | **minimum** per-note clarity (each note = median frame clarity over its window); low → offer retry (FR-017) |
-| `lowConfidence` | boolean | true when capture unreliable (FR-017) |
-| `timedOut` | boolean | no/insufficient input (FR-015) |
+| `confidence` | number 0–1 | minimum per-note clarity — **always 1 for a tapped answer**; kept (with the two flags below) because stored rows, sync and telemetry carry it |
+| `lowConfidence` | boolean | **always false** now (the microphone-era gate, FR-017, was withdrawn); kept for stored rows |
+| `timedOut` | boolean | **always false** now (FR-015 withdrawn); kept for stored rows |
 | `createdAt` | ISO timestamp | |
 
 **NoteResult** (value object, aligned to target positions):
@@ -134,7 +134,7 @@ One captured reproduction of a melody and its grading (FR-005, FR-006, FR-012).
 | `octaveMismatch` | boolean | correct pitch class, wrong octave (edge case) |
 
 **Validation**: `verdict === correct` iff every target position is `matched` and there are no `extra`
-notes. A `timedOut` or `lowConfidence` attempt is not graded as `incorrect`; it prompts retry.
+notes. (A `timedOut` or `lowConfidence` row can only come from the microphone era; it was never graded as `incorrect`.)
 
 **Streak eligibility (FR-011a)**: an attempt feeds difficulty adaptation only when it is graded
 (`!timedOut && !lowConfidence`) **and** is the first graded attempt for its `melodyId`. This is *derived*,
@@ -180,16 +180,13 @@ not stored as authoritative state.
 Drives US1 (`features/practice`), aligned to acceptance scenarios:
 
 ```text
-idle → playingMelody → awaitingInput → capturing → grading → feedback
+idle → playingMelody → awaitingInput → grading → feedback
 feedback ─(replay)→ playingMelody
 feedback ─(retry)→ awaitingInput
 feedback ─(next)→ playingMelody (new melody)
-awaitingInput ─(timeout)→ feedback(timedOut)
-capturing ─(lowConfidence)→ feedback(offer retry)
 ```
 
-**`fretboard` input mode (FR-020, the MVP default)** skips `capturing`: the learner stays in
-`awaitingInput` while tapping, and **Check** moves directly to `grading → feedback`.
+The learner stays in `awaitingInput` while tapping, and **Check** moves directly to `grading → feedback`.
 
 ```text
 awaitingInput ─(tap)→ awaitingInput           (answer: FretTap[] grows, capped at the melody's note count)
@@ -198,8 +195,7 @@ awaitingInput ─(check, ≥ 1 tap)→ grading → feedback
 feedback ─(retry)→ awaitingInput              (answer cleared, same melody)
 ```
 
-Transient only: `answer: FretTap[]`, each `{ string, fret, midi, atMs }`. There is no `timedOut` or
-`lowConfidence` transition in this mode.
+Transient only: `answer: FretTap[]`, each `{ string, fret, midi, atMs }`.
 
 ## Relationships & integrity
 
