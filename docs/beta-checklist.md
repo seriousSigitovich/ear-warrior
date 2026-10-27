@@ -17,7 +17,7 @@
 
 ### Сборка и конфиг
 - [~] **OTA:** `expo-updates` установлен, плагин и `runtimeVersion` (fingerprint) в `app.config.ts` есть (2026-10-22). `eas init` сделан, id вписан в `EAS_PROJECT_ID` (2026-10-25). Preview-сборка Android поставлена в очередь 2026-10-25 (канал `preview`, keystore создан на EAS). Осталось: поставить APK на устройство, затем проверить `eas update --channel preview`
-- [~] **Краш-аналитика:** Sentry в коде (2026-10-25): приложение `@sentry/react-native` (плагин, `metro.config.js`, `src/services/observability/sentry.ts`, user = email/deviceId), сервер `@sentry/node` (`server/src/observability.ts`). Проекты созданы 2026-10-25 (org `sigitovich-solutions`: `ear-warrior-app`, `ear-warrior-api`); DSN приложения в `eas.json` (preview/production), `SENTRY_DSN` сервера в Vercel (Production). API задеплоен (2026-10-25). Осталось: `SENTRY_AUTH_TOKEN` (EAS secret) + `SENTRY_ORG`/`SENTRY_PROJECT` для source maps (первая preview-сборка ушла без них — стек-трейсы из неё будут нечитаемыми), проверить тестовой ошибкой
+- [~] **Краш-аналитика:** Sentry в коде (2026-10-25): приложение `@sentry/react-native` (плагин, `metro.config.js`, `src/services/observability/sentry.ts`, user = email/deviceId), сервер `@sentry/node` (`server/src/observability.ts`). Проекты созданы 2026-10-25 (org `sigitovich-solutions`: `ear-warrior-app`, `ear-warrior-api`); DSN приложения в `eas.json` (preview/production), `SENTRY_DSN` сервера в Vercel (Production). API задеплоен (2026-10-25). `SENTRY_ORG`/`SENTRY_PROJECT` прописаны в `eas.json` (2026-10-27). Осталось: `SENTRY_AUTH_TOKEN` (EAS secret, создаёт владелец в Sentry → Settings → Auth Tokens; первая preview-сборка ушла без него — стек-трейсы из неё нечитаемы), проверить тестовой ошибкой
 - [ ] **Вход по коду из письма** — отдельный блок ниже («Вход по почте»)
 - [x] `android.versionCode: 1` в `app.config.ts` (2026-10-25); инкремент на 1 перед каждой загрузкой AAB (`appVersionSource: local`)
 - [x] Иконка, adaptive icon (+ monochrome для тем Android 13) и splash в `app.config.ts` (2026-10-25): `assets/app/*.png`, нарисованы из `assets/brand/logo.svg`; splash — светлое ухо на `#161826` (`expo-splash-screen` добавлен). Не проверено на устройстве
@@ -41,11 +41,11 @@
 - [x] Тесты первым делом (чистая логика в `.ts`, как принято в проекте): срок кода, число попыток, лимиты, одноразовость
 - [ ] Privacy-страница и Data Safety: email, userId, способ входа — страница `landing/privacy` и `landing/delete-account` обновлены 2026-10-21 (деплой лендинга — за владельцем); Data Safety форма в консоли — позже
 - [ ] Проверить на устройстве: вход, пропуск, неверный код, повторная отправка, выход, переустановка (нужна нативная пересборка из-за `expo-secure-store`; шаги — `specs/005-user-auth/quickstart.md` §5)
-- [ ] Задать в Vercel (`ear-warrior-api`): `AUTH_PEPPER`, `SMTP_USER`, `SMTP_PASS` (и, пока нужен рецензенту, `AUTH_TEST_EMAIL` + `AUTH_TEST_CODE`); задеплоить сервер и лендинг
+- [~] Vercel (`ear-warrior-api`): `AUTH_PEPPER`, `SMTP_USER`, `SMTP_PASS` заданы (Production, проверено 2026-10-27), `/api/auth/request` на проде отвечает. `AUTH_TEST_EMAIL` + `AUTH_TEST_CODE` — только если Play попросит. Осталось задеплоить API (события) и лендинг (privacy)
 
 ### Продукт в приложении
-- [ ] **Онбординг** (2–3 экрана): послушай → найди на грифе → ответь; показывается один раз при первом запуске
-- [ ] **Продуктовая аналитика** (свои события в свой Postgres): сначала записать главный вопрос беты (например: «доля тестеров с ≥ 3 сессиями за неделю» и возврат на 2-й день), потом события под него: `app_open`, `onboarding_done`, `session_start`, `session_end`, ответы и результат, день возврата
+- [x] **Онбординг** (2026-10-27): 3 экрана в `app/onboarding.tsx`, контент и флаг «показан» в `src/lib/onboarding.ts` (с тестами); Home открывает его при первом запуске, затем предлагает вход. Не проверено на устройстве
+- [~] **Продуктовая аналитика** (2026-10-27): вопрос беты — «доля тестеров с ≥ 3 сессиями за неделю» и возврат на 2-й день. События `app_open`, `onboarding_done`, `session_start`, `session_end` → `POST /api/events` → таблица `app_events` (`server/src/routes/events.ts`, клиент `src/services/logging/eventLog.ts`, трекер `src/features/analytics/tracker.ts`); ответы и результат уже идут в `attempt_log`. Запрос с цифрами — `server/scripts/beta-retention.sql`. Осталось: задеплоить API (`/api/events` на проде пока 404) и проверить на устройстве
 - [x] Кнопка «Write to us» в `app/settings.tsx` (2026-10-25): mailto на `golovsha@gmail.com` с платформой и device id в теле; нет почтового приложения → алерт с адресом. Не проверено на устройстве
 - [ ] Сыграть каждую кураторскую мелодию с гитарой хотя бы раз и поправить ноты (T088)
 
@@ -59,7 +59,7 @@
 
 - [ ] **Тестеры:** написать всем 14 из вейтлиста, собрать **Google-аккаунты** (Gmail); набрать ещё 4–6 сверх 14
 - [ ] Создать закрытый трек (Closed testing), список тестеров (email-список или Google Group)
-- [ ] **Privacy policy:** переписать `landing/privacy/index.html` — сейчас там «приложение не выпущено»; описать `deviceId`, события, мелодии/результаты, Sentry, что аудио не собирается; указать контакт
+- [~] **Privacy policy:** `landing/privacy/index.html` дополнена 2026-10-27 (device id, результаты, события, Sentry, «аудио не собирается и микрофон не используется», контакт). Осталось задеплоить лендинг
 - [ ] **Data Safety** (согласовать с тем, что реально пишет сервер и Sentry)
 - [ ] Content rating
 - [ ] Target audience (не для детей)

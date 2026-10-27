@@ -53,6 +53,17 @@ export const attemptLog = pgTable('attempt_log', {
   inputMode: text('input_mode').notNull().default('mic'),
 });
 
+/** Closed-beta product events: anonymous, one row per event (see routes/events.ts). */
+export const appEvents = pgTable('app_events', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  deviceId: text('device_id').notNull(),
+  appVersion: text('app_version').notNull(),
+  name: text('name').notNull(),
+  occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  props: jsonb('props').notNull().default({}),
+});
+
 /**
  * Durable copy of on-device documents. `collection` is one of sessions | attempts | melodies |
  * difficulty_settings | key_value; `data` is the JSON row exactly as the client's RowStore holds it.

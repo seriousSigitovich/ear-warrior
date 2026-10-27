@@ -1,7 +1,7 @@
 // Practice screen (T034): wires the practice loop to transport controls and feedback (US1).
 // Redesigned onto Nocturne: a Practice/Level header, a per-phase stage, and feedback rendered
 // as a verdict card + note chips (with a non-blocking tuning advisory) or a calm retry state.
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { InteractionManager, ScrollView, StyleSheet, View } from 'react-native';
 import { CalibrationConfig, GradingConfig, SegmentConfig, Session } from '../src/models';
 import { INPUT_MODE } from '../src/features/practice/inputMode';
@@ -27,6 +27,7 @@ import {
 import { createSyncClient } from '../src/services/sync/client';
 import { syncPull, syncPush } from '../src/services/sync/sync';
 import { getOrCreateDeviceId, keyValueOverRowStore } from '../src/lib/deviceId';
+import { track } from '../src/features/analytics/tracker';
 import { CaptureConfig } from '../src/features/practice/capture';
 import { PracticeLoopDeps, usePracticeLoop } from '../src/features/practice/usePracticeLoop';
 import { persistGradedAttempt } from '../src/features/practice/persist';
@@ -129,6 +130,20 @@ export default function Practice() {
   // `end` is stable enough to run on unmount; ending is idempotent (`ended` is terminal).
   const endSession = session.end;
   useEffect(() => () => endSession(), [endSession]);
+
+  // Beta analytics: one start/end pair per visit to this screen. The end reads the tally through a ref
+  // because the cleanup closes over the first render's state.
+  const attemptCountRef = useRef(0);
+  attemptCountRef.current = session.state.attemptCount;
+  useEffect(() => {
+    const startedAt = Date.now();
+    track('session_start');
+    return () =>
+      track('session_end', {
+        attempt_count: attemptCountRef.current,
+        duration_s: Math.round((Date.now() - startedAt) / 1000),
+      });
+  }, []);
 
   // On leaving the screen, push this session's records up to the durable backend. Best-effort.
   useEffect(() => {

@@ -3,6 +3,7 @@ import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastif
 import cors from '@fastify/cors';
 import { registerSubscribe } from './routes/subscribe.js';
 import { registerTelemetry } from './routes/telemetry.js';
+import { registerEvents } from './routes/events.js';
 import { registerSync } from './routes/sync.js';
 import { registerSocial } from './routes/social.js';
 import { registerAuth, type AuthDeps } from './routes/auth.js';
@@ -39,6 +40,7 @@ export function buildApp(opts: BuildOptions = {}): FastifyInstance {
 
   registerSubscribe(app);
   registerTelemetry(app);
+  registerEvents(app);
   registerSync(app);
   registerSocial(app);
   registerAuth(app, opts.auth ?? defaultAuthDeps());

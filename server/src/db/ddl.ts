@@ -40,6 +40,20 @@ export async function applyDdl(sql: Sql): Promise<void> {
     alter table attempt_log add column if not exists input_mode text not null default 'mic';
     create index if not exists attempt_log_device_idx on attempt_log (device_id, created_at);
 
+    -- Closed-beta product events (app_open, onboarding_done, session_start, session_end). Anonymous like
+    -- attempt_log: random per-install device id, no PII. occurred_at is the client clock (events can be
+    -- flushed late); created_at is when the server got it.
+    create table if not exists app_events (
+      id           uuid primary key default gen_random_uuid(),
+      device_id    text not null,
+      app_version  text not null,
+      name         text not null check (name in ('app_open','onboarding_done','session_start','session_end')),
+      occurred_at  timestamptz not null,
+      created_at   timestamptz not null default now(),
+      props        jsonb not null default '{}'
+    );
+    create index if not exists app_events_device_idx on app_events (device_id, occurred_at);
+
     -- Durable mirror of the on-device document store (sessions/attempts/melodies/difficulty/kv).
     create table if not exists sync_documents (
       device_id          text             not null,

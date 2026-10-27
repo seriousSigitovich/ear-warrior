@@ -8,6 +8,7 @@ import { useAuthLifecycle } from '../src/features/auth/useAuth';
 import { colors } from '../src/theme/nocturne';
 import { initSentry, setSentryUser, wrapWithSentry } from '../src/services/observability/sentry';
 import { getAuthService } from '../src/features/auth/authService';
+import { track } from '../src/features/analytics/tracker';
 import { getOrCreateDeviceId, keyValueOverRowStore } from '../src/lib/deviceId';
 import { KEY_VALUE_TABLE, defaultRowStore } from '../src/services/storage/db';
 
@@ -32,6 +33,8 @@ function useSentryUser(): void {
 function RootLayout() {
   useAuthLifecycle();
   useSentryUser();
+  // One launch of the app = one `app_open`; day-2 return is read off these server-side.
+  useEffect(() => track('app_open'), []);
   return (
     <SafeAreaProvider>
       <StatusBar style="light" />
@@ -49,6 +52,7 @@ function RootLayout() {
         <Stack.Screen name="settings" />
         <Stack.Screen name="progress" />
         <Stack.Screen name="sign-in" />
+        <Stack.Screen name="onboarding" options={{ headerShown: false }} />
       </Stack>
     </SafeAreaProvider>
   );

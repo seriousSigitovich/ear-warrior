@@ -1,11 +1,13 @@
 // Home screen (T035): start a practice session and navigate into the core loop.
 // Redesigned onto Nocturne — hero heading, waveform motif, quick stats, outlined actions.
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { MAX_RANK, getLevelByRank } from '../src/services/melody/levels';
 import { DEFAULT_DIFFICULTY_SETTINGS, effectiveRank } from '../src/features/difficulty/adapt';
-import { defaultRowStore } from '../src/services/storage/db';
+import { KEY_VALUE_TABLE, defaultRowStore } from '../src/services/storage/db';
+import { keyValueOverRowStore } from '../src/lib/deviceId';
+import { isOnboarded } from '../src/lib/onboarding';
 import { createDifficultySettingsRepository } from '../src/services/storage/repositories';
 import { Screen } from '../src/components/common/Screen';
 import { Button } from '../src/components/common/Button';
@@ -36,19 +38,26 @@ export default function Home() {
     }, []),
   );
 
-  // The sign-in offer (spec 005 FR-003): once, on the first launch, never blocking — the screen has Skip.
-  // Moves to onboarding when that lands (docs/beta-checklist.md).
-  useEffect(() => {
-    let cancelled = false;
-    void ensureAuthReady()
-      .then(() => getAuthService().shouldOfferSignIn())
-      .then((offer) => {
-        if (offer && !cancelled) router.push('/sign-in');
+  // First launch: onboarding, then the sign-in offer (spec 005 FR-003) — each once, never blocking (both
+  // have Skip). On focus rather than mount, so the offer follows onboarding when it pops back to Home.
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      const kv = keyValueOverRowStore(defaultRowStore(), KEY_VALUE_TABLE);
+      void isOnboarded(kv).then(async (onboarded) => {
+        if (cancelled) return;
+        if (!onboarded) {
+          router.push('/onboarding');
+          return;
+        }
+        await ensureAuthReady();
+        if ((await getAuthService().shouldOfferSignIn()) && !cancelled) router.push('/sign-in');
       });
-    return () => {
-      cancelled = true;
-    };
-  }, [router]);
+      return () => {
+        cancelled = true;
+      };
+    }, [router]),
+  );
 
   return (
     <Screen style={styles.screen}>
