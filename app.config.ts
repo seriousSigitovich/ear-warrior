@@ -54,10 +54,9 @@ const config: ExpoConfig = {
       { image: './assets/app/splash.png', backgroundColor: '#161826', imageWidth: 200 },
     ],
     // Sentry native SDK + source-map upload. Upload needs SENTRY_AUTH_TOKEN (EAS secret); without it the build still succeeds.
-    [
-      '@sentry/react-native/expo',
-      { organization: process.env.SENTRY_ORG, project: process.env.SENTRY_PROJECT },
-    ],
+    // Org/project are literals, not env: the plugin options are part of the OTA fingerprint, and an env var set only
+    // on EAS makes the local and remote runtime versions differ ("Runtime version calculated on local machine...").
+    ['@sentry/react-native/expo', { organization: 'sigitovich-solutions', project: 'ear-warrior-app' }],
     // expo-audio config plugin sets the iOS microphone string (FR-004); `recordAudioAndroid: false`
     // keeps RECORD_AUDIO out of the Android manifest.
     [
