@@ -69,9 +69,10 @@ const config: ExpoConfig = {
       },
     ],
   ],
-  // Fingerprint policy: an OTA only reaches binaries whose native layer matches, so JS updates never
-  // land on a build that lacks a native module they need (e.g. before the expo-secure-store rebuild).
-  runtimeVersion: { policy: 'fingerprint' },
+  // appVersion policy: an OTA reaches only binaries of the same `version`. The `fingerprint` policy made every
+  // EAS build fail ("Runtime version calculated on local machine not equal to ... during build"), so native
+  // changes are guarded by hand instead: bump `version` whenever a native module or config plugin changes.
+  runtimeVersion: { policy: 'appVersion' },
   updates: EAS_PROJECT_ID ? { url: `https://u.expo.dev/${EAS_PROJECT_ID}` } : undefined,
   extra: {
     apiUrl: process.env.EXPO_PUBLIC_API_URL,
