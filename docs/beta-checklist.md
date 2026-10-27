@@ -21,7 +21,7 @@
 - [ ] **Вход по коду из письма** — отдельный блок ниже («Вход по почте»)
 - [x] `android.versionCode: 1` в `app.config.ts` (2026-10-25); инкремент на 1 перед каждой загрузкой AAB (`appVersionSource: local`)
 - [x] Иконка, adaptive icon (+ monochrome для тем Android 13) и splash в `app.config.ts` (2026-10-25): `assets/app/*.png`, нарисованы из `assets/brand/logo.svg`; splash — светлое ухо на `#161826` (`expo-splash-screen` добавлен). Не проверено на устройстве
-- [ ] Убедиться, что в манифесте AAB нет `RECORD_AUDIO` (после сборки: `aapt dump permissions` или Play Console → App bundle explorer)
+- [x] В манифесте AAB нет `RECORD_AUDIO` (проверено 2026-10-27 на сборке `70e67657`; есть `USE_BIOMETRIC`/`USE_FINGERPRINT` от expo-secure-store, `SYSTEM_ALERT_WINDOW`, `READ/WRITE_EXTERNAL_STORAGE`, `MODIFY_AUDIO_SETTINGS`)
 
 ### Вход по почте (passwordless, код из 6 цифр; Google позже)
 
