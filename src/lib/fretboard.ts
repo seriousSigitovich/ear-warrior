@@ -1,10 +1,8 @@
 // Fretboard model for tap-to-answer input. Pure and deterministic — no IO, no React Native.
 //
-// The learner answers a melody by tapping frets instead of playing into the microphone. A tap is a
-// (string, fret) position, but grading is by pitch (MIDI), so the same sound on a different string
+// The learner answers a melody by tapping frets. A tap is a (string, fret) position, but grading is by pitch (MIDI), so the same sound on a different string
 // is the same answer — the exercise tests the ear, not knowledge of one fingering. Taps are
-// converted to `DetectedNote[]`, the exact shape the microphone pipeline produces, which is what
-// lets the grading engine, adaptation, persistence and sync stay untouched.
+// converted to `DetectedNote[]`, the shape the grading engine, adaptation, persistence and sync consume.
 import { DetectedNote, NoteResult, NoteStatus } from '../models';
 import { hzFromMidi } from './pitchNote';
 
@@ -85,8 +83,8 @@ export function undoTap(taps: FretTap[]): FretTap[] {
 const LAST_NOTE_MS = 500;
 
 /**
- * Express an answer as the notes the segmenter would have recovered from a microphone: exact pitch,
- * zero cents offset, full clarity. Times are relative to the first tap.
+ * Express an answer as detected notes: exact pitch, zero cents offset, full clarity. Times are
+ * relative to the first tap.
  */
 export function tapsToDetected(taps: FretTap[]): DetectedNote[] {
   if (taps.length === 0) return [];

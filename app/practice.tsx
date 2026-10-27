@@ -3,14 +3,11 @@
 // as a verdict card + note chips (with a non-blocking tuning advisory) or a calm retry state.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { InteractionManager, ScrollView, StyleSheet, View } from 'react-native';
-import { CalibrationConfig, GradingConfig, SegmentConfig, Session } from '../src/models';
-import { INPUT_MODE } from '../src/features/practice/inputMode';
+import { GradingConfig, Session } from '../src/models';
 import { nextMelody } from '../src/features/practice/melodySource';
 import { MAX_RANK } from '../src/services/melody/levels';
-import { STANDARD_TUNING_MIDI } from '../src/features/practice/tuning';
 import { tapStatuses } from '../src/lib/fretboard';
 import { createAudioPlayback } from '../src/services/audio/playback';
-import { createPitchDetector, PitchDetectionConfig } from '../src/services/audio/pitch';
 import { createAudioSession } from '../src/services/audio/session';
 import { KEY_VALUE_TABLE, defaultRowStore } from '../src/services/storage/db';
 import {
@@ -28,7 +25,6 @@ import { createSyncClient } from '../src/services/sync/client';
 import { syncPull, syncPush } from '../src/services/sync/sync';
 import { getOrCreateDeviceId, keyValueOverRowStore } from '../src/lib/deviceId';
 import { track } from '../src/features/analytics/tracker';
-import { CaptureConfig } from '../src/features/practice/capture';
 import { PracticeLoopDeps, usePracticeLoop } from '../src/features/practice/usePracticeLoop';
 import { persistGradedAttempt } from '../src/features/practice/persist';
 import { useSession } from '../src/features/practice/session';
@@ -42,36 +38,14 @@ import { FretboardAnswer } from '../src/components/practice/FretboardAnswer';
 import { Fretboard } from '../src/components/fretboard/Fretboard';
 import { VerdictBanner } from '../src/components/feedback/VerdictBanner';
 import { NoteResultChips } from '../src/components/feedback/NoteResultChips';
-import { TuningAdvisory } from '../src/components/feedback/TuningAdvisory';
 import { RankChangeBanner } from '../src/components/feedback/RankChangeBanner';
-import { RetryState } from '../src/components/feedback/RetryState';
 
-// Calibratable defaults (research.md — tuned on-device).
-const PITCH_CFG: PitchDetectionConfig = { minHz: 80, maxHz: 1320, clarityThreshold: 0.5 };
-const SEGMENT_CFG: SegmentConfig = {
-  clarityThreshold: 0.5,
-  minNoteMs: 60,
-  gapMs: 200,
-  minHz: 80,
-  maxHz: 1320,
-  onsetConfirmFrames: 3,
-  attackGuardMs: 40,
-};
+// Calibratable default (research.md).
 const GRADING_CFG: GradingConfig = {
   centsTolerance: 50,
   octaveSensitive: true,
   lowConfidenceThreshold: 0.6,
 };
-const CAPTURE_CFG: CaptureConfig = { noInputTimeoutMs: 8000, endSilenceMs: 2000, warmupMs: 120 };
-// Tier 1 noise robustness — voicing gate calibrated per capture from ambient clarity (research.md).
-const CALIBRATION_CFG: CalibrationConfig = {
-  ambientPercentile: 0.2,
-  margin: 0.15,
-  hardMin: 0.3,
-  hardMax: 0.7,
-  minFrames: 20,
-};
-
 const APP_VERSION = '0.1.0';
 
 /** Every pitch the fretboard can sound (E2–E5), rendered ahead of time so a tap plays at once. */
@@ -156,7 +130,6 @@ export default function Practice() {
 
   // Tap-to-hear must not stutter: materialize the tones once the screen has settled.
   useEffect(() => {
-    if (INPUT_MODE !== 'fretboard') return;
     const task = InteractionManager.runAfterInteractions(() => {
       void playback.preload(FRETBOARD_MIDI).catch(() => undefined);
     });
@@ -165,21 +138,15 @@ export default function Practice() {
 
   const deps = useMemo<PracticeLoopDeps>(
     () => ({
-      inputMode: INPUT_MODE,
       nextMelody,
       playback,
-      detector: createPitchDetector(),
       session: createAudioSession(),
-      pitchCfg: PITCH_CFG,
-      segmentCfg: SEGMENT_CFG,
       gradingCfg: GRADING_CFG,
-      captureCfg: CAPTURE_CFG,
-      calibrationCfg: CALIBRATION_CFG,
       seed: () => Math.floor(Math.random() * 1e9),
       difficulty: repos.difficulty,
       sessionId,
       onAttemptGraded: (attempt, melody, level) => {
-        // Every attempt is recorded (FR-012); only graded ones move the session tally.
+        // Every attempt is recorded (FR-012) and moves the session tally.
         void persistGradedAttempt(attempt, melody, level, {
           attempts: repos.attempts,
           melodies: repos.melodies,
@@ -187,9 +154,7 @@ export default function Practice() {
           appVersion: APP_VERSION,
           deviceId: deviceId ?? 'dev_pending',
         });
-        if (!attempt.timedOut && !attempt.lowConfidence) {
-          session.recordAttempt(attempt.verdict === 'correct');
-        }
+        session.recordAttempt(attempt.verdict === 'correct');
       },
     }),
     [playback, repos, sessionId, outbox, deviceId, session],
@@ -199,10 +164,7 @@ export default function Practice() {
 
   const grade = loop.grade;
   const showFeedback = loop.phase === 'feedback' && !!grade;
-  const retryOnly = !!grade && (grade.timedOut || grade.lowConfidence);
-  const showAdvisory = !!loop.tuning?.outOfTune && !retryOnly;
-  const fretMode = loop.inputMode === 'fretboard';
-  const answering = fretMode && loop.phase === 'awaitingInput';
+  const answering = loop.phase === 'awaitingInput';
   const noteCount = loop.melody?.notes.length ?? loop.level.noteCount;
 
   return (
@@ -215,37 +177,20 @@ export default function Practice() {
       )}
 
       {showFeedback ? (
-        retryOnly ? (
-          <RetryState timedOut={grade!.timedOut} />
-        ) : (
-          <ScrollView contentContainerStyle={styles.feedback} showsVerticalScrollIndicator={false}>
-            {showAdvisory ? (
-              <TuningAdvisory
-                direction={loop.tuning!.direction}
-                onTune={() => loop.tuning!.playReference(STANDARD_TUNING_MIDI[0])}
-              />
-            ) : null}
-            <VerdictBanner grade={grade!} />
-            {loop.rankChange ? <RankChangeBanner change={loop.rankChange} /> : null}
-            <NoteResultChips results={grade!.noteResults} />
-            {fretMode ? (
-              <Fretboard
-                taps={loop.answer}
-                statuses={tapStatuses(grade!.noteResults)}
-                rowHeight={RESULT_FRET_HEIGHT}
-              />
-            ) : null}
-          </ScrollView>
-        )
+        <ScrollView contentContainerStyle={styles.feedback} showsVerticalScrollIndicator={false}>
+          <VerdictBanner grade={grade!} />
+          {loop.rankChange ? <RankChangeBanner change={loop.rankChange} /> : null}
+          <NoteResultChips results={grade!.noteResults} />
+          <Fretboard
+            taps={loop.answer}
+            statuses={tapStatuses(grade!.noteResults)}
+            rowHeight={RESULT_FRET_HEIGHT}
+          />
+        </ScrollView>
       ) : answering ? (
         <FretboardAnswer noteCount={noteCount} taps={loop.answer} onTap={loop.tapFret} />
       ) : (
-        <PracticeStage
-          phase={loop.phase}
-          noteCount={noteCount}
-          progress={loop.progress}
-          inputMode={loop.inputMode}
-        />
+        <PracticeStage phase={loop.phase} />
       )}
 
       {answering ? (
@@ -259,13 +204,10 @@ export default function Practice() {
       ) : (
         <TransportControls
           phase={loop.phase}
-          retryOnly={retryOnly}
           onPlay={loop.next}
-          onBeginAttempt={loop.beginAttempt}
           onReplay={loop.replay}
           onRetry={loop.retry}
           onNext={loop.next}
-          onStop={loop.stopAttempt}
         />
       )}
     </Screen>

@@ -1,6 +1,6 @@
 import type { ExpoConfig } from 'expo/config';
 
-// Expo app configuration (T006). Microphone permission strings are required for pitch capture (FR-004).
+// Expo app configuration (T006). The MVP declares no microphone permission (fretboard input, R14).
 // The backend base URL is supplied via EXPO_PUBLIC_API_URL at build time and points at the
 // Ear Warrior Node/Postgres server (server/). Absent → telemetry and sync are no-ops (offline-only).
 
@@ -40,9 +40,8 @@ const config: ExpoConfig = {
       monochromeImage: './assets/app/adaptive-fg.png',
       backgroundColor: '#f5f3ee',
     },
-    // The MVP answers on the on-screen fretboard (R14), so the Android build declares no microphone
-    // access. react-native-pitchy's own manifest adds RECORD_AUDIO, so it is blocked explicitly
-    // (manifest merger `tools:node="remove"`). Restore both with the `mic` input mode (T078).
+    // The app has no microphone access (answers are tapped on the fretboard, R14). Nothing should add
+    // RECORD_AUDIO, but it is blocked explicitly (manifest merger `tools:node="remove"`) in case a library does.
     blockedPermissions: ['android.permission.RECORD_AUDIO'],
   },
   plugins: [
@@ -57,13 +56,12 @@ const config: ExpoConfig = {
     // Org/project are literals, not env: the plugin options are part of the OTA fingerprint, and an env var set only
     // on EAS makes the local and remote runtime versions differ ("Runtime version calculated on local machine...").
     ['@sentry/react-native/expo', { organization: 'sigitovich-solutions', project: 'ear-warrior-app' }],
-    // expo-audio config plugin sets the iOS microphone string (FR-004); `recordAudioAndroid: false`
-    // keeps RECORD_AUDIO out of the Android manifest.
+    // `microphonePermission: false` keeps NSMicrophoneUsageDescription out
+    // of iOS and `recordAudioAndroid: false` keeps RECORD_AUDIO out of the Android manifest.
     [
       'expo-audio',
       {
-        microphonePermission:
-          'Ear Warrior listens through your microphone to detect the notes you play on the guitar.',
+        microphonePermission: false,
         recordAudioAndroid: false,
         enableBackgroundPlayback: false,
       },

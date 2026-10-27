@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-22
 
-**Status**: MVP built (fretboard input, curated melodies); SC-009 accessibility open. **Last updated**: 2026-10-11
+**Status**: MVP built (fretboard input, curated melodies); SC-009 accessibility open. **Last updated**: 2026-10-27
 
 **Input**: User description: "Build an application that can help me improve my ears in terms of playing music. I want to build an ability to quickly recognise musical phrases and be able to reproduce it on a guitar. The main idea is to play right after the short generated melody and app should check for the correctness through the feedback."
 
@@ -12,6 +12,7 @@
 
 ### Session 2026-07-22
 
+- Q: Does the `mic` input mode return? → A: **No (owner, 2026-10-27): the microphone and all sound recognition were removed.** `react-native-pitchy`, the pitch detector, capture window, segmenter, noise-floor calibration, tuning check, microphone permission and the `EXPO_PUBLIC_INPUT_MODE` flag are deleted; the app declares no microphone permission on either platform. Every requirement below marked *(`mic` input mode — see FR-020)* is **withdrawn**, not deferred. `InputMode` keeps the value `mic` only so attempts recorded earlier still read back correctly (FR-020, R14).
 - Q: Note-match tolerance — how close must a detected pitch be to count as the intended note? → A: Nearest-note within ±50 cents (a pitch that rounds to the target semitone matches; the adjacent semitone never matches; intonation inside that window is not itself graded).
 - Q: How is the played sequence aligned to the target when a note is inserted or omitted? → A: Best-fit sequence alignment (edit-distance/LCS) — one extra note is flagged `extra`, one skipped note `missed`, and surrounding correct notes still count as `matched` (no cascade to `wrong`).
 - Q: How are consecutive notes separated, especially same-pitch repeats? → A: Segment by pitch change or silence gap only; same-pitch re-attack detection is out of scope this phase, so generated melodies avoid consecutive identical pitches.

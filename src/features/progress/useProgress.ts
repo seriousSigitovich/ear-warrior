@@ -12,7 +12,9 @@ import {
   createSessionRepository,
 } from '../../services/storage/repositories';
 import { loadProgress } from '../../services/storage/progress';
-import { INPUT_MODE } from '../practice/inputMode';
+
+// The only mode the app answers in; progress never mixes in attempts from the removed microphone input.
+const INPUT_MODE = 'fretboard' as const;
 
 const EMPTY_PROFILE: ProgressProfile = {
   accuracyTrend: [],

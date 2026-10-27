@@ -17,29 +17,19 @@ export interface Note {
   durationBeats: number;
 }
 
-/** A discrete note recovered from the microphone pitch stream by the segmenter. */
+/** A note the learner answered with, built from a fretboard tap (see `tapsToDetected`). */
 export interface DetectedNote {
   index: number;
-  /** Nearest MIDI note number for the note's median frequency. */
+  /** MIDI note number of the answered note. */
   midi: number;
-  /** Median detected frequency over the note's stable window. */
+  /** Frequency of the answered note. */
   frequencyHz: number;
   /** Signed deviation from the nearest note in cents. */
   centsOffset: number;
-  /** Median YIN clarity (0–1) over the note's stable window; used for confidence (FR-017). */
+  /** Always 1 for a fretboard tap; kept because attempts persist it (FR-017). */
   clarity: number;
   startMs: number;
   endMs: number;
-}
-
-/** One monophonic pitch frame from the native detector (contracts/pitch-detection.md). */
-export interface PitchFrame {
-  /** Detected fundamental in Hz; 0 when unvoiced. */
-  hz: number;
-  /** YIN confidence 0–1. */
-  clarity: number;
-  /** Monotonic capture time in ms. */
-  timestampMs: number;
 }
 
 export type NoteStatus = 'matched' | 'wrong' | 'missed' | 'extra';
@@ -111,9 +101,8 @@ export interface Melody {
 }
 
 /**
- * How the learner answers a melody: by playing a real instrument into the microphone, or by
- * tapping the notes on an on-screen fretboard. Recorded per attempt so the two are never mixed
- * when reading accuracy (a fretboard answer has no pitch uncertainty).
+ * How an attempt was answered. The app only answers on the on-screen fretboard; `mic` survives so
+ * attempts recorded before the microphone input was removed keep their meaning when read back.
  */
 export type InputMode = 'mic' | 'fretboard';
 
@@ -186,41 +175,7 @@ export interface ProgressProfile {
   weakAreas: { descriptor: string; missRate: number }[];
 }
 
-export type TuningDirection = 'sharp' | 'flat' | 'none';
-
-/** Result of the systematic-detune check (contracts/tuning-check.md, FR-014). */
-export interface TuningWarning {
-  outOfTune: boolean;
-  medianCents: number;
-  direction: TuningDirection;
-}
-
-// ---- Calibratable configuration (empirical constants tuned on-device per research.md) ----
-
-export interface SegmentConfig {
-  /** Frames below this clarity are treated as silence. */
-  clarityThreshold: number;
-  /** Minimum stable duration (ms) for a sound to count as a played note. */
-  minNoteMs: number;
-  /** Silence gap (ms) that separates two consecutive notes — the short segmentation gap (FR-004). */
-  gapMs: number;
-  /** Lowest accepted frequency (Hz); below → out of guitar band. */
-  minHz: number;
-  /** Highest accepted frequency (Hz); above → out of guitar band. */
-  maxHz: number;
-  /**
-   * Consecutive frames of a new, self-consistent pitch required before a mid-note pitch change is
-   * treated as a real note boundary. Kills single-frame glitches (attack transients, stray octave
-   * reads) that would otherwise fracture one note into two — the deviation must persist to count.
-   */
-  onsetConfirmFrames: number;
-  /**
-   * Leading slice (ms) of a note's window dropped before estimating its pitch — the attack transient
-   * of a plucked/picked note is the least reliable part of the signal (mic settling, string not yet
-   * stable), so the reported pitch comes from what follows it rather than from the note's own onset.
-   */
-  attackGuardMs: number;
-}
+// ---- Calibratable configuration ----
 
 export interface GradingConfig {
   /** Fixed ±50 (FR-016); a pitch closer to an adjacent semitone never matches. */
@@ -229,30 +184,4 @@ export interface GradingConfig {
   octaveSensitive: boolean;
   /** Confidence below this flags the attempt low-confidence (FR-017). */
   lowConfidenceThreshold: number;
-}
-
-export interface TuningConfig {
-  /** Magnitude of a systematic offset that triggers the warning (default ~35). */
-  centsThreshold: number;
-  /** Minimum notes required before judging tune (default 3). */
-  minNotes: number;
-}
-
-/**
- * Adaptive voicing calibration (Tier 1 noise robustness). Instead of a fixed clarity gate, the
- * segmenter's voicing threshold is set relative to the room's measured ambient clarity, so a noisy
- * room raises the gate above the noise and a quiet room lowers it to catch a weak source. Estimated
- * per capture from the ambient frames that every capture window contains (pre-onset + the silent tail).
- */
-export interface CalibrationConfig {
-  /** Clarity percentile (0–1) taken as the ambient/quiet floor for the capture (default ~0.2). */
-  ambientPercentile: number;
-  /** Require voiced clarity to sit at least this far above the ambient floor (default ~0.15). */
-  margin: number;
-  /** Never gate below this — YIN clarity under it is essentially noise (default ~0.3). */
-  hardMin: number;
-  /** Never demand more than this, so a real (if imperfect) note stays reachable (default ~0.7). */
-  hardMax: number;
-  /** Minimum frames needed to trust an ambient estimate; below it, fall back to the midpoint. */
-  minFrames: number;
 }
