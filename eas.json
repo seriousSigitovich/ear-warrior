@@ -18,7 +18,8 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "https://ear-warrior-api.vercel.app",
         "EXPO_PUBLIC_SENTRY_DSN": "https://460ff0d817869a3ed5c53eb7a8e9889d@o4512317559472128.ingest.de.sentry.io/4512317581033552",
-        "EXPO_PUBLIC_APP_ENV": "preview"
+        "EXPO_PUBLIC_APP_ENV": "preview",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       }
     },
     "production": {
@@ -27,7 +28,8 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "https://ear-warrior-api.vercel.app",
         "EXPO_PUBLIC_SENTRY_DSN": "https://460ff0d817869a3ed5c53eb7a8e9889d@o4512317559472128.ingest.de.sentry.io/4512317581033552",
-        "EXPO_PUBLIC_APP_ENV": "production"
+        "EXPO_PUBLIC_APP_ENV": "production",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       }
     }
   },
