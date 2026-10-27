@@ -95,15 +95,15 @@ Alternatives considered**.
   with **expo-audio**, scheduling each note's start by the melody's tempo/durations. Pre-generate
   (preload) the active difficulty's note pool so the first note starts without a synthesis hitch.
 - **Rationale**: Runtime synthesis needs **no bundled audio assets** and can produce **any** in-range
-  MIDI note on demand, so the generator is not coupled to a rendered sample set and the app stays small.
+  MIDI note on demand, so the melody library is not coupled to a rendered sample set and the app stays small.
   The synth (KS render + WAV encoding, in `src/services/audio/synth.ts`) is pure and fully
   unit-testable; only the cache write + `expo-audio` playback are native. `expo-audio` is the current,
   non-deprecated Expo audio API (it replaces `expo-av`).
 - **Supersedes**: an earlier draft chose `expo-av` sequencing of one pre-rendered sample per note. That
   was replaced because bundling a sample for every note across E2–E6 added asset weight and coupled the
-  generator to the rendered set, whereas runtime synthesis removes both. Playback stays isolated behind
+  melodies to the rendered set, whereas runtime synthesis removes both. Playback stays isolated behind
   `contracts/audio-playback.md`, so the swap did not ripple beyond the audio service.
-- **Alternatives considered**: Pre-rendered samples + `expo-av` — rejected (asset weight, generator
+- **Alternatives considered**: Pre-rendered samples + `expo-av` — rejected (asset weight, melody
   coupling, deprecated API). Pre-render each full melody — rejected, combinatorial asset explosion.
 
 ## R7. Audio session (playback then capture)
@@ -269,13 +269,9 @@ same shape and key.*
   (4) The spec's original input — "reproduce it on a guitar" — is deferred, not dropped.
 - **Neck length and melody source (revised 2026-10-11)**: the first neck had 16 positions (frets 1–15) to
   reach G5. The owner chose **12 frets** — a simpler neck, taller cells (the 44 pt target of SC-009 gets
-  closer) and 12 is the octave landmark. Cost: the high e tops out at E5 (MIDI 76), while the **generator**
-  writes up to G5 (79), so some generated notes could not be answered. The owner also decided the
-  **generator is deferred and not part of the MVP**; melodies come from a **curated set** (FR-021) that is
-  written to fit E2–E5. The generator and its register are left untouched, so the neck was shortened first
-  (T087) and the generator was then switched off in favour of a starter set of curated tunes (T088/T089).
-  The generator's F5–G5 reach is therefore no longer a live defect in the MVP; it returns only if the
-  generator is turned back on with `EXPO_PUBLIC_MELODY_SOURCE=generator`.
+  closer) and 12 is the octave landmark. Cost: the high e tops out at E5 (MIDI 76), so every melody is
+  written to fit E2–E5. The owner decided melodies come from a **curated library** (FR-021) and, on
+  2026-10-27, removed the melody generator from the codebase; the owner assembles the library himself.
 - **Alternatives considered**: Shipping the mic path as-is — rejected for the MVP, it needs the on-device
   calibration spike (T052/T053) to finish first. Piano-keyboard or note-name buttons — rejected, they lose
   the string/fret geometry the target learner (guitarists) actually reads, and make a note a name rather

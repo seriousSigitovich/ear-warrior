@@ -12,7 +12,6 @@ import {
   GradingConfig,
   Melody,
 } from '../../models';
-import { generateMelody } from '../../services/melody/generator';
 import { getLevelByRank } from '../../services/melody/levels';
 import {
   DEFAULT_DIFFICULTY_SETTINGS,
@@ -37,11 +36,8 @@ import {
 export type LoopPhase = 'idle' | 'playingMelody' | 'awaitingInput' | 'grading' | 'feedback';
 
 export interface PracticeLoopDeps {
-  /**
-   * Where the next melody comes from (FR-021): the curated set in the MVP build. Defaults to the
-   * generator, the behaviour before the curated set existed.
-   */
-  nextMelody?: (level: DifficultyLevel, seed: number) => Melody;
+  /** Where the next melody comes from (FR-021): the curated library. */
+  nextMelody: (level: DifficultyLevel, seed: number) => Melody;
   playback: AudioPlayback;
   session: AudioSession;
   gradingCfg: GradingConfig;
@@ -167,7 +163,7 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
   );
 
   const next = useCallback(async () => {
-    const m = (deps.nextMelody ?? generateMelody)(level, deps.seed());
+    const m = deps.nextMelody(level, deps.seed());
     setMelody(m);
     setGrade(null);
     setRankChange(null);

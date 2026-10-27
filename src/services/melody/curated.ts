@@ -1,5 +1,4 @@
-// The MVP's melodies (FR-021): a small hand-written set of public-domain tunes instead of the
-// generator, which is off in this version. Every tune sits on a difficulty level (rank 1–9) and
+// The melody library (FR-021): a hand-written set of public-domain tunes, curated by the owner. Every tune sits on a difficulty level (rank 1–9) and
 // inside the 12-fret neck (E2–E5, MIDI 40–76), so any note can be answered on the on-screen
 // fretboard. Drafted from memory as a STARTER set — the owner is to verify and extend it.
 //
@@ -155,7 +154,7 @@ const PITCH_CLASS: Record<string, number> = {
   B: 11,
 };
 
-/** Fixed placeholder; the storage layer stamps the real creation time on persist (as the generator does). */
+/** Fixed placeholder; the storage layer stamps the real creation time on persist. */
 const CREATED_AT_PLACEHOLDER = new Date(0).toISOString();
 
 function parseNotes(tune: CuratedTune): Note[] {

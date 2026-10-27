@@ -28,7 +28,7 @@ interface AttemptOutcome {
   isFirstAttemptOnMelody: boolean;  // false for a retry
 }
 
-/** The rank the generator should use right now. */
+/** The rank melodies should be picked from right now. */
 function effectiveRank(s: DifficultySettings): number;
 
 /** Pure transition: returns the next settings. Never mutates its input. */

@@ -10,12 +10,6 @@ const LEVEL: DifficultyLevel = {
   id: 'L2',
   rank: 2,
   noteCount: 2,
-  scales: ['major_pentatonic'],
-  maxLeap: 3,
-  maxSpan: 5,
-  motif: 'none',
-  rangeLowMidi: 60,
-  rangeHighMidi: 72,
   tempoBpm: 90,
 };
 

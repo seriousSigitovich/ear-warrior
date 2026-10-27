@@ -7,7 +7,7 @@ export const A4_HZ = 440;
 export const A4_MIDI = 69;
 /** Lowest standard-guitar note E2. */
 export const GUITAR_MIN_MIDI = 40;
-/** Highest note the generator/detector guard against, E6. */
+/** Highest note of the standard guitar range, E6. */
 export const GUITAR_MAX_MIDI = 88;
 
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];

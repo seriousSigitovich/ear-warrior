@@ -77,7 +77,7 @@ authoritative state adaptation reads and writes, deliberately **not** derived fr
 rank change. Writing `fixedRank` MUST NOT modify `adaptiveRank` — switching adaptive → fixed → adaptive
 resumes at the stored `adaptiveRank` (FR-011b).
 
-**Effective rank**: `mode === 'fixed' ? fixedRank : adaptiveRank`. This is what the generator receives.
+**Effective rank**: `mode === 'fixed' ? fixedRank : adaptiveRank`. This is the rank melodies are picked from.
 
 **Defaults on first launch** (no history): `mode: 'adaptive'`, `adaptiveRank: 1`, `fixedRank: 1`,
 `streakKind: 'none'`, `streakCount: 0`. Rank 1 (3 notes) is also the level US1 runs at before US2 ships, so
@@ -95,9 +95,8 @@ An ordered target sequence the learner must reproduce (FR-001).
 | `scale` | string | resolved key it was drawn from, e.g. `"G_major"` |
 | `createdAt` | ISO timestamp | |
 
-**Validation (generated)**: `notes.length === difficulty.noteCount`; every note within range and scale; no
-two consecutive identical pitches (FR-001). Produced by `services/melody` (pure); see
-`contracts/melody-generator.md`.
+**Validation (curated)**: `notes.length === difficulty.noteCount`; every note within range and scale; no
+Picked from the curated library (`services/melody/curated.ts`, FR-021).
 
 **Curated melodies (FR-021, the MVP source)**: same shape, produced by `curatedMelody(level, seed)` in
 `src/services/melody/curated.ts`. A curated tune is assigned to one level by hand (`rank` 1–9), so

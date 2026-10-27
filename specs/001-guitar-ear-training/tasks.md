@@ -10,7 +10,7 @@ description: "Task list for Guitar Ear Training — Melody Recall & Playback Fee
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/, quickstart.md
 
 **Tests**: REQUIRED. Per Constitution Principle II (Test-First, NON-NEGOTIABLE) and plan.md, all pure
-logic (grading, segmentation, pitch↔note, generator, difficulty, progress) is developed test-first, and
+logic (grading, pitch↔note, curated library, difficulty, progress) is developed test-first, and
 each service boundary in `contracts/` has a contract test against mocked native modules. Native
 pitch-detection accuracy and audio fidelity are validated on-device via `quickstart.md`.
 
@@ -324,7 +324,7 @@ spec lagging the implementation. Findings are referenced by their analysis IDs.
 - [X] T086 Branch policy (analyze M2): **branch per feature from now on** — `001-guitar-ear-training` was created from `master` on 2026-10-11 (history before that is on `master`); `002-history-sync` and `003-landing-waitlist` stay unbranched retroactive specs
 - [X] T087 [US1] **12-fret neck (owner decision 2026-10-11)**: `FRET_COUNT` 16 → 13 and inlays `[3,5,7,9]` + 12 in `src/lib/fretboard.ts`; 37 pitches pre-rendered in `app/practice.tsx`; `tests/unit/lib/fretboard.test.ts` updated first and seen failing, then green (neck spans E2–E5, 13 positions). Checked in the simulator: 12 frets, last fret labelled 12 with the double inlay. The generator is **not** touched. The generator's F5–G5 reach is closed by switching it off (T088/T089) — done ahead of the curated set at the owner's instruction
 - [X] T088 [US1] **Curated melody set (FR-021, owner decision 2026-10-11)** — starter set in `src/services/melody/curated.ts` (public-domain tunes drafted from memory, ≥ 1 per level 1–9, **owner to verify**) with `curatedMelody(level, seed)`; tests first in `tests/unit/melody/curated.test.ts`: every note inside the neck (E2–E5) and playable, every level 1–9 has a tune, every note belongs to the tune's scale (catches transcription typos), selection is deterministic per seed. Final content, size and ordering rule remain **open questions** in the spec
-- [X] T089 [US1] **Generator off in this version (owner, 2026-10-11)**: `EXPO_PUBLIC_MELODY_SOURCE` (`curated` default, `generator` restores it) resolved in `src/features/practice/melodySource.ts`, injected into the practice loop as `deps.nextMelody` (default stays the generator, as before this feature); resolver tests first in `tests/unit/practice/melodySource.test.ts`. The generator code and its tests stay untouched (FR-021)
+- [X] T089 [US1] **Generator off in this version (owner, 2026-10-11; code removed 2026-10-27, T093)**: `EXPO_PUBLIC_MELODY_SOURCE` (`curated` default, `generator` restores it) resolved in `src/features/practice/melodySource.ts`, injected into the practice loop as `deps.nextMelody` (default stays the generator, as before this feature); resolver tests first in `tests/unit/practice/melodySource.test.ts`. The generator code and its tests stay untouched (FR-021)
 
 ---
 
@@ -333,5 +333,6 @@ spec lagging the implementation. Findings are referenced by their analysis IDs.
 **Purpose**: Findings of the second `/speckit-analyze` run, after the 12-fret neck and the curated set.
 
 - [X] T090 Artifact drift fixed (analyze I1, I2, I3, M1–M4, L1–L3, C2 record): `plan.md` (test runner in three places, 37 pitches, repeats rule scoped to generator and `mic`, summary, project tree, Complexity Tracking now lists the real exceptions), `spec.md` (FR-001 / FR-021 repeats and the `mic` → generator rule, US2 scenarios 1–3 source-neutral, SC-005 scoped to the generator ladder, status line, repeats Open Question closed, implementation detail out of FR-021), `data-model.md` (curated `Melody`), T073 / T051 / T086 here
-- [ ] T091 [US1] **`mic` mode must use the generator** (FR-021): `melodySource` resolution takes the input mode and returns the generator whenever the mode is `mic`, so a curated tune with a repeated pitch is never offered to the segmenter. Tests first in `tests/unit/practice/melodySource.test.ts` (`mic` + default → generator; `fretboard` + default → curated; explicit `generator` → generator)
+- [X] T091 Withdrawn 2026-10-27: moot — the generator and the `mic` mode were both removed.
 - [ ] T092 Measure SC-001 (< 15 s cycle) and SC-003 (< 2 s feedback) in `fretboard` mode on a device and record the numbers; T052 stays for the `mic` budgets (analyze C2)
+- [X] T093 [US1] **Remove the melody generator (owner, 2026-10-27)**: deleted `src/services/melody/generator.ts`, `src/features/practice/melodySource.ts` (and the `EXPO_PUBLIC_MELODY_SOURCE` flag), `contracts/melody-generator.md` and their tests; `DifficultyLevel` keeps only `id`, `rank`, `noteCount`, `tempoBpm`; the Settings level card no longer lists scale / largest leap / structure; `usePracticeLoop` takes `nextMelody` as a required dependency (`curatedMelody`). The curated library (`curated.ts`) stays; the owner assembles it (FR-021). FR-001 withdrawn; FR-010, FR-021, SC-005 rewritten

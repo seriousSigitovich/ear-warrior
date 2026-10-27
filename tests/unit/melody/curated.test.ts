@@ -1,4 +1,4 @@
-// FR-021: the MVP's melodies are a curated set, not generated. These tests guard the set itself —
+// FR-021: the melodies are a curated library. These tests guard the library itself —
 // every tune must be answerable on the 12-fret neck, belong to its scale (a typo shows up as a note
 // outside it) and every difficulty level must have something to play.
 import { DifficultyLevel } from '../../../src/models';
@@ -63,7 +63,7 @@ describe('curated melody set (FR-021)', () => {
 });
 
 describe('curatedMelody', () => {
-  test('builds a Melody in the generator’s shape', () => {
+  test('builds a well-formed Melody', () => {
     const m = curatedMelody(level(1), 7);
     expect(m.difficultyId).toBe('L1');
     expect(m.notes.map((n) => n.index)).toEqual(m.notes.map((_, i) => i));

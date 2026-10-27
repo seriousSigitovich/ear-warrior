@@ -34,7 +34,7 @@ This is a requirements-quality gate ("unit tests for the spec"), not an implemen
 - [x] CHK017 Is the pitch-first-only grading scope (rhythm/timing excluded) stated consistently across every correctness requirement, with no requirement implying timing is graded? [Consistency, Spec §Assumptions / §FR-005]
 - [x] CHK018 Is the overall-verdict rule ("correct" only if all target notes matched and no extra notes) stated in the requirements themselves, not solely in downstream design docs? [Consistency, Spec §FR-005]
 - [x] CHK019 Are the note-result categories (matched / wrong / missed / extra) defined consistently everywhere grading feedback is described? [Consistency, Spec §FR-005 / §FR-006]
-- [x] CHK020 Do the generator's pitch-pool (scale/range) requirements align with the notes the detector/grader is required to recognize? [Consistency, Spec §FR-001 / §FR-004]
+- [x] CHK020 Do the curated library's pitch-pool (scale/range) requirements align with the notes the detector/grader is required to recognize? [Consistency, Spec §FR-021 / §FR-004]
 
 ## Scenario & Edge Case Coverage
 

@@ -20,7 +20,7 @@ before this feature), so existing loop tests and callers are unaffected.
 | `OPEN_STRING_MIDI` | `[40, 45, 50, 55, 59, 64]` | E2 A2 D3 G3 B3 E4, string 0 = lowest. Also `STANDARD_TUNING_MIDI` |
 | `STRING_COUNT` | 6 | |
 | `FRET_COUNT` / `MAX_FRET` | 13 / 12 | open + frets 1–12 (was 16 / 15 until 2026-10-11; fewer rows give taller cells) |
-| Reach | MIDI 40–76 (E2–E5) | the register every MVP melody must fit (FR-021). The generator's E3–G5 register (52–79) is wider than the neck, which is one reason the generator is out of the MVP |
+| Reach | MIDI 40–76 (E2–E5) | the register every MVP melody must fit (FR-021). |
 
 `fretMidi({string, fret}) = OPEN_STRING_MIDI[string] + fret`; throws on an invalid position.
 `positionsForMidi(midi)` lists every position that sounds a pitch (low string first; empty off the board).

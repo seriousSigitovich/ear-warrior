@@ -1,7 +1,7 @@
 // Domain types for Guitar Ear Training (data-model.md).
 // Pure, serializable value types shared across the pure-logic core and the (deferred) native/UI layers.
 
-/** A single target pitch inside a generated Melody. */
+/** A single target pitch inside a Melody. */
 export interface Note {
   /** Position in the sequence (0-based). */
   index: number;
@@ -11,7 +11,7 @@ export interface Note {
   noteName: string;
   /** Ideal equal-temperament frequency (A4 = 440 Hz). */
   frequencyHz: number;
-  /** Deviation from the nearest note in cents; 0 for generated targets. */
+  /** Deviation from the nearest note in cents; 0 for target notes. */
   centsOffset: number;
   /** Relative duration in beats (target only). */
   durationBeats: number;
@@ -59,35 +59,12 @@ export interface AttemptGrade {
   timedOut: boolean;
 }
 
-/** Scale families the generator draws from; the tonic is picked per melody. */
-export type ScaleFamily = 'major_pentatonic' | 'major' | 'natural_minor';
-
-/**
- * How the second half of a phrase relates to its opening motif — repetition is what makes a phrase
- * memorable, so *less* of it is harder: `repeat` < `sequence` < `variation` < `none`.
- */
-export type MotifMode = 'repeat' | 'sequence' | 'variation' | 'none';
-
-/**
- * Named generation configuration (FR-010). Difficulty is a route through several dimensions —
- * vocabulary (`scales`), interval size (`maxLeap`), length, predictability (`motif`), and span —
- * rather than length alone; see research R11.
- */
+/** One rung of the difficulty ladder (FR-010): what a melody at this rank looks like. */
 export interface DifficultyLevel {
   id: string;
   /** 1–9, ordering for adaptation. */
   rank: number;
   noteCount: number;
-  /** Families a melody at this level may use; one is picked per melody. */
-  scales: ScaleFamily[];
-  /** Largest melodic interval between consecutive notes, in semitones. */
-  maxLeap: number;
-  /** Largest distance between the phrase's lowest and highest note, in semitones. */
-  maxSpan: number;
-  motif: MotifMode;
-  /** Register every generated note must fall inside. */
-  rangeLowMidi: number;
-  rangeHighMidi: number;
   tempoBpm: number;
 }
 

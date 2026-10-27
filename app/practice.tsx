@@ -4,7 +4,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { InteractionManager, ScrollView, StyleSheet, View } from 'react-native';
 import { GradingConfig, Session } from '../src/models';
-import { nextMelody } from '../src/features/practice/melodySource';
+import { curatedMelody } from '../src/services/melody/curated';
 import { MAX_RANK } from '../src/services/melody/levels';
 import { tapStatuses } from '../src/lib/fretboard';
 import { createAudioPlayback } from '../src/services/audio/playback';
@@ -138,7 +138,7 @@ export default function Practice() {
 
   const deps = useMemo<PracticeLoopDeps>(
     () => ({
-      nextMelody,
+      nextMelody: curatedMelody,
       playback,
       session: createAudioSession(),
       gradingCfg: GRADING_CFG,

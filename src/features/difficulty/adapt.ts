@@ -52,7 +52,7 @@ export function toAttemptOutcome(
   };
 }
 
-/** The rank the generator should use right now. */
+/** The rank melodies should be picked from right now. */
 export function effectiveRank(settings: DifficultySettings): number {
   return settings.mode === 'fixed' ? settings.fixedRank : settings.adaptiveRank;
 }
