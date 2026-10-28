@@ -37,3 +37,9 @@ Thumbs.db
 
 # Vercel
 .vercel
+
+# Python tooling (assets/guitar-rig)
+.venv/
+__pycache__/
+.pytest_cache/
+assets/guitar-rig/out/
