@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Carousel: find the box, play by ear</title>
+<style>
+  /* Carousel (4:5, 1080×1350): find home → place the pentatonic box → find the notes inside it.
+     Worked tune: Amazing Grace (public domain), first line D G B G B A G E D in G major (all notes in the G major pentatonic).
+     Open `pentatonic.html` to review (slides at 30 %), `?full` shows them at full size, `node export.mjs` writes the PNGs. */
+  :root { --page: #0d0e17; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: #e9e9ed; font-family: -apple-system, "SF Pro Display", "Helvetica Neue", Arial, sans-serif; }
+  .head { padding: 24px 32px 4px; }
+  .head h1 { margin: 0 0 6px; font-size: 20px; font-weight: 600; }
+  .head p { margin: 0; color: rgba(233,233,237,.62); font-size: 13px; max-width: 760px; line-height: 1.5; }
+  .row { display: flex; flex-wrap: wrap; gap: 16px; padding: 18px 32px 32px; }
+  .frame { flex: none; width: 324px; height: 405px; position: relative; border-radius: 10px; overflow: hidden; box-shadow: 0 0 0 1px rgba(255,255,255,.08); }
+  .slide { position: absolute; left: 0; top: 0; width: 1080px; height: 1350px; transform: scale(.3); transform-origin: 0 0;
+    display: flex; flex-direction: column; padding: 110px 80px 0;
+    --bg: #f3f5fe; --text: #161826; --muted: rgba(22,24,38,.62); --accent: #5d5294; --bright: #796cbf; --warm: #a4573a; --home: #d9a521; --line: rgba(22,24,38,.14); --surface: #e4e7f5;
+    background: var(--bg); color: var(--text); }
+  body.full .frame { width: 1080px; height: 1350px; border-radius: 0; box-shadow: none; }
+  body.full .slide { transform: none; }
+  body.full .row { gap: 0; padding: 0; display: block; }
+  body.full .head { display: none; }
+  .kicker { font-size: 34px; letter-spacing: .18em; font-weight: 600; color: var(--bright); text-transform: uppercase; }
+  .h { margin: 28px 0 0; font-size: 112px; line-height: 1.04; font-weight: 600; letter-spacing: -.02em; }
+  .h.m { font-size: 92px; }
+  .h.s { font-size: 80px; }
+  .h em { font-style: normal; color: var(--bright); }
+  .sub { margin: 34px 0 0; font-size: 44px; line-height: 1.32; color: var(--muted); max-width: 920px; }
+  .sub b { color: var(--text); font-weight: 600; }
+  .vis { margin-top: auto; margin-bottom: 190px; }
+  .foot { position: absolute; left: 80px; right: 80px; bottom: 70px; display: flex; justify-content: space-between; align-items: center;
+    font-size: 30px; letter-spacing: .14em; color: var(--muted); text-transform: uppercase; }
+  .foot b { color: var(--text); font-weight: 600; }
+  svg { display: block; }
+  .chips { display: flex; gap: 16px; }
+  .chip { min-width: 100px; height: 130px; border-radius: 26px; background: var(--surface); display: grid; place-items: center; font-size: 62px; font-weight: 600; border: 4px solid transparent; padding: 0 22px; }
+  .chip.on { background: var(--accent); color: #fff; }
+  .chip.warm { background: transparent; border: 4px dashed var(--warm); color: var(--warm); }
+  .tag { font-size: 34px; letter-spacing: .04em; margin-top: 16px; color: var(--muted); }
+  .tag.warm { color: var(--warm); }
+  .seq { display: flex; gap: 22px; font-size: 56px; font-weight: 600; margin-top: 30px; letter-spacing: .02em; }
+  .seq span { color: var(--muted); font-size: 34px; align-self: center; font-weight: 500; letter-spacing: .08em; }
+  .list { display: grid; gap: 30px; }
+  .li { display: flex; align-items: center; gap: 34px; font-size: 62px; font-weight: 600; }
+  .li small { font-size: 36px; font-weight: 500; color: var(--muted); margin-left: auto; }
+  .num { width: 104px; height: 104px; flex: none; border-radius: 52px; background: var(--accent); color: #fff; display: grid; place-items: center; font-size: 54px; }
+  .num.ok { background: var(--bright); }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px 24px; margin-top: 36px; }
+  .box-label { font-size: 30px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px 4px; font-weight: 600; }
+  .card { background: var(--surface); border-radius: 32px; padding: 44px 48px; font-size: 40px; line-height: 1.35; }
+  .card b { color: var(--bright); font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="head">
+  <h1>Carousel: find the box, play by ear</h1>
+  <p>Find home → place the pentatonic box → find the notes inside it. Worked tune: Amazing Grace (public domain), key of G major. 1080×1350 (4:5), shown at 30 %. Add <code>?full</code> to the URL for full size.</p>
+</div>
+<div class="row" id="root"></div>
+
+<script>
+// ---------- fretboard ----------
+const PC = [4, 11, 7, 2, 9, 4];                 // open-string pitch classes, string 0 = high E … 5 = low E
+const NAME = { 4: 'E', 11: 'B', 7: 'G', 2: 'D', 9: 'A' };
+const G_MAJ = new Set([7, 9, 11, 2, 4]);        // G A B D E — the same five notes as E minor pentatonic
+const ROOT = 7;                                  // home = G
+
+const fretsOn = (s, set, max) => { const r = []; for (let f = 0; f <= max; f++) if (set.has((PC[s] + f) % 12)) r.push(f); return r; };
+
+/** The five pentatonic boxes: two notes per string, anchored on consecutive pairs of the low-E string. */
+function boxes(set) {
+  const anchor = fretsOn(5, set, 15), out = [];
+  for (let k = 0; anchor[k] < 12; k++) {
+    const m = (anchor[k] + anchor[k + 1]) / 2, dots = [];
+    for (let s = 0; s < 6; s++) {
+      const fs = fretsOn(s, set, 16);
+      let best = 0;
+      for (let j = 1; j < fs.length - 1; j++) if (Math.abs((fs[j] + fs[j + 1]) / 2 - m) < Math.abs((fs[best] + fs[best + 1]) / 2 - m)) best = j;
+      dots.push({ s, f: fs[best] }, { s, f: fs[best + 1] });
+    }
+    out.push(dots);
+  }
+  return out;
+}
+
+/** dots: [{s, f, label?, kind: home|on|dim|ghost|warm}] */
+function board({ nFrets, dots, hl = null, nums = true, h = 300, w = 920, pad = 34, from = 1 }) {   // from: first visible fret (1 = the nut is in view)
+  const X0 = 56, cell = (w - X0 - 8) / nFrets, top = pad, gap = (h - top - (nums ? 70 : pad)) / 5;
+  const fx = (f) => (f === 0 ? X0 - 28 : X0 + (f - from + 0.5) * cell), sy = (i) => top + i * gap, R = Math.min(30, cell * 0.4, gap * 0.46);
+  let g = '';
+  for (let f = 0; f <= nFrets; f++) g += `<line x1="${X0 + f * cell}" y1="${sy(0) - 12}" x2="${X0 + f * cell}" y2="${sy(5) + 12}" stroke="var(--text)" stroke-opacity="${f === 0 && from === 1 ? .75 : .2}" stroke-width="${f === 0 && from === 1 ? 8 : 3}"/>`;
+  for (let i = 0; i < 6; i++) g += `<line x1="${X0}" y1="${sy(i)}" x2="${X0 + nFrets * cell}" y2="${sy(i)}" stroke="var(--text)" stroke-opacity="${hl === i ? .6 : .28}" stroke-width="${hl === i ? 6 : 3}"/>`;
+  if (nums) for (let f = from; f < from + nFrets; f++) if (nFrets <= 6 || [3, 5, 7, 9, 12].includes(f)) g += `<text x="${fx(f)}" y="${sy(5) + 52}" text-anchor="middle" font-size="26" fill="var(--text)" fill-opacity=".45">${f}</text>`;
+  for (const d of dots) {
+    const x = fx(d.f), y = sy(d.s), k = d.kind || 'on';
+    const r = { ghost: R * 0.36, dim: R * 0.6, home: R * 1.05, on: R, warm: R }[k];
+    const fill = { ghost: 'var(--text)', dim: 'var(--accent)', home: 'var(--home)', on: 'var(--accent)', warm: 'none' }[k];
+    const op = { ghost: 0.28, dim: 0.35 }[k] ?? 1;
+    if (k === 'home') g += `<circle cx="${x}" cy="${y}" r="${r * 1.5}" fill="var(--home)" opacity=".25"/>`;
+    g += `<circle cx="${x}" cy="${y}" r="${r}" fill="${fill}" opacity="${op}" ${k === 'warm' ? 'stroke="var(--warm)" stroke-width="4" stroke-dasharray="9 7"' : ''}/>`;
+    if (d.label) g += `<text x="${x}" y="${y + R * 0.34}" text-anchor="middle" font-size="${d.label.length > 3 ? R * 0.62 : d.label.length > 1 ? R * 0.8 : R * 1.04}" font-weight="700" fill="${k === 'home' ? '#161826' : '#fff'}">${d.label}</text>`;
+  }
+  return `<svg viewBox="0 0 ${w} ${h}" width="${w}">${g}</svg>`;
+}
+
+const allPent = (maxFret) => { const d = []; for (let s = 0; s < 6; s++) for (const f of fretsOn(s, G_MAJ, maxFret)) d.push({ s, f, kind: (PC[s] + f) % 12 === ROOT ? 'home' : 'dim' }); return d; };
+const chips = (arr) => `<div class="chips">${arr.map(([t, k]) => `<div class="chip ${k || ''}">${t}</div>`).join('')}</div>`;
+
+const BRAND = 'Ear Warrior';
+const slide = (n, total, inner) => `<div class="frame"><div class="slide">${inner}<div class="foot"><b>${BRAND}</b><span>${n} / ${total}${n < total ? ' &nbsp;→' : ''}</span></div></div></div>`;
+const kick = (t) => `<div class="kicker">${t}</div>`;
+const H = (t, c = '') => `<h1 class="h ${c}" style="margin-block-end:0">${t}</h1>`;
+const SUB = (t) => `<p class="sub">${t}</p>`;
+const VIS = (t) => `<div class="vis">${t}</div>`;
+const APP = `<div class="card"><b>Ear Warrior</b> plays a melody once, you play it back on a fretboard, and it shows which notes landed.<br><span style="color:var(--muted)">Early access for guitarists — link in profile.</span></div>`;
+
+// ---------- the tune: first line of Amazing Grace, key of G; positions in the open box (frets 0–3) ----------
+const TUNE = ['D', 'G', 'B', 'G', 'B', 'A', 'G', 'E', 'D'];
+const POS = { D: [3, 0], G: [2, 0], B: [1, 0], A: [2, 2], E: [3, 2] };          // note → [string, fret]
+function tuneDots() {
+  const at = new Map();
+  TUNE.forEach((n, i) => { const k = POS[n].join(','); at.set(k, [...(at.get(k) || []), i + 1]); });
+  return [...at].map(([k, nums]) => { const [s, f] = k.split(',').map(Number); return { s, f, label: nums.join('·'), kind: (PC[s] + f) % 12 === ROOT ? 'home' : 'on' }; });
+}
+
+const BOXES = boxes(G_MAJ);
+const boxLabel = (b) => { const fs = b.map((d) => d.f); const lo = Math.min(...fs), hi = Math.max(...fs); return lo === hi ? `fret ${lo}` : `frets ${lo}–${hi}`; };
+
+const S = [
+  (n, t) => slide(n, t, kick('For beginners · 3 moves') + H('Play any melody by ear with <em>one shape</em>', 'm') + SUB('A beginner method: find home, place the box, find the notes.') + VIS(board({ nFrets: 12, dots: allPent(12), nums: false, h: 250 }))),
+  (n, t) => slide(n, t, kick('Move 1 · Find home') + H('Find the note it keeps <em>coming back to.</em>', 'm') + SUB('It sounds good all the way through the tune. Play a G chord and slide along the low E string until one note sits right.') + VIS(board({ nFrets: 7, hl: 5, dots: [{ s: 5, f: 3, label: 'G', kind: 'home' }, { s: 5, f: 1, kind: 'ghost' }, { s: 5, f: 2, kind: 'ghost' }, { s: 5, f: 4, kind: 'ghost' }, { s: 5, f: 5, kind: 'ghost' }], h: 280 }))),
+  (n, t) => slide(n, t, kick('Move 2 · The map') + H('Five notes. <em>All over the neck.</em>', 'm') + SUB('G major pentatonic: G A B D E. Home is the gold dot. It is the same set as E minor — your ear decides which note is home.') + VIS(board({ nFrets: 12, dots: allPent(12), h: 330 }))),
+  (n, t) => slide(n, t, kick('The five boxes') + H('Same notes, <em>five boxes</em>', 'm') + VIS(`<div class="grid2">${
+    BOXES.map((b) => { const fs = b.map((d) => d.f), lo = Math.min(...fs), hi = Math.max(...fs), from = Math.max(1, lo);
+      const dots = b.map((d) => ({ ...d, kind: (PC[d.s] + d.f) % 12 === ROOT ? 'home' : 'on' }));
+      return `<div><div class="box-label">${boxLabel(b)}</div>${board({ nFrets: Math.max(4, hi - from + 1), from, dots, h: 240, w: 448, pad: 18 })}</div>`; }).join('')
+  }<div class="card" style="font-size:34px;align-self:center">Box 1 repeats at fret 12. Five boxes tile the whole neck.</div></div>`)),
+  (n, t) => slide(n, t, kick('Move 3 · Find the notes') + H('Amazing Grace lives in <em>one box</em>', 'm') + SUB('Open position, frets 0–3. Every note of the first line is in it.') + VIS(
+    board({ nFrets: 5, dots: [...BOXES[0].map((d) => ({ ...d, kind: 'dim' })), ...tuneDots()], h: 430 }) +
+    `<div class="seq">${TUNE.map((x) => `<div>${x}</div>`).join('')}<span>in order</span></div>`)),
+  (n, t) => slide(n, t, kick('Your turn') + H('Try it on <em>these tunes</em>', 'm') + SUB('Find home first, then the box.') + VIS(`<div class="list">${['Oh! Susanna', 'Auld Lang Syne', 'Swing Low, Sweet Chariot', 'Mary Had a Little Lamb'].map((x, i) => `<div class="li"><span class="num ok">${i + 1}</span>${x}</div>`).join('')}</div>`)),
+  (n, t) => slide(n, t, kick('Then check it') + H('Play it back. <em>See what landed.</em>', 'm') + VIS(APP)),
+];
+
+if (location.search.includes('full')) document.body.classList.add('full');
+document.getElementById('root').innerHTML = S.map((s, i) => s(i + 1, S.length)).join('');
+</script>
+</body>
+</html>

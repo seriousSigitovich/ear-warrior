@@ -112,6 +112,7 @@ As the author, I want the ability to post to stay on my machine and apart from t
 - **FR-008**: Credentials MUST come from environment variables kept separate from the analytics ones, MUST NOT be sent to the hosted backend, and MUST NOT appear in any output or error.
 - **FR-009**: A failure on one platform MUST NOT prevent the other from being attempted; the exit status MUST be non-zero if any attempted platform failed.
 - **FR-010**: The YouTube authorization for upload MUST be a separate consent with only the upload permission, runnable through the existing local helper.
+- **FR-011**: `--images <folder|list>` MUST publish an Instagram photo carousel (2–10 slides, one shape between 4:5 and 1.91:1, 320–1440 px wide, ≤ 8 MB each as JPEG; PNG slides are converted to JPEG) under the same rules as a video: dry run by default, `--confirm`, `--no-publish`, one temporary public copy per slide deleted afterwards, a record per folder in the published log, never YouTube.
 
 ### Key Entities
 
@@ -140,6 +141,7 @@ As the author, I want the ability to post to stay on my machine and apart from t
 ## Out of Scope / Known Gaps
 
 - TikTok (needs its own app and audit); browser-assisted posting stays an ad-hoc fallback.
+- Carousels with videos or with mixed media (only photo carousels are supported); the Instagram API cannot add music to a carousel — pick the track in the app when posting by hand.
 - Scheduling, editing or deleting published posts, thumbnails, playlists, end screens, comments.
 - Auto-writing captions from the experiments log (the text is written per video in chat).
 - A web UI: the interface is the command, driven through Claude.

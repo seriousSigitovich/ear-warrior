@@ -41,11 +41,11 @@
 - [x] Тесты первым делом (чистая логика в `.ts`, как принято в проекте): срок кода, число попыток, лимиты, одноразовость
 - [ ] Privacy-страница и Data Safety: email, userId, способ входа — страница `landing/privacy` и `landing/delete-account` обновлены 2026-10-21 (деплой лендинга — за владельцем); Data Safety форма в консоли — позже
 - [ ] Проверить на устройстве: вход, пропуск, неверный код, повторная отправка, выход, переустановка (нужна нативная пересборка из-за `expo-secure-store`; шаги — `specs/005-user-auth/quickstart.md` §5)
-- [~] Vercel (`ear-warrior-api`): `AUTH_PEPPER`, `SMTP_USER`, `SMTP_PASS` заданы (Production, проверено 2026-10-27), `/api/auth/request` на проде отвечает. `AUTH_TEST_EMAIL` + `AUTH_TEST_CODE` — только если Play попросит. Осталось задеплоить API (события) и лендинг (privacy)
+- [~] Vercel (`ear-warrior-api`): `AUTH_PEPPER`, `SMTP_USER`, `SMTP_PASS` заданы (Production, проверено 2026-10-27), `/api/auth/request` на проде отвечает. `AUTH_TEST_EMAIL` + `AUTH_TEST_CODE` — только если Play попросит. API (события) и лендинг (privacy) задеплоены 2026-10-28
 
 ### Продукт в приложении
 - [x] **Онбординг** (2026-10-27): 3 экрана в `app/onboarding.tsx`, контент и флаг «показан» в `src/lib/onboarding.ts` (с тестами); Home открывает его при первом запуске, затем предлагает вход. Не проверено на устройстве
-- [~] **Продуктовая аналитика** (2026-10-27): вопрос беты — «доля тестеров с ≥ 3 сессиями за неделю» и возврат на 2-й день. События `app_open`, `onboarding_done`, `session_start`, `session_end` → `POST /api/events` → таблица `app_events` (`server/src/routes/events.ts`, клиент `src/services/logging/eventLog.ts`, трекер `src/features/analytics/tracker.ts`); ответы и результат уже идут в `attempt_log`. Запрос с цифрами — `server/scripts/beta-retention.sql`. Осталось: задеплоить API (`/api/events` на проде пока 404) и проверить на устройстве
+- [~] **Продуктовая аналитика** (2026-10-27): вопрос беты — «доля тестеров с ≥ 3 сессиями за неделю» и возврат на 2-й день. События `app_open`, `onboarding_done`, `session_start`, `session_end` → `POST /api/events` → таблица `app_events` (`server/src/routes/events.ts`, клиент `src/services/logging/eventLog.ts`, трекер `src/features/analytics/tracker.ts`); ответы и результат уже идут в `attempt_log`. Запрос с цифрами — `server/scripts/beta-retention.sql`. API задеплоен 2026-10-28 (`/api/events` на проде отвечает, пустое тело → 400). Осталось: проверить на устройстве
 - [x] Кнопка «Write to us» в `app/settings.tsx` (2026-10-25): mailto на `golovsha@gmail.com` с платформой и device id в теле; нет почтового приложения → алерт с адресом. Не проверено на устройстве
 - [ ] Сыграть каждую кураторскую мелодию с гитарой хотя бы раз и поправить ноты (T088)
 
@@ -59,7 +59,7 @@
 
 - [ ] **Тестеры:** написать всем 14 из вейтлиста, собрать **Google-аккаунты** (Gmail); набрать ещё 4–6 сверх 14
 - [ ] Создать закрытый трек (Closed testing), список тестеров (email-список или Google Group)
-- [~] **Privacy policy:** `landing/privacy/index.html` дополнена 2026-10-27 (device id, результаты, события, Sentry, «аудио не собирается и микрофон не используется», контакт). Осталось задеплоить лендинг
+- [~] **Privacy policy:** `landing/privacy/index.html` дополнена 2026-10-27 (device id, результаты, события, Sentry, «аудио не собирается и микрофон не используется», контакт). Лендинг задеплоен 2026-10-28
 - [ ] **Data Safety** (согласовать с тем, что реально пишет сервер и Sentry)
 - [ ] Content rating
 - [ ] Target audience (не для детей)
@@ -84,7 +84,6 @@
 - [ ] Подать заявку на доступ к проду в Play Console (ответы про тестирование и обратную связь)
 - [ ] Production-листинг и релиз
 - [ ] Обновить лендинг: убрать «iOS и Android», если iOS не готов; не противоречить обещанию «первые 100 — lifetime»
-- [ ] Вернуть режим `mic` только после T052/T053/T078 (тогда же вернуть разрешение)
 
 ## Открытые решения владельца
 

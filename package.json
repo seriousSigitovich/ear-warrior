@@ -13,7 +13,8 @@
     "format": "prettier --check app src tests",
     "format:fix": "prettier --write app src tests",
     "typecheck": "tsc --noEmit -p tsconfig.jest.json",
-    "typecheck:app": "tsc --noEmit -p tsconfig.app.json"
+    "typecheck:app": "tsc --noEmit -p tsconfig.app.json",
+    "melodies": "server/node_modules/.bin/tsx scripts/melody-library.ts"
   },
   "dependencies": {
     "@sentry/react-native": "~7.11.0",

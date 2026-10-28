@@ -210,3 +210,94 @@ test('the plan shows the cover; a non-JPEG cover blocks Instagram with the reaso
   await runPublish(args('--confirm', '--platforms', 'youtube', '--cover', '/repo/cover.png'), yt.deps);
   assert.equal(hostSpy.uploaded, 0);
 });
+
+// --- carousel (--images) ---
+
+const SLIDES = ['01', '02', '03'].map((n) => `/repo/assets/carousel/out/pentatonic/${n}.png`);
+
+function carouselSetup(over: Partial<Deps> = {}) {
+  const calls: { url: string; body: string }[] = [];
+  let child = 0;
+  const fetchFn = (async (input: string | URL, init?: RequestInit) => {
+    const url = String(input);
+    calls.push({ url, body: String(init?.body ?? '') });
+    if (/\/me\/media$/.test(url)) return json({ id: new URLSearchParams(String(init?.body)).get('media_type') === 'CAROUSEL' ? 'car1' : `child${++child}` });
+    if (/\/(child\d|car1)\?/.test(url)) return json({ status_code: 'FINISHED' });
+    if (/media_publish/.test(url)) return json({ id: 'm9' });
+    if (/\/m9\?/.test(url)) return json({ permalink: 'https://www.instagram.com/p/Car/' });
+    return json({ error: { message: `unexpected ${url}` } }, { status: 500 });
+  }) as typeof fetch;
+  const s = setup({
+    fetchFn,
+    images: { list: async () => SLIDES, probe: async () => ({ width: 1080, height: 1350 }), jpeg: async () => new Uint8Array(500) },
+    ...over,
+  });
+  return { ...s, calls };
+}
+
+const carouselArgs = (...a: string[]) => ['--images', '/repo/assets/carousel/out/pentatonic', '--caption', 'Play by ear.', '--tags', '#guitar #playbyear', ...a];
+
+test('carousel DRY RUN: plans the slides and the caption, touches no network, writes nothing', async () => {
+  const s = carouselSetup({ fetchFn: (async () => { throw new Error('network must not be touched in a dry run'); }) as typeof fetch });
+  const code = await runPublish(carouselArgs(), s.deps);
+  assert.equal(code, 0);
+  const text = s.out.join('\n');
+  assert.match(text, /Carousel: assets\/carousel\/out\/pentatonic \(3 slides, 1080x1350, converted to JPEG/);
+  assert.match(text, /order: 01\.png, 02\.png, 03\.png/);
+  assert.match(text, /Play by ear\.\n\s+#guitar #playbyear/);
+  assert.match(text, /nothing was sent/i);
+  assert.equal(hostSpy.uploaded, 0);
+  assert.deepEqual(loadLedger(s.ledgerPath), []);
+});
+
+test('carousel --confirm: slides are hosted as JPEG, published, records the folder, copies are deleted', async () => {
+  const s = carouselSetup();
+  const code = await runPublish(carouselArgs('--confirm', '--video-no', '52'), s.deps);
+  assert.equal(code, 0);
+  assert.match(s.out.join('\n'), /instagram\.com\/p\/Car/);
+  assert.equal(hostSpy.uploaded, 3);
+  assert.equal(hostSpy.removed, 3);
+  assert.deepEqual(hostSpy.types, ['image/jpeg', 'image/jpeg', 'image/jpeg']);
+  const ledger = loadLedger(s.ledgerPath);
+  assert.deepEqual(ledger.map((e) => [e.file, e.platform, e.postId, e.visibility, e.videoNo]), [['assets/carousel/out/pentatonic', 'instagram', 'm9', 'public', 52]]);
+  assert.doesNotMatch(readFileSync(s.ledgerPath, 'utf8'), /IGTOKEN/);
+});
+
+test('carousel: the same folder is refused a second time unless --force; --no-publish stages and records nothing', async () => {
+  const s = carouselSetup();
+  await runPublish(carouselArgs('--confirm'), s.deps);
+  s.out.length = 0;
+  assert.equal(await runPublish(carouselArgs('--confirm'), s.deps), 1);
+  assert.match(s.out.join('\n'), /already published/i);
+
+  const t = carouselSetup();
+  assert.equal(await runPublish(carouselArgs('--confirm', '--no-publish'), t.deps), 0);
+  assert.ok(!t.calls.some((c) => /media_publish/.test(c.url)));
+  assert.match(t.out.join('\n'), /staged/i);
+  assert.deepEqual(loadLedger(t.ledgerPath), []);
+});
+
+test('carousel: not for YouTube, not together with --file, no video-only flags; bad slides block the run', async () => {
+  const s = carouselSetup();
+  assert.equal(await runPublish(carouselArgs('--platforms', 'youtube,instagram'), s.deps), 2);
+  assert.match(s.out.join('\n'), /Instagram only/);
+  s.out.length = 0;
+  assert.equal(await runPublish(carouselArgs('--file', FILE), s.deps), 2);
+  assert.match(s.out.join('\n'), /not both/);
+  assert.equal(await runPublish(carouselArgs('--cover', '/x/c.jpg'), s.deps), 2);
+
+  const tall = carouselSetup({ images: { list: async () => SLIDES, probe: async () => ({ width: 1080, height: 1920 }), jpeg: async () => new Uint8Array(1) } });
+  assert.equal(await runPublish(carouselArgs('--confirm'), tall.deps), 1);
+  assert.match(tall.out.join('\n'), /4:5 to 1\.91:1/);
+  assert.equal(hostSpy.uploaded, 0);
+});
+
+test('carousel: a slide over 8 MB as JPEG stops the run and takes down what was already hosted', async () => {
+  let n = 0;
+  const s = carouselSetup({ images: { list: async () => SLIDES, probe: async () => ({ width: 1080, height: 1350 }), jpeg: async () => new Uint8Array(++n === 2 ? 9 * 1024 * 1024 : 100) } });
+  assert.equal(await runPublish(carouselArgs('--confirm'), s.deps), 1);
+  assert.match(s.out.join('\n'), /02\.png is 9\.0 MB/);
+  assert.equal(hostSpy.uploaded, 1);
+  assert.equal(hostSpy.removed, 1);
+  assert.deepEqual(loadLedger(s.ledgerPath), []);
+});

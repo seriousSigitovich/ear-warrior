@@ -31,6 +31,9 @@ export const POST_LABELS: Record<string, PostLabel> = {
   'instagram/18097510811450908': { videoNo: 48, hypothesis: 'H19' },
   'youtube/wklcc78mtG8': { videoNo: 49, hypothesis: 'H20' },
   'instagram/18081565172537032': { videoNo: 49, hypothesis: 'H20' },
+  'youtube/9ZjcVKBiRLo': { label: 'Pentatonic box slideshow' },
+  'instagram/18638367571047056': { label: 'Pentatonic box slideshow' },
+  'instagram/17909184054330915': { label: 'Pentatonic box carousel' },
 };
 
 export function applyLabels(posts: PostRow[], labels: Record<string, PostLabel> = POST_LABELS): PostRow[] {

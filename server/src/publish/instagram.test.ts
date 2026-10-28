@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { publishReel } from './instagram.js';
+import { publishCarousel, publishReel } from './instagram.js';
 import { PublishError } from './types.js';
 
 interface Call { method: string; url: string; headers: Record<string, string>; body?: unknown }
@@ -111,4 +111,61 @@ test('a cover image is passed to Instagram as cover_url; without one the field i
   const without = happy(['FINISHED']);
   await publishReel({ fetchFn: without.fetchFn, env, sleep: noSleep }, { videoUrl, caption: 'c', publish: false });
   assert.equal(new URLSearchParams(String(without.calls.find((c) => /\/me\/media$/.test(c.url))!.body)).get('cover_url'), null);
+});
+
+// --- carousel ---
+
+const imageUrls = ['https://blob.example/publish/01-a.jpg', 'https://blob.example/publish/02-b.jpg', 'https://blob.example/publish/03-c.jpg'];
+
+function carouselHarness(over: { childStatus?: string } = {}) {
+  let n = 0;
+  return harness([
+    [/POST .*\/me\/media$/, (c) => {
+      const f = new URLSearchParams(String(c.body));
+      return json({ id: f.get('media_type') === 'CAROUSEL' ? 'car1' : `child${++n}` });
+    }],
+    [/GET .*\/child\d\?/, () => json({ status_code: over.childStatus ?? 'FINISHED' })],
+    [/GET .*\/car1\?/, () => json({ status_code: 'FINISHED' })],
+    [/POST .*\/me\/media_publish$/, () => json({ id: 'media7' })],
+    [/GET .*\/media7\?/, () => json({ permalink: 'https://www.instagram.com/p/AbC/' })],
+  ]);
+}
+
+test('carousel: one container per slide, then a CAROUSEL container listing them in order, then publish', async () => {
+  const h = carouselHarness();
+  const r = await publishCarousel({ fetchFn: h.fetchFn, env, sleep: noSleep }, { imageUrls, caption: 'Play by ear', publish: true });
+  assert.deepEqual(r, { containerId: 'car1', mediaId: 'media7', permalink: 'https://www.instagram.com/p/AbC/' });
+
+  const creates = h.calls.filter((c) => c.method === 'POST' && /\/me\/media$/.test(c.url)).map((c) => new URLSearchParams(String(c.body)));
+  assert.equal(creates.length, 4);
+  creates.slice(0, 3).forEach((f, i) => {
+    assert.equal(f.get('image_url'), imageUrls[i]);
+    assert.equal(f.get('is_carousel_item'), 'true');
+    assert.equal(f.get('caption'), null, 'the caption belongs to the carousel, not to a slide');
+  });
+  assert.equal(creates[3]!.get('media_type'), 'CAROUSEL');
+  assert.equal(creates[3]!.get('children'), 'child1,child2,child3');
+  assert.equal(creates[3]!.get('caption'), 'Play by ear');
+  assert.equal(new URLSearchParams(String(h.calls.find((c) => /media_publish$/.test(c.url))!.body)).get('creation_id'), 'car1');
+  assert.ok(h.calls.filter((c) => c.method === 'POST').every((c) => !c.url.includes('IGTOKEN')), 'the token goes in the POST body, not the URL');
+});
+
+test('carousel: stage only builds and processes the container, never publishes', async () => {
+  const h = carouselHarness();
+  const r = await publishCarousel({ fetchFn: h.fetchFn, env, sleep: noSleep }, { imageUrls, caption: 'c', publish: false });
+  assert.deepEqual(r, { containerId: 'car1' });
+  assert.ok(!h.calls.some((c) => /media_publish/.test(c.url)));
+});
+
+test('carousel: a slide that fails processing stops everything before the carousel container exists', async () => {
+  const h = carouselHarness({ childStatus: 'ERROR' });
+  await assert.rejects(publishCarousel({ fetchFn: h.fetchFn, env, sleep: noSleep }, { imageUrls, caption: 'c', publish: true }), /could not process the image.*ERROR/i);
+  assert.equal(h.calls.filter((c) => c.method === 'POST').length, 1, 'no further slides, no carousel container, no publish');
+});
+
+test('carousel: 2–10 slides only, and the publish token is required, before any request', async () => {
+  const h = harness([]);
+  await assert.rejects(publishCarousel({ fetchFn: h.fetchFn, env, sleep: noSleep }, { imageUrls: ['https://x/1.jpg'], caption: 'c', publish: true }), /2–10 images; got 1/);
+  await assert.rejects(publishCarousel({ fetchFn: h.fetchFn, env: {}, sleep: noSleep }, { imageUrls, caption: 'c', publish: true }), /IG_PUBLISH_TOKEN/);
+  assert.equal(h.calls.length, 0);
 });

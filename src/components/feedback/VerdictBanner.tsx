@@ -1,6 +1,6 @@
 // Verdict card (T031, FR-006): overall correct / not-quite summary with a matched-note count.
 // Redesign: an elevated card with a round status glyph — accent check for correct, warm cross
-// for not-quite. Low-confidence / timeout are handled separately by <RetryState/>.
+// for not-quite.
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { AttemptGrade } from '../../models';

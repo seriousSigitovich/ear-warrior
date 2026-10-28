@@ -1,9 +1,10 @@
 // The publish command's logic, with every side effect injected so it can be tested:
 //   plan first (always), send only with --confirm, one platform's failure never blocks the other.
-import { resolve } from 'node:path';
+import { basename, dirname, extname, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { addEntry, findEntry, loadLedger, relativeFile } from './ledger.js';
-import { publishReel } from './instagram.js';
+import { publishCarousel, publishReel } from './instagram.js';
+import { IG_IMAGE_MAX_BYTES, validateCarousel, type ImageProbe } from './images.js';
 import type { TempHost } from './hosting.js';
 import { buildInstagram, buildYoutube, normalizeTags } from './text.js';
 import { PublishError, type PlatformName } from './types.js';
@@ -22,11 +23,19 @@ export interface Deps {
   now: () => Date;
   sleep?: (ms: number) => Promise<void>;
   out: (line: string) => void;
+  /** Carousel support (--images); absent = the command only publishes videos. */
+  images?: {
+    list: (spec: string) => Promise<string[]>;
+    probe: (file: string) => Promise<ImageProbe>;
+    /** The slide as JPEG bytes (Instagram takes JPEG only). */
+    jpeg: (file: string) => Promise<Uint8Array>;
+  };
 }
 
 const OPTIONS = {
   file: { type: 'string' },
-  platforms: { type: 'string', default: 'youtube,instagram' },
+  images: { type: 'string' },
+  platforms: { type: 'string' }, // default: youtube,instagram for a video, instagram for a carousel
   title: { type: 'string' },
   description: { type: 'string' },
   caption: { type: 'string' },
@@ -70,14 +79,16 @@ export async function runPublish(argv: string[], deps: Deps): Promise<number> {
 
 async function run(values: ReturnType<typeof parseArgs<{ options: typeof OPTIONS }>>['values'], deps: Deps): Promise<number> {
   const { out } = deps;
+  if (values.images) return runCarousel(values, deps);
   if (!values.file) {
-    out('✗ --file is required, e.g. --file assets/video/challenge/out/H14_youtube-A/ear-challenge-31.mp4');
+    out('✗ --file is required, e.g. --file assets/video/challenge/out/H14_youtube-A/ear-challenge-31.mp4 (or --images <folder> for a carousel)');
     return 2;
   }
-  const platforms = (values.platforms ?? '').split(',').map((s) => s.trim()).filter(Boolean) as PlatformName[];
+  const platformsArg = values.platforms ?? 'youtube,instagram';
+  const platforms = platformsArg.split(',').map((s) => s.trim()).filter(Boolean) as PlatformName[];
   const unknown = platforms.filter((p) => p !== 'youtube' && p !== 'instagram');
   if (unknown.length || platforms.length === 0) {
-    out(`✗ --platforms must be a comma list of youtube, instagram (got "${values.platforms}")`);
+    out(`✗ --platforms must be a comma list of youtube, instagram (got "${platformsArg}")`);
     return 2;
   }
   if (values.long && platforms.some((p) => p !== 'youtube')) {
@@ -181,4 +192,93 @@ async function run(values: ReturnType<typeof parseArgs<{ options: typeof OPTIONS
   }
   if (eligible.length === 0) out('Nothing to publish.');
   return eligible.length === 0 || failed ? 1 : 0;
+}
+
+/** Instagram photo carousel from a folder (or list) of PNG/JPEG slides. Same rules as a video: plan first, send only with --confirm. */
+async function runCarousel(values: ReturnType<typeof parseArgs<{ options: typeof OPTIONS }>>['values'], deps: Deps): Promise<number> {
+  const { out } = deps;
+  const api = deps.images;
+  if (!api) throw new PublishError('carousel publishing is not available in this build');
+  if (values.file) {
+    out('✗ use either --file (a video) or --images (a carousel), not both');
+    return 2;
+  }
+  const platforms = (values.platforms ?? 'instagram').split(',').map((s) => s.trim()).filter(Boolean);
+  if (platforms.length !== 1 || platforms[0] !== 'instagram') {
+    out('✗ a carousel is Instagram only; leave --platforms out or use --platforms instagram (YouTube has no photo carousels)');
+    return 2;
+  }
+  if (values.long || values.cover) {
+    out('✗ --long and --cover apply to videos, not to a carousel');
+    return 2;
+  }
+
+  const files = await api.list(values.images ?? '');
+  if (files.length === 0) throw new PublishError(`No PNG or JPEG images found in ${values.images}`);
+  const dirs = new Set(files.map((f) => dirname(f)));
+  if (dirs.size > 1) throw new PublishError('the slides must come from one folder (the folder is what the publish record remembers)');
+  const rel = relativeFile([...dirs][0]!, deps.repoRoot);
+  const probes = await Promise.all(files.map((f) => api.probe(f)));
+  const videoNo = values['video-no'] ? Number(values['video-no']) : null;
+  const ledger = loadLedger(deps.ledgerPath);
+
+  const first = probes[0]!;
+  out(`Carousel: ${rel} (${files.length} slides, ${first.width}x${first.height}${files.some((f) => !/\.jpe?g$/i.test(f)) ? ', converted to JPEG for Instagram' : ''})${videoNo !== null ? ` — experiment #${videoNo}` : ''}`);
+  out(`   order: ${files.map((f) => basename(f)).join(', ')}`);
+
+  const blocked = validateCarousel(probes);
+  let caption = '';
+  try {
+    caption = buildInstagram({ caption: values.caption ?? values.description ?? '', tags: normalizeTags(values.tags) }).caption;
+  } catch (err) {
+    blocked.push((err as Error).message);
+  }
+  const prior = findEntry(ledger, rel, 'instagram');
+  if (prior && !values.force) blocked.push(`already published: ${prior.url} (use --force to publish again)`);
+
+  out(`── Instagram (${values['no-publish'] ? 'carousel, stage only' : 'carousel'})`);
+  if (caption) out(`   caption:\n${indent(caption, '     ')}`);
+  for (const b of blocked) out(`   ✗ ${b}`);
+  if (blocked.length === 0) out('   ✓ ready');
+
+  if (!values.confirm) {
+    out('Dry run — nothing was sent. Add --confirm to publish.');
+    return blocked.length === 0 ? 0 : 1;
+  }
+  if (blocked.length > 0) {
+    out('Nothing to publish.');
+    return 1;
+  }
+
+  const hosted: Awaited<ReturnType<Deps['host']>>[] = [];
+  try {
+    for (const f of files) {
+      const bytes = await api.jpeg(f);
+      if (bytes.length > IG_IMAGE_MAX_BYTES) throw new PublishError(`${basename(f)} is ${(bytes.length / 1024 / 1024).toFixed(1)} MB as JPEG; Instagram takes up to 8 MB per image`);
+      hosted.push(await deps.host(bytes, `${basename(f, extname(f))}.jpg`, 'image/jpeg'));
+    }
+    const publish = !values['no-publish'];
+    const r = await publishCarousel({ fetchFn: deps.fetchFn, env: deps.env, sleep: deps.sleep }, { imageUrls: hosted.map((h) => h.url), caption, publish });
+    if (!publish || !r.mediaId) {
+      out(`✓ Instagram: staged (not published) — carousel container ${r.containerId} is ready`);
+    } else {
+      addEntry(deps.ledgerPath, {
+        file: rel,
+        videoNo,
+        platform: 'instagram',
+        postId: r.mediaId,
+        url: r.permalink ?? '',
+        visibility: 'public',
+        title: values.title ?? caption.split('\n')[0]!.slice(0, 100),
+        publishedAt: deps.now().toISOString(),
+      });
+      out(`✓ Instagram: ${r.permalink ?? `published (media ${r.mediaId})`}`);
+    }
+    return 0;
+  } catch (err) {
+    out(`✗ Instagram: ${(err as Error).message}`);
+    return 1;
+  } finally {
+    for (const h of hosted) await h.remove().catch(() => out('   (could not delete a temporary copy — remove it from the Blob store)'));
+  }
 }

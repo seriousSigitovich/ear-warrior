@@ -1,7 +1,7 @@
 // Scale definitions as pitch-class sets, keyed by "<Root>_<name>" (pure, no IO).
 import { pitchClass } from '../../lib/pitchNote';
 
-const ROOT_PC: Record<string, number> = {
+export const ROOT_PC: Record<string, number> = {
   C: 0,
   'C#': 1,
   Db: 1,
@@ -27,6 +27,9 @@ const SCALE_INTERVALS: Record<string, number[]> = {
   minor_pentatonic: [0, 3, 5, 7, 10],
   major: [0, 2, 4, 5, 7, 9, 11],
   natural_minor: [0, 2, 3, 5, 7, 8, 10],
+  // The raised seventh is how most minor tunes cadence (Toccata in D minor, Rondo alla Turca).
+  harmonic_minor: [0, 2, 3, 5, 7, 8, 11],
+  chromatic: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
 };
 
 /**

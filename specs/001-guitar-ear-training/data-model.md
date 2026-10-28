@@ -89,7 +89,7 @@ An ordered target sequence the learner must reproduce (FR-001).
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `id` | string | generated: a uuid; curated: `<tuneId>-<seed>` (FR-021) |
+| `id` | string | `<tuneId>-<seed>` (FR-021) |
 | `notes` | Note[] | ordered target notes (monophonic) |
 | `difficultyId` | string → DifficultyLevel.id | |
 | `scale` | string | resolved key it was drawn from, e.g. `"G_major"` |
@@ -102,12 +102,12 @@ Picked from the curated library (`services/melody/curated.ts`, FR-021).
 `src/services/melody/curated.ts`. A curated tune is assigned to one level by hand (`rank` 1–9), so
 `notes.length` is **not** tied to `noteCount` and the length need not grow from rank to rank. Notes lie inside
 the neck (E2–E5, MIDI 40–76) and inside the tune's `scale`; **consecutive identical pitches are allowed**
-(owner, 2026-10-11) because a fretboard tap is a separate tap. Stored on attempts exactly like a generated
-melody, so `Attempt.melodyId` and the adaptation streak (FR-011a) behave the same for both sources.
+(owner, 2026-10-11) because a fretboard tap is a separate tap. Stored with each attempt, so
+`Attempt.melodyId` keys the adaptation streak (FR-011a).
 
 ## Attempt
 
-One captured reproduction of a melody and its grading (FR-005, FR-006, FR-012).
+One answer to a melody and its grading (FR-005, FR-006, FR-012).
 
 | Field | Type | Notes |
 |-------|------|-------|

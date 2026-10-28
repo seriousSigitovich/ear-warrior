@@ -47,7 +47,7 @@ function setMode(s: DifficultySettings, mode: DifficultyMode): DifficultySetting
 
 **Eligibility (FR-011a)** — `applyAttempt` returns the settings **unchanged** when:
 
-- `outcome.graded === false` (low-confidence capture or no-input timeout), **or**
+- `outcome.graded === false` (only attempts from the microphone era: a low-confidence capture or a no-input timeout; a tapped answer is always graded), **or**
 - `outcome.isFirstAttemptOnMelody === false` (a retry), **or**
 - `s.mode === 'fixed'` (manual mode never auto-adjusts).
 

@@ -30,6 +30,8 @@
 - [x] T011 [US2] Live stage-only Instagram run — 2026-10-16, `ear-challenge-31.mp4`: Blob copy fetched and processed by Meta (FINISHED), copy deleted, store empty, nothing published, ledger empty
 - [x] T012 [US3] Live private YouTube upload — 2026-10-16, `ear-challenge-31.mp4` as a rehearsal titled "TEST - delete me": uploaded in a few seconds; read back through the Data API: `privacyStatus=private`, not made for kids, tags, category 10, description with `utm_campaign=ear31` and `#Shorts`. The owner deletes the rehearsal in Studio; its record was removed from `docs/published.json` so the real #31 is not blocked. Owner still decides publish-in-Studio vs the Google audit (T014)
 
+- [x] T015 [US2] Instagram photo carousel (FR-011): `publishCarousel` in `server/src/publish/instagram.ts`, slide listing/validation/JPEG conversion in `server/src/publish/images.ts`, `--images` branch in `server/src/publish/run.ts`; tests in `instagram.test.ts`, `images.test.ts`, `cli.test.ts`. Dry run verified on `assets/carousel/out/pentatonic` (2026-10-27); **no live publish yet** (carousel container flow unverified against the real API)
+
 ## Phase 5: Follow-ups
 
 - [ ] T013 Map published post ids to experiment numbers in the analytics page (spec 006 T028)

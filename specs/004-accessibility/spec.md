@@ -71,7 +71,7 @@ or overlapped.
 2. **Given** the fretboard is on screen at a large text size, **When** the learner views it, **Then** the fret
    numbers and string labels stay legible and aligned with their frets/strings, and the board does not grow beyond
    its screen.
-3. **Given** the device text size is at its maximum, **When** the verdict, rank-change banner or tuning advisory
+3. **Given** the device text size is at its maximum, **When** the verdict or rank-change banner
    appears, **Then** its text is fully readable and does not overlap other elements.
 
 ---

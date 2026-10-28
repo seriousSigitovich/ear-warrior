@@ -128,6 +128,12 @@ Options: `--platforms youtube,instagram` (default both) · `--caption` (Instagra
 `--long` (YouTube only: a regular long-form video — needs a 16:9 file, no `#Shorts`, no 3-minute limit; YouTube turns any vertical or square video up to 3 min into a Short, so a vertical file cannot be a regular video; publish the vertical file to Instagram in a separate run) ·
 `--video-no` (otherwise read from `ear-challenge-NN` in the file name) · `--category` (YouTube, default 10 Music).
 
+**Instagram photo carousel:** `--images <folder>` (its PNG/JPEG files in natural order, `01.png` … `10.png`) or `--images a.png,b.png` publishes a carousel instead of a video. Instagram only (never YouTube), 2–10 slides of one size between 4:5 and 1.91:1; PNGs are converted to JPEG with ffmpeg (Instagram takes JPEG only), each slide is parked in Blob for the minutes Meta needs and deleted. Same plan → `--confirm` flow, `--caption`/`--description`, `--tags`, `--no-publish`; the published log gets one entry for the folder. Music cannot be added through the API: pick the track in the Instagram app when posting by hand.
+```bash
+npm run publish -- --images ../assets/carousel/out/pentatonic --caption "…" --tags "#guitar #playbyear"            # plan
+npm run publish -- --images ../assets/carousel/out/pentatonic --caption "…" --tags "#guitar #playbyear" --confirm   # publish
+```
+
 - **YouTube** uploads as **private**: Google forces that for API projects that have not passed its audit, so you press Publish in Studio (the command prints the Studio link). The description gets `#Shorts`, the hashtags and a tracking link `earwarrior.app/?utm_source=youtube&utm_campaign=ear31&utm_content=desc`, which the landing page turns into the signup source `youtube:ear31:desc`.
 - **Instagram** publishes a **public** Reel. Its API only takes a public `video_url` (resumable upload is rejected — verified live), so the file is parked in a Vercel Blob store for the minutes Meta needs, then deleted. The caption has no link (not clickable); the link stays in the bio.
 - Each success is appended to `docs/published.json` (file, experiment number, platform, post id, link, visibility, title, time — no secrets). A file already recorded for a platform is refused unless `--force`.

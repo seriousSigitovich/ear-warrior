@@ -37,7 +37,7 @@ it. The pure synth (`renderNoteWav`, KS + WAV encoding) is unit-tested independe
   (fixed RNG seed), so re-rendering a note yields byte-identical output.
 - `preload` SHOULD be called on difficulty change so the first note plays without a synthesis hitch
   (Performance target); cached tones are reused across plays.
-- Playback MUST finish and release output before pitch capture starts (R7); `stop` is idempotent.
+- `stop` is idempotent.
 
 ## Error modes
 
