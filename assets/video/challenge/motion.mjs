@@ -42,6 +42,23 @@ const GALLOP = {
   ].join(' ')),
 };
 
+// Variant 6 (#51): the same Short and picture, one playing only (`once: true` — no slower second pass, so the page skips the "N notes / Listen again" beat and
+// goes straight from "No tabs. Just your ear." to "Write them in the comments"). The tune is the Menuet in G (BWV Anh. 114, Petzold, public domain): bars 1–4 of
+// the Mutopia Project's edition (anna-magdalena-04.ly + its MIDI, checked note by note: D5 G4 A4 B4 C5 · D5 G4 G4 · E5 C5 D5 E5 F#5 · G5 G4 G4, 3/4), written an
+// octave down to sit on the 12-fret neck. Medium difficulty: 16 notes, mostly stepwise in G major, with the leaps down to the low G and the E–F#–G climb in bar 3.
+// The last G is held two beats. Ornaments (the printed mordents) are left out. Never named on screen.
+const MINUET = {
+  id: 51, title: 'Menuet in G (motion, one listen)', page: 'motion.html', kind: 'quiz', coldOpen: true, once: true,
+  timbre: 'acoustic', layout: 'fretboard', tag: 'Ear series', tempoBpm: 132, tonicPc: 7, minor: false, key: 'G major',
+  hook: '*97%*\nof guitarists\ncan\'t play this\nby *EAR*',
+  notes: parse([
+    'D4:1 G3:.5 A3:.5 B3:.5 C4:.5',     // bar 1
+    'D4:1 G3:1 G3:1',                   // bar 2
+    'E4:1 C4:.5 D4:.5 E4:.5 F#4:.5',    // bar 3: the climb
+    'G4:1 G3:1 G3:2',                   // bar 4: held so it hangs
+  ].join(' ')),
+};
+
 export const MOTION = [
   {
     ...elise, id: 40, title: 'Für Elise (motion)', page: 'motion.html',
@@ -59,4 +76,5 @@ export const MOTION = [
   // (the tune at ♩ = 140, then at 98 for the slower second playing). Picture, hook, notes and timing are #42's, so only the sound differs.
   { ...PAGANINI, id: 43, title: 'Paganini Caprice 24 (motion, electric)', recorded: { first: 'guitar-electric/electric-42.wav', slow: 'guitar-electric/electric-42-slow.wav' } },
   GALLOP,
+  MINUET,
 ];

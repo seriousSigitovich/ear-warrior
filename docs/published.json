@@ -158,5 +158,55 @@
     "visibility": "public",
     "title": "Jam night: can you find the root by ear?",
     "publishedAt": "2026-10-25T16:15:13.439Z"
+  },
+  {
+    "file": "assets/carousel/out/pentatonic-slideshow.mp4",
+    "videoNo": null,
+    "platform": "youtube",
+    "postId": "9ZjcVKBiRLo",
+    "url": "https://www.youtube.com/shorts/9ZjcVKBiRLo",
+    "visibility": "private",
+    "title": "Play any melody by ear with one shape (guitar for beginners)",
+    "publishedAt": "2026-10-27T15:57:49.806Z"
+  },
+  {
+    "file": "assets/carousel/out/pentatonic-slideshow.mp4",
+    "videoNo": null,
+    "platform": "instagram",
+    "postId": "18638367571047056",
+    "url": "https://www.instagram.com/reel/DfAOtuCjZor/",
+    "visibility": "public",
+    "title": "Play any melody by ear with one shape (guitar for beginners)",
+    "publishedAt": "2026-10-27T15:58:24.344Z"
+  },
+  {
+    "file": "assets/carousel/out/pentatonic",
+    "videoNo": null,
+    "platform": "instagram",
+    "postId": "17909184054330915",
+    "url": "https://www.instagram.com/p/DfAQC12DdpM/",
+    "visibility": "public",
+    "title": "Play any melody by ear with one shape (carousel)",
+    "publishedAt": "2026-10-27T16:09:43.007Z"
+  },
+  {
+    "file": "assets/video/challenge/out/H21_minuet-once/ear-challenge-51.mp4",
+    "videoNo": 51,
+    "platform": "youtube",
+    "postId": "TXDTS5UH44E",
+    "url": "https://www.youtube.com/shorts/TXDTS5UH44E",
+    "visibility": "private",
+    "title": "Can you play this by ear? One listen.",
+    "publishedAt": "2026-10-28T14:35:28.069Z"
+  },
+  {
+    "file": "assets/video/challenge/out/H21_minuet-once/ear-challenge-51.mp4",
+    "videoNo": 51,
+    "platform": "instagram",
+    "postId": "18107089607217083",
+    "url": "https://www.instagram.com/reel/DfCqFRQk1SA/",
+    "visibility": "public",
+    "title": "Can you play this by ear? One listen.",
+    "publishedAt": "2026-10-28T14:36:04.039Z"
   }
 ]

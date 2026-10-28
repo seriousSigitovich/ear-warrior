@@ -257,7 +257,7 @@
 
   // The schedule is anchored to the timeline, so a melody of any length gets the same rhythm of messages. For the nine-note Elise phrase these come out
   // as the original hand-set times: B2 leaves 3.35, B3 leaves 5.10, B4 comes 5.3 / leaves 6.85, B5 comes 7.1 (video ends 8.43).
-  const T5 = TL.dur - 1.33, T4 = T5 - 1.8, T3out = T4 - 0.2, T2out = Math.max(3.35, TL.againAt - 0.35);
+  const T5 = TL.dur - 1.33, T4 = T5 - 1.8, T3out = T4 - 0.2, T2out = TL.once ? T4 - 0.15 : Math.max(3.35, TL.againAt - 0.35);   // one-playing videos have no "again" beat: "No tabs" leaves as the ask arrives
 
   // 2 · no tabs
   const B2 = bb(2.1, T2out, T2out + 0.6);
@@ -265,6 +265,7 @@
 
   // 3 · the count: one "?" per note, filled by the second (slower) playing
   const B3 = bb(TL.againAt - 0.2, T3out, T3out + 0.55);
+  if (TL.once) B3.root.style.display = 'none';   // (no second playing, so no count beat)
   // `riff` entries (a riff to play, not a tune to write down): no count, no slots — the second playing is simply "Listen again. Slower."
   if (C.riff) { B3.lines = build(B3.root, [{ text: '*Listen* again.', max: 150 }, { text: 'Slower. Catch the gallop.', max: 60, cls: 'sub', top: 620 }], 450); B3.slots = []; }
   else {
@@ -316,7 +317,7 @@
 
     if (place(B1, t)) B1.lines.forEach((el, i) => slam(el, t, IN1[i], i === 0));
     if (place(B2, t)) breathe(B2.lines[0]);
-    if (place(B3, t)) {
+    if (!TL.once && place(B3, t)) {
       breathe(B3.lines[0]);
       B3.slots.forEach((e, i) => {
         const lit = second && cur >= i, pop = lit && i === cur ? Math.exp(-since * 8) : 0;
