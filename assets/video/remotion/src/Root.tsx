@@ -1,6 +1,7 @@
 import React from 'react';
 import { Composition } from 'remotion';
 import { FPS, DURATION_SEC, resolveTune } from '../tune.mjs';
+import type { Tune } from '../tune.mjs';
 import { TuneVideo } from './TuneVideo';
 import { Cover } from './Cover';
 import { PainVideo, PainCut } from './pain/PainVideo';
@@ -19,6 +20,7 @@ export const Root: React.FC = () => (
     id="Tune"
     component={TuneVideo}
     durationInFrames={Math.round(FPS * DURATION_SEC)}
+    calculateMetadata={({ props }) => ({ durationInFrames: Math.round(FPS * ((props as Tune).durationSec ?? DURATION_SEC)) })}
     fps={FPS}
     width={1080}
     height={1920}

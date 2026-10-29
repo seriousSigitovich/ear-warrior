@@ -19,6 +19,6 @@ export const TuneVideo: React.FC<Tune> = (tune) => (
     <Sequence from={0} durationInFrames={S + M}><Move outDir="left" outAt={S}><Listen tune={tune} /></Move></Sequence>
     <Sequence from={S} durationInFrames={S + M}><Move inDir="left" outDir="up" outAt={S}><NeckTour tune={tune} /></Move></Sequence>
     <Sequence from={2 * S} durationInFrames={S + M}><Move inDir="up" outDir="left" outAt={S}><Answer tune={tune} /></Move></Sequence>
-    <Sequence from={3 * S} durationInFrames={S / 2}><Move inDir="left"><Result tune={tune} /></Move></Sequence>
+    <Sequence from={3 * S} durationInFrames={Math.round(60 * tune.durationSec) - 3 * S}><Move inDir="left"><Result tune={tune} /></Move></Sequence>
   </AbsoluteFill>
 );

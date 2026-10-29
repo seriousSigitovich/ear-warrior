@@ -12,6 +12,8 @@ const BURST = Array.from({ length: 46 }, () => ({
   a: r() * Math.PI * 2, v: 14 + r() * 26, s: 7 + r() * 14, c: COLORS[Math.floor(r() * COLORS.length)], sq: r() > 0.55, spin: (r() - 0.5) * 0.4,
 }));
 const CX = 540, CY = 800, R = 250;
+const SHARP = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+const noteName = (m: number) => `${SHARP[m % 12]}${Math.floor(m / 12) - 1}`;
 
 export const Result: React.FC<{ tune: Tune }> = ({ tune }) => {
   const N = tune.listenCount;
@@ -73,6 +75,34 @@ export const Result: React.FC<{ tune: Tune }> = ({ tune }) => {
       <div style={{ position: 'absolute', left: 0, right: 0, top: 1390, textAlign: 'center', fontFamily: FONT, opacity: clamp(brandIn * 1.4), transform: `translateY(${(1 - brandIn) * 40}px)` }}>
         <div style={{ fontSize: 58, fontWeight: 600, letterSpacing: 16, color: C.accent4 }}>{tune.copy.brand}</div>
         <div style={{ marginTop: 18, fontSize: 40, color: alpha(C.text, 0.7) }}>{tune.copy.tagline}</div>
+      </div>
+      <NoteChips tune={tune} frame={frame} fps={fps} />
+    </div>
+  );
+};
+
+/** The app's per-note result chips (src/components/feedback/NoteResultChips.tsx, status "matched"): accent outline, tinted fill, note name. */
+const NoteChips: React.FC<{ tune: Tune; frame: number; fps: number }> = ({ tune, frame, fps }) => {
+  const names = tune.notes.filter((n) => n.phase === 'listen').map((n) => noteName(n.midi));
+  const head = spring({ frame: frame - 28, fps, config: { damping: 14, stiffness: 200 } });
+  return (
+    <div style={{ position: 'absolute', left: 90, right: 90, top: 1560, fontFamily: FONT, textAlign: 'center' }}>
+      <div style={{ fontSize: 36, color: alpha(C.text, 0.6), opacity: clamp(head * 1.4), marginBottom: 22 }}>{names.length} of {names.length} notes matched</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 16, maxWidth: 700, margin: '0 auto' }}>
+        {names.map((name, i) => {
+          const p = spring({ frame: frame - 30 - i * 3, fps, config: { damping: 11, stiffness: 240 } });
+          return (
+            <div
+              key={i}
+              style={{
+                padding: '12px 30px', borderRadius: 999, border: '2px solid #5d5294', background: alpha(C.accent, 0.08), color: '#e7e5fe',
+                fontSize: 36, fontWeight: 500, transform: `scale(${0.6 + 0.4 * p})`, opacity: clamp(p * 1.5),
+              }}
+            >
+              {name}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

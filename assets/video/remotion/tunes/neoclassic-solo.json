@@ -1,0 +1,11 @@
+{
+  "id": "neoclassic-solo",
+  "title": "Solo 05 of assets/solo/beautiful (E harmonic minor, original). listen = bar 1, the Em arpeggio (8 notes, the most a level-9 melody has is 10); tour = bar 2, the same shape on C. The reward after the answer is the rest of the solo (the falling run, B4 D#5 D#5, the held E5) from the rendered band take.",
+  "bpm": 140,
+  "key": "E minor",
+  "listen": "E4:.5 G4:.5 B4:.5 G4:.5 B4:.5 E5:.5 B4:.5 G4:.5",
+  "tour": "E4:.5 G4:.5 C5:.5 G4:.5 C5:.5 E5:.5 C5:.5 G4:.5",
+  "duration": 9.5,
+  "band": { "file": "../../solo/beautiful/05-e-harmonic-minor-neoclassic.mp3", "bpm": 140 },
+  "copy": { "tagline": "Early access · link in profile" }
+}

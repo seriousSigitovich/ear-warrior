@@ -59,6 +59,24 @@ const MINUET = {
   ].join(' ')),
 };
 
+// Variant 7 (#52): the same Short and picture as #51 (one listen, `once: true`), on solo 05 of `assets/solo/beautiful` — a neoclassical E harmonic-minor
+// lead over Em / C / B / Em with a rhythm guitar and a drum kit (electric guitar through guitar-rig, drums synthesized; `samples/guitar-electric/solo-05-52.wav`
+// is that mix). The notes below are the lead line of `compose.py` (solo_05): two bars of 8th-note arpeggios (Em, then C), one falling run of 16ths
+// E5→E4 (E D# C B A G F# E), B4 D#5 D#5 on the B chord, and a held E5. 28 notes, E4–E5, ♩ = 140, 6.9 s — the hardest of the five, so the "97 %" is easy to believe.
+const NEOCLASSIC = {
+  id: 52, title: 'E harmonic minor solo (motion, one listen)', page: 'motion.html', kind: 'quiz', coldOpen: true, once: true,
+  timbre: 'acoustic', layout: 'fretboard', tag: 'Ear series', tempoBpm: 140, tonicPc: 4, minor: true, key: 'E minor',
+  hook: '*97%*\nof guitarists\ncan\'t play this\nby *EAR*',
+  recorded: { first: 'guitar-electric/solo-05-52.wav' },
+  notes: parse([
+    'E4:.5 G4:.5 B4:.5 G4:.5 B4:.5 E5:.5 B4:.5 G4:.5',          // bar 1: Em arpeggio
+    'E4:.5 G4:.5 C5:.5 G4:.5 C5:.5 E5:.5 C5:.5 G4:.5',          // bar 2: the same shape on C
+    'E5:.25 D#5:.25 C5:.25 B4:.25 A4:.25 G4:.25 F#4:.25 E4:.25', // bar 3: the run down
+    'B4:.5 D#5:.5 D#5:1',                                       // on the B chord, the leading tone hangs
+    'E5:4',                                                     // home, held
+  ].join(' ')),
+};
+
 export const MOTION = [
   {
     ...elise, id: 40, title: 'Für Elise (motion)', page: 'motion.html',
@@ -77,4 +95,5 @@ export const MOTION = [
   { ...PAGANINI, id: 43, title: 'Paganini Caprice 24 (motion, electric)', recorded: { first: 'guitar-electric/electric-42.wav', slow: 'guitar-electric/electric-42-slow.wav' } },
   GALLOP,
   MINUET,
+  NEOCLASSIC,
 ];

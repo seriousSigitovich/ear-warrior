@@ -47,6 +47,7 @@ export const Answer: React.FC<{ tune: Tune }> = ({ tune }) => {
         {tune.copy.chip}
         <span style={{ color: C.accent4, fontWeight: 600 }}>{done.length} / {ANSWER.length}</span>
       </div>
+      <Controls placed={done.length} pressAt={ANSWER[ANSWER.length - 1].t + ANSWER[ANSWER.length - 1].dur + 0.1} t={t} />
       <NeckStage cam={cam} tilt={9} roll={1.6 - 3 * (frame / 120)}>
         <Board stringAmp={amp} rows={rows}>
           {Array.from(cells.entries()).map(([key, idx]) => {
@@ -80,5 +81,31 @@ export const Answer: React.FC<{ tune: Tune }> = ({ tune }) => {
         </Board>
       </NeckStage>
     </>
+  );
+};
+
+/**
+ * The app's answer action bar (src/components/controls/FretboardControls.tsx): Replay · Undo · Clear · Check. Undo/Clear/Check stay dim until a note is
+ * placed (as in the app); Check carries the accent glow and is pressed once the last note is down.
+ */
+const Controls: React.FC<{ placed: number; pressAt: number; t: number }> = ({ placed, pressAt, t }) => {
+  const press = clamp((t - pressAt) / 0.08) * (1 - clamp((t - pressAt - 0.22) / 0.1));
+  const dim = (on: boolean) => (on ? 1 : 0.45);
+  const box = { height: 104, borderRadius: 20, border: `2px solid ${alpha(C.text, 0.16)}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, color: C.text } as const;
+  return (
+    <div style={{ position: 'absolute', left: 80, top: 1712, width: 920, display: 'flex', gap: 16 }}>
+      <div style={{ ...box, width: 104, fontSize: 48 }}>↻</div>
+      <div style={{ ...box, width: 104, fontSize: 48, opacity: dim(placed > 0) }}>↶</div>
+      <div style={{ ...box, width: 104, fontSize: 44, opacity: dim(placed > 0) }}>✕</div>
+      <div
+        style={{
+          ...box, flex: 1, border: `2px solid ${C.accent}`, color: C.accent, fontSize: 42, fontWeight: 500, opacity: dim(placed > 0),
+          background: alpha(C.accent, 0.18 * press), transform: `scale(${1 - 0.04 * press})`,
+          boxShadow: `0 0 ${36 + 40 * press}px ${alpha(C.accent, 0.4 + 0.3 * press)}`,
+        }}
+      >
+        Check
+      </div>
+    </div>
   );
 };

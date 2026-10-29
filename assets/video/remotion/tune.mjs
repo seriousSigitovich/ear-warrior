@@ -121,5 +121,8 @@ export function resolveTune(raw) {
     stingerAt: STINGER_AT,
     copy: { ...DEFAULT_COPY, ...(raw.copy ?? {}) },
     audio: `${id}.wav`,
+    // optional: a rendered band mix to play instead of the synthesized pulse (see audio.mjs), and a longer film than the 7 s default
+    band: raw.band ?? null,
+    durationSec: raw.duration ?? DURATION_SEC,
   };
 }
