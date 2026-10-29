@@ -208,5 +208,25 @@
     "visibility": "public",
     "title": "Can you play this by ear? One listen.",
     "publishedAt": "2026-10-28T14:36:04.039Z"
+  },
+  {
+    "file": "assets/video/remotion/out/neoclassic-solo-finger.mp4",
+    "videoNo": 54,
+    "platform": "youtube",
+    "postId": "nx-2knxDUI0",
+    "url": "https://www.youtube.com/shorts/nx-2knxDUI0",
+    "visibility": "private",
+    "title": "Hear it once. Can you play it back?",
+    "publishedAt": "2026-10-29T11:58:39.643Z"
+  },
+  {
+    "file": "assets/video/remotion/out/neoclassic-solo-finger.mp4",
+    "videoNo": 54,
+    "platform": "instagram",
+    "postId": "18024622946868666",
+    "url": "https://www.instagram.com/reel/DfE87bsjnQz/",
+    "visibility": "public",
+    "title": "Hear it once. Can you play it back?",
+    "publishedAt": "2026-10-29T11:59:15.618Z"
   }
 ]
