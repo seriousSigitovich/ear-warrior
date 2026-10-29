@@ -1,0 +1,12 @@
+{
+  "id": "neoclassic-solo-finger",
+  "title": "Same film as neoclassic-solo, but a human fingertip (src/Finger.tsx, vector skin, not footage) taps the answer and presses Check.",
+  "bpm": 120,
+  "key": "E minor",
+  "listen": "E4:.5 G4:.5 B4:.5 G4:.5 B4:.5 E5:.5 B4:.5 G4:.5",
+  "tour": "E4:.5 G4:.5 C5:.5 G4:.5 C5:.5 E5:.5 C5:.5 G4:.5",
+  "duration": 10.5,
+  "finger": true,
+  "band": { "file": "../../solo/beautiful/05-e-harmonic-minor-neoclassic-120bpm.wav", "bpm": 120 },
+  "copy": { "tagline": "Early access · link in profile" }
+}

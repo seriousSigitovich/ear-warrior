@@ -4,6 +4,7 @@ import React, { useMemo } from 'react';
 import { useCurrentFrame, useVideoConfig, spring } from 'remotion';
 import type { Tune } from '../tune.mjs';
 import { Board, cellCenter } from './Board';
+import { Finger, boardToScreen, fingerAt } from './Finger';
 import { buildCamera } from './camera';
 import { NeckStage, BOARD_TOP } from './NeckStage';
 import { Headline } from './Headline';
@@ -11,6 +12,7 @@ import { C, alpha, FONT } from './theme';
 import { clamp, easeOut } from './util';
 
 const START = 4;
+const CHECK = { x: 720, y: 1764 };   // centre of the Check button (Controls below)
 
 export const Answer: React.FC<{ tune: Tune }> = ({ tune }) => {
   const ANSWER = useMemo(() => tune.notes.filter((n) => n.phase === 'answer'), [tune]);
@@ -34,6 +36,23 @@ export const Answer: React.FC<{ tune: Tune }> = ({ tune }) => {
   });
   const rows = done.filter(({ n }) => t - n.t < 0.3).map(({ n }) => ({ fret: n.f, o: 0.16 * Math.exp(-(t - n.t) * 10) }));
 
+  // the finger: one stop per tap (the contact point is the cell's centre as the tilted board shows it right then), then the Check button
+  const TILT = 9, roll = (f: number) => 1.6 - 3 * (f / 120);
+  const lastT = ANSWER[ANSWER.length - 1].t;
+  const pressAt = tune.finger ? START + 2 - 0.02 : lastT + ANSWER[ANSWER.length - 1].dur + 0.1;
+  const stops = useMemo(() => {
+    if (!tune.finger) return [];
+    const out = ANSWER.map((n) => {
+      const f = Math.round((n.t - START) * fps), c = cellCenter(n.s, n.f), cm = cams[Math.min(f, cams.length - 1)];
+      const p = boardToScreen(c.x, c.y, cm, TILT, roll(f));
+      return { t: n.t, x: p.x, y: p.y, s: p.s };
+    });
+    out.push({ t: START + 2 - 0.02, x: CHECK.x, y: CHECK.y, s: 1 });
+    return out;
+  }, [ANSWER, cams, fps, tune.finger]);
+  const fing = tune.finger ? fingerAt(stops, t) : null;
+  const contact = fing ? Math.max(...stops.map((st) => Math.exp(-Math.abs(t - st.t) * 30))) : 0;
+
   return (
     <>
       <Headline lines={tune.copy.answer} />
@@ -47,7 +66,7 @@ export const Answer: React.FC<{ tune: Tune }> = ({ tune }) => {
         {tune.copy.chip}
         <span style={{ color: C.accent4, fontWeight: 600 }}>{done.length} / {ANSWER.length}</span>
       </div>
-      <Controls placed={done.length} pressAt={ANSWER[ANSWER.length - 1].t + ANSWER[ANSWER.length - 1].dur + 0.1} t={t} />
+      <Controls placed={done.length} pressAt={pressAt} t={t} />
       <NeckStage cam={cam} tilt={9} roll={1.6 - 3 * (frame / 120)}>
         <Board stringAmp={amp} rows={rows}>
           {Array.from(cells.entries()).map(([key, idx]) => {
@@ -80,6 +99,7 @@ export const Answer: React.FC<{ tune: Tune }> = ({ tune }) => {
           })}
         </Board>
       </NeckStage>
+      {fing && <Finger x={fing.x} y={fing.y} lift={fing.lift} vx={fing.vx} vy={fing.vy} scale={0.8} press={contact} t={t} />}
     </>
   );
 };

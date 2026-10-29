@@ -124,5 +124,7 @@ export function resolveTune(raw) {
     // optional: a rendered band mix to play instead of the synthesized pulse (see audio.mjs), and a longer film than the 7 s default
     band: raw.band ?? null,
     durationSec: raw.duration ?? DURATION_SEC,
+    // a human fingertip taps the board in the answer scene (src/Finger.tsx) instead of bare ripples
+    finger: raw.finger === true,
   };
 }
