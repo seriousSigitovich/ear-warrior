@@ -1,0 +1,67 @@
+# EAS Build uses this file INSTEAD of .gitignore, so everything from .gitignore is repeated here.
+# The app bundle needs only app/, src/, assets/app/, and the root configs.
+
+# Dependencies
+node_modules/
+
+# Build / test output
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# Generated native layer (EAS runs prebuild itself)
+.expo/
+.expo-shared/
+web-build/
+ios/
+android/
+*.keystore
+*.jks
+
+# Env & secrets
+.env
+.env.*
+!.env.example
+
+# Logs, editor, OS
+*.log
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.swp
+*.tmp
+.vercel
+.venv/
+__pycache__/
+.pytest_cache/
+
+# Not part of the app: backend, landing site, specs and docs, tests, tooling
+server/
+landing/
+specs/
+docs/
+tests/
+scripts/
+state/
+.specify/
+.claude/
+jest.config.js
+.eslintrc.js
+.prettierrc
+.prettierignore
+metal-riff.mp3
+
+# Marketing / content assets (the app uses only assets/app)
+assets/video/
+assets/guitar-rig/
+assets/carousel/
+assets/solo/
+assets/melodies/
+assets/store/
+assets/brand/
+assets/samples/

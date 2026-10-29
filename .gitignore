@@ -43,3 +43,12 @@ Thumbs.db
 __pycache__/
 .pytest_cache/
 assets/guitar-rig/out/
+
+# Rendered media and content assets (not part of the app bundle; the app uses only assets/app)
+assets/**/out/
+assets/**/*.mp4
+assets/**/*.mov
+assets/**/*.webm
+assets/**/*.mp3
+assets/**/*.wav
+/*.mp3
