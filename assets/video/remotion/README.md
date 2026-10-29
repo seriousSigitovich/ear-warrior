@@ -17,6 +17,10 @@ Too long a phrase fails with the number of seconds it needs — raise `bpm` or s
 
 Sound = the recorded acoustic guitar in `../synth.mjs` + a kick/shaker pulse on `bpm`. Tunes must be public domain; the melodies in `tunes/` were written from memory — **play the render and compare with a recording before posting.**
 
+## A tune played by a band take (`band`, `duration`)
+
+A tune file may carry `"band": { "file": "…wav", "bpm": N }` and `"duration": seconds`. Then `audio.mjs` plays a rendered band mix instead of the synthesized pulse: one piece through scenes 1–2 (so render the take at a tempo where one bar is one 2 s scene, i.e. `bpm` 120 with 8 notes per scene), the learner's taps on the same 8th grid, and the rest of the take as the reward from the stinger on. `tunes/neoclassic-solo.json` uses solo 05 of `assets/solo/beautiful`; its take is git-ignored media, make it with `../../guitar-rig/.venv/bin/python ../../solo/beautiful/compose.py --video-take ../../solo/beautiful/05-e-harmonic-minor-neoclassic-120bpm.wav` (run from `assets/solo/beautiful`).
+
 ## "Tabs guy" — 60 s pain sketch
 
 An animated sketch (flat SVG characters, no live actors): a guitarist who plays perfectly from a tab freezes at a party when asked to play without one, and the quiet guy hears the tune once and plays it. Ends on the app's fretboard + `earwarrior.app`.
