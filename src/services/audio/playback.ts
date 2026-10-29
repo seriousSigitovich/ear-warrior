@@ -1,81 +1,101 @@
-// Audio playback service (contracts/audio-playback.md). Notes are synthesized on the fly (no bundled
-// samples): the native player renders a plucked-string tone per MIDI note into the cache dir and plays
-// it via expo-audio. The native player is injected so orchestration (correct note per midi, in order,
-// resolve-after-last, idempotent stop) stays contract-testable; the real binding is isolated in
-// `defaultNativePlayer`.
-import { PlaybackMelody } from '../../lib/schedule';
+// Audio playback service (contracts/audio-playback.md). Sound comes from bundled files, voiced offline
+// (assets/guitar-rig/render_library.py): one clip per library tune and one sample per fretboard note.
+// Nothing is synthesised at run time. The native player is injected so orchestration (correct note per
+// midi, in order, resolve-after-last, idempotent stop) stays contract-testable; the real binding is
+// isolated in `defaultNativePlayer`.
+import { PlaybackMelody, totalDurationMs } from '../../lib/schedule';
 import { sampleManifest } from './samples';
-import { renderNoteWav } from './synth';
 
 export interface AudioPlayback {
   preload(midiNotes: number[]): Promise<void>;
-  playMelody(m: PlaybackMelody): Promise<void>;
+  /**
+   * Play a melody. With the id of a bundled clip it plays as one file; without one (or when the clip is
+   * missing) it falls back to the note samples, one per scheduled note.
+   */
+  playMelody(m: PlaybackMelody, clipId?: string): Promise<void>;
   playReferenceTone(midi: number): Promise<void>;
   stop(): Promise<void>;
 }
 
-/** Injectable native player: renders/plays a synthesized tone for one MIDI note and can stop output. */
+/** Injectable native player: plays a bundled note sample or melody clip and can stop output. */
 export interface NativePlayer {
-  /** Play the synthesized tone for `midi`, resolving after `durationMs`. */
+  /** Play the sample for `midi`, resolving after `durationMs`. */
   playTone(midi: number, durationMs: number): Promise<void>;
-  /** Pre-generate tones so the first note of a melody starts without a synthesis hitch. */
+  /** Play the bundled clip `clipId` and resolve after `durationMs`; false (nothing played) if there is none. */
+  playClip(clipId: string, durationMs: number): Promise<boolean>;
+  /** Check the samples for `midis` exist so a melody never starts and then runs out of notes. */
   preloadTones(midis: number[]): Promise<void>;
   stopAll(): Promise<void>;
 }
 
-/** Tones are rendered at a generous fixed length so any note/reference duration fits the sample tail. */
-const TONE_RENDER_MS = 2200;
-
 /**
- * Legato overlap (Phase 0 musicality): playTone resolves after the note's hold (so scheduling and
- * total play time are unchanged), but the tone is left ringing for this much longer before its
- * player is released. The tail overlaps the next note's attack, connecting the line instead of the
- * abrupt cut-off that made the sequence sound like a string of isolated beeps.
+ * Legato overlap: playTone resolves after the note's hold (so scheduling and total play time are
+ * unchanged), but the sample is left ringing for this much longer before its player is released. The
+ * tail overlaps the next note's attack, connecting the line instead of cutting each note off.
  */
 const RELEASE_TAIL_MS = 220;
 
-/** Real adapter: synthesize each note to a cached WAV and play it through expo-audio. */
+/** A clip is released this long after its schedule ends, so its own ring-out is never cut. */
+const CLIP_RELEASE_MS = 800;
+
+/** Real adapter: play the bundled files through expo-audio. */
 export function defaultNativePlayer(): NativePlayer {
   /* eslint-disable @typescript-eslint/no-explicit-any -- untyped native module handles */
   let audioMod: any;
-  let fsMod: any;
-  const active = new Set<any>(); // players still ringing out their release tail
+  const active = new Set<any>(); // players still playing or ringing out
   /* eslint-enable @typescript-eslint/no-explicit-any */
   const audio = () => (audioMod ??= require('expo-audio'));
-  const fs = () => (fsMod ??= require('expo-file-system'));
-  const uriCache = new Map<number, string>();
+  // Lazily required: the registry `require`s the audio files, which only Metro can resolve (not the
+  // pure-logic test runner).
+  const bundled = (): typeof import('./bundled') => require('./bundled');
 
-  // Generate (once) a WAV tone for a MIDI note in the cache dir and return its file uri.
-  const toneUri = (midi: number): string => {
-    const cached = uriCache.get(midi);
-    if (cached) return cached;
-    const { File, Paths } = fs();
-    const file = new File(Paths.cache, `tone-${midi}.wav`);
-    if (!file.exists) {
-      file.create({ overwrite: true });
-      file.write(renderNoteWav(midi, TONE_RENDER_MS));
+  // `remove()` only drops the player from expo-audio's registry; the native ExoPlayer and its
+  // AudioTrack are freed by `release()`. Without it each play leaks a track until GC, and Android
+  // stops creating tracks (~40 per app) — playback goes silent partway through a session.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped native player handle
+  const dispose = (player: any) => {
+    try {
+      player.remove();
+      player.release();
+    } catch {
+      // already released
     }
-    uriCache.set(midi, file.uri);
-    return file.uri;
   };
+
+  /** Start `source` now; the player is released `releaseAfterMs` later. */
+  const start = (source: number, releaseAfterMs: number) => {
+    const player = audio().createAudioPlayer(source);
+    active.add(player);
+    player.play();
+    setTimeout(() => {
+      active.delete(player);
+      dispose(player);
+    }, releaseAfterMs);
+  };
+
+  const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
   return {
     async preloadTones(midis) {
-      for (const midi of midis) toneUri(midi); // materialize the WAV files ahead of playback
+      for (const midi of midis) {
+        if (bundled().NOTE_CLIPS[midi] === undefined) throw new Error(`No bundled sample for MIDI ${midi}.`);
+      }
     },
     async playTone(midi, durationMs) {
-      const player = audio().createAudioPlayer(toneUri(midi));
-      active.add(player);
-      player.play();
-      // Release the player only after the tail so it overlaps the following note (legato).
-      setTimeout(() => {
-        active.delete(player);
-        player.remove();
-      }, durationMs + RELEASE_TAIL_MS);
-      await new Promise((r) => setTimeout(r, durationMs));
+      const source = bundled().NOTE_CLIPS[midi];
+      if (source === undefined) throw new Error(`No bundled sample for MIDI ${midi}.`);
+      start(source, durationMs + RELEASE_TAIL_MS);
+      await wait(durationMs);
+    },
+    async playClip(clipId, durationMs) {
+      const source = bundled().MELODY_CLIPS[clipId];
+      if (source === undefined) return false;
+      start(source, durationMs + CLIP_RELEASE_MS);
+      await wait(durationMs);
+      return true;
     },
     async stopAll() {
-      for (const player of active) player.remove();
+      for (const player of active) dispose(player);
       active.clear();
     },
   };
@@ -90,7 +110,8 @@ export function createAudioPlayback(native: NativePlayer = defaultNativePlayer()
       sampleManifest(midiNotes); // range guard: throws on any note outside E2–E6
       await native.preloadTones(midiNotes);
     },
-    async playMelody(m) {
+    async playMelody(m, clipId) {
+      if (clipId && (await native.playClip(clipId, totalDurationMs(m)))) return;
       // Schedule each note by startMs; resolve only after the final note completes.
       let cursor = 0;
       for (const note of m.notes) {

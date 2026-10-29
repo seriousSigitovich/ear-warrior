@@ -169,7 +169,7 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
     async (m: Melody) => {
       setPhase('playingMelody');
       await deps.session.enterPlayback();
-      await deps.playback.playMelody(scheduleMelody(m, level.tempoBpm));
+      await deps.playback.playMelody(scheduleMelody(m, level.tempoBpm), tuneIdOf(m.id));
       setPhase('awaitingInput');
     },
     [deps, level.tempoBpm],
