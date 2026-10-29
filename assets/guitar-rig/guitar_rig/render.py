@@ -51,17 +51,20 @@ def to_lufs(audio, sr, target):
     return ceiling(audio * gain, sr)
 
 
-def render_song(song: Song, amp: Amp | str = "metal", *, takes=2, ir=None, seed=7, sr=SR, dry=False, lufs=-14.0):
-    """(2, n) float32 mix at `lufs`. `dry` skips amp and cabinet (raw DI) for A/B comparison."""
+def render_song(song: Song, amp: Amp | str = "metal", *, takes=2, ir=None, seed=7, sr=SR, dry=False, lufs=-14.0,
+                lead_amp: Amp | str | None = None, rhythm_db=RHYTHM_DB, lead_db=LEAD_DB):
+    """(2, n) float32 mix at `lufs`. `dry` skips amp and cabinet (raw DI) for A/B comparison. `lead_amp` gives the lead
+    its own preset (default: the rhythm's); `rhythm_db`/`lead_db` set the stem levels before the master chain."""
     amp = PRESETS[amp] if isinstance(amp, str) else amp
+    lead_amp = amp if lead_amp is None else PRESETS[lead_amp] if isinstance(lead_amp, str) else lead_amp
     ir = cab_ir(sr) if ir is None else ir
 
-    def guitar(notes, take_seed):
+    def guitar(notes, take_seed, preset):
         di = render_di(list(notes), sr, take_seed)
-        return di if dry else play_through(di, sr, amp, ir)
+        return di if dry else play_through(di, sr, preset, ir)
 
-    rhythm = [level(guitar(song.rhythm, seed + i), RHYTHM_DB, sr) for i in range(takes)] if song.rhythm else []
-    lead = level(guitar(song.lead, seed + 100), LEAD_DB, sr) if song.lead else None
+    rhythm = [level(guitar(song.rhythm, seed + i, amp), rhythm_db, sr) for i in range(takes)] if song.rhythm else []
+    lead = level(guitar(song.lead, seed + 100, lead_amp), lead_db, sr) if song.lead else None
 
     n = max(len(x) for x in [*rhythm, *([lead] if lead is not None else [])]) + int(TAIL_SECONDS * sr)
     left, right = np.zeros(n), np.zeros(n)

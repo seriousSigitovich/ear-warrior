@@ -2,8 +2,8 @@
 // every tune must be answerable on the 12-fret neck, belong to its scale (a typo shows up as a note
 // outside it) and every difficulty level must have something to play.
 import { DifficultyLevel } from '../../../src/models';
-import { CURATED, curatedMelody } from '../../../src/services/melody/curated';
-import { MAX_RANK, MIN_RANK, getLevelByRank } from '../../../src/services/melody/levels';
+import { CURATED, LIBRARY, curatedMelody, masteredTuneIds, tuneIdOf } from '../../../src/services/melody/curated';
+import { MAX_RANK, MIN_RANK, getLevelByRank, notesLabel } from '../../../src/services/melody/levels';
 import { scalePitchClasses } from '../../../src/services/melody/scales';
 import { MAX_FRET, OPEN_STRING_MIDI, positionsForMidi } from '../../../src/lib/fretboard';
 import { hzFromMidi, noteName, pitchClass } from '../../../src/lib/pitchNote';
@@ -16,26 +16,32 @@ function level(rank: number): DifficultyLevel {
   return getLevelByRank(rank);
 }
 
-describe('curated melody set (FR-021)', () => {
-  test('tune ids are unique', () => {
-    const ids = CURATED.map((t) => t.id);
+describe('melody library (FR-021)', () => {
+  test('tune ids are unique and hyphen-free', () => {
+    const ids = LIBRARY.map((t) => t.id);
+    for (const id of ids) expect(id).not.toContain('-');
     expect(new Set(ids).size).toBe(ids.length);
   });
 
   test.each(RANKS)('level %i has at least one tune', (rank) => {
-    expect(CURATED.some((t) => t.rank === rank)).toBe(true);
+    expect(LIBRARY.some((t) => t.rank === rank)).toBe(true);
   });
 
-  test('every tune has 2–12 notes', () => {
-    for (const t of CURATED) {
+  test('the library serves the curated tunes and the candidates', () => {
+    expect(LIBRARY.length).toBeGreaterThan(CURATED.length);
+  });
+
+  test('every tune sits on the rank whose note span holds its note count', () => {
+    for (const t of LIBRARY) {
       const n = curatedMelody(level(t.rank), 0, t.id).notes.length;
-      expect(n).toBeGreaterThanOrEqual(2);
-      expect(n).toBeLessThanOrEqual(12);
+      const [min, max] = notesLabel(t.rank).split('–').map(Number);
+      expect(n).toBeGreaterThanOrEqual(min);
+      expect(n).toBeLessThanOrEqual(max ?? min);
     }
   });
 
   test('every note lies on the neck (E2–E5) and has a position to tap', () => {
-    for (const t of CURATED) {
+    for (const t of LIBRARY) {
       for (const note of curatedMelody(level(t.rank), 0, t.id).notes) {
         expect(note.midi).toBeGreaterThanOrEqual(NECK_LOW);
         expect(note.midi).toBeLessThanOrEqual(NECK_HIGH);
@@ -45,7 +51,7 @@ describe('curated melody set (FR-021)', () => {
   });
 
   test('every note belongs to its tune’s scale', () => {
-    for (const t of CURATED) {
+    for (const t of LIBRARY) {
       const pcs = scalePitchClasses(t.scale);
       for (const note of curatedMelody(level(t.rank), 0, t.id).notes) {
         expect({
@@ -86,14 +92,14 @@ describe('curatedMelody', () => {
       for (let seed = 0; seed < 20; seed++) {
         const m = curatedMelody(level(rank), seed);
         expect(m.difficultyId).toBe(`L${rank}`);
-        const tune = CURATED.find((t) => m.id.startsWith(`${t.id}-`));
+        const tune = LIBRARY.find((t) => m.id.startsWith(`${t.id}-`));
         expect(tune?.rank).toBe(rank);
       }
     }
   });
 
   test('a level with several tunes does not always return the same one', () => {
-    const rank = RANKS.find((r) => CURATED.filter((t) => t.rank === r).length >= 2)!;
+    const rank = RANKS.find((r) => LIBRARY.filter((t) => t.rank === r).length >= 2)!;
     const ids = new Set(
       Array.from({ length: 30 }, (_, seed) => curatedMelody(level(rank), seed).id.split('-')[0]),
     );
@@ -102,5 +108,38 @@ describe('curatedMelody', () => {
 
   test('every melody id is unique per seed so a new play is a new Melody row', () => {
     expect(curatedMelody(level(1), 1).id).not.toBe(curatedMelody(level(1), 2).id);
+  });
+});
+
+describe('tunes played at 100%', () => {
+  const ofRank = (rank: number) => LIBRARY.filter((t) => t.rank === rank).map((t) => t.id);
+
+  test('tuneIdOf reads the tune out of a melody id', () => {
+    expect(tuneIdOf('hotcrossbuns-123456')).toBe('hotcrossbuns');
+  });
+
+  test('only a fully correct attempt counts as mastered', () => {
+    const mastered = masteredTuneIds([
+      { melodyId: 'joy8-1', verdict: 'incorrect' },
+      { melodyId: 'world8-2', verdict: 'correct' },
+      { melodyId: 'world8-3', verdict: 'correct' },
+    ]);
+    expect([...mastered]).toEqual(['world8']);
+  });
+
+  test('a mastered tune is not offered while the level has others', () => {
+    const rank = 2;
+    const [first, ...others] = ofRank(rank);
+    expect(others.length).toBeGreaterThan(0);
+    for (let seed = 0; seed < 50; seed++) {
+      const id = tuneIdOf(curatedMelody(level(rank), seed, undefined, new Set([first])).id);
+      expect(id).not.toBe(first);
+    }
+  });
+
+  test('when every tune of the level is mastered, they all come back', () => {
+    const all = new Set(ofRank(1));
+    const m = curatedMelody(level(1), 3, undefined, all);
+    expect(all.has(tuneIdOf(m.id))).toBe(true);
   });
 });

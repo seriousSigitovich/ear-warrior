@@ -39,6 +39,9 @@ class Amp:
 PRESETS = {
     "metal": Amp("metal", 110, 850, 6.0,
                  (Stage(22, 0.50, 150, 8000), Stage(4, 0.25, 120, 7000), Stage(1.6, 0.10, 70, 9000)), 7500, -42),
+    # singing lead: less gain and low end than `metal`, so held notes bloom instead of choking (Strat-into-Marshall-ish)
+    "lead": Amp("lead", 170, 1000, 5.0,
+                (Stage(14, 0.40, 150, 7500), Stage(3, 0.20, 100, 8000), Stage(1.4, 0.08, 70, 9000)), 6500, -50),
     "crunch": Amp("crunch", 70, 1200, 3.0,
                   (Stage(7, 0.35, 100, 9000), Stage(2.2, 0.15, 70, 9000)), 8000, -55),
 }

@@ -6,6 +6,8 @@ import {
   allLevels,
   getLevel,
   getLevelByRank,
+  notesLabel,
+  rankOfNoteCount,
 } from '../../../src/services/melody/levels';
 
 describe('ladder shape (FR-010)', () => {
@@ -36,6 +38,25 @@ describe('ladder shape (FR-010)', () => {
   test('the top rank has the most notes', () => {
     const top = getLevelByRank(MAX_RANK);
     for (const level of allLevels()) expect(top.noteCount).toBeGreaterThanOrEqual(level.noteCount);
+  });
+});
+
+describe('note spans', () => {
+  test('the spans tile 3–16 notes, each note count on exactly one rank, rising with the rank', () => {
+    const ranks = Array.from({ length: 14 }, (_, i) => rankOfNoteCount(3 + i));
+    expect(ranks).toEqual([1, 2, 3, 3, 4, 5, 6, 6, 7, 7, 8, 8, 9, 9]);
+    expect(rankOfNoteCount(2)).toBeUndefined();
+    expect(rankOfNoteCount(17)).toBeUndefined();
+  });
+
+  test('labels are single numbers or ranges', () => {
+    expect(allLevels().map((l) => notesLabel(l.rank))).toEqual([
+      '3', '4', '5–6', '7', '8', '9–10', '11–12', '13–14', '15–16',
+    ]);
+  });
+
+  test('a level’s noteCount is the top of its span', () => {
+    expect(getLevelByRank(3).noteCount).toBe(6);
   });
 });
 

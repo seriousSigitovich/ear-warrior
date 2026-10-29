@@ -4,14 +4,14 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { RankChange } from '../../features/practice/usePracticeLoop';
-import { MAX_RANK, getLevelByRank } from '../../services/melody/levels';
+import { MAX_RANK, notesLabel } from '../../services/melody/levels';
 import { Card } from '../common/Card';
 import { colors, font, textAlpha, withAlpha } from '../../theme/nocturne';
 
 export function RankChangeBanner({ change }: { change: RankChange }) {
   const up = change.direction === 'up';
   const hue = up ? colors.accent : colors.warm;
-  const noteCount = getLevelByRank(change.to).noteCount;
+  const noteCount = notesLabel(change.to);
   const title = up ? 'Level up' : 'Easing off';
   const detail = `Level ${change.to} — ${noteCount} notes`;
 

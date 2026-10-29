@@ -138,7 +138,8 @@ export default function Practice() {
 
   const deps = useMemo<PracticeLoopDeps>(
     () => ({
-      nextMelody: curatedMelody,
+      nextMelody: (level, seed, mastered) => curatedMelody(level, seed, undefined, mastered),
+      attempts: repos.attempts,
       playback,
       session: createAudioSession(),
       gradingCfg: GRADING_CFG,

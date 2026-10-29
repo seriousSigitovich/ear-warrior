@@ -19,7 +19,11 @@ import {
   effectiveRank,
   toAttemptOutcome,
 } from '../difficulty/adapt';
-import { DifficultySettingsRepository } from '../../services/storage/repositories';
+import { masteredTuneIds, tuneIdOf } from '../../services/melody/curated';
+import {
+  AttemptRepository,
+  DifficultySettingsRepository,
+} from '../../services/storage/repositories';
 import { scheduleMelody } from '../../lib/schedule';
 import { gradeAttempt } from '../../services/grading/grade';
 import { AudioPlayback } from '../../services/audio/playback';
@@ -36,8 +40,13 @@ import {
 export type LoopPhase = 'idle' | 'playingMelody' | 'awaitingInput' | 'grading' | 'feedback';
 
 export interface PracticeLoopDeps {
-  /** Where the next melody comes from (FR-021): the curated library. */
-  nextMelody: (level: DifficultyLevel, seed: number) => Melody;
+  /**
+   * Where the next melody comes from (FR-021): the library. `mastered` holds the ids of tunes already
+   * played at 100%, which the library skips while the level has others.
+   */
+  nextMelody: (level: DifficultyLevel, seed: number, mastered: ReadonlySet<string>) => Melody;
+  /** Recorded attempts: the memory of which tunes were played at 100%. */
+  attempts: AttemptRepository;
   playback: AudioPlayback;
   session: AudioSession;
   gradingCfg: GradingConfig;
@@ -94,6 +103,22 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
     };
   }, [deps.difficulty]);
 
+  // Tunes played at 100% so far: loaded from the recorded attempts, then grown as attempts finish.
+  const masteredRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    let cancelled = false;
+    deps.attempts
+      .all()
+      .then((all) => {
+        if (cancelled) return;
+        for (const id of masteredTuneIds(all)) masteredRef.current.add(id);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [deps.attempts]);
+
   // Monotonic within a session; combined with the unique session id this yields a unique attempt id.
   const attemptSeqRef = useRef(0);
 
@@ -114,6 +139,7 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
         inputMode: 'fretboard',
         createdAt: (deps.now?.() ?? new Date()).toISOString(),
       };
+      if (result.verdict === 'correct') masteredRef.current.add(tuneIdOf(m.id));
       deps.onAttemptGraded?.(attempt, m, levelRef.current);
     },
     [deps],
@@ -163,7 +189,7 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
   );
 
   const next = useCallback(async () => {
-    const m = deps.nextMelody(level, deps.seed());
+    const m = deps.nextMelody(level, deps.seed(), masteredRef.current);
     setMelody(m);
     setGrade(null);
     setRankChange(null);

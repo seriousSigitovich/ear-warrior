@@ -272,7 +272,7 @@ confirm it shows accuracy trends, practice volume, and identified weak areas der
 ## Open Questions (melody library, FR-021 — owner to decide)
 
 - **Content and size**: how many melodies, and who writes or approves them? (The famous-tune melodies of the video series in `docs/experiments.md` are one candidate source; their keys and range must be checked against E2–E5.)
-- **Selection rule**: the starter set picks randomly within the level with no memory of recent picks. Is that acceptable, or should it avoid an immediate repeat / cycle in order? With few tunes per level a learner will see repeats.
+- **Selection rule** *(decided 2026-10-29)*: the app remembers tunes the learner played at 100% (an attempt with every note right, read from the recorded attempts) and skips them while the level has others; once all of a level's tunes are mastered they are all offered again. Ranks come from the note count (3, 4, 5–6, 7, 8, 9–10, 11–12, 13–14, 15–16 notes for ranks 1–9), and the served library is `CURATED` + `CANDIDATES`. Before that, the starter set picked randomly within the level with no memory of recent picks. Is that acceptable, or should it avoid an immediate repeat / cycle in order? With few tunes per level a learner will see repeats.
 - **Difficulty**: are the 9 levels still the right axis for a hand-picked set, or does the MVP need fewer levels? (With few melodies, 9 levels leaves some with one tune.)
 - ~~**Repeated pitches**~~ — **decided 2026-10-11**: allowed in the curated library (FR-021).
 

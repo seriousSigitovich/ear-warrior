@@ -1,6 +1,6 @@
-// Difficulty ladder (FR-010): nine ranks, each with the number of notes a melody at that rank has
-// and the tempo it is played at. The melodies themselves come from the curated library
-// (`curated.ts`), which assigns every tune to a rank.
+// Difficulty ladder (FR-010): nine ranks, each with the span of note counts a melody at that rank has
+// and the tempo it is played at. The melodies themselves come from the library (`curated.ts`), which
+// puts every tune on the rank whose span holds its note count.
 import { DifficultyLevel } from '../../models';
 
 /** Lowest rank on the ladder. */
@@ -14,15 +14,38 @@ export const MAX_RANK = 9;
  */
 export const TEMPO_BPM = 90;
 
-/** Notes per melody at ranks 1–9. */
-const NOTE_COUNTS = [3, 4, 6, 4, 6, 8, 6, 8, 10];
+/** Fewest and most notes a melody at ranks 1–9 has; the spans tile 3–16 notes with no gap. */
+const NOTE_SPANS: readonly (readonly [number, number])[] = [
+  [3, 3],
+  [4, 4],
+  [5, 6],
+  [7, 7],
+  [8, 8],
+  [9, 10],
+  [11, 12],
+  [13, 14],
+  [15, 16],
+];
 
-const LADDER: DifficultyLevel[] = NOTE_COUNTS.map((noteCount, i) => ({
+/** `noteCount` is the top of the rank's span: the most notes a melody at that rank can have. */
+const LADDER: DifficultyLevel[] = NOTE_SPANS.map(([, max], i) => ({
   id: `L${MIN_RANK + i}`,
   rank: MIN_RANK + i,
-  noteCount,
+  noteCount: max,
   tempoBpm: TEMPO_BPM,
 }));
+
+/** The rank whose span holds `noteCount`, or undefined when no rank does. */
+export function rankOfNoteCount(noteCount: number): number | undefined {
+  const i = NOTE_SPANS.findIndex(([min, max]) => noteCount >= min && noteCount <= max);
+  return i < 0 ? undefined : MIN_RANK + i;
+}
+
+/** Notes per melody at `rank` for display: "4" or "5–6". */
+export function notesLabel(rank: number): string {
+  const [min, max] = NOTE_SPANS[getLevelByRank(rank).rank - MIN_RANK];
+  return min === max ? `${min}` : `${min}–${max}`;
+}
 
 const BY_ID: Record<string, DifficultyLevel> = Object.fromEntries(LADDER.map((l) => [l.id, l]));
 

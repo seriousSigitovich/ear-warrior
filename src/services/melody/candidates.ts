@@ -1,5 +1,6 @@
-// First batch of candidates for the 100-melody library: public-domain tunes only. NOT served to
-// players yet — a tune moves into `CURATED` (curated.ts) once the owner has listened to it.
+// First batch of candidates for the 100-melody library: public-domain tunes only. Served to players
+// since 2026-10-29 (`LIBRARY` in curated.ts) — a tune moves into `CURATED` once the owner has
+// listened to it and found it right.
 //
 // Every tune was written from memory (no score or MIDI to check against), so any of them may hold a
 // wrong note. The tests catch a note outside the declared key, never a wrong note inside it: listen.
