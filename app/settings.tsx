@@ -11,6 +11,7 @@ import {
   StyleSheet,
   Text,
   View,
+  ViewStyle,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { DifficultyMode, DifficultySettings } from '../src/models';
@@ -32,7 +33,7 @@ import { useAuth } from '../src/features/auth/useAuth';
 import { describeError } from '../src/services/auth/messages';
 import { Kicker } from '../src/components/common/Kicker';
 import { Card } from '../src/components/common/Card';
-import { colors, font, radius, textAlpha } from '../src/theme/nocturne';
+import { colors, font, radius, textAlpha, withAlpha } from '../src/theme/nocturne';
 
 const RANKS = Array.from({ length: MAX_RANK - MIN_RANK + 1 }, (_, i) => MIN_RANK + i);
 
@@ -89,15 +90,14 @@ export default function Settings() {
               key={r}
               rank={r}
               state={r < rank ? 'done' : r === rank ? 'current' : 'todo'}
-              selectable={fixed}
-              onPress={() => commit(setFixedRank(settings, r))}
+              onPress={() => commit(setMode(setFixedRank(settings, r), 'fixed' as DifficultyMode))}
             />
           ))}
         </View>
         <Text style={styles.ladderCaption}>
           {fixed
             ? `Level ${rank} of ${MAX_RANK} — tap to change`
-            : `Level ${rank} of ${MAX_RANK} — adjusts as you practice`}
+            : `Level ${rank} of ${MAX_RANK} — adjusts as you practice. Tap a level to fix it.`}
         </Text>
 
         <Card style={styles.levelCard}>
@@ -263,25 +263,22 @@ function SegOption({
 function LevelDot({
   rank,
   state,
-  selectable,
   onPress,
 }: {
   rank: number;
   state: 'done' | 'current' | 'todo';
-  selectable: boolean;
   onPress: () => void;
 }) {
   const dot =
     state === 'current' ? styles.dotCurrent : state === 'done' ? styles.dotDone : styles.dotTodo;
   // The dots are 22–26pt, below the 44pt minimum, so the tap target is padded out around them
-  // rather than the visual being enlarged (SC-009).
+  // rather than the visual being enlarged (SC-009). Tapping one in adaptive mode switches to fixed.
   return (
     <Pressable
       accessibilityRole="radio"
-      accessibilityState={{ selected: state === 'current', disabled: !selectable }}
+      accessibilityState={{ selected: state === 'current' }}
       accessibilityLabel={`Level ${rank} of ${MAX_RANK}`}
-      accessibilityHint={selectable ? 'Sets the fixed difficulty level' : undefined}
-      disabled={!selectable}
+      accessibilityHint="Sets the fixed difficulty level"
       onPress={onPress}
       style={styles.dotTarget}
     >
@@ -319,7 +316,9 @@ const styles = StyleSheet.create({
   },
   segOpt: { paddingVertical: 7, paddingHorizontal: 14 },
   segDivider: { borderRightWidth: 1, borderRightColor: colors.divider },
-  segActive: { borderWidth: 1, borderColor: colors.accent, margin: -1, borderRadius: radius.md },
+  // A tint rather than an outline: the container clips its children (overflow hidden), which on
+  // Android cut the accent border off at the edges.
+  segActive: { backgroundColor: withAlpha(colors.accent, 0.16) },
   segText: { color: colors.text, fontSize: 13 },
   segTextActive: { color: colors.accent },
 
@@ -332,11 +331,15 @@ const styles = StyleSheet.create({
     height: 26,
     borderRadius: 13,
     backgroundColor: colors.accent,
-    shadowColor: colors.accent,
-    shadowOpacity: 0.45,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 6,
+    // iOS only: Android's elevation shadow is a dark square halo, not a glow.
+    ...Platform.select<ViewStyle>({
+      ios: {
+        shadowColor: colors.accent,
+        shadowOpacity: 0.45,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 0 },
+      },
+    }),
   },
   dotTodo: {
     width: 22,

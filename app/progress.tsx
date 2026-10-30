@@ -69,7 +69,9 @@ export default function Progress() {
                   </Text>
                 ) : null}
               </View>
-              <Text style={styles.caption}>Accuracy — last {trend.length} sessions</Text>
+              <Text style={styles.caption}>
+                Accuracy — last {trend.length === 1 ? 'session' : `${trend.length} sessions`}
+              </Text>
             </>
           ) : (
             <Text style={styles.caption}>

@@ -2,7 +2,15 @@
 // Nocturne styling: outlined actions rather than filled — primary carries the accent as a
 // line (and optional glow), secondary a quiet divider border, ghost a bare accent link.
 import React from 'react';
-import { Pressable, StyleProp, StyleSheet, Text, TextStyle, ViewStyle } from 'react-native';
+import {
+  Platform,
+  Pressable,
+  StyleProp,
+  StyleSheet,
+  Text,
+  TextStyle,
+  ViewStyle,
+} from 'react-native';
 import { colors, radius, withAlpha } from '../../theme/nocturne';
 
 export interface ButtonProps {
@@ -65,14 +73,18 @@ const styles = StyleSheet.create({
   primary: { borderColor: colors.accent },
   secondary: { borderColor: colors.divider },
   ghost: { borderColor: 'transparent', minHeight: 0, paddingVertical: 4, paddingHorizontal: 6 },
-  glow: {
-    // stands in for the web box-shadow accent bloom
-    shadowColor: colors.accent,
-    shadowOpacity: 0.5,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 8,
-  },
+  // Stands in for the web box-shadow accent bloom. iOS draws it with a real shadow. Android has no
+  // coloured blur: `elevation` on this transparent button paints a dark rectangle through it (the
+  // "wrong gradient"), so there the bloom is a faint accent wash inside the outline instead.
+  glow: Platform.select<ViewStyle>({
+    android: { backgroundColor: withAlpha(colors.accent, 0.1) },
+    default: {
+      shadowColor: colors.accent,
+      shadowOpacity: 0.5,
+      shadowRadius: 18,
+      shadowOffset: { width: 0, height: 0 },
+    },
+  }),
   pressedAccent: { backgroundColor: withAlpha(colors.accent, 0.18) },
   pressedSecondary: { backgroundColor: withAlpha(colors.text, 0.1) },
   dim: { opacity: 0.45 },
