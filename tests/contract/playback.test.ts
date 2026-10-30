@@ -72,7 +72,15 @@ describe('audio playback (contracts/audio-playback.md)', () => {
   test('playReferenceTone plays the tuning tone for a note', async () => {
     const f = fakePlayer();
     await createAudioPlayback(f.native).playReferenceTone(64);
-    expect(f.played).toEqual([{ midi: 64, durationMs: 1500 }]);
+    expect(f.played).toEqual([{ midi: 64, durationMs: 800 }]);
+  });
+
+  test('a new tap and a new melody first silence whatever is still ringing', async () => {
+    const f = fakePlayer();
+    const pb = createAudioPlayback(f.native);
+    await pb.playReferenceTone(64);
+    await pb.playMelody(scheduleMelody(melody([64]), 120));
+    expect(f.stops()).toBe(2);
   });
 
   test('stop is idempotent', async () => {

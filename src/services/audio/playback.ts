@@ -38,6 +38,17 @@ const RELEASE_TAIL_MS = 220;
 /** A clip is released this long after its schedule ends, so its own ring-out is never cut. */
 const CLIP_RELEASE_MS = 800;
 
+/**
+ * How long a tapped fret rings. The samples are sustained (a plain 1.5 s hold left taps stacking up
+ * into a smear), and ending a voice by dropping it mid-ring is an audible click, so every voice is
+ * faded out over FADE_MS instead of being cut.
+ */
+const TAP_HOLD_MS = 800;
+const FADE_MS = 120;
+/** Fade used when a new sound takes over from one still ringing: quick, but still click-free. */
+const TAKEOVER_FADE_MS = 50;
+const FADE_STEP_MS = 10;
+
 /** Real adapter: play the bundled files through expo-audio. */
 export function defaultNativePlayer(): NativePlayer {
   /* eslint-disable @typescript-eslint/no-explicit-any -- untyped native module handles */
@@ -62,15 +73,32 @@ export function defaultNativePlayer(): NativePlayer {
     }
   };
 
-  /** Start `source` now; the player is released `releaseAfterMs` later. */
-  const start = (source: number, releaseAfterMs: number) => {
+  /** Ramp the volume to silence over `ms`, then free the player. Safe to call on a player already fading. */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped native player handle
+  const fadeOut = (player: any, ms: number) => {
+    if (!active.delete(player)) return; // already fading or released
+    const steps = Math.max(1, Math.round(ms / FADE_STEP_MS));
+    let step = 0;
+    const timer = setInterval(() => {
+      step += 1;
+      try {
+        player.volume = Math.max(0, 1 - step / steps);
+      } catch {
+        step = steps; // player already gone
+      }
+      if (step >= steps) {
+        clearInterval(timer);
+        dispose(player);
+      }
+    }, FADE_STEP_MS);
+  };
+
+  /** Start `source` now; it plays `holdMs`, then fades out over `fadeMs` and is released. */
+  const start = (source: number, holdMs: number, fadeMs: number) => {
     const player = audio().createAudioPlayer(source);
     active.add(player);
     player.play();
-    setTimeout(() => {
-      active.delete(player);
-      dispose(player);
-    }, releaseAfterMs);
+    setTimeout(() => fadeOut(player, fadeMs), Math.max(0, holdMs - fadeMs));
   };
 
   const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
@@ -78,25 +106,26 @@ export function defaultNativePlayer(): NativePlayer {
   return {
     async preloadTones(midis) {
       for (const midi of midis) {
-        if (bundled().NOTE_CLIPS[midi] === undefined) throw new Error(`No bundled sample for MIDI ${midi}.`);
+        if (bundled().NOTE_CLIPS[midi] === undefined)
+          throw new Error(`No bundled sample for MIDI ${midi}.`);
       }
     },
     async playTone(midi, durationMs) {
       const source = bundled().NOTE_CLIPS[midi];
       if (source === undefined) throw new Error(`No bundled sample for MIDI ${midi}.`);
-      start(source, durationMs + RELEASE_TAIL_MS);
+      start(source, durationMs + RELEASE_TAIL_MS, FADE_MS);
       await wait(durationMs);
     },
     async playClip(clipId, durationMs) {
       const source = bundled().MELODY_CLIPS[clipId];
       if (source === undefined) return false;
-      start(source, durationMs + CLIP_RELEASE_MS);
+      start(source, durationMs + CLIP_RELEASE_MS, FADE_MS);
       await wait(durationMs);
       return true;
     },
     async stopAll() {
-      for (const player of active) dispose(player);
-      active.clear();
+      // Fade rather than drop: the samples are loud and sustained, so a hard stop is a click.
+      for (const player of [...active]) fadeOut(player, TAKEOVER_FADE_MS);
     },
   };
 }
@@ -111,6 +140,8 @@ export function createAudioPlayback(native: NativePlayer = defaultNativePlayer()
       await native.preloadTones(midiNotes);
     },
     async playMelody(m, clipId) {
+      // Nothing may still be ringing under the melody (a replay pressed mid-clip, a tapped fret).
+      await native.stopAll();
       if (clipId && (await native.playClip(clipId, totalDurationMs(m)))) return;
       // Schedule each note by startMs; resolve only after the final note completes.
       let cursor = 0;
@@ -124,7 +155,9 @@ export function createAudioPlayback(native: NativePlayer = defaultNativePlayer()
       }
     },
     async playReferenceTone(midi) {
-      await native.playTone(midi, 1500);
+      // One string at a time: the previous tap fades as the new one starts, so taps never stack.
+      await native.stopAll();
+      await native.playTone(midi, TAP_HOLD_MS);
     },
     stop: () => native.stopAll(),
   };
