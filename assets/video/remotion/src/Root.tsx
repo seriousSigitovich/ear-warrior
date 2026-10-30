@@ -8,6 +8,7 @@ import { PainVideo, PainCut } from './pain/PainVideo';
 import { CUT_DURATION } from '../pain/cut.mjs';
 import { ByEar } from './byear/ByEar';
 import { Warrior, WarriorRoot, WarriorKey, WARRIOR_KEY_STORY } from './warrior/WarriorScene';
+import { TenSecond } from './ten/TenSecond';
 import { HumVideo } from './hum/HumVideo';
 import { HairProof } from './hum/HairProof';
 import { Thumb, ThumbVertical } from './pain/Thumb';
@@ -33,6 +34,7 @@ export const Root: React.FC = () => (
   <Composition id="WarriorRiff" component={Warrior} durationInFrames={300} fps={60} width={1080} height={1920} />
   <Composition id="WarriorRoot" component={WarriorRoot} durationInFrames={420} fps={60} width={1080} height={1920} />
   <Composition id="WarriorKey" component={WarriorKey} durationInFrames={Math.round(WARRIOR_KEY_STORY.DURATION * 60)} fps={60} width={1080} height={1920} />
+  <Composition id="TenSecond" component={TenSecond} durationInFrames={1080} fps={60} width={1080} height={1920} />
   <Composition id="HumSolo" component={HumVideo} durationInFrames={900} fps={60} width={1080} height={1920} />
   <Composition id="HairProof" component={HairProof} durationInFrames={1} fps={60} width={1800} height={1500} />
   <Composition id="PainThumb" component={Thumb} durationInFrames={1} fps={FPS} width={1280} height={720} />
