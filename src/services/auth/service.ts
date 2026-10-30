@@ -1,5 +1,5 @@
 // Device-side sign-in lifecycle (contracts/client-auth.md "Lifecycle rules"), free of React/native so it
-// is unit-testable with fakes. The practice loop, sync and the attempt outbox never read this (R15);
+// is unit-testable with fakes. Practice itself never depends on this: the progress client only asks it for a token when there is one;
 // Sentry and product analytics subscribe through `onAuthChange` (R7).
 import { KeyValueStore } from '../../lib/deviceId';
 import { normalizeEmail } from '../../lib/email';
@@ -59,6 +59,11 @@ export function createAuthService({ client, session, kv, getDeviceId, now }: Dep
   return {
     available: client !== null,
     getState: (): AuthState => state,
+
+    /** The stored session's bearer token, or null when anonymous. Reads the secure store, never the network. */
+    async getToken(): Promise<string | null> {
+      return (await session.get())?.token ?? null;
+    },
 
     onAuthChange(listener: (s: AuthState) => void): () => void {
       listeners.add(listener);

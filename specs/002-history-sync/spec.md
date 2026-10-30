@@ -1,5 +1,9 @@
 # Feature Specification: Practice History Sync
 
+> **Superseded 2026-10-30.** `/api/sync` (one endpoint that mirrors every collection) was replaced by one
+> endpoint per action under `/api/progress/*`, owned by the signed-in account instead of the install
+> (`server/src/routes/progress.ts`, `src/services/progress/`). `sync_documents` is no longer read or written.
+
 **Feature Branch**: `002-history-sync` (not created — work landed on `master`)
 
 **Created**: 2026-10-11 (**retroactive**: the feature was built before this spec; the requirements below are

@@ -19,11 +19,8 @@ import {
   effectiveRank,
   toAttemptOutcome,
 } from '../difficulty/adapt';
-import { masteredTuneIds, tuneIdOf } from '../../services/melody/curated';
-import {
-  AttemptRepository,
-  DifficultySettingsRepository,
-} from '../../services/storage/repositories';
+import { TuneHistory, tuneIdOf } from '../../services/melody/curated';
+import { DifficultySettingsRepository } from '../../services/storage/repositories';
 import { scheduleMelody } from '../../lib/schedule';
 import { gradeAttempt } from '../../services/grading/grade';
 import { AudioPlayback } from '../../services/audio/playback';
@@ -44,9 +41,17 @@ export interface PracticeLoopDeps {
    * Where the next melody comes from (FR-021): the library. `mastered` holds the ids of tunes already
    * played at 100%, which the library skips while the level has others.
    */
-  nextMelody: (level: DifficultyLevel, seed: number, mastered: ReadonlySet<string>) => Melody;
-  /** Recorded attempts: the memory of which tunes were played at 100%. */
-  attempts: AttemptRepository;
+  nextMelody: (
+    level: DifficultyLevel,
+    seed: number,
+    mastered: ReadonlySet<string>,
+    recent: readonly string[],
+  ) => Melody;
+  /**
+   * Which tunes were played and which at 100%: the backend's answer for a signed-in learner, else the
+   * local record. The first melody waits for it. Must keep the same identity across renders.
+   */
+  loadHistory: () => Promise<TuneHistory>;
   playback: AudioPlayback;
   session: AudioSession;
   gradingCfg: GradingConfig;
@@ -103,21 +108,25 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
     };
   }, [deps.difficulty]);
 
-  // Tunes played at 100% so far: loaded from the recorded attempts, then grown as attempts finish.
+  // Tunes played at 100% so far, and every tune in play order: loaded from the recorded attempts
+  // (once they are hydrated from the backend), then grown as attempts finish and tunes are served.
   const masteredRef = useRef<Set<string>>(new Set());
+  const recentRef = useRef<string[]>([]);
+  const historyRef = useRef<Promise<unknown>>(Promise.resolve());
   useEffect(() => {
     let cancelled = false;
-    deps.attempts
-      .all()
-      .then((all) => {
+    historyRef.current = deps
+      .loadHistory()
+      .then((history) => {
         if (cancelled) return;
-        for (const id of masteredTuneIds(all)) masteredRef.current.add(id);
+        for (const id of history.mastered) masteredRef.current.add(id);
+        recentRef.current = [...history.recent, ...recentRef.current];
       })
       .catch(() => undefined);
     return () => {
       cancelled = true;
     };
-  }, [deps.attempts]);
+  }, [deps.loadHistory]);
 
   // Monotonic within a session; combined with the unique session id this yields a unique attempt id.
   const attemptSeqRef = useRef(0);
@@ -189,7 +198,9 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
   );
 
   const next = useCallback(async () => {
-    const m = deps.nextMelody(level, deps.seed(), masteredRef.current);
+    await historyRef.current; // pick against the full history, not a half-loaded one
+    const m = deps.nextMelody(level, deps.seed(), masteredRef.current, recentRef.current);
+    recentRef.current.push(tuneIdOf(m.id));
     setMelody(m);
     setGrade(null);
     setRankChange(null);

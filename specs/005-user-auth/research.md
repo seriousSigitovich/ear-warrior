@@ -183,6 +183,7 @@ revoked). Offline, the app stays signed in locally and never blocks.
 
 ## R15 — What stays unchanged
 
-`/api/sync`, `/api/attempts`, the SQLite RowStore, the outbox and the practice loop are not touched.
+`/api/attempts`, the SQLite RowStore, the outbox and the practice loop are not touched. (Amended 2026-10-30:
+`/api/sync` is gone; a signed-in learner's progress goes through `/api/progress/*`, see spec 002.)
 Spec 001 FR-019/SC-008 and spec 002's "there are no accounts" receive a short amendment note pointing here
 (a documentation task, not a code change).

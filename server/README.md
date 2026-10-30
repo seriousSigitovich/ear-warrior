@@ -11,14 +11,15 @@ local SQLite cache so practice still works fully offline; the cache syncs to thi
 | GET    | `/health`        | Liveness probe.                                               |
 | POST   | `/api/subscribe` | Landing waitlist signup `{ email }`. Dedup by lower(email).   |
 | POST   | `/api/attempts`  | Anonymous aggregate practice telemetry (was `attempt_log`).   |
-| POST   | `/api/sync`      | Push local documents (last-write-wins on `updated_at`).       |
-| GET    | `/api/sync`      | Pull documents changed since `?since=<ms>` for a `device_id`. |
+| POST   | `/api/progress/attempts`   | One finished attempt of the signed-in learner (idempotent by id). |
+| GET    | `/api/progress/history`    | Tunes played at 100% + the latest tunes played.        |
+| GET/PUT | `/api/progress/difficulty` | The learner's difficulty state.                       |
 | GET    | `/admin/social`  | Social analytics dashboard (Basic auth, see below).           |
 | POST   | `/admin/social/collect` | Run the YouTube/Instagram collectors now.              |
 
-Data model: `signups` and `attempt_log` are typed tables. Game history (sessions, attempts,
-melodies, difficulty_settings, key_value) is stored losslessly as JSON documents in
-`sync_documents`, keyed by `(device_id, collection, doc_id)`.
+Data model: `signups`, `attempt_log`, `progress_attempts` and `progress_difficulty` are typed tables;
+the progress tables belong to a `users` row (all `/api/progress/*` need `Authorization: Bearer`, and
+deleting the account deletes them). `sync_documents` is the retired `/api/sync` mirror, kept as data only.
 
 ## Run locally
 

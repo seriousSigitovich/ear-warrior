@@ -171,6 +171,34 @@ export async function applyDdl(sql: Sql): Promise<void> {
     -- At most one open link per install.
     create unique index if not exists device_links_open_idx on device_links (device_id) where unlinked_at is null;
 
+    -- A signed-in learner's progress, one table per kind of fact; deleting the account deletes it.
+    create table if not exists progress_attempts (
+      user_id         uuid        not null references users (id) on delete cascade,
+      id              text        not null,
+      session_id      text        not null,
+      melody_id       text        not null,
+      tune_id         text        not null,
+      verdict         text        not null check (verdict in ('correct','incorrect')),
+      confidence      real        not null,
+      low_confidence  boolean     not null,
+      timed_out       boolean     not null,
+      input_mode      text        not null,
+      note_results    jsonb       not null,
+      created_at      timestamptz not null,
+      primary key (user_id, id)
+    );
+    create index if not exists progress_attempts_user_idx on progress_attempts (user_id, created_at desc);
+
+    create table if not exists progress_difficulty (
+      user_id        uuid        primary key references users (id) on delete cascade,
+      mode           text        not null check (mode in ('adaptive','fixed')),
+      adaptive_rank  int         not null,
+      fixed_rank     int         not null,
+      streak_kind    text        not null,
+      streak_count   int         not null,
+      updated_at     timestamptz not null
+    );
+
     -- Owner's view: attempt_log with the account each row belongs to (data-model.md "Attribution rule").
     -- A row before a device's first link belongs to whoever linked first; otherwise to the link that was
     -- open at its time; a gap after sign-out is anonymous (user_id / email are null).

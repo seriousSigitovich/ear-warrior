@@ -201,10 +201,31 @@ export function masteredTuneIds(attempts: readonly Pick<Attempt, 'melodyId' | 'v
   return new Set(attempts.filter((a) => a.verdict === 'correct').map((a) => tuneIdOf(a.melodyId)));
 }
 
+/** What the next pick is made against: tunes played at 100%, and the latest tunes played, oldest first. */
+export interface TuneHistory {
+  mastered: readonly string[];
+  recent: readonly string[];
+}
+
+/**
+ * The history as the recorded attempts on this device tell it. A signed-in learner gets the same shape
+ * from the server (`GET /api/progress/history`), which also covers their other devices.
+ */
+export function historyFromAttempts(
+  attempts: readonly Pick<Attempt, 'melodyId' | 'verdict' | 'createdAt'>[],
+): TuneHistory {
+  return {
+    mastered: [...masteredTuneIds(attempts)],
+    recent: [...attempts].sort((a, b) => a.createdAt.localeCompare(b.createdAt)).map((a) => tuneIdOf(a.melodyId)),
+  };
+}
+
 /**
  * A melody for `level` from the library: one of the level's tunes, chosen deterministically from
  * `seed`. Tunes in `mastered` are skipped until the level has none left, then all of them are back
- * in play. `tuneId` forces a specific tune.
+ * in play. Among those, the tune played longest ago (`recent`: tune ids, oldest first) wins, so a
+ * level cycles through its tunes instead of repeating one; `seed` breaks ties. `tuneId` forces a
+ * specific tune.
  * @throws if the level has no tune — the tests require every level 1–9 to have one.
  */
 export function curatedMelody(
@@ -212,10 +233,14 @@ export function curatedMelody(
   seed: number,
   tuneId?: string,
   mastered: ReadonlySet<string> = new Set(),
+  recent: readonly string[] = [],
 ): Melody {
   const ofLevel = LIBRARY.filter((t) => t.rank === level.rank);
   const fresh = ofLevel.filter((t) => !mastered.has(t.id));
-  const tunes = fresh.length > 0 ? fresh : ofLevel;
+  const pool = fresh.length > 0 ? fresh : ofLevel;
+  const lastPlayed = (t: LibraryTune) => recent.lastIndexOf(t.id); // -1: not played yet
+  const oldest = Math.min(...pool.map(lastPlayed));
+  const tunes = pool.filter((t) => lastPlayed(t) === oldest);
   const tune = tuneId
     ? ofLevel.find((t) => t.id === tuneId)
     : tunes[Math.abs(seed) % tunes.length];

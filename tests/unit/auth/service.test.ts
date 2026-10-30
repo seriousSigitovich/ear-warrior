@@ -144,6 +144,15 @@ describe('auth service (device-side lifecycle)', () => {
     expect(seen).toEqual([]);
   });
 
+  test('getToken gives the stored token while signed in and null after sign-out, without any network call', async () => {
+    const session = memorySession({ token: 'tok', email: 'a@x.co' });
+    const { service, client } = make({ session });
+    expect(await service.getToken()).toBe('tok');
+    await service.signOut();
+    expect(await service.getToken()).toBeNull();
+    expect((client as ReturnType<typeof fakeClient>).calls).not.toContain('me');
+  });
+
   test('signOut always clears local state, even if the server call fails (FR-012)', async () => {
     const client = fakeClient({ signOut: async () => fail('network') });
     const { service, session, kv, seen } = make({ client });

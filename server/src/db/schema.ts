@@ -201,3 +201,38 @@ export const deviceLinks = pgTable('device_links', {
 
 /** Idempotent DDL applied at boot (see db/ddl.ts). Kept here next to the schema for reference. */
 export const RAW_DDL = sql``;
+
+/** A signed-in learner's finished attempts (one row each; the account's progress). */
+export const progressAttempts = pgTable(
+  'progress_attempts',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    id: text('id').notNull(),
+    sessionId: text('session_id').notNull(),
+    melodyId: text('melody_id').notNull(),
+    tuneId: text('tune_id').notNull(),
+    verdict: text('verdict').notNull(),
+    confidence: real('confidence').notNull(),
+    lowConfidence: boolean('low_confidence').notNull(),
+    timedOut: boolean('timed_out').notNull(),
+    inputMode: text('input_mode').notNull(),
+    noteResults: jsonb('note_results').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.userId, t.id] }) }),
+);
+
+/** A signed-in learner's difficulty state: one row per account. */
+export const progressDifficulty = pgTable('progress_difficulty', {
+  userId: uuid('user_id')
+    .primaryKey()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  mode: text('mode').notNull(),
+  adaptiveRank: integer('adaptive_rank').notNull(),
+  fixedRank: integer('fixed_rank').notNull(),
+  streakKind: text('streak_kind').notNull(),
+  streakCount: integer('streak_count').notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
+});

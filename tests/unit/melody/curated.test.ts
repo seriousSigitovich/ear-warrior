@@ -2,7 +2,7 @@
 // every tune must be answerable on the 12-fret neck, belong to its scale (a typo shows up as a note
 // outside it) and every difficulty level must have something to play.
 import { DifficultyLevel } from '../../../src/models';
-import { CURATED, LIBRARY, curatedMelody, masteredTuneIds, tuneIdOf } from '../../../src/services/melody/curated';
+import { CURATED, LIBRARY, curatedMelody, masteredTuneIds, historyFromAttempts, tuneIdOf } from '../../../src/services/melody/curated';
 import { MAX_RANK, MIN_RANK, getLevelByRank, notesLabel } from '../../../src/services/melody/levels';
 import { scalePitchClasses } from '../../../src/services/melody/scales';
 import { MAX_FRET, OPEN_STRING_MIDI, positionsForMidi } from '../../../src/lib/fretboard';
@@ -106,8 +106,46 @@ describe('curatedMelody', () => {
     expect(ids.size).toBeGreaterThan(1);
   });
 
+  test('serves every tune of a level before repeating any, never the same one twice running', () => {
+    for (const rank of RANKS) {
+      const count = LIBRARY.filter((t) => t.rank === rank).length;
+      const recent: string[] = [];
+      for (let i = 0; i < count * 3; i++) {
+        const id = tuneIdOf(curatedMelody(level(rank), i * 7919, undefined, new Set(), recent).id);
+        if (count > 1) expect(id).not.toBe(recent[recent.length - 1]);
+        if (i < count) expect(recent).not.toContain(id);
+        recent.push(id);
+      }
+    }
+  });
+
   test('every melody id is unique per seed so a new play is a new Melody row', () => {
     expect(curatedMelody(level(1), 1).id).not.toBe(curatedMelody(level(1), 2).id);
+  });
+});
+
+describe('historyFromAttempts', () => {
+  const at = (melodyId: string, verdict: 'correct' | 'incorrect', time: string) => ({
+    melodyId,
+    verdict,
+    createdAt: `2026-10-30T10:${time}:00.000Z`,
+  });
+
+  test('lists the attempted tunes oldest first, whatever order the store returns them in', () => {
+    const { recent } = historyFromAttempts([at('frere3-9', 'incorrect', '02'), at('hotcrossbuns-4', 'incorrect', '01')]);
+    expect(recent).toEqual(['hotcrossbuns', 'frere3']);
+  });
+
+  test('mastered holds the tunes played at 100%', () => {
+    const { mastered } = historyFromAttempts([at('frere3-9', 'incorrect', '02'), at('hotcrossbuns-4', 'correct', '01')]);
+    expect(mastered).toEqual(['hotcrossbuns']);
+  });
+
+  test('the tune attempted last is the last one a level offers again', () => {
+    const { recent } = historyFromAttempts([at('hotcrossbuns-4', 'incorrect', '01'), at('frere3-9', 'incorrect', '02')]);
+    for (let seed = 0; seed < 20; seed++) {
+      expect(tuneIdOf(curatedMelody(level(1), seed, undefined, new Set(), recent).id)).toBe('hotcrossbuns');
+    }
   });
 });
 
