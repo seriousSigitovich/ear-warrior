@@ -62,8 +62,11 @@ function room(x, tail = 1.4) {
 }
 
 // --- the mix ----------------------------------------------------------------------------------------------------------------------------
-/** `S` is a timeline with ten/story.mjs's exports (the neon cut passes neon/story.mjs). */
-export function renderTenAudio(path, S = TEN) {
+/**
+ * `S` is a timeline with ten/story.mjs's exports (the neon cut passes neon/story.mjs). `voices` (optional, the Winter cut) are narrator lines,
+ * { at, samples } at SR, laid over the finished mix: each ducks what is under it to half, and its peak is matched to the melody's.
+ */
+export function renderTenAudio(path, S = TEN, voices = []) {
   const { DURATION, T, HEARD, ANSWER, HOOK_NOTE, NOTE_RING, TICKS } = S;
   // each pluck rings until the next one damps it (a little overlap); the last one rings on
   const ring = (list, i) => Math.min(NOTE_RING, list[i + 1].t - list[i].t + 0.12);
@@ -122,6 +125,16 @@ export function renderTenAudio(path, S = TEN) {
   // the reverb: just the guitars, ~16 % wet
   const wet = room(gtr.out);
   for (let i = 0; i < gtr.out.length; i++) out[i] += gtr.out[i] + wet[i] * 0.16;
+
+  let melPeak = 0;
+  for (let i = Math.round(HEARD[0].t * SR); i < Math.round((HEARD.at(-1).t + 0.5) * SR); i++) melPeak = Math.max(melPeak, Math.abs(out[i]));
+  for (const v of voices) {
+    let vp = 0;
+    for (const x of v.samples) vp = Math.max(vp, Math.abs(x));
+    const g = melPeak / (vp || 1), start = Math.round(v.at * SR), len = v.samples.length, r = Math.round(0.1 * SR);
+    for (let k = -r; k < len + r; k++) { const j = start + k; if (j >= 0 && j < out.length) out[j] *= 1 - 0.5 * Math.min(1, (k + r) / r, (len + r - k) / r); }
+    for (let k = 0; k < len && start + k < out.length; k++) out[start + k] += v.samples[k] * g;
+  }
 
   mkdirSync(dirname(path), { recursive: true });
   const peak = writeWav(path, out);

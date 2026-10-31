@@ -71,6 +71,21 @@ node neon/check.mjs                        # pitch at every onset == string/fret
 - Picture: `src/neon/cam.ts` (pinhole camera, near-plane clipping, discs on a plane), `Stage.tsx` (the world, one SVG with a bloom filter), `TenNeon.tsx` (camera path, type with RGB split, countdown, glitch filter, overlays).
 - **Not public domain**: the theme is Tamás Deák's. Treat it as a deliberate exception to the rule above; YouTube may claim it.
 
+## Winter cut — 20 s, minimal (`TenWinter`)
+
+The same five scenes and timings as `TenNeon`, stripped to the bone: one flat dark-purple ground (#1A0D2E), hairline strings and frets, white numbered dots, thin type, a single hairline ring when a note sounds and the plucked string trembling once. No glow, grain, shake, flash, particles or colour accent. The countdown is one thin numeral over a draining hairline and cuts hard on the time's-up hit.
+
+```bash
+node render-winter.mjs --voice               # fetch the narrator lines (voice.ai), then → public/ten-winter.wav + out/ten-winter.mp4 (20 s, ~30 s)
+node render-winter.mjs                       # same, with the lines already in winter/voice/ (without them: no narration)
+node render-winter.mjs --still=3.5,15.8      # PNG frames → out/frames/winter_<s>.png
+node winter/check.mjs                        # pitch at every onset == string/fret drawn, reveal == first playback, levels
+```
+
+- `winter/story.mjs`: Vivaldi, Winter (RV 297), II. Largo, solo bar 1 — E♭ B♭ A♭ G F E♭ F B♭ (8th, two 16ths, 8th, two 16ths, 8th, 8th), notes read from the flutetunes.com solo MIDI, an octave down into one hand position (frets 3–6), ♩ = 56. Public domain. Sound = `ten/audio.mjs`, unchanged.
+- Narration: `winter/voice.mjs` — a female voice (voice.ai "Emma - British Female"; `WINTER_VOICE_ID` swaps it, the other public female voices are Alicia, Lauren, Ellie) reads four lines: "Can you play this by ear?" (hook), "Now find the notes. Seven seconds." (countdown start), "Time's up.", "Did you get it? Comment your score." Each line has a window it must end in (trailing silence trimmed, sped up ≤ ×1.3, otherwise an error), so nothing is spoken over the melody; `ten/audio.mjs` takes them as an optional third argument, ducks the mix under each line by half and matches the line's peak to the melody's. Key and caching as in the pain cut; the mp3s are git-ignored.
+- Picture: `src/winter/TenWinter.tsx` (one file; reuses `src/ten/geometry.ts` and `motion.ts`). Where a spot repeats, only the latest number is drawn; the note names under the neck carry the order.
+
 ## Animation principles (apply to every new animation)
 
 Checked against the "by ear" film (`src/byear/ByEar.tsx` — the worked example; each principle is tagged where it is used). Motion is always a pure function of time `t`, so any frame renders alone.

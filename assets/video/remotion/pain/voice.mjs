@@ -52,7 +52,7 @@ export const CROWD = [
 export const crowdPath = (i) =>
   join(VOICE_DIR, `crowd-${i}-${createHash('sha1').update(`${CROWD[i].voice}|${CROWD[i].say}`).digest('hex').slice(0, 8)}.mp3`);
 
-async function tts(key, text, voice, file, force) {
+export async function tts(key, text, voice, file, force) {
   if (existsSync(file) && !force) return false;
   const body = { text, voice_id: voice, language: 'en', model: 'voiceai-tts-v1-latest', audio_format: 'mp3_44100_128' };
   for (let attempt = 1; ; attempt++) {                                      // the API answers 500 now and then; a retry goes through
