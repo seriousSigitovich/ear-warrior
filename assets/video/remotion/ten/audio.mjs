@@ -5,7 +5,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { copyFileSync, mkdirSync, rmSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { SR, track, guitarNote, pluck, bell, tick, whoosh, writeWav } from '../../synth.mjs';
-import { DURATION, T, HEARD, ANSWER, HOOK_NOTE, STEP, NOTE_RING, TICKS } from './story.mjs';
+import * as TEN from './story.mjs';
 
 // --- small voices -----------------------------------------------------------------------------------------------------------------------
 /** Pitch-dropping sine: the "thump" under a board snap, a countdown pulse, the time's-up boom. */
@@ -62,7 +62,11 @@ function room(x, tail = 1.4) {
 }
 
 // --- the mix ----------------------------------------------------------------------------------------------------------------------------
-export function renderTenAudio(path) {
+/** `S` is a timeline with ten/story.mjs's exports (the neon cut passes neon/story.mjs). */
+export function renderTenAudio(path, S = TEN) {
+  const { DURATION, T, HEARD, ANSWER, HOOK_NOTE, NOTE_RING, TICKS } = S;
+  // each pluck rings until the next one damps it (a little overlap); the last one rings on
+  const ring = (list, i) => Math.min(NOTE_RING, list[i + 1].t - list[i].t + 0.12);
   const { out, mix: raw } = track(DURATION);
   const SFX = 0.5;                                                 // every UI sound sits ~6 dB under where it was designed: the guitar leads
   const mix = (buf, start, gain = 1) => raw(buf, start, gain * SFX);
@@ -77,7 +81,7 @@ export function renderTenAudio(path) {
 
   // scene 2 — the melody, note for note
   HEARD.forEach((n, i) => {
-    const hold = i === HEARD.length - 1 ? 1.4 : NOTE_RING;
+    const hold = i === HEARD.length - 1 ? 1.4 : ring(HEARD, i);
     gtr.mix(guitarNote(n.midi, hold, i === HEARD.length - 1 ? 0.5 : 0.14), n.t, 1.0);
   });
 
@@ -99,7 +103,7 @@ export function renderTenAudio(path) {
   mix(noise(0.45, 12), T.reveal, 0.1);
   mix(whoosh(0.3), T.answerAt - 0.34, 0.1);
   ANSWER.forEach((n, i) => {
-    const hold = i === ANSWER.length - 1 ? 1.3 : NOTE_RING;
+    const hold = i === ANSWER.length - 1 ? 1.3 : ring(ANSWER, i);
     gtr.mix(guitarNote(n.midi, hold, i === ANSWER.length - 1 ? 0.5 : 0.14), n.t, 1.0);
     mix(bell(n.midi + 24, 0.55), n.t + 0.003, 0.05);
     mix(tick(2600, 0.05), n.t, 0.04);

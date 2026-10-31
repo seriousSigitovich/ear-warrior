@@ -56,6 +56,21 @@ npm run dev                         # Studio → composition "TenSecond"
 - Picture: `src/ten/` — `Fretboard.tsx` (true scale-length fret spacing, string gauges, vibrating strings, markers with pulse rings + particle bursts), `Countdown.tsx`, `Kinetic.tsx` (per-letter overshoot typography), `Background.tsx` (glow, dust, vignette, grain), `TenSecond.tsx` (the composition). Everything is a pure function of the frame.
 - Change the melody by editing the five pairs in `story.mjs`, re-run `render-ten.mjs` and `ten/check.mjs`. Always play the render before posting.
 
+## Neon cut — 20 s, «Ну, погоди!» theme (`TenNeon`)
+
+The same five scenes as `TenSecond`, a new picture: the neck is a 3-D highway on a night road (grid floor, striped horizon sun, stars), seen from the body end towards the nut. Notes fly down their string from beyond the nut as comets and land on their sound (shockwave, light pillar, sparks, vibrating string, lens streak); the countdown slams numerals in from depth with an RGB split and turns pink for the last 3 s; on "time's up" a glitch hit, a 0.3 s hold, a lean back and a crane over the top into a flat tab view where the answer drops from the sky.
+
+```bash
+node render-neon.mjs                       # → public/ten-neon.wav + out/ten-neon.mp4 (1080×1920, 60 fps, 20 s, ~4 min)
+node render-neon.mjs --audio-only          # soundtrack only
+node render-neon.mjs --still=3.5,13.1      # PNG frames → out/frames/neon_<s>.png
+node neon/check.mjs                        # pitch at every onset == string/fret drawn (harmonic-sum Goertzel), reveal == first playback, levels
+```
+
+- `neon/story.mjs` is the timeline: bars 1–2 of the theme (F C D A | C G A G F C, ♩ = 160, rhythm kept), an octave below the ProgMuz tab on gprotab.net so it sits in first position (frets 0–3). Same export names as `ten/story.mjs`; `ten/audio.mjs` now takes the timeline as an argument (`renderTenAudio(path, story)`), and `TenSecond`'s audio is bit-identical to before.
+- Picture: `src/neon/cam.ts` (pinhole camera, near-plane clipping, discs on a plane), `Stage.tsx` (the world, one SVG with a bloom filter), `TenNeon.tsx` (camera path, type with RGB split, countdown, glitch filter, overlays).
+- **Not public domain**: the theme is Tamás Deák's. Treat it as a deliberate exception to the rule above; YouTube may claim it.
+
 ## Animation principles (apply to every new animation)
 
 Checked against the "by ear" film (`src/byear/ByEar.tsx` — the worked example; each principle is tagged where it is used). Motion is always a pure function of time `t`, so any frame renders alone.
