@@ -15,6 +15,7 @@ import {
   STRING_COUNT,
   STRING_LABELS,
 } from '../../lib/fretboard';
+import { fretCellLabel, resultBoardLabel } from '../../lib/fretboardA11y';
 import { colors, radius, textAlpha, withAlpha } from '../../theme/nocturne';
 
 export interface FretboardProps {
@@ -51,8 +52,16 @@ export function Fretboard({ taps, statuses, onTap, rowHeight, style }: Fretboard
   taps.forEach((t, i) => markers.set(`${t.string}:${t.fret}`, i));
   const latest = statuses ? -1 : taps.length - 1;
 
+  // The read-only result board is one screen-reader stop with a summary; the answer board exposes
+  // each cell as a button.
+  const summary = !onTap && statuses ? resultBoardLabel(taps, statuses) : undefined;
+
   return (
-    <View style={[styles.board, style]}>
+    <View
+      style={[styles.board, style]}
+      accessible={summary !== undefined}
+      accessibilityLabel={summary}
+    >
       <View style={styles.labels}>
         <View style={{ width: GUTTER }} />
         {STRING_LABELS.map((label) => (
@@ -117,7 +126,7 @@ function Cell({
   const inlay =
     (SINGLE_INLAY_FRETS.includes(fret) && string === 2) ||
     (fret === DOUBLE_INLAY_FRET && (string === 1 || string === 3));
-  const label = `${STRING_LABELS[string]} string, ${fret === 0 ? 'open' : `fret ${fret}`}`;
+  const label = fretCellLabel({ string, fret }, marker?.number);
 
   const content = (
     <>
@@ -144,6 +153,7 @@ function Cell({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
+      accessibilityState={{ selected: marker !== undefined }}
       onPress={() => onTap({ string, fret })}
       style={styles.cell}
     >
@@ -190,7 +200,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     textAlign: 'center',
     fontSize: 10,
-    color: textAlpha[45],
+    color: textAlpha[60],
   },
   cell: { flex: 1 },
   stringLine: { position: 'absolute', top: 0, bottom: 0, left: '50%' },

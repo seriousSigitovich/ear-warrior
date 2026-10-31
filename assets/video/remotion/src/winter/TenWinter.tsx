@@ -9,22 +9,22 @@ import { SOFT, kick, ramp, springAt, type SpringCfg } from '../ten/motion';
 import { easeOut, lerp } from '../util';
 import { T, HEARD, ANSWER, HOOK_NOTE, COUNT_FROM, remaining, type TimedNote } from '../../winter/story.mjs';
 
-const W = {
+export const W = {
   bg: '#1A0D2E',
   ink: '#F4F0FA',
   dim: 'rgba(244,240,250,0.46)',
   hair: 'rgba(244,240,250,0.16)',
 };
-const FONT = '"Inter", -apple-system, "SF Pro Display", "Helvetica Neue", Arial, sans-serif';
-const CALM: SpringCfg = { damping: 18, stiffness: 160, mass: 0.8 };     // a hint of overshoot, never a bounce
+export const FONT = '"Inter", -apple-system, "SF Pro Display", "Helvetica Neue", Arial, sans-serif';
+export const CALM: SpringCfg = { damping: 18, stiffness: 160, mass: 0.8 };     // a hint of overshoot, never a bounce
 const BOARD_X = 540 - FB.W / 2;
 const DOT = 22;
 
 /** In at `at` (fade + small rise), out over 0.25 s from `outAt`. */
-const presence = (t: number, at: number, outAt?: number) => springAt(t, at, CALM) * (outAt === undefined ? 1 : 1 - ramp(t, outAt, outAt + 0.25));
+export const presence = (t: number, at: number, outAt?: number) => springAt(t, at, CALM) * (outAt === undefined ? 1 : 1 - ramp(t, outAt, outAt + 0.25));
 
 /** A line of thin type: fades in while rising 18 px, leaves by fading. */
-const Line: React.FC<{ t: number; at: number; outAt?: number; y: number; size: number; weight?: number; tracking?: number; color?: string; children: React.ReactNode }> = ({ t, at, outAt, y, size, weight = 300, tracking = -0.01, color = W.ink, children }) => {
+export const Line: React.FC<{ t: number; at: number; outAt?: number; y: number; size: number; weight?: number; tracking?: number; color?: string; children: React.ReactNode }> = ({ t, at, outAt, y, size, weight = 300, tracking = -0.01, color = W.ink, children }) => {
   const p = presence(t, at, outAt);
   if (p < 0.005) return null;
   return (
@@ -33,7 +33,7 @@ const Line: React.FC<{ t: number; at: number; outAt?: number; y: number; size: n
     </div>
   );
 };
-const Caps: React.FC<{ t: number; at: number; outAt?: number; y: number; text: string }> = ({ t, at, outAt, y, text }) => (
+export const Caps: React.FC<{ t: number; at: number; outAt?: number; y: number; text: string }> = ({ t, at, outAt, y, text }) => (
   <Line t={t} at={at} outAt={outAt} y={y} size={30} weight={500} tracking={0.32} color={W.dim}>{text}</Line>
 );
 

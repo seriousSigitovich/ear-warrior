@@ -5,7 +5,7 @@ Run (from assets/solo/frusciante):
     ../../guitar-rig/.venv/bin/python frusciante.py 02      # one
 
 Writes NN-name.mp3 (guitar + drums) and NN-name.mid (rhythm ch0 + lead ch2, GarageBand layout, no drums).
-Rhythm guitar goes through the `crunch` preset, the lead through `lead`. Drums reuse the kit in ../beautiful/compose.py.
+The audio is one lead guitar (`metal` preset) plus drums; the rhythm parts are written to the .mid only. Drums reuse the kit in ../beautiful/compose.py.
 """
 import subprocess
 import sys
@@ -194,19 +194,19 @@ def render(solo, out_dir, scratch):
     lead = lead_notes(solo.lead, solo.bpm)
     write_midi(out_dir / f"{solo.id}-{solo.title}.mid", rhythm, lead, solo.bpm)
 
-    song = Song(tuple(rhythm), tuple(lead), solo.bpm)
+    song = Song((), tuple(lead), solo.bpm)   # one guitar: the rhythm parts stay in the .mid, not in the audio
     guitar = render_song(song, solo.amp, lead_amp=LEAD_AMP, takes=2, lufs=-18.0, rhythm_db=RHYTHM_DB, lead_db=LEAD_DB)
     total = min(solo.beats * 60 / solo.bpm + solo.tail, solo.cap)
     n_total = int(total * SR)
     guitar = guitar[:, :n_total] if guitar.shape[1] >= n_total else np.pad(guitar, ((0, 0), (0, n_total - guitar.shape[1])))
 
-    # guitar only, for judging the tone without the synthetic kit
+    # the lone guitar without the synthetic kit
     solo_mix = guitar * arc_for(solo, n_total)
     solo_mix[:, -int(0.4 * SR):] *= np.linspace(1, 0, int(0.4 * SR))
     gwav = scratch / f"{solo.id}-g.wav"
     base.write_wav(gwav, to_lufs(solo_mix.astype(np.float32), SR, -14.0))
     subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(gwav), "-codec:a", "libmp3lame", "-b:a", "192k",
-                    str(out_dir / f"{solo.id}-{solo.title}-guitar-only.mp3")], check=True)
+                    str(out_dir / f"{solo.id}-{solo.title}-no-drums.mp3")], check=True)
 
     drums = base.render_drums(solo.drums, solo.bpm, n_total)
     drums *= 10 ** ((-14.0 + base.DRUM_DB) / 20) / max(np.sqrt((drums ** 2).mean() * 4), 1e-9) * 0.5

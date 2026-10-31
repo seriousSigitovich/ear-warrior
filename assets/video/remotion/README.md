@@ -86,6 +86,34 @@ node winter/check.mjs                        # pitch at every onset == string/fr
 - Narration: `winter/voice.mjs` — a female voice (voice.ai "Emma - British Female"; `WINTER_VOICE_ID` swaps it, the other public female voices are Alicia, Lauren, Ellie) reads four lines: "Can you play this by ear?" (hook), "Now find the notes. Seven seconds." (countdown start), "Time's up.", "Did you get it? Comment your score." Each line has a window it must end in (trailing silence trimmed, sped up ≤ ×1.3, otherwise an error), so nothing is spoken over the melody; `ten/audio.mjs` takes them as an optional third argument, ducks the mix under each line by half and matches the line's peak to the melody's. Key and caching as in the pain cut; the mp3s are git-ignored.
 - Picture: `src/winter/TenWinter.tsx` (one file; reuses `src/ten/geometry.ts` and `motion.ts`). Where a spot repeats, only the latest number is drawn; the note names under the neck carry the order.
 
+## Spring cut — 10 s, 120 fps, bouncing ball (`SpringBounce`)
+
+Winter's look (same palette and type, `W`/`Line`/`Caps` imported from `src/winter/TenWinter.tsx`) with more motion and a shorter format: hook → the melody once → "Your turn." No countdown and no answer on screen. A white ball hops from note to note, landing on the exact onset; its height is the pitch (one faint hairline per semitone, E4–B4), so the screen shows the tune's shape, never its notes or frets. Each landing squashes the ball, ripples its pitch line both ways, opens a ring and throws a few specks; the two long B4s land with a camera shake, a wider double ring and a low thump. The camera trails the ball, pushes in, then pulls back at the last note to show the whole contour; the contour is reeled into the ball, which swells, pops (one ring across the frame) and a new ball bounces in tempo under the call to action.
+
+```bash
+node render-spring.mjs --voice               # fetch the narrator lines (voice.ai), then → public/spring-bounce.wav + out/spring-bounce.mp4 (10 s, 120 fps, ~25 s)
+node render-spring.mjs --still=3.3,5.9       # PNG frames → out/frames/spring_<s>.png
+node render-spring.mjs --cover               # out/spring-bounce-cover.{png,jpg}: the hook over the whole contour
+node spring/check.mjs                        # notes == tunes/vivaldi-spring.json, pitch at every onset, onsets on whole frames, narrator, levels
+```
+
+- `spring/story.mjs`: Vivaldi, Spring (RV 269), I. Allegro, the theme (bars 1–2), the same notes as `tunes/vivaldi-spring.json` (checked against the Mutopia MIDI), ♩ = 120, 15 notes, 4 s. Sound `spring/audio.mjs` (guitar + room from `ten/audio.mjs`, whose `thump`/`noise`/`room`/`layVoices`/`writeAndMeasure` are now exported).
+- Narration `spring/voice.mjs`: Winter's voice, two lines ("Can you play this by ear?", "Your turn. Comment the notes."), both outside the melody.
+- YouTube and Instagram play at most 60 fps; the 120 fps master is downsampled by them.
+
+## Mozart cut — 10.5 s, 120 fps, 3D (`Mozart3D`)
+
+The bouncing-ball cut in perspective, darker (#07040D). No 3D library: `src/mozart/Mozart3D.tsx` projects world points through a pinhole camera into SVG and sorts what it draws far → near. A hairline floor grid fades into haze; each note is a thin pad floating at its pitch's height on a hairline stem, springing up just before the ball lands on it, flashing and rippling on the hit; the ball is a shaded sphere with a dashed drop-line and a contact ring on the floor, and leaves a dashed trail of its arcs. The camera orbits the ball during the hook, chases it through the tune, sweeps round to the side on the held top D (the pads flash again in order), closes in as the pads sink, and the ball pops — a ring in the air and a bright wave running out across the floor grid — before a new ball drops in and bounces in tempo under "Your turn."
+
+```bash
+node render-mozart.mjs --voice               # narrator lines (same text as Spring, cached per cut), then → public/mozart-3d.wav + out/mozart-3d.mp4 (~70 s)
+node render-mozart.mjs --still=3.3,5.9       # PNG frames → out/frames/mozart_<s>.png
+node render-mozart.mjs --cover               # out/mozart-3d-cover.{png,jpg}: the hook over the side view of the pads and arcs
+node mozart/check.mjs                        # spring/check.mjs's checks; the notes against challenge #44 (Mutopia)
+```
+
+- `mozart/story.mjs`: Eine kleine Nachtmusik (K. 525), the opening, G4 D4 G4 D4 G4 D4 G4 B4 D5, ♩ = 120 — the notes of challenge #44. Sound and narrator are the Spring cut's, generalised: `renderBounceAudio(path, story, voices)` in `spring/audio.mjs`, `narrator(story, dir, envVar)` in `spring/voice.mjs`, `checkBounce` in `spring/check.mjs`.
+
 ## Animation principles (apply to every new animation)
 
 Checked against the "by ear" film (`src/byear/ByEar.tsx` — the worked example; each principle is tagged where it is used). Motion is always a pure function of time `t`, so any frame renders alone.

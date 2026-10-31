@@ -9,7 +9,7 @@ import * as TEN from './story.mjs';
 
 // --- small voices -----------------------------------------------------------------------------------------------------------------------
 /** Pitch-dropping sine: the "thump" under a board snap, a countdown pulse, the time's-up boom. */
-function thump(f0, f1, dur, k = 7) {
+export function thump(f0, f1, dur, k = 7) {
   const total = Math.round(dur * SR), o = new Float32Array(total);
   let ph = 0;
   for (let i = 0; i < total; i++) {
@@ -20,7 +20,7 @@ function thump(f0, f1, dur, k = 7) {
   return o;
 }
 /** High-passed noise burst: a pick/string "snap", a soft crash. */
-function noise(dur, decay, seed = 0x2545f491) {
+export function noise(dur, decay, seed = 0x2545f491) {
   const total = Math.round(dur * SR), o = new Float32Array(total);
   let s = seed, prev = 0;
   for (let i = 0; i < total; i++) {
@@ -43,7 +43,7 @@ function drone(dur) {
 }
 
 /** Schroeder room: four combs into two all-passes. Returns the wet signal only, `tail` seconds longer than the input. */
-function room(x, tail = 1.4) {
+export function room(x, tail = 1.4) {
   const n = x.length + Math.round(tail * SR);
   const inp = new Float32Array(n); inp.set(x);
   const combs = [0.0297, 0.0371, 0.0411, 0.0437].map((d) => ({ d: Math.round(d * SR), g: 0.8 }));
@@ -128,6 +128,12 @@ export function renderTenAudio(path, S = TEN, voices = []) {
 
   let melPeak = 0;
   for (let i = Math.round(HEARD[0].t * SR); i < Math.round((HEARD.at(-1).t + 0.5) * SR); i++) melPeak = Math.max(melPeak, Math.abs(out[i]));
+  layVoices(out, voices, melPeak);
+  return writeAndMeasure(path, out);
+}
+
+/** Narrator lines { at, samples } laid over a finished mix: each ducks what is under it to half (0.1 s ramps), its peak matched to `melPeak`. */
+export function layVoices(out, voices, melPeak) {
   for (const v of voices) {
     let vp = 0;
     for (const x of v.samples) vp = Math.max(vp, Math.abs(x));
@@ -135,7 +141,10 @@ export function renderTenAudio(path, S = TEN, voices = []) {
     for (let k = -r; k < len + r; k++) { const j = start + k; if (j >= 0 && j < out.length) out[j] *= 1 - 0.5 * Math.min(1, (k + r) / r, (len + r - k) / r); }
     for (let k = 0; k < len && start + k < out.length; k++) out[start + k] += v.samples[k] * g;
   }
+}
 
+/** Writes the WAV and measures it for finalizeLoudness. */
+export function writeAndMeasure(path, out) {
   mkdirSync(dirname(path), { recursive: true });
   const peak = writeWav(path, out);
 

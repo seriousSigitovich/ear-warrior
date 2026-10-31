@@ -13,6 +13,10 @@ import { TenNeon } from './neon/TenNeon';
 import { DURATION as NEON_DURATION } from '../neon/story.mjs';
 import { TenWinter, WinterCover } from './winter/TenWinter';
 import { DURATION as WINTER_DURATION } from '../winter/story.mjs';
+import { SpringBounce, SpringCover } from './spring/SpringBounce';
+import { DURATION as SPRING_DURATION, FPS as SPRING_FPS } from '../spring/story.mjs';
+import { Mozart3D, MozartCover } from './mozart/Mozart3D';
+import { DURATION as MOZART_DURATION, FPS as MOZART_FPS } from '../mozart/story.mjs';
 import { HumVideo } from './hum/HumVideo';
 import { HairProof } from './hum/HairProof';
 import { Thumb, ThumbVertical } from './pain/Thumb';
@@ -42,6 +46,10 @@ export const Root: React.FC = () => (
   <Composition id="TenNeon" component={TenNeon} durationInFrames={NEON_DURATION * 60} fps={60} width={1080} height={1920} />
   <Composition id="TenWinter" component={TenWinter} durationInFrames={WINTER_DURATION * 60} fps={60} width={1080} height={1920} />
   <Composition id="WinterCover" component={WinterCover} durationInFrames={1} fps={60} width={1080} height={1920} />
+  <Composition id="SpringBounce" component={SpringBounce} durationInFrames={SPRING_DURATION * SPRING_FPS} fps={SPRING_FPS} width={1080} height={1920} />
+  <Composition id="SpringCover" component={SpringCover} durationInFrames={1} fps={SPRING_FPS} width={1080} height={1920} />
+  <Composition id="Mozart3D" component={Mozart3D} durationInFrames={Math.round(MOZART_DURATION * MOZART_FPS)} fps={MOZART_FPS} width={1080} height={1920} />
+  <Composition id="MozartCover" component={MozartCover} durationInFrames={1} fps={MOZART_FPS} width={1080} height={1920} />
   <Composition id="HumSolo" component={HumVideo} durationInFrames={900} fps={60} width={1080} height={1920} />
   <Composition id="HairProof" component={HairProof} durationInFrames={1} fps={60} width={1800} height={1500} />
   <Composition id="PainThumb" component={Thumb} durationInFrames={1} fps={FPS} width={1280} height={720} />

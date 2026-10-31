@@ -1,8 +1,9 @@
 // "Your turn" stage for fretboard input: prompt, one slot per melody note (filled with the note name
 // as it is placed), a progress caption and the fretboard to tap. Controls live in FretboardControls.
-import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { AccessibilityInfo, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { FretPosition, FretTap } from '../../lib/fretboard';
+import { placementAnnouncement } from '../../lib/fretboardA11y';
 import { noteName } from '../../lib/pitchNote';
 import { Fretboard } from '../fretboard/Fretboard';
 import { colors, font, textAlpha, withAlpha } from '../../theme/nocturne';
@@ -15,6 +16,14 @@ export interface FretboardAnswerProps {
 }
 
 export function FretboardAnswer({ noteCount, taps, onTap }: FretboardAnswerProps) {
+  // Each tap, undo or clear is spoken to screen-reader users; the board itself does not change label.
+  const announced = useRef(taps.length);
+  useEffect(() => {
+    if (announced.current === taps.length) return;
+    announced.current = taps.length;
+    AccessibilityInfo.announceForAccessibility(placementAnnouncement(taps, noteCount));
+  }, [taps, noteCount]);
+
   return (
     <View style={styles.wrap}>
       <View style={styles.head}>

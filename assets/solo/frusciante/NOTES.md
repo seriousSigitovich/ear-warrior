@@ -1,7 +1,7 @@
 # 3 Frusciante-style solos (20 s)
 
 Regenerate: `../../guitar-rig/.venv/bin/python frusciante.py [id]`. `.mid` = rhythm guitar (ch0) + lead (ch2), no drums.
-Rhythm guitar: `crunch` preset, doubled L/R. Lead: new `lead` preset (less gain and low end than `metal`), dotted-eighth delay.
+Audio: a single lead guitar (`metal` preset, dotted-eighth delay) over synthetic drums; `-no-drums` is the guitar alone. The rhythm parts are only in the .mid.
 Lead range goes up to D6 (a Strat's 22nd fret), bends stay within ±2 semitones so the MIDI export is exact.
 
 | # | Key / chords | BPM | Shape |

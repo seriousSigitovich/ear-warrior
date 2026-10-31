@@ -14,7 +14,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const VOICE_DIR = join(here, 'voice');
 
 /** "Emma - British Female". The other public female voices: Alicia (American), Lauren (American), Ellie. */
-const EMMA = '44de4286-f7aa-4216-845f-807103e33ac8';
+export const EMMA = '44de4286-f7aa-4216-845f-807103e33ac8';
 const voiceId = () => process.env.WINTER_VOICE_ID || EMMA;
 
 /** Each line starts at `at` and must be over by `until` (sped up to ×1.3 at most if it runs long): the melody windows stay voice-free. */
@@ -36,7 +36,7 @@ export async function generateVoice(force = false) {
 }
 
 /** A line as mono samples at SR, its trailing silence (~0.4 s in every voice.ai file) cut, sped up (≤ ×1.3, never slowed) to fit `maxSec`. */
-function loadLine(file, maxSec) {
+export function loadLine(file, maxSec) {
   const read = (tempo) => {
     const b = execFileSync('ffmpeg', ['-v', 'error', '-i', file, '-af', `areverse,silenceremove=start_periods=1:start_threshold=-45dB,areverse,atempo=${tempo}`, '-ac', '1', '-ar', String(SR), '-f', 'f32le', '-'], { maxBuffer: 1 << 28 });
     return new Float32Array(b.buffer, b.byteOffset, b.length / 4).slice();

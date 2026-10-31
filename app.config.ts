@@ -42,7 +42,14 @@ const config: ExpoConfig = {
     },
     // The app has no microphone access (answers are tapped on the fretboard, R14). Nothing should add
     // RECORD_AUDIO, but it is blocked explicitly (manifest merger `tools:node="remove"`) in case a library does.
-    blockedPermissions: ['android.permission.RECORD_AUDIO'],
+    // The Expo template's overlay and shared-storage permissions are unused too (the app writes only to
+    // its own directories), so they stay off the Play listing.
+    blockedPermissions: [
+      'android.permission.RECORD_AUDIO',
+      'android.permission.SYSTEM_ALERT_WINDOW',
+      'android.permission.READ_EXTERNAL_STORAGE',
+      'android.permission.WRITE_EXTERNAL_STORAGE',
+    ],
   },
   plugins: [
     'expo-router',
