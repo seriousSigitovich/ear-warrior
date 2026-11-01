@@ -17,7 +17,7 @@ export function renderCodeMail(code: string): { subject: string; text: string } 
 
 type Env = Record<string, string | undefined>;
 
-/** SMTP over nodemailer (the beta uses an existing mailbox). Loaded lazily so tests never touch it. */
+/** SMTP over nodemailer (production: Resend SMTP). Loaded lazily so tests never touch it. */
 function createSmtpMailer(env: Env): Mailer {
   const user = env.SMTP_USER;
   const pass = env.SMTP_PASS;
