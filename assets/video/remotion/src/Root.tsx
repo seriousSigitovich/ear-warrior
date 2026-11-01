@@ -17,6 +17,8 @@ import { SpringBounce, SpringCover } from './spring/SpringBounce';
 import { DURATION as SPRING_DURATION, FPS as SPRING_FPS } from '../spring/story.mjs';
 import { Mozart3D, MozartCover } from './mozart/Mozart3D';
 import { KingNeon } from './king/KingNeon';
+import { ToccataMinimal } from './toccata/ToccataMinimal';
+import { DURATION as TOCCATA_DURATION, FPS as TOCCATA_FPS } from '../toccata/story.mjs';
 import { NeonRecut } from './recut/NeonRecut';
 import { DURATION as RECUT_DURATION } from '../recut/story.mjs';
 import { DURATION as KING_DURATION, FPS as KING_FPS } from '../king/story.mjs';
@@ -56,6 +58,7 @@ export const Root: React.FC = () => (
   <Composition id="MozartCover" component={MozartCover} durationInFrames={1} fps={MOZART_FPS} width={1080} height={1920} />
   <Composition id="NeonRecut" component={NeonRecut} durationInFrames={Math.round(RECUT_DURATION * 60)} fps={60} width={1080} height={1920} />
   <Composition id="KingNeon" component={KingNeon} durationInFrames={Math.round(KING_DURATION * KING_FPS)} fps={KING_FPS} width={1080} height={1920} />
+  <Composition id="ToccataMinimal" component={ToccataMinimal} durationInFrames={Math.round(TOCCATA_DURATION * TOCCATA_FPS)} fps={TOCCATA_FPS} width={1080} height={1920} />
   <Composition id="HumSolo" component={HumVideo} durationInFrames={900} fps={60} width={1080} height={1920} />
   <Composition id="HairProof" component={HairProof} durationInFrames={1} fps={60} width={1800} height={1500} />
   <Composition id="PainThumb" component={Thumb} durationInFrames={1} fps={FPS} width={1280} height={720} />

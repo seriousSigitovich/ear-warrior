@@ -4,7 +4,7 @@ import { track, guitarNote, pluck, bell, tick, whoosh } from '../../synth.mjs';
 import { thump, noise, room, writeAndMeasure } from '../ten/audio.mjs';
 
 export function renderKingAudio(path, S) {
-  const { DURATION, T, HEARD, HOOK_NOTE, NOTE_RING } = S;
+  const { DURATION, T, HEARD, HOOK_NOTE, NOTE_RING, CHORD = [71, 74, 78] } = S;      // the closing chord: B minor, the King's key, unless the story names one
   const ring = (i) => Math.min(NOTE_RING, HEARD[i + 1].t - HEARD[i].t + 0.12);
   const { out, mix: raw } = track(DURATION);
   const SFX = 0.5;                                                 // every UI sound ~6 dB under where it was designed: the guitar leads
@@ -33,7 +33,7 @@ export function renderKingAudio(path, S) {
   mix(thump(180, 100, 0.18, 14), T.comment, 0.13);
   mix(tick(1600, 0.08), T.comment, 0.06);
   mix(whoosh(0.28), T.sweep - 0.28, 0.09);
-  [71, 74, 78].forEach((m, i) => mix(bell(m, 1.1), T.sweep + 0.02 + i * 0.03, 0.05));   // B minor, the tune's key
+  CHORD.forEach((m, i) => mix(bell(m, 1.1), T.sweep + 0.02 + i * 0.03, 0.05));
 
   const wet = room(gtr.out);
   for (let i = 0; i < gtr.out.length; i++) out[i] += gtr.out[i] + wet[i] * 0.16;
