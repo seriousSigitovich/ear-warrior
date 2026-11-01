@@ -308,5 +308,25 @@
     "visibility": "public",
     "title": "Mozart's Night Music. Can you play it by ear?",
     "publishedAt": "2026-10-31T18:42:27.409Z"
+  },
+  {
+    "file": "assets/video/remotion/out/king-neon.mp4",
+    "videoNo": 60,
+    "platform": "youtube",
+    "postId": "wX-j1Seblmg",
+    "url": "https://www.youtube.com/shorts/wX-j1Seblmg",
+    "visibility": "public",
+    "title": "97% of guitarists can't play this by ear. Can you?",
+    "publishedAt": "2026-11-01T19:04:18.967Z"
+  },
+  {
+    "file": "assets/video/remotion/out/king-neon.mp4",
+    "videoNo": 60,
+    "platform": "instagram",
+    "postId": "18132999079876428",
+    "url": "https://www.instagram.com/reel/DfNcBRRGRSa/",
+    "visibility": "public",
+    "title": "97% of guitarists can't play this by ear. Can you?",
+    "publishedAt": "2026-11-01T19:05:11.387Z"
   }
 ]
