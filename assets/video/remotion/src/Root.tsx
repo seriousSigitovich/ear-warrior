@@ -17,6 +17,8 @@ import { SpringBounce, SpringCover } from './spring/SpringBounce';
 import { DURATION as SPRING_DURATION, FPS as SPRING_FPS } from '../spring/story.mjs';
 import { Mozart3D, MozartCover } from './mozart/Mozart3D';
 import { KingNeon } from './king/KingNeon';
+import { NeonRecut } from './recut/NeonRecut';
+import { DURATION as RECUT_DURATION } from '../recut/story.mjs';
 import { DURATION as KING_DURATION, FPS as KING_FPS } from '../king/story.mjs';
 import { DURATION as MOZART_DURATION, FPS as MOZART_FPS } from '../mozart/story.mjs';
 import { HumVideo } from './hum/HumVideo';
@@ -52,6 +54,7 @@ export const Root: React.FC = () => (
   <Composition id="SpringCover" component={SpringCover} durationInFrames={1} fps={SPRING_FPS} width={1080} height={1920} />
   <Composition id="Mozart3D" component={Mozart3D} durationInFrames={Math.round(MOZART_DURATION * MOZART_FPS)} fps={MOZART_FPS} width={1080} height={1920} />
   <Composition id="MozartCover" component={MozartCover} durationInFrames={1} fps={MOZART_FPS} width={1080} height={1920} />
+  <Composition id="NeonRecut" component={NeonRecut} durationInFrames={Math.round(RECUT_DURATION * 60)} fps={60} width={1080} height={1920} />
   <Composition id="KingNeon" component={KingNeon} durationInFrames={Math.round(KING_DURATION * KING_FPS)} fps={KING_FPS} width={1080} height={1920} />
   <Composition id="HumSolo" component={HumVideo} durationInFrames={900} fps={60} width={1080} height={1920} />
   <Composition id="HairProof" component={HairProof} durationInFrames={1} fps={60} width={1800} height={1500} />
