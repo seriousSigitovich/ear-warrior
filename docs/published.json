@@ -348,5 +348,25 @@
     "visibility": "public",
     "title": "You know this tune. Can you play it by ear?",
     "publishedAt": "2026-11-01T23:24:07.604Z"
+  },
+  {
+    "file": "assets/video/remotion/out/toccata-minimal.mp4",
+    "videoNo": 62,
+    "platform": "youtube",
+    "postId": "M2lIF0iRh1I",
+    "url": "https://www.youtube.com/shorts/M2lIF0iRh1I",
+    "visibility": "public",
+    "title": "97% of guitarists can't play this by ear. Can you?",
+    "publishedAt": "2026-11-02T03:47:41.423Z"
+  },
+  {
+    "file": "assets/video/remotion/out/toccata-minimal.mp4",
+    "videoNo": 62,
+    "platform": "instagram",
+    "postId": "17996728575046525",
+    "url": "https://www.instagram.com/reel/DfOX6BwlWKk/",
+    "visibility": "public",
+    "title": "97% of guitarists can't play this by ear. Can you?",
+    "publishedAt": "2026-11-02T03:48:25.199Z"
   }
 ]
