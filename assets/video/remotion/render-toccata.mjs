@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// The 10.5 s Toccata minimal cut (#60's format in #57's look):  node render-toccata.mjs  →  public/toccata-minimal.wav + out/toccata-minimal.mp4 (1080×1920, 120 fps)
+// The 6.8 s Toccata minimal cut (#60's format in #57's look):  node render-toccata.mjs  →  public/toccata-minimal.wav + out/toccata-minimal.mp4 (1080×1920, 120 fps)
 // Timeline in toccata/story.mjs, picture in src/toccata/ToccataMinimal.tsx, soundtrack king/audio.mjs on that timeline.
 //   --cover  a frame of the hook → out/toccata-minimal-cover.{png,jpg}
 //   --audio-only        just the soundtrack            --still=<seconds>[,<seconds>…]   PNG frames → out/frames/
@@ -11,7 +11,7 @@ import { finalizeLoudness } from './ten/audio.mjs';
 import { renderKingAudio } from './king/audio.mjs';
 import * as story from './toccata/story.mjs';
 
-const COVER_AT = 1.1;                                           // the hook fully set
+const COVER_AT = 0.5;                                           // the hook fully set, before the first note
 
 const here = dirname(fileURLToPath(import.meta.url));
 mkdirSync(join(here, 'out'), { recursive: true });

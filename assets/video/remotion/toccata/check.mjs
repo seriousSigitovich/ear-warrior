@@ -37,7 +37,7 @@ HEARD.forEach((n, i) => {
 });
 ok(x.length === Math.round(DURATION * SR), `exactly ${DURATION} s of audio (${(x.length / SR).toFixed(3)} s)`);
 ok(HEARD.at(-1).t + 0.3 < T.hold && T.hold < T.cta, `last note at ${HEARD.at(-1).t.toFixed(2)} s rings before the swing at ${T.hold}`);
-ok(T.comment + 2 <= DURATION, 'the comment call stays ≥ 2 s on screen');
+ok(T.comment + 1.6 <= DURATION, 'the comment call stays ≥ 1.6 s on screen (the loop shows it again)');
 
 const rms = (a, b) => { let s = 0; const i0 = Math.round(a * SR), i1 = Math.round(b * SR); for (let i = i0; i < i1; i++) s += x[i] * x[i]; return Math.sqrt(s / (i1 - i0)); };
 const db = (v) => 20 * Math.log10(v);

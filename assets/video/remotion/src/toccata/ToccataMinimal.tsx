@@ -3,7 +3,7 @@
 // the neck in perspective drawn as hairlines that dissolve with distance, white dots, thin type — no glow, grain, glitch, flash or colour.
 // A note slides down its string as a white point with a hairline trail and lands on its fret, unnumbered, and stays. A pure function of
 // the frame; every time comes from ../../toccata/story.mjs, which also lays the soundtrack.
-//   0–2.4 hook · 2.4–6.6 hear the melody · 6.6–10.5 crane over the board, your turn, comment the notes
+//   0 the hook's hit · 1–4 the melody, under the hook's words · 4.35–6.8 crane over the board, your turn, comment the notes → loop
 import React from 'react';
 import { AbsoluteFill, Audio, staticFile, useCurrentFrame, useVideoConfig } from 'remotion';
 import { type Cam, type Pose, type V3, type P2, makeCam, aim, lerpPose, v3, project, segment, circleOnPlane, pxPerUnit, depth } from '../neon/cam';
@@ -162,14 +162,11 @@ export const ToccataMinimal: React.FC<{ silent?: boolean }> = ({ silent }) => {
     <AbsoluteFill style={{ background: W.bg, fontFamily: FONT, overflow: 'hidden' }}>
       <Board t={t} cam={cam} names={ramp(t, T.hold + 0.5, T.hold + 0.9)} />
 
-      {/* scene 1 · the hook */}
-      <Caps t={t} at={-0.3} outAt={2.2} y={280} text="ONE LISTEN · NO TABS" />
-      <Line t={t} at={-0.3} outAt={2.2} y={420} size={84}><span style={{ fontWeight: 500 }}>97%</span> of guitarists</Line>
-      <Line t={t} at={0.15} outAt={2.2} y={600} size={112}>{'can’t play this\nby ear.'}</Line>
-
-      {/* scene 2 · hear the melody, once */}
-      <Caps t={t} at={T.listen + 0.08} outAt={T.hold} y={300} text="LISTEN ONCE" />
-      <Pips t={t} y={370} notes={HEARD} from={T.listen + 0.15} to={T.hold} />
+      {/* the hook, and the melody under it: the words stay up until the last note has rung */}
+      <Caps t={t} at={-0.3} outAt={T.hold} y={280} text="ONE LISTEN · NO TABS" />
+      <Line t={t} at={-0.3} outAt={T.hold} y={420} size={84}><span style={{ fontWeight: 500 }}>97%</span> of guitarists</Line>
+      <Line t={t} at={0.15} outAt={T.hold} y={600} size={112}>{'can’t play this\nby ear.'}</Line>
+      <Pips t={t} y={725} notes={HEARD} from={T.listen} to={T.hold} />
 
       {/* scene 3 · your turn */}
       <Line t={t} at={T.cta} y={330} size={150}>Your turn</Line>
