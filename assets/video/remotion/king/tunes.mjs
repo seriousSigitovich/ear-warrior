@@ -4,26 +4,49 @@
 // Notes are an octave down from the app's curated set (src/services/melody/candidates.ts) or #14's `classics.mjs`; the Bumblebee is from memory.
 import { FPS, TUNING, noteName, midiAt } from './story.mjs';
 
+/** The scene gaps of the Mountain King cut: the hold after the last note, then each line of "your turn" after the hold, and the tail. */
+const GAPS = { hold: 0.35, cta: 0.45, sub: 0.95, comment: 1.45, sweep: 2.3, end: 1.6 };
 /** A story from a melody: the same scene gaps as the Mountain King cut, measured from the melody's last note. */
-function story({ id, title, notes, melody, bpm, hook, chord, maxFret = 4, ring, letRing = false, strum }) {
+function story({ id, title, notes, melody, bpm, hook, chord, maxFret = 4, ring, letRing = false, strum, listenAt = 2.75, gaps = GAPS, hookText = '97' }) {
   const MELODY = melody.map(([string, fret, beats]) => ({ string, fret, beats, midi: midiAt(string, fret), name: noteName(midiAt(string, fret)) }));
   const BEAT = 60 / bpm;
   const OFFSETS = MELODY.reduce((acc, n, i) => [...acc, i ? acc[i - 1] + MELODY[i - 1].beats * BEAT : 0], []);
   const PHRASE = OFFSETS.at(-1);
-  const listenAt = 2.75, hold = listenAt + PHRASE + 0.35;
-  const T = { hook: 0, listen: 2.4, listenAt, hold, cta: hold + 0.45, sub: hold + 0.95, comment: hold + 1.45, sweep: hold + 2.3 };
+  const hold = listenAt + PHRASE + gaps.hold;
+  const T = { hook: 0, listen: listenAt - 0.35, listenAt, hold, cta: hold + gaps.cta, sub: hold + gaps.sub, comment: hold + gaps.comment, sweep: hold + gaps.sweep };
   return {
     id, title, NOTES: notes, MAX_FRET: maxFret, FPS, TUNING, noteName, midiAt, MELODY, BPM: bpm, BEAT, PHRASE,
     STEP: Math.min(BEAT, 0.5), NOTE_RING: ring ?? BEAT + 0.12,       // `ring`: a sung, legato line lets each note ring into the next
     LET_RING: letRing,                                              // an arpeggio: each note rings on until its string plays again
     END_STRUM: strum,                                               // the last note sounds as this chord (MIDI), ringing into "your turn"
-    DURATION: Math.round((T.sweep + 1.6) * 10) / 10,
+    DURATION: Math.round((T.sweep + gaps.end) * 10) / 10,
     T,
     HEARD: MELODY.map((n, i) => ({ ...n, t: listenAt + OFFSETS[i], order: i })),
     HOOK_NOTE: { string: hook[0], fret: hook[1], midi: midiAt(hook[0], hook[1]) },
+    HOOK_TEXT: hookText,                                            // '97': "97% of guitarists can't play this by ear" · 'tabs': "can you play this without tabs?"
     CHORD: chord,
   };
 }
+
+// The House of the Rising Sun (traditional, public domain), the guitar arpeggio everyone knows rather than the vocal line (the author:
+// the sung melody is recognised worse than the harmony): Am C D F Am E, one bar of 6/8 each — bass, then G B e B G — and home on an
+// Am strum (the author: ending on F/Am alone feels cut off; the E → Am cadence closes it). Open first-position shapes, frets 0–3,
+// let ring. Beats are quarters; ♪ ≈ 0.21 s.
+const RISING = {
+  id: 'rising', title: 'The House of the Rising Sun', ring: 1.6, letRing: true,
+  notes: 'Am: A2 A3 C4 E4 C4 A3 · C: C3 G3 C4 E4 C4 G3 · D: D3 A3 D4 F#4 D4 A3 · F: F3 A3 C4 F4 C4 A3 · Am · E: E2 G#3 B3 E4 B3 G#3 · Am (strum)',
+  melody: [
+    [1, 0, 0.5], [3, 2, 0.5], [4, 1, 0.5], [5, 0, 0.5], [4, 1, 0.5], [3, 2, 0.5],    // Am  x02210
+    [1, 3, 0.5], [3, 0, 0.5], [4, 1, 0.5], [5, 0, 0.5], [4, 1, 0.5], [3, 0, 0.5],    // C   x32010
+    [2, 0, 0.5], [3, 2, 0.5], [4, 3, 0.5], [5, 2, 0.5], [4, 3, 0.5], [3, 2, 0.5],    // D   xx0232
+    [2, 3, 0.5], [3, 2, 0.5], [4, 1, 0.5], [5, 1, 0.5], [4, 1, 0.5], [3, 2, 0.5],    // F   xx3211
+    [1, 0, 0.5], [3, 2, 0.5], [4, 1, 0.5], [5, 0, 0.5], [4, 1, 0.5], [3, 2, 0.5],    // Am
+    [0, 0, 0.5], [3, 1, 0.5], [4, 0, 0.5], [5, 0, 0.5], [4, 0, 0.5], [3, 1, 0.5],    // E   022100
+    [1, 0, 1.5],                                                                     // Am, home: sounds as the strum below
+  ],
+  strum: [45, 52, 57, 60, 64],                                   // Am x02210 strummed, so the ending is not silence
+  bpm: 142, hook: [0, 0], chord: [69, 72, 76],                  // hit E2, the fifth · A minor
+};
 
 export const TUNES = {
   // Korobeiniki (Russian folk song, public domain; the Tetris tune), A minor, the whole 8-bar theme as #14 (`classics.mjs`), 37 notes,
@@ -65,23 +88,23 @@ export const TUNES = {
       [4, 1, 0.5], [4, 0, 0.5], [3, 3, 0.5], [3, 2, 0.5], [3, 1, 0.5], [3, 0, 0.5], [2, 4, 0.5], [2, 3, 1]],
     bpm: 168, hook: [1, 2], chord: [69, 72, 76],                  // hit B2 · A minor
   }),
-  // The House of the Rising Sun (traditional, public domain), the guitar arpeggio everyone knows rather than the vocal line (the author:
-  // the sung melody is recognised worse than the harmony): Am C D F Am E, one bar of 6/8 each — bass, then G B e B G — and home on an
-  // Am strum (the author: ending on F/Am alone feels cut off; the E → Am cadence closes it). Open first-position shapes, frets 0–3,
-  // let ring. Beats are quarters; ♪ ≈ 0.21 s.
-  rising: story({
-    id: 'rising', title: 'The House of the Rising Sun', ring: 1.6, letRing: true,
-    notes: 'Am: A2 A3 C4 E4 C4 A3 · C: C3 G3 C4 E4 C4 G3 · D: D3 A3 D4 F#4 D4 A3 · F: F3 A3 C4 F4 C4 A3 · Am · E: E2 G#3 B3 E4 B3 G#3 · Am (strum)',
+  // Bella ciao (Italian folk song, public domain), A minor, ♩ = 140: "Una mattina / mi son svegliato / o bella ciao, bella ciao, bella
+  // ciao ciao ciao", 22 notes, the hook "can you play this without tabs?". Notes from piano-keyboard-guide.com's tutorial (its F minor
+  // pass, up a third): E A B C A · E A B C A · E A B C B A E B A E E E, at E3–C4 on the D, G and B strings, frets 0–2; rhythm by ear.
+  bella: story({
+    id: 'bella', title: 'Bella ciao', hookText: 'tabs',
+    notes: 'E3 A3 B3 C4 A3 E3 A3 B3 C4 A3 E3 A3 B3 C4 B3 A3 E3 B3 A3 E3 E3 E3',
     melody: [
-      [1, 0, 0.5], [3, 2, 0.5], [4, 1, 0.5], [5, 0, 0.5], [4, 1, 0.5], [3, 2, 0.5],    // Am  x02210
-      [1, 3, 0.5], [3, 0, 0.5], [4, 1, 0.5], [5, 0, 0.5], [4, 1, 0.5], [3, 0, 0.5],    // C   x32010
-      [2, 0, 0.5], [3, 2, 0.5], [4, 3, 0.5], [5, 2, 0.5], [4, 3, 0.5], [3, 2, 0.5],    // D   xx0232
-      [2, 3, 0.5], [3, 2, 0.5], [4, 1, 0.5], [5, 1, 0.5], [4, 1, 0.5], [3, 2, 0.5],    // F   xx3211
-      [1, 0, 0.5], [3, 2, 0.5], [4, 1, 0.5], [5, 0, 0.5], [4, 1, 0.5], [3, 2, 0.5],    // Am
-      [0, 0, 0.5], [3, 1, 0.5], [4, 0, 0.5], [5, 0, 0.5], [4, 0, 0.5], [3, 1, 0.5],    // E   022100
-      [1, 0, 1.5],                                                                     // Am, home: sounds as the strum below
+      [2, 2, 0.5], [3, 2, 0.5], [4, 0, 0.5], [4, 1, 0.5], [3, 2, 2],                       // u-na mat-ti-na
+      [2, 2, 0.5], [3, 2, 0.5], [4, 0, 0.5], [4, 1, 0.5], [3, 2, 2],                       // mi son sve-glia-to
+      [2, 2, 0.5], [3, 2, 0.5], [4, 0, 0.5], [4, 1, 1], [4, 0, 0.5], [3, 2, 0.5], [2, 2, 1],   // o bel-la ciao, bel-la ciao,
+      [4, 0, 0.5], [3, 2, 0.5], [2, 2, 1], [2, 2, 1], [2, 2, 1.5],                          // bel-la ciao, ciao ciao
     ],
-    strum: [45, 52, 57, 60, 64],                                   // Am x02210 strummed, so the ending is not silence
-    bpm: 142, hook: [0, 0], chord: [69, 72, 76],                  // hit E2, the fifth · A minor
+    bpm: 140, hook: [0, 0], chord: [69, 72, 76],                  // hit E2, the fifth · A minor
   }),
+  // The House of the Rising Sun arpeggio (RISING above), #71.
+  rising: story(RISING),
+  // The same arpeggio as a 10 s looping band cut (src/rising/RisingBand.tsx): the melody from frame 0, ♩ = 144 so the film is exactly eight bars
+  // (seven of melody, one bar of E back into the top), the "your turn" gaps tightened.
+  risingBand: story({ ...RISING, id: 'risingBand', bpm: 144, listenAt: 0, gaps: { hold: 0.15, cta: 0.15, sub: 0.3, comment: 0.45, sweep: 0.85, end: 1.5 } }),
 };

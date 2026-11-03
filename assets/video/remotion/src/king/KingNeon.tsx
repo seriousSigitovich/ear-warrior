@@ -13,7 +13,7 @@ import { lerp, clamp } from '../util';
 import * as KING from '../../king/story.mjs';
 import { TUNES } from '../../king/tunes.mjs';
 
-type Story = Pick<typeof KING, 'T' | 'STEP' | 'HEARD' | 'HOOK_NOTE'> & { MAX_FRET?: number };
+type Story = Pick<typeof KING, 'T' | 'STEP' | 'HEARD' | 'HOOK_NOTE'> & { MAX_FRET?: number; HOOK_TEXT?: '97' | 'tabs' };
 /** The Mountain King story, or one of king/tunes.mjs's new melodies on the same cut. */
 const storyOf = (tune?: string): Story => (tune ? (TUNES as Record<string, Story>)[tune] : KING);
 
@@ -154,9 +154,19 @@ export const KingNeon: React.FC<{ silent?: boolean; tune?: string; cta?: 'commen
         <AbsoluteFill style={{ background: 'linear-gradient(180deg, rgba(5,1,12,0.6) 0%, rgba(5,1,12,0.0) 40%, rgba(5,1,12,0.0) 72%, rgba(5,1,12,0.5) 100%)' }} />
 
         {/* scene 1 · the hook */}
-        <Chip t={t} at={-0.1} y={230} text="ONE LISTEN · NO TABS" outAt={2.2} />
-        <Type t={t} at={-0.14} y={430} size={78} lines={[[{ text: '97%', color: N.lime }, { text: ' OF GUITARISTS' }]]} outAt={2.2} glitch={glitch} />
-        <Type t={t} at={0.2} y={600} size={124} lines={[[{ text: 'CAN’T PLAY THIS' }], [{ text: 'BY ' }, { text: 'EAR', color: N.lime }]]} outAt={2.2} glitch={glitch} stagger={0.018} />
+        {S.HOOK_TEXT === 'tabs' ? (
+          <>
+            <Chip t={t} at={-0.1} y={230} text="ONE LISTEN · BY EAR" outAt={2.2} />
+            <Type t={t} at={-0.14} y={430} size={78} lines={[[{ text: 'CAN YOU PLAY THIS' }]]} outAt={2.2} glitch={glitch} />
+            <Type t={t} at={0.2} y={600} size={124} lines={[[{ text: 'WITHOUT' }], [{ text: 'TABS', color: N.lime }, { text: '?' }]]} outAt={2.2} glitch={glitch} stagger={0.018} />
+          </>
+        ) : (
+          <>
+            <Chip t={t} at={-0.1} y={230} text="ONE LISTEN · NO TABS" outAt={2.2} />
+            <Type t={t} at={-0.14} y={430} size={78} lines={[[{ text: '97%', color: N.lime }, { text: ' OF GUITARISTS' }]]} outAt={2.2} glitch={glitch} />
+            <Type t={t} at={0.2} y={600} size={124} lines={[[{ text: 'CAN’T PLAY THIS' }], [{ text: 'BY ' }, { text: 'EAR', color: N.lime }]]} outAt={2.2} glitch={glitch} stagger={0.018} />
+          </>
+        )}
 
         {/* scene 2 · hear the melody, once */}
         <Type t={t} at={T.listen + 0.08} y={300} size={96} lines={[[{ text: 'LISTEN ' }, { text: 'ONCE', color: N.lime }]]} outAt={T.hold} />
