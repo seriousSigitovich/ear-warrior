@@ -5,7 +5,7 @@
 import { FPS, TUNING, noteName, midiAt } from './story.mjs';
 
 /** A story from a melody: the same scene gaps as the Mountain King cut, measured from the melody's last note. */
-function story({ id, title, notes, melody, bpm, hook, chord, maxFret = 4 }) {
+function story({ id, title, notes, melody, bpm, hook, chord, maxFret = 4, ring, letRing = false, strum }) {
   const MELODY = melody.map(([string, fret, beats]) => ({ string, fret, beats, midi: midiAt(string, fret), name: noteName(midiAt(string, fret)) }));
   const BEAT = 60 / bpm;
   const OFFSETS = MELODY.reduce((acc, n, i) => [...acc, i ? acc[i - 1] + MELODY[i - 1].beats * BEAT : 0], []);
@@ -14,7 +14,9 @@ function story({ id, title, notes, melody, bpm, hook, chord, maxFret = 4 }) {
   const T = { hook: 0, listen: 2.4, listenAt, hold, cta: hold + 0.45, sub: hold + 0.95, comment: hold + 1.45, sweep: hold + 2.3 };
   return {
     id, title, NOTES: notes, MAX_FRET: maxFret, FPS, TUNING, noteName, midiAt, MELODY, BPM: bpm, BEAT, PHRASE,
-    STEP: Math.min(BEAT, 0.5), NOTE_RING: BEAT + 0.12,
+    STEP: Math.min(BEAT, 0.5), NOTE_RING: ring ?? BEAT + 0.12,       // `ring`: a sung, legato line lets each note ring into the next
+    LET_RING: letRing,                                              // an arpeggio: each note rings on until its string plays again
+    END_STRUM: strum,                                               // the last note sounds as this chord (MIDI), ringing into "your turn"
     DURATION: Math.round((T.sweep + 1.6) * 10) / 10,
     T,
     HEARD: MELODY.map((n, i) => ({ ...n, t: listenAt + OFFSETS[i], order: i })),
@@ -62,5 +64,24 @@ export const TUNES = {
     melody: [[5, 0, 0.5], [4, 4, 0.5], [4, 3, 0.5], [4, 2, 0.5], [4, 3, 0.5], [4, 2, 0.5], [4, 1, 0.5], [4, 0, 0.5],
       [4, 1, 0.5], [4, 0, 0.5], [3, 3, 0.5], [3, 2, 0.5], [3, 1, 0.5], [3, 0, 0.5], [2, 4, 0.5], [2, 3, 1]],
     bpm: 168, hook: [1, 2], chord: [69, 72, 76],                  // hit B2 · A minor
+  }),
+  // The House of the Rising Sun (traditional, public domain), the guitar arpeggio everyone knows rather than the vocal line (the author:
+  // the sung melody is recognised worse than the harmony): Am C D F Am E, one bar of 6/8 each — bass, then G B e B G — and home on an
+  // Am strum (the author: ending on F/Am alone feels cut off; the E → Am cadence closes it). Open first-position shapes, frets 0–3,
+  // let ring. Beats are quarters; ♪ ≈ 0.21 s.
+  rising: story({
+    id: 'rising', title: 'The House of the Rising Sun', ring: 1.6, letRing: true,
+    notes: 'Am: A2 A3 C4 E4 C4 A3 · C: C3 G3 C4 E4 C4 G3 · D: D3 A3 D4 F#4 D4 A3 · F: F3 A3 C4 F4 C4 A3 · Am · E: E2 G#3 B3 E4 B3 G#3 · Am (strum)',
+    melody: [
+      [1, 0, 0.5], [3, 2, 0.5], [4, 1, 0.5], [5, 0, 0.5], [4, 1, 0.5], [3, 2, 0.5],    // Am  x02210
+      [1, 3, 0.5], [3, 0, 0.5], [4, 1, 0.5], [5, 0, 0.5], [4, 1, 0.5], [3, 0, 0.5],    // C   x32010
+      [2, 0, 0.5], [3, 2, 0.5], [4, 3, 0.5], [5, 2, 0.5], [4, 3, 0.5], [3, 2, 0.5],    // D   xx0232
+      [2, 3, 0.5], [3, 2, 0.5], [4, 1, 0.5], [5, 1, 0.5], [4, 1, 0.5], [3, 2, 0.5],    // F   xx3211
+      [1, 0, 0.5], [3, 2, 0.5], [4, 1, 0.5], [5, 0, 0.5], [4, 1, 0.5], [3, 2, 0.5],    // Am
+      [0, 0, 0.5], [3, 1, 0.5], [4, 0, 0.5], [5, 0, 0.5], [4, 0, 0.5], [3, 1, 0.5],    // E   022100
+      [1, 0, 1.5],                                                                     // Am, home: sounds as the strum below
+    ],
+    strum: [45, 52, 57, 60, 64],                                   // Am x02210 strummed, so the ending is not silence
+    bpm: 142, hook: [0, 0], chord: [69, 72, 76],                  // hit E2, the fifth · A minor
   }),
 };

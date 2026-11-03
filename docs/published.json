@@ -448,5 +448,25 @@
     "visibility": "public",
     "title": "97% of guitarists can't play this by ear. Can you?",
     "publishedAt": "2026-11-03T02:41:19.954Z"
+  },
+  {
+    "file": "assets/video/remotion/out/rising-wood.mp4",
+    "videoNo": 71,
+    "platform": "youtube",
+    "postId": "NP3HpW_HBaM",
+    "url": "https://www.youtube.com/shorts/NP3HpW_HBaM",
+    "visibility": "private",
+    "title": "Can you play it without tabs?",
+    "publishedAt": "2026-11-03T11:18:42.557Z"
+  },
+  {
+    "file": "assets/video/remotion/out/rising-wood.mp4",
+    "videoNo": 71,
+    "platform": "instagram",
+    "postId": "18067644968792233",
+    "url": "https://www.instagram.com/reel/DfRwUnJia8P/",
+    "visibility": "public",
+    "title": "Can you play it without tabs?",
+    "publishedAt": "2026-11-03T11:19:31.593Z"
   }
 ]
