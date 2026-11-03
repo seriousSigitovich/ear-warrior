@@ -1,0 +1,77 @@
+{
+"bassist_bob": {
+"w": 172,
+"h": 202,
+"cx": 88.2
+},
+"bassist_hard": {
+"w": 176,
+"h": 198,
+"cx": 88.9
+},
+"bassist_idle": {
+"w": 169,
+"h": 220,
+"cx": 78.5
+},
+"bassist_jump": {
+"w": 156,
+"h": 232,
+"cx": 65.5
+},
+"bassist_play": {
+"w": 172,
+"h": 213,
+"cx": 80.3
+},
+"drummer_bob": {
+"w": 170,
+"h": 168,
+"cx": 84.6
+},
+"drummer_fill": {
+"w": 173,
+"h": 177,
+"cx": 88.5
+},
+"drummer_hard": {
+"w": 177,
+"h": 185,
+"cx": 86.9
+},
+"drummer_idle": {
+"w": 197,
+"h": 180,
+"cx": 101.9
+},
+"drummer_play": {
+"w": 172,
+"h": 168,
+"cx": 85.9
+},
+"guitarist_bob": {
+"w": 158,
+"h": 186,
+"cx": 81.1
+},
+"guitarist_hard": {
+"w": 157,
+"h": 190,
+"cx": 75.3
+},
+"guitarist_idle": {
+"w": 162,
+"h": 208,
+"cx": 77.4
+},
+"guitarist_jump": {
+"w": 129,
+"h": 215,
+"cx": 57.1
+},
+"guitarist_play": {
+"w": 153,
+"h": 193,
+"cx": 76.8
+}
+}

@@ -10,19 +10,24 @@ import { type Pose, makeCam, aim, lerpPose, v3 } from '../neon/cam';
 import { Stage, type Hit, noteX } from '../neon/Stage';
 import { POP, SNAP, SOFT, kick, lin, ramp, springAt, type SpringCfg } from '../ten/motion';
 import { lerp, clamp } from '../util';
-import { T, STEP, HEARD, HOOK_NOTE } from '../../king/story.mjs';
+import * as KING from '../../king/story.mjs';
+import { TUNES } from '../../king/tunes.mjs';
+
+type Story = Pick<typeof KING, 'T' | 'STEP' | 'HEARD' | 'HOOK_NOTE'> & { MAX_FRET?: number };
+/** The Mountain King story, or one of king/tunes.mjs's new melodies on the same cut. */
+const storyOf = (tune?: string): Story => (tune ? (TUNES as Record<string, Story>)[tune] : KING);
 
 const CRANE: SpringCfg = { damping: 13, stiffness: 150, mass: 0.9 };       // the over-the-top move, as #56: fast, one visible overshoot
 
 // --- the camera ------------------------------------------------------------------------------------------------------------------------
 const pose = (pos: [number, number, number], target: [number, number, number], f: number, roll = 0): Pose => ({ pos, ...aim(pos, target), roll, f });
-const HOOK_AT: [number, number, number] = [noteX(HOOK_NOTE.fret), 0.2, HOOK_NOTE.string - 2.5];
-const P_HOOK = pose([1.4, 1.5, -4.1], HOOK_AT, 900, 0.1);                // low and close, on the impact
-const P_ROAD = pose([-6.2, 4.6, 0], [4, 0, 0], 1050);                      // down the neck towards the nut; frets 0–4 mid-frame
+const hookPose = (h: Story['HOOK_NOTE']) => pose([1.4, 1.5, -4.1], [noteX(h.fret), 0.2, h.string - 2.5], 900, 0.1);   // low and close, on the impact
+/** Down the neck towards the nut; frets 0–4 mid-frame. A tune that reaches fret 5 gets a wider lens aimed a little towards the treble. */
+const roadPose = (wide: boolean) => (wide ? pose([-6.2, 4.6, 0], [4.6, 0, 0.5], 860) : pose([-6.2, 4.6, 0], [4, 0, 0], 1050));
 const P_TOP: Pose = { pos: [2.05, 14.6, 1.2], yaw: -Math.PI / 2, pitch: -Math.PI / 2, roll: 0, f: 1150 };   // straight down, a tab
 
-function cameraAt(t: number, hits: Hit[]): Pose {
-  let p = lerpPose(P_HOOK, P_ROAD, springAt(t, 0.22, SOFT));               // hold on the hit, then pull back to reveal the road
+function cameraAt(t: number, hits: Hit[], { T, HOOK_NOTE, MAX_FRET = 4 }: Story): Pose {
+  let p = lerpPose(hookPose(HOOK_NOTE), roadPose(MAX_FRET > 4), springAt(t, 0.22, SOFT));               // hold on the hit, then pull back to reveal the road
   // after the last note: a short lean back (anticipation), then the crane over the top
   const pre = Math.sin(Math.PI * clamp((t - T.hold) / 0.22)) * (t < T.hold + 0.22 ? 1 : 0);
   p = lerpPose(p, P_TOP, springAt(t, T.hold + 0.2, CRANE));
@@ -38,7 +43,7 @@ function cameraAt(t: number, hits: Hit[]): Pose {
 }
 
 /** The board's notes, unnumbered, on their own string and fret; they stay to the end. A note landing on a lit spot replaces the older one. */
-const HITS: Hit[] = [
+const hitsOf = ({ HOOK_NOTE, HEARD, STEP }: Story): Hit[] => [
   { id: 'hook', string: HOOK_NOTE.string, fret: HOOK_NOTE.fret, land: 0, from: 'lane', label: '', gone: 1.55, big: true },
   ...HEARD.map((n, i): Hit => {
     const next = HEARD.slice(i + 1).find((m) => m.string === n.string && m.fret === n.fret);
@@ -94,26 +99,30 @@ const Chip: React.FC<{ t: number; at: number; y: number; text: string; outAt?: n
   );
 };
 
-/** "note n of 13" while listening. */
-const Pips: React.FC<{ t: number; y: number }> = ({ t, y }) => {
+/** "note n of N" while listening. */
+const Pips: React.FC<{ t: number; y: number; S: Story }> = ({ t, y, S: { T, HEARD } }) => {
   const show = springAt(t, T.listen + 0.15, SNAP) * (1 - ramp(t, T.hold, T.hold + 0.25));
+  const d = Math.min(22, 960 / (1.7 * HEARD.length));                    // a long tune's pips shrink to stay inside the frame
   if (show < 0.01) return null;
   return (
-    <div style={{ position: 'absolute', left: 0, right: 0, top: y, display: 'flex', justifyContent: 'center', gap: 16, opacity: show, transform: `translateY(${(1 - show) * 30}px)` }}>
+    <div style={{ position: 'absolute', left: 0, right: 0, top: y, display: 'flex', justifyContent: 'center', gap: d * 0.7, opacity: show, transform: `translateY(${(1 - show) * 30}px)` }}>
       {HEARD.map((n) => {
         const p = springAt(t, n.t, POP);
-        return <div key={n.order} style={{ width: 22, height: 22, borderRadius: 99, border: `3px solid ${rgba(N.lime, 0.55)}`, background: rgba(N.lime, Math.min(1, p)), transform: `scale(${1 + 0.45 * Math.min(1, p) * kick(t - n.t, 6)})`, boxShadow: p > 0.1 ? `0 0 ${20 * Math.min(1, p)}px ${rgba(N.lime, 0.8)}` : 'none' }} />;
+        return <div key={n.order} style={{ width: d, height: d, borderRadius: 99, border: `${d > 16 ? 3 : 2}px solid ${rgba(N.lime, 0.55)}`, background: rgba(N.lime, Math.min(1, p)), transform: `scale(${1 + 0.45 * Math.min(1, p) * kick(t - n.t, 6)})`, boxShadow: p > 0.1 ? `0 0 ${20 * Math.min(1, p)}px ${rgba(N.lime, 0.8)}` : 'none' }} />;
       })}
     </div>
   );
 };
 
 // --- the film ---------------------------------------------------------------------------------------------------------------------------
-export const KingNeon: React.FC<{ silent?: boolean }> = ({ silent }) => {
+/** `cta`: how the film ends — 'comment' (comment the notes, as #60) or 'send' (send it to a guitarist friend, H27: sends per reach). */
+export const KingNeon: React.FC<{ silent?: boolean; tune?: string; cta?: 'comment' | 'send' }> = ({ silent, tune, cta = 'comment' }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const t = frame / fps;
-  const cam = makeCam(cameraAt(t, HITS));
+  const S = storyOf(tune), { T } = S;
+  const HITS = hitsOf(S);
+  const cam = makeCam(cameraAt(t, HITS, S));
   const lit = HITS.filter((h) => h.id !== 'hook' && t >= h.land && (h.gone === undefined || t < h.gone)).map((h) => h.fret);
 
   // glitch: the opening hit and "your turn"
@@ -151,12 +160,19 @@ export const KingNeon: React.FC<{ silent?: boolean }> = ({ silent }) => {
 
         {/* scene 2 · hear the melody, once */}
         <Type t={t} at={T.listen + 0.08} y={300} size={96} lines={[[{ text: 'LISTEN ' }, { text: 'ONCE', color: N.lime }]]} outAt={T.hold} />
-        <Pips t={t} y={420} />
+        <Pips t={t} y={420} S={S} />
 
         {/* scene 3 · your turn */}
         <Type t={t} at={T.cta} y={330} size={150} lines={[[{ text: 'YOUR ' }, { text: 'TURN', color: N.lime }]]} stagger={0.02} glitch={glitch} />
         <Type t={t} at={T.sub} y={470} size={40} weight={700} tracking={0.12} lines={[[{ text: 'NO TABS. JUST YOUR EARS.', color: N.dim }]]} stagger={0.012} rise={0.5} glow="#000" />
-        <Type t={t} at={T.comment} y={1600} size={64} lines={[[{ text: 'COMMENT THE NOTES ' }, { text: '↓', color: N.lime }]]} stagger={0.016} tracking={-0.005} />
+        {cta === 'send' ? (
+          <>
+            <Type t={t} at={T.comment} y={1575} size={64} lines={[[{ text: 'SEND THIS TO A' }], [{ text: 'GUITARIST FRIEND ' }, { text: '↗', color: N.lime }]]} stagger={0.016} tracking={-0.005} />
+            <Type t={t} at={T.comment + 0.3} y={1700} size={40} weight={700} tracking={0.12} lines={[[{ text: 'WHO GETS IT FIRST?', color: N.dim }]]} stagger={0.012} rise={0.5} glow="#000" />
+          </>
+        ) : (
+          <Type t={t} at={T.comment} y={1600} size={64} lines={[[{ text: 'COMMENT THE NOTES ' }, { text: '↓', color: N.lime }]]} stagger={0.016} tracking={-0.005} />
+        )}
       </AbsoluteFill>
 
       {/* light: the flashes, the closing sweep, vignette and grain */}
@@ -174,7 +190,7 @@ export const KingNeon: React.FC<{ silent?: boolean }> = ({ silent }) => {
         </filter>
         <rect width="1080" height="1920" filter="url(#grainK)" />
       </svg>
-      {!silent && <Audio src={staticFile('king-neon.wav')} />}
+      {!silent && <Audio src={staticFile(tune ? `king-${tune}.wav` : 'king-neon.wav')} />}
     </AbsoluteFill>
   );
 };

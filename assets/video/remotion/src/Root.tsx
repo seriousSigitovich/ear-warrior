@@ -19,11 +19,18 @@ import { Mozart3D, MozartCover } from './mozart/Mozart3D';
 import { KingNeon } from './king/KingNeon';
 import { ToccataMinimal } from './toccata/ToccataMinimal';
 import { DURATION as TOCCATA_DURATION, FPS as TOCCATA_FPS } from '../toccata/story.mjs';
+import { SwanMinimal } from './swan/SwanMinimal';
+import { BeeMinimal } from './bee/BeeMinimal';
+import { DURATION as BEE_DURATION, FPS as BEE_FPS } from '../bee/story.mjs';
+import { DURATION as SWAN_DURATION, FPS as SWAN_FPS } from '../swan/story.mjs';
 import { NeonRecut } from './recut/NeonRecut';
 import { DURATION as RECUT_DURATION } from '../recut/story.mjs';
 import { DURATION as KING_DURATION, FPS as KING_FPS } from '../king/story.mjs';
+import { TUNES as KING_TUNES } from '../king/tunes.mjs';
 import { DURATION as MOZART_DURATION, FPS as MOZART_FPS } from '../mozart/story.mjs';
 import { HumVideo } from './hum/HumVideo';
+import { JamBlues } from './jam/JamScene';
+import { DURATION as JAM_DURATION, FPS as JAM_FPS } from '../jam/story.mjs';
 import { HairProof } from './hum/HairProof';
 import { Thumb, ThumbVertical } from './pain/Thumb';
 import preview from '../tunes/turkish-march.json';
@@ -58,7 +65,14 @@ export const Root: React.FC = () => (
   <Composition id="MozartCover" component={MozartCover} durationInFrames={1} fps={MOZART_FPS} width={1080} height={1920} />
   <Composition id="NeonRecut" component={NeonRecut} durationInFrames={Math.round(RECUT_DURATION * 60)} fps={60} width={1080} height={1920} />
   <Composition id="KingNeon" component={KingNeon} durationInFrames={Math.round(KING_DURATION * KING_FPS)} fps={KING_FPS} width={1080} height={1920} />
+  {Object.values(KING_TUNES).flatMap((k) => [
+    <Composition key={k.id} id={`King-${k.id}`} component={KingNeon} durationInFrames={Math.round(k.DURATION * k.FPS)} fps={k.FPS} width={1080} height={1920} defaultProps={{ tune: k.id }} />,
+    <Composition key={`${k.id}-send`} id={`King-${k.id}-send`} component={KingNeon} durationInFrames={Math.round(k.DURATION * k.FPS)} fps={k.FPS} width={1080} height={1920} defaultProps={{ tune: k.id, cta: 'send' as const }} />,
+  ])}
   <Composition id="ToccataMinimal" component={ToccataMinimal} durationInFrames={Math.round(TOCCATA_DURATION * TOCCATA_FPS)} fps={TOCCATA_FPS} width={1080} height={1920} />
+  <Composition id="BeeMinimal" component={BeeMinimal} durationInFrames={Math.round(BEE_DURATION * BEE_FPS)} fps={BEE_FPS} width={1080} height={1920} />
+  <Composition id="SwanMinimal" component={SwanMinimal} durationInFrames={Math.round(SWAN_DURATION * SWAN_FPS)} fps={SWAN_FPS} width={1080} height={1920} />
+  <Composition id="JamBlues" component={JamBlues} durationInFrames={Math.round(JAM_DURATION * JAM_FPS)} fps={JAM_FPS} width={1080} height={1920} />
   <Composition id="HumSolo" component={HumVideo} durationInFrames={900} fps={60} width={1080} height={1920} />
   <Composition id="HairProof" component={HairProof} durationInFrames={1} fps={60} width={1800} height={1500} />
   <Composition id="PainThumb" component={Thumb} durationInFrames={1} fps={FPS} width={1280} height={720} />
