@@ -3,13 +3,23 @@
 import { track, guitarNote, pluck, bell, tick, whoosh } from '../../synth.mjs';
 import { thump, noise, room, writeAndMeasure } from '../ten/audio.mjs';
 
-export function renderKingAudio(path, S) {
-  const { DURATION, T, HEARD, HOOK_NOTE, NOTE_RING, CHORD = [71, 74, 78] } = S;      // the closing chord: B minor, the King's key, unless the story names one
+/** The melody once on the recorded acoustic guitar, into `gtr` (a track()). Shared with the Rising Sun band cut (rising/audio.mjs). */
+export function layMelody(gtr, S) {
+  const { HEARD, NOTE_RING } = S;
   const ring = (i) => {
     if (!S.LET_RING) return Math.min(NOTE_RING, HEARD[i + 1].t - HEARD[i].t + 0.12);
     const again = HEARD.slice(i + 1).find((m) => m.string === HEARD[i].string);              // an arpeggio: rings until its string plays again
     return Math.min(NOTE_RING, (again ? again.t : HEARD.at(-1).t + 1.4) - HEARD[i].t + 0.05);
   };
+  HEARD.forEach((n, i) => {
+    const last = i === HEARD.length - 1;
+    if (last && S.END_STRUM) S.END_STRUM.forEach((m, k) => gtr.mix(guitarNote(m, 3.6, 1.2), n.t + k * 0.03, 0.75));   // a chord that carries the scene after it
+    else gtr.mix(guitarNote(n.midi, last ? 1.4 : ring(i), last ? 0.5 : 0.14), n.t, 1.0);
+  });
+}
+
+export function renderKingAudio(path, S) {
+  const { DURATION, T, HOOK_NOTE, CHORD = [71, 74, 78] } = S;      // the closing chord: B minor, the King's key, unless the story names one
   const { out, mix: raw } = track(DURATION);
   const SFX = 0.5;                                                 // every UI sound ~6 dB under where it was designed: the guitar leads
   const mix = (buf, start, gain = 1) => raw(buf, start, gain * SFX);
@@ -23,11 +33,7 @@ export function renderKingAudio(path, S) {
   mix(whoosh(0.34), T.listen - 0.34, 0.1);
 
   // scene 2 — the melody, once
-  HEARD.forEach((n, i) => {
-    const last = i === HEARD.length - 1;
-    if (last && S.END_STRUM) S.END_STRUM.forEach((m, k) => gtr.mix(guitarNote(m, 3.6, 1.2), n.t + k * 0.03, 0.75));   // a chord that carries the scene after it
-    else gtr.mix(guitarNote(n.midi, last ? 1.4 : ring(i), last ? 0.5 : 0.14), n.t, 1.0);
-  });
+  layMelody(gtr, S);
 
   // scene 3 — your turn: a whoosh as the camera swings, pops for each line, a light sweep and a soft closing chord
   mix(whoosh(0.5), T.hold, 0.09);

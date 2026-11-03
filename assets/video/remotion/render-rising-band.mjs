@@ -1,0 +1,44 @@
+#!/usr/bin/env node
+// #71's Rising Sun as a 10 s band cut:  node render-rising-band.mjs  →  public/rising-band.wav + out/rising-band.mp4 (1080×1920, 60 fps)
+// Timeline = king/tunes.mjs `risingBand` + rising/band.mjs, picture in src/rising/RisingBand.tsx, soundtrack rising/audio.mjs.
+//   --cover  a frame of the hook → out/rising-band-cover.{png,jpg}
+//   --audio-only        just the soundtrack            --still=<seconds>[,<seconds>…]   PNG frames → out/frames/
+import { execFileSync } from 'node:child_process';
+import { mkdirSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { finalizeLoudness } from './ten/audio.mjs';
+import { renderRisingBandAudio } from './rising/audio.mjs';
+import { TUNES } from './king/tunes.mjs';
+
+const story = TUNES.risingBand;
+const COVER_AT = 0.9;                                           // the hook fully set over the band
+
+const here = dirname(fileURLToPath(import.meta.url));
+mkdirSync(join(here, 'out'), { recursive: true });
+const remotion = join(here, 'node_modules', '.bin', 'remotion');
+const still = process.argv.find((a) => a.startsWith('--still='));
+if (still) {
+  mkdirSync(join(here, 'out', 'frames'), { recursive: true });
+  for (const sec of still.slice(8).split(',').map(Number)) {
+    const png = join(here, 'out', 'frames', `band_${sec}.png`);
+    execFileSync(remotion, ['still', 'src/index.ts', 'RisingBand', png, `--frame=${Math.round(sec * story.FPS)}`, '--log=error'], { cwd: here, stdio: 'inherit' });
+    console.log(`band: → ${png}`);
+  }
+  process.exit(0);
+}
+if (process.argv.includes('--cover')) {
+  const png = join(here, 'out', 'rising-band-cover.png'), jpg = png.replace(/png$/, 'jpg');
+  execFileSync(remotion, ['still', 'src/index.ts', 'RisingBand', png, `--frame=${Math.round(COVER_AT * story.FPS)}`, '--log=error'], { cwd: here, stdio: 'inherit' });
+  execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', png, '-q:v', '2', jpg]);
+  console.log(`band: → ${jpg}`);
+  process.exit(0);
+}
+const wav = join(here, 'public', 'rising-band.wav');
+const { peak, measureText } = renderRisingBandAudio(wav);
+const l = finalizeLoudness(wav, measureText);
+console.log(`band: audio peak ${peak.toFixed(2)} → ${Number(l.input_i).toFixed(1)} LUFS in, normalised to −14 LUFS`);
+if (process.argv.includes('--audio-only')) process.exit(0);
+const mp4 = join(here, 'out', 'rising-band.mp4');
+execFileSync(remotion, ['render', 'src/index.ts', 'RisingBand', mp4, '--concurrency=8', '--log=error'], { cwd: here, stdio: 'inherit' });
+console.log(`band: → ${mp4}`);

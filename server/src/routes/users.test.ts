@@ -9,6 +9,7 @@ const basic = (user: string, pass: string) => `Basic ${Buffer.from(`${user}:${pa
 const REPORT: UsageReport = {
   accounts: [{ email: 'tester@x.co', createdAt: new Date('2026-10-20T10:00:00Z'), devices: 1, attempts: 7, attempts7d: 7, correct: 5, lastAt: new Date('2026-10-24T10:00:00Z') }],
   anonymous: { devices: 3, attempts: 9, attempts7d: 2, correct: 4, lastAt: null },
+  anonymousDevices: [],
 };
 
 let saved: Record<string, string | undefined>;

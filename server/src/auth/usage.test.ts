@@ -41,6 +41,10 @@ test('counts attempts per account by the link in force, and the rest as anonymou
   const idle = report.accounts.find((r) => r.email === 'idle@x.co')!;
   assert.deepEqual([idle.attempts, idle.devices, idle.lastAt], [0, 0, null]);
   assert.deepEqual([report.anonymous.devices, report.anonymous.attempts], [2, 2]);
+  assert.deepEqual(
+    report.anonymousDevices.map((d) => [d.deviceId, d.attempts, d.firstAt.toISOString()]).sort(),
+    [['dev_a', 1, '2026-10-13T00:00:00.000Z'], ['dev_b', 1, '2026-10-13T00:00:00.000Z']],
+  );
 });
 
 after(() => sql.end({ timeout: 2 }));

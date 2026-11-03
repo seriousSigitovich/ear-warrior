@@ -1,0 +1,13 @@
+import type { TuneStory } from '../king/tunes.d.mts';
+export const S: TuneStory;
+export const BAR: number;
+export const EIGHTH: number;
+export const BARS: number[];
+export const BEATS: number[];
+export const HOME: number;
+export const ROOTS: number[][];
+export const VAMP: { t: number; chord: number[] }[];
+export const FILL: number[];
+export const DOCK: number;
+export const LEAVE: number;
+export const BACK: number;

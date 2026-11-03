@@ -12,9 +12,7 @@ import { NUT_X, fretX, noteX, stringZ } from '../neon/Stage';
 import { SOFT, kick, ramp, springAt, type SpringCfg } from '../ten/motion';
 import { clamp, easeOut, rng } from '../util';
 import { TUNES } from '../../king/tunes.mjs';
-
-const S = TUNES.rising;
-const { T, HEARD, HOOK_NOTE } = S;
+import type { TuneStory } from '../../king/tunes.d.mts';
 
 export const WOOD = {
   bg: '#1A0D2E',                                                          // the brand's dark purple (#57/#62's ground)
@@ -59,6 +57,8 @@ const GRAIN = (() => {
 })();
 
 type Hit = { id: string; string: number; fret: number; land: number; gone?: number; big?: boolean };
+/** What the neck draws for one story: its notes and its camera. */
+export type Wood = { S: TuneStory; HITS: Hit[]; cameraAt: (t: number) => Pose };
 const landPoint = (h: Hit): V3 => [noteX(h.fret), 0, stringZ(h.string)];
 function sparkAt(h: Hit, t: number): V3 | null {
   const a = t - (h.land - FLY);
@@ -67,23 +67,31 @@ function sparkAt(h: Hit, t: number): V3 | null {
   return v3.lerp([NUT_X + 11, STRING_Y, L[2]], [L[0], STRING_Y, L[2]], (a / FLY) ** 2);   // accelerating into the landing
 }
 
-const HITS: Hit[] = [
-  { id: 'hook', string: HOOK_NOTE.string, fret: HOOK_NOTE.fret, land: 0, gone: 1.55, big: true },
-  ...HEARD.map((n, i): Hit => {
-    const next = HEARD.slice(i + 1).find((m) => m.string === n.string && m.fret === n.fret);
-    return { id: `h${i}`, string: n.string, fret: n.fret, land: n.t, gone: next ? next.t - 0.06 : undefined };
-  }),
-];
-
 // --- the camera: #60's moves, unchanged ---------------------------------------------------------------------------------------------------
 const pose = (pos: [number, number, number], target: [number, number, number], f: number, roll = 0): Pose => ({ pos, ...aim(pos, target), roll, f });
-const P_HOOK = pose([1.4, 1.5, -4.1], [noteX(HOOK_NOTE.fret), 0.2, HOOK_NOTE.string - 2.5], 900, 0.1);   // low and close, on the hit
-/** Down the neck towards the nut; frets 0–4 mid-frame. A tune that reaches fret 5 gets #60's wider lens aimed a little towards the treble. */
-const P_ROAD = (S.MAX_FRET ?? 4) > 4 ? pose([-6.2, 4.6, 0], [4.6, 0, 0.5], 860) : pose([-6.2, 4.6, 0], [4, 0, 0], 1050);
 const P_TOP: Pose = { pos: [2.05, 14.6, 1.2], yaw: -Math.PI / 2, pitch: -Math.PI / 2, roll: 0, f: 1150 };   // straight down, a tab
 
-function cameraAt(t: number): Pose {
-  let p = lerpPose(P_HOOK, P_ROAD, springAt(t, 0.22, SOFT));
+/**
+ * The neck for a story. `hook`: #60's opening hit lands a big note on frame 0. `enter`: when the camera leaves the low close shot on the
+ * hook note for the road down the neck (#60: 0.22 s; the band cut: when it arrives from the stage).
+ */
+export function woodOf(S: TuneStory, { hook = true, enter = 0.22 }: { hook?: boolean; enter?: number } = {}): Wood {
+  const { T, HEARD, HOOK_NOTE } = S;
+  const HITS: Hit[] = [
+    ...(hook ? [{ id: 'hook', string: HOOK_NOTE.string, fret: HOOK_NOTE.fret, land: 0, gone: 1.55, big: true }] : []),
+    ...HEARD.map((n, i): Hit => {
+      const next = HEARD.slice(i + 1).find((m) => m.string === n.string && m.fret === n.fret);
+      return { id: `h${i}`, string: n.string, fret: n.fret, land: n.t, gone: next ? next.t - 0.06 : undefined };
+    }),
+  ];
+  const P_HOOK = pose([1.4, 1.5, -4.1], [noteX(HOOK_NOTE.fret), 0.2, HOOK_NOTE.string - 2.5], 900, 0.1);   // low and close, on the hit
+  /** Down the neck towards the nut; frets 0–4 mid-frame. A tune that reaches fret 5 gets #60's wider lens aimed a little towards the treble. */
+  const P_ROAD = (S.MAX_FRET ?? 4) > 4 ? pose([-6.2, 4.6, 0], [4.6, 0, 0.5], 860) : pose([-6.2, 4.6, 0], [4, 0, 0], 1050);
+  return { S, HITS, cameraAt: (t) => cameraAt(t, T, HITS, P_HOOK, P_ROAD, enter) };
+}
+
+function cameraAt(t: number, T: TuneStory['T'], HITS: Hit[], P_HOOK: Pose, P_ROAD: Pose, enter: number): Pose {
+  let p = lerpPose(P_HOOK, P_ROAD, springAt(t, enter, SOFT));
   const pre = Math.sin(Math.PI * clamp((t - T.hold) / 0.22)) * (t < T.hold + 0.22 ? 1 : 0);
   p = lerpPose(p, P_TOP, springAt(t, T.hold + 0.2, CRANE));
   p = { ...p, pos: v3.add(p.pos, [-0.6 * pre, 0.25 * pre, 0]) };
@@ -117,7 +125,7 @@ function fibre(cam: Cam, zAt: (x: number) => number, x0: number, x1: number, str
 }
 
 // --- the guitar -------------------------------------------------------------------------------------------------------------------------
-const Guitar: React.FC<{ t: number; cam: Cam; names: number }> = ({ t, cam, names }) => {
+export const Guitar: React.FC<{ t: number; cam: Cam; names: number; w: Wood }> = ({ t, cam, names, w: { S: { T }, HITS } }) => {
   const live = HITS.filter((h) => t >= h.land - FLY);
   const lit = live.filter((h) => t >= h.land && (h.gone === undefined || t < h.gone));
   const dots = lit.map((h) => ({ h, s: springAt(t, h.land, CALM) * (h.gone === undefined ? 1 : 1 - clamp((t - h.gone) / 0.25) ** 2) }))
@@ -262,7 +270,7 @@ const Guitar: React.FC<{ t: number; cam: Cam; names: number }> = ({ t, cam, name
 // --- type -------------------------------------------------------------------------------------------------------------------------------
 const presence = (t: number, at: number, outAt?: number) => springAt(t, at, CALM) * (outAt === undefined ? 1 : 1 - ramp(t, outAt, outAt + 0.3));
 /** A line of serif type: fades in while rising 20 px, leaves by fading. */
-const Line: React.FC<{ t: number; at: number; outAt?: number; y: number; size: number; italic?: boolean; color?: string; tracking?: number; children: React.ReactNode }> = ({ t, at, outAt, y, size, italic, color = WOOD.cream, tracking = 0, children }) => {
+export const Line: React.FC<{ t: number; at: number; outAt?: number; y: number; size: number; italic?: boolean; color?: string; tracking?: number; children: React.ReactNode }> = ({ t, at, outAt, y, size, italic, color = WOOD.cream, tracking = 0, children }) => {
   const p = presence(t, at, outAt);
   if (p < 0.005) return null;
   return (
@@ -272,15 +280,15 @@ const Line: React.FC<{ t: number; at: number; outAt?: number; y: number; size: n
   );
 };
 /** Small letter-spaced caps between two short rules. */
-const Caps: React.FC<{ t: number; at: number; outAt?: number; y: number; text: string; color?: string }> = ({ t, at, outAt, y, text, color = WOOD.dim }) => (
+export const Caps: React.FC<{ t: number; at: number; outAt?: number; y: number; text: string; color?: string }> = ({ t, at, outAt, y, text, color = WOOD.dim }) => (
   <Line t={t} at={at} outAt={outAt} y={y} size={30} tracking={0.3} color={color}>
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 22 }}><span style={{ width: 54, height: 1.5, background: color }} />{text}<span style={{ width: 54, height: 1.5, background: color }} /></span>
   </Line>
 );
 
 /** "note n of N" while listening: small amber beads. */
-const Beads: React.FC<{ t: number; y: number }> = ({ t, y }) => {
-  const show = presence(t, T.listen + 0.15, T.hold);
+export const Beads: React.FC<{ t: number; y: number; S: TuneStory; from?: number }> = ({ t, y, S: { T, HEARD }, from = T.listen + 0.15 }) => {
+  const show = presence(t, from, T.hold);
   const d = Math.min(16, 960 / (1.7 * HEARD.length));                      // a long tune's beads shrink to stay inside the frame
   if (show < 0.01) return null;
   return (
@@ -294,20 +302,49 @@ const Beads: React.FC<{ t: number; y: number }> = ({ t, y }) => {
 };
 
 // --- the film ---------------------------------------------------------------------------------------------------------------------------
+const W71 = woodOf(TUNES.rising);
+const { T } = W71.S;
+
+/** The room behind the neck: a warm lamp glow above it, a lilac glow from the top. */
+export const LampRoom: React.FC = () => (
+  <AbsoluteFill style={{ background: 'radial-gradient(ellipse 70% 45% at 55% 52%, rgba(120,62,24,0.38) 0%, rgba(70,36,60,0.2) 45%, rgba(0,0,0,0) 75%), radial-gradient(ellipse 90% 40% at 50% 8%, rgba(145,132,217,0.22) 0%, rgba(145,132,217,0) 70%)' }} />
+);
+/** The lens: vignette and film grain. */
+export const Lens: React.FC<{ frame: number }> = ({ frame }) => (
+  <>
+    <AbsoluteFill style={{ background: 'radial-gradient(ellipse at 50% 50%, transparent 50%, rgba(10,4,20,0.7) 100%)' }} />
+    <svg width={1080} height={1920} style={{ position: 'absolute', inset: 0, mixBlendMode: 'overlay', opacity: 0.2 }}>
+      <filter id="grainW" x="0" y="0" width="100%" height="100%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves={2} seed={1 + (Math.floor(frame / 2) % 24)} stitchTiles="stitch" />
+        <feColorMatrix type="saturate" values="0" />
+      </filter>
+      <rect width="1080" height="1920" filter="url(#grainW)" />
+    </svg>
+  </>
+);
+/** Scene 3's type: your turn, and which song next. */
+export const YourTurn: React.FC<{ t: number; T: TuneStory['T'] }> = ({ t, T }) => (
+  <>
+    <Line t={t} at={T.cta} y={300} size={150}>Your turn.</Line>
+    <Caps t={t} at={T.sub} y={440} text="NO TABS · JUST YOUR EARS" />
+    <Line t={t} at={T.comment} y={1560} size={66}>{'Which song should\nwe play '}<span style={{ fontStyle: 'italic', color: WOOD.lilac }}>next?</span></Line>
+    <Caps t={t} at={T.comment + 0.35} y={1720} text="TELL US BELOW ↓" color={WOOD.lilac} />
+  </>
+);
+/** Scrims so the type reads over the wood. */
+export const SCRIM = 'linear-gradient(180deg, rgba(26,13,46,0.8) 0%, rgba(26,13,46,0.42) 26%, rgba(26,13,46,0) 40%, rgba(26,13,46,0) 70%, rgba(26,13,46,0.78) 92%)';
+
 export const RisingWood: React.FC<{ silent?: boolean }> = ({ silent }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const t = frame / fps;
-  const cam = makeCam(cameraAt(t));
+  const cam = makeCam(W71.cameraAt(t));
 
   return (
     <AbsoluteFill style={{ background: WOOD.bg, overflow: 'hidden' }}>
-      {/* the room: a warm lamp glow somewhere above the neck */}
-      <AbsoluteFill style={{ background: 'radial-gradient(ellipse 70% 45% at 55% 52%, rgba(120,62,24,0.38) 0%, rgba(70,36,60,0.2) 45%, rgba(0,0,0,0) 75%), radial-gradient(ellipse 90% 40% at 50% 8%, rgba(145,132,217,0.22) 0%, rgba(145,132,217,0) 70%)' }} />
-      <Guitar t={t} cam={cam} names={ramp(t, T.hold + 0.5, T.hold + 0.9)} />
-
-      {/* scrims so the type reads over the wood */}
-      <AbsoluteFill style={{ background: 'linear-gradient(180deg, rgba(26,13,46,0.8) 0%, rgba(26,13,46,0.42) 26%, rgba(26,13,46,0) 40%, rgba(26,13,46,0) 70%, rgba(26,13,46,0.78) 92%)' }} />
+      <LampRoom />
+      <Guitar t={t} cam={cam} names={ramp(t, T.hold + 0.5, T.hold + 0.9)} w={W71} />
+      <AbsoluteFill style={{ background: SCRIM }} />
 
       {/* scene 1 · the hook */}
       <Caps t={t} at={-0.2} outAt={2.2} y={260} text="ONE LISTEN" />
@@ -316,23 +353,11 @@ export const RisingWood: React.FC<{ silent?: boolean }> = ({ silent }) => {
 
       {/* scene 2 · hear the melody, once */}
       <Line t={t} at={T.listen + 0.05} outAt={T.hold} y={290} size={96} italic>Listen once.</Line>
-      <Beads t={t} y={400} />
+      <Beads t={t} y={400} S={W71.S} />
 
       {/* scene 3 · your turn, and which song next */}
-      <Line t={t} at={T.cta} y={300} size={150}>Your turn.</Line>
-      <Caps t={t} at={T.sub} y={440} text="NO TABS · JUST YOUR EARS" />
-      <Line t={t} at={T.comment} y={1560} size={66}>{'Which song should\nwe play '}<span style={{ fontStyle: 'italic', color: WOOD.lilac }}>next?</span></Line>
-      <Caps t={t} at={T.comment + 0.35} y={1720} text="TELL US BELOW ↓" color={WOOD.lilac} />
-
-      {/* the lens: vignette, a faint warm halation, film grain */}
-      <AbsoluteFill style={{ background: 'radial-gradient(ellipse at 50% 50%, transparent 50%, rgba(10,4,20,0.7) 100%)' }} />
-      <svg width={1080} height={1920} style={{ position: 'absolute', inset: 0, mixBlendMode: 'overlay', opacity: 0.2 }}>
-        <filter id="grainW" x="0" y="0" width="100%" height="100%">
-          <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves={2} seed={1 + (Math.floor(frame / 2) % 24)} stitchTiles="stitch" />
-          <feColorMatrix type="saturate" values="0" />
-        </filter>
-        <rect width="1080" height="1920" filter="url(#grainW)" />
-      </svg>
+      <YourTurn t={t} T={T} />
+      <Lens frame={frame} />
       {!silent && <Audio src={staticFile('rising-wood.wav')} />}
     </AbsoluteFill>
   );

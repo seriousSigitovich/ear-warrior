@@ -1,7 +1,7 @@
 // The one read behind /admin/users: attempts grouped by the account they are attributed to
 // (view attempt_log_attributed, db/ddl.ts). Counts only — no attempt content leaves the query.
 import { sql } from '../db/client.js';
-import type { AccountUsage, UsageReport, UsageRow } from './usagePage.js';
+import type { AccountUsage, DeviceUsage, UsageReport, UsageRow } from './usagePage.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -56,8 +56,17 @@ export async function loadUsageReport(now: Date, run: SqlTag = sql as unknown as
            (count(*) filter (where verdict = 'correct'))::int as correct, max(created_at) as last_at
     from attempt_log_attributed
     where user_id is null`;
+  const devices = await run<(Row & { device_id: string; first_at: Stamp })[]>`
+    select device_id, min(created_at) as first_at, 1 as devices, count(*)::int as attempts,
+           (count(*) filter (where created_at >= ${since}::timestamptz))::int as attempts7d,
+           (count(*) filter (where verdict = 'correct'))::int as correct, max(created_at) as last_at
+    from attempt_log_attributed
+    where user_id is null
+    group by device_id
+    order by last_at desc`;
   return {
     accounts: accounts.map((r): AccountUsage => ({ email: r.email, createdAt: toDate(r.created_at), ...usageRow(r) })),
     anonymous: usageRow(anonymous),
+    anonymousDevices: devices.map((r): DeviceUsage => ({ deviceId: r.device_id, firstAt: toDate(r.first_at), ...usageRow(r) })),
   };
 }

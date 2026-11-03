@@ -20,19 +20,19 @@ function amp(buf, drive, cab = 0.42) {
   }
   return o;
 }
-function kick(len = 0.3) {
+export function kick(len = 0.3) {
   const total = Math.round(len * SR), o = new Float32Array(total);
   let ph = 0;
   for (let i = 0; i < total; i++) { const t = i / SR; ph += (2 * Math.PI * (46 + 120 * Math.exp(-t * 30))) / SR; o[i] = Math.sin(ph) * Math.exp(-t * 9) * Math.min(1, t / 0.002); }
   return o;
 }
-function noise(len, decay, hp, seed) {
+export function noise(len, decay, hp, seed) {
   const total = Math.round(len * SR), o = new Float32Array(total);
   let s = seed, prev = 0;
   for (let i = 0; i < total; i++) { s ^= s << 13; s ^= s >>> 17; s ^= s << 5; const n = ((s >>> 0) / 0xffffffff) * 2 - 1; o[i] = (n - prev * hp) * Math.exp(-(i / SR) * decay); prev = n; }
   return o;
 }
-function snare() {
+export function snare() {
   const n = noise(0.22, 20, 0.5, 0x2468ace), o = new Float32Array(n.length);
   for (let i = 0; i < n.length; i++) { const t = i / SR; o[i] = n[i] * 0.85 + Math.sin(2 * Math.PI * 185 * t) * Math.exp(-t * 22) * 0.6; }
   return o;
@@ -42,7 +42,7 @@ function snare() {
  * low-pass (`fc` Hz) so nothing rings above the bass register. No Karplus pluck: an octave-up plucked string read as a second guitar.
  * The lick uses a higher `fc` and more 2nd harmonic so it speaks on phone speakers, but stays a bass.
  */
-function bass(midi, dur, fc = 650) {
+export function bass(midi, dur, fc = 650) {
   const f = 440 * Math.pow(2, (midi - 69) / 12), len = dur + 0.06, total = Math.round(len * SR), o = new Float32Array(total);
   const h2 = fc > 900 ? 0.55 : 0.35, a = 1 - Math.exp((-2 * Math.PI * fc) / SR);
   let s = 0x5eed + midi, lp1 = 0, lp2 = 0;

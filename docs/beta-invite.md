@@ -1,0 +1,51 @@
+# Приглашение в закрытую бету (Android)
+
+## Итог 2026-11-03
+
+- В «Beta waitlist» добавлены hamadanihasan508, mollybayliss09, sparielanders: в списке 23 адреса.
+- **Отправлено 12** (по решению владельца, остальных придержали): рассылка Resend «You're in: Ear Warrior beta for Android» от `noreply@earwarrior.app`, Reply-To golovsha@gmail.com. Через минуту после отправки: 8 доставлено, остальные в пути, отказов 0. Адрес в тексте подставился. Получатели — 12 самых свежих Android-лидов с Gmail: hamadanihasan508, mollybayliss09, sparielanders, linoysela2010, markochianeseswag, siqueiradafonsecaelizabeth, nayeiro14, flatline.incommunicado, paranbhatt11, ahejter01, lunacatrazz, miladcmt.mn (все @gmail.com). 
+- **Вторая волна, 7 адресов (бывший резерв), отправлена в тот же день:** lolson1117, akshita.m2015, jgnwg10, gh.mohadde3, gettoyashagarwal (@gmail.com), mns243564@protonmail.com, soyelcoco86@hotmail.com. Копия первой рассылки, отправлена на сегмент Resend «Beta invite wave 2» (ровно эти 7). Все 7 доставлены, у первой волны повторов нет. Итого разослано 19 — всем Android-лидам из списка Play.
+- В Resend: контакты первой волны вне сегментов, вторая — в «Beta invite wave 2». Любую следующую рассылку отправлять на новый сегмент, не на All Contacts (там 19).
+- Resend помечает ссылку на страницу в Play как битую: не участникам закрытого теста Play отдаёт 404. Это нормально.
+
+Составлено 2026-11-03. Источник платформы — user-agent в письмах «New signup» на golovsha@gmail.com (в Upstash хранятся только email и source).
+
+## Список «Beta waitlist» в Play Console
+
+**Добавить (Android, ещё не в списке):**
+
+| # | Email | Когда | Устройство |
+|---|---|---|---|
+| 29 | hamadanihasan508@gmail.com | 2026-11-03 | Android 16, Samsung SM-A566B |
+| 28 | mollybayliss09@gmail.com | 2026-11-03 | Android 16, Samsung SM-S931B |
+| 24 | sparielanders@gmail.com | 2026-11-02 | Android 16, OnePlus CPH2599 |
+
+**Не добавляю:** winterwarrior72@gmail.com (#22, Android 16): 2026-11-02 консоль отклонила адрес как несуществующий.
+
+**Уже в списке, Android (16):** ahejter01, akshita.m2015, flatline.incommunicado, gettoyashagarwal, gh.mohadde3, jgnwg10, linoysela2010, lolson1117, lunacatrazz, markochianeseswag, miladcmt.mn, nayeiro14, paranbhatt11, siqueiradafonsecaelizabeth (все @gmail.com), mns243564@protonmail.com, soyelcoco86@hotmail.com. Последние два не Gmail: войти в тест смогут, только если у них Google-аккаунт на этот адрес.
+
+**Уже в списке, не Android (4):** kaanirfanguven@gmail.com (Mac), ravikishen.r@gmail.com (iPhone), faithmubarak7@gmail.com и vaannics@gmail.com (платформа неизвестна, записались до хранилища). В списке оставляю, письмо им не шлю.
+
+Не Android и не в списке: dancsmt@yahoo.com, sdiamondsolace, david.mottl@icloud.com, gimlets.rondos_6r@icloud.com (все iPhone).
+
+После добавления в списке 23 адреса, письмо уходит **19** Android-адресам (16 + 3).
+
+## Письмо
+
+Отправитель: `Ear Warrior <noreply@earwarrior.app>`, Reply-To: golovsha@gmail.com (этот адрес уже указан в Play как почта для отзывов). Каждому отдельное письмо, `{email}` подставляется.
+
+**Тема:** You're in: Ear Warrior beta for Android
+
+> Hi,
+>
+> You signed up for Ear Warrior, the guitar app where you hear a melody and play it back by ear on the fretboard. The Android beta is open, and you're on the list.
+>
+> 1. On your Android phone, signed in to Google Play as {email}, open this link: https://play.google.com/apps/testing/com.earwarrior.app
+> 2. Tap "Become a tester".
+> 3. Install the app: https://play.google.com/store/apps/details?id=com.earwarrior.app
+>
+> Please stay in the test for the next 14 days: Google lets the app go public only after testers stay that long.
+>
+> Something broke or annoyed you? Just reply to this email.
+>
+> Dmitrii, Ear Warrior

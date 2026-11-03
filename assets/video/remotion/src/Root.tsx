@@ -19,6 +19,7 @@ import { Mozart3D, MozartCover } from './mozart/Mozart3D';
 import { KingNeon } from './king/KingNeon';
 import { ToccataMinimal } from './toccata/ToccataMinimal';
 import { RisingWood } from './rising/RisingWood';
+import { RisingBand } from './rising/RisingBand';
 import { DURATION as TOCCATA_DURATION, FPS as TOCCATA_FPS } from '../toccata/story.mjs';
 import { SwanMinimal } from './swan/SwanMinimal';
 import { BeeMinimal } from './bee/BeeMinimal';
@@ -71,6 +72,7 @@ export const Root: React.FC = () => (
     <Composition key={`${k.id}-send`} id={`King-${k.id}-send`} component={KingNeon} durationInFrames={Math.round(k.DURATION * k.FPS)} fps={k.FPS} width={1080} height={1920} defaultProps={{ tune: k.id, cta: 'send' as const }} />,
   ])}
   <Composition id="RisingWood" component={RisingWood} durationInFrames={Math.round(KING_TUNES.rising.DURATION * KING_TUNES.rising.FPS)} fps={KING_TUNES.rising.FPS} width={1080} height={1920} />
+      <Composition id="RisingBand" component={RisingBand} durationInFrames={Math.round(KING_TUNES.risingBand.DURATION * KING_TUNES.risingBand.FPS)} fps={KING_TUNES.risingBand.FPS} width={1080} height={1920} />
   <Composition id="ToccataMinimal" component={ToccataMinimal} durationInFrames={Math.round(TOCCATA_DURATION * TOCCATA_FPS)} fps={TOCCATA_FPS} width={1080} height={1920} />
   <Composition id="BeeMinimal" component={BeeMinimal} durationInFrames={Math.round(BEE_DURATION * BEE_FPS)} fps={BEE_FPS} width={1080} height={1920} />
   <Composition id="SwanMinimal" component={SwanMinimal} durationInFrames={Math.round(SWAN_DURATION * SWAN_FPS)} fps={SWAN_FPS} width={1080} height={1920} />

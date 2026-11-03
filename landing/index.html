@@ -475,9 +475,25 @@
   var demoUndo = document.getElementById("demoUndo");
   var neck = document.getElementById("neck");
   var neckBoard = document.getElementById("neckBoard");
+  // ?tune=swan swaps in the phrase from video #63, so "check your answer, link in profile" lands on that same phrase.
+  // Swan must stay equal to MELODY in assets/video/remotion/swan/story.mjs (140 bpm there).
+  var TUNES = {
+    twinkle: { midi: [60, 60, 67, 67, 69, 69, 67], beats: [1, 1, 1, 1, 1, 1, 1], bpm: 120,   // C4 C4 G4 G4 A4 A4 G4
+               title: "Try it: hear this once", sub: "7 notes. Everyone knows it. Can you find it on the fretboard?" },
+    swan:    { midi: [47, 52, 54, 55, 57, 59, 55, 59, 55, 59], beats: [1.5, 0.5, 0.5, 0.5, 0.5, 1.5, 0.5, 1.5, 0.5, 2], bpm: 140,
+               title: "The tune from the video", sub: "10 notes. Hear it once, then find it on the fretboard." }  // B2 E3 F#3 G3 A3 B3 G3 B3 G3 B3
+  };
+  var TUNE_ID = new URLSearchParams(location.search).get("tune");
+  var TUNE = TUNES[TUNE_ID] || TUNES.twinkle;
+  var TARGET_MIDI = TUNE.midi;
+  var ONSETS = TUNE.beats.reduce(function (acc, b, i) { return acc.concat(i ? acc[i - 1] + TUNE.beats[i - 1] * 60 / TUNE.bpm : 0); }, []);
+  var PHRASE_END = ONSETS[ONSETS.length - 1] + TUNE.beats[TUNE.beats.length - 1] * 60 / TUNE.bpm;
+  if (TUNE !== TUNES.twinkle) {
+    demoTitle.textContent = TUNE.title;
+    demoSub.textContent = TUNE.sub;
+    document.getElementById("demoDots").innerHTML = new Array(TARGET_MIDI.length + 1).join("<i></i>");
+  }
   var dots = document.querySelectorAll("#demoDots i");
-  var TARGET_MIDI = [60, 60, 67, 67, 69, 69, 67];                    // C4 C4 G4 G4 A4 A4 G4
-  var STEP = 0.5;                                                    // seconds per note (120 bpm)
   var STRINGS = [                                                    // top row = high e, like tab
     { name: "e", open: 64, w: 1 }, { name: "B", open: 59, w: 1.5 }, { name: "G", open: 55, w: 2 },
     { name: "D", open: 50, w: 2.5 }, { name: "A", open: 45, w: 3 }, { name: "E", open: 40, w: 3.5 }
@@ -570,7 +586,7 @@
     demoBtn.innerHTML = PAUSE_ICON;
     var t0 = audioCtx.currentTime + 0.05;
     TARGET_MIDI.forEach(function (m, i) {
-      var t = t0 + i * STEP, last = i === TARGET_MIDI.length - 1;
+      var t = t0 + ONSETS[i], last = i === TARGET_MIDI.length - 1;
       noteTone(midiHz(m), t, last ? 1.2 : 0.7);
       demoTimers.push(setTimeout(function () {
         for (var k = 0; k < dots.length; k++) dots[k].className = k === i ? "on" : "";
@@ -584,7 +600,7 @@
       demoSub.textContent = "Find it on the fretboard. 0 of " + TARGET_MIDI.length + " placed.";
       showAnswering(true);
       track("melody-done");
-    }, (TARGET_MIDI.length * STEP + 0.9) * 1000));
+    }, (PHRASE_END + 0.9) * 1000));
   }
   demoBtn.addEventListener("click", playMelody);
 

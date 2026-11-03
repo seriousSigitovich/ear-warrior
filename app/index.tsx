@@ -8,7 +8,7 @@ import { DEFAULT_DIFFICULTY_SETTINGS, effectiveRank } from '../src/features/diff
 import { KEY_VALUE_TABLE, defaultRowStore } from '../src/services/storage/db';
 import { keyValueOverRowStore } from '../src/lib/deviceId';
 import { isOnboarded } from '../src/lib/onboarding';
-import { createDifficultySettingsRepository } from '../src/services/storage/repositories';
+import { getDifficultyRepository } from '../src/features/difficulty/difficultyRepository';
 import { Screen } from '../src/components/common/Screen';
 import { Button } from '../src/components/common/Button';
 import { Card } from '../src/components/common/Card';
@@ -27,7 +27,7 @@ export default function Home() {
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
-      createDifficultySettingsRepository(defaultRowStore())
+      getDifficultyRepository()
         .load()
         .then((s) => {
           if (!cancelled) setRank(effectiveRank(s));

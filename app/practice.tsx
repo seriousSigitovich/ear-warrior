@@ -12,7 +12,6 @@ import { createAudioSession } from '../src/services/audio/session';
 import { KEY_VALUE_TABLE, defaultRowStore } from '../src/services/storage/db';
 import {
   createAttemptRepository,
-  createDifficultySettingsRepository,
   createMelodyRepository,
   createSessionRepository,
 } from '../src/services/storage/repositories';
@@ -23,7 +22,7 @@ import {
 } from '../src/services/logging/attemptLog';
 import { createProgressClient } from '../src/services/progress/client';
 import { createProgressOutbox } from '../src/services/progress/outbox';
-import { withBackend } from '../src/services/progress/difficultyRepo';
+import { getDifficultyRepository } from '../src/features/difficulty/difficultyRepository';
 import { getAuthService } from '../src/features/auth/authService';
 import { getOrCreateDeviceId, keyValueOverRowStore } from '../src/lib/deviceId';
 import { track } from '../src/features/analytics/tracker';
@@ -68,7 +67,6 @@ export default function Practice() {
       sessions: createSessionRepository(store),
       attempts: createAttemptRepository(store),
       melodies: createMelodyRepository(store),
-      difficulty: createDifficultySettingsRepository(store),
     }),
     [store],
   );
@@ -91,10 +89,7 @@ export default function Practice() {
     });
     return { client, getToken, outbox };
   }, [store, repos.attempts]);
-  const difficulty = useMemo(
-    () => (progress ? withBackend(repos.difficulty, progress) : repos.difficulty),
-    [progress, repos.difficulty],
-  );
+  const difficulty = getDifficultyRepository();
   const [deviceId, setDeviceId] = useState<string | null>(null);
 
   // Create the Session row up front so attempts always have a parent (FR-018).

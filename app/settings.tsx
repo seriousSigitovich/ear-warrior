@@ -25,7 +25,7 @@ import {
 import { KEY_VALUE_TABLE, defaultRowStore } from '../src/services/storage/db';
 import { getOrCreateDeviceId, keyValueOverRowStore } from '../src/lib/deviceId';
 import { FEEDBACK_EMAIL, buildFeedbackUrl } from '../src/lib/feedback';
-import { createDifficultySettingsRepository } from '../src/services/storage/repositories';
+import { getDifficultyRepository } from '../src/features/difficulty/difficultyRepository';
 import { Screen } from '../src/components/common/Screen';
 import { Button } from '../src/components/common/Button';
 import { getAuthService } from '../src/features/auth/authService';
@@ -38,7 +38,7 @@ import { colors, font, radius, textAlpha, withAlpha } from '../src/theme/nocturn
 const RANKS = Array.from({ length: MAX_RANK - MIN_RANK + 1 }, (_, i) => MIN_RANK + i);
 
 export default function Settings() {
-  const [repo] = useState(() => createDifficultySettingsRepository(defaultRowStore()));
+  const [repo] = useState(getDifficultyRepository);
   const [settings, setSettings] = useState<DifficultySettings>(DEFAULT_DIFFICULTY_SETTINGS);
 
   useEffect(() => {
