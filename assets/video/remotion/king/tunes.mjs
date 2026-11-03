@@ -89,16 +89,18 @@ export const TUNES = {
     bpm: 168, hook: [1, 2], chord: [69, 72, 76],                  // hit B2 · A minor
   }),
   // Bella ciao (Italian folk song, public domain), A minor, ♩ = 140: "Una mattina / mi son svegliato / o bella ciao, bella ciao, bella
-  // ciao ciao ciao", 22 notes, the hook "can you play this without tabs?". Notes from piano-keyboard-guide.com's tutorial (its F minor
-  // pass, up a third): E A B C A · E A B C A · E A B C B A E B A E E E, at E3–C4 on the D, G and B strings, frets 0–2; rhythm by ear.
+  // ciao ciao ciao", 22 notes, the hook "can you play this without tabs?". Notes and rhythm from the Wikibooks Liederbuch score (LilyPond,
+  // `de.wikibooks.org/wiki/Liederbuch/_Bella_Ciao`), an octave down: E A B C A · E A B C A · E A B C B A C B A and up to the high E for
+  // "ciao ciao ciao". #73 had piano-keyboard-guide.com's version (B A E for the third "bella ciao", ending low) — wrong, the author deleted it.
+  // E3–E4 on the D, G, B and high E strings, frets 0–2.
   bella: story({
     id: 'bella', title: 'Bella ciao', hookText: 'tabs',
-    notes: 'E3 A3 B3 C4 A3 E3 A3 B3 C4 A3 E3 A3 B3 C4 B3 A3 E3 B3 A3 E3 E3 E3',
+    notes: 'E3 A3 B3 C4 A3 E3 A3 B3 C4 A3 E3 A3 B3 C4 B3 A3 C4 B3 A3 E4 E4 E4',
     melody: [
       [2, 2, 0.5], [3, 2, 0.5], [4, 0, 0.5], [4, 1, 0.5], [3, 2, 2],                       // u-na mat-ti-na
       [2, 2, 0.5], [3, 2, 0.5], [4, 0, 0.5], [4, 1, 0.5], [3, 2, 2],                       // mi son sve-glia-to
-      [2, 2, 0.5], [3, 2, 0.5], [4, 0, 0.5], [4, 1, 1], [4, 0, 0.5], [3, 2, 0.5], [2, 2, 1],   // o bel-la ciao, bel-la ciao,
-      [4, 0, 0.5], [3, 2, 0.5], [2, 2, 1], [2, 2, 1], [2, 2, 1.5],                          // bel-la ciao, ciao ciao
+      [2, 2, 0.5], [3, 2, 0.5], [4, 0, 0.5], [4, 1, 1], [4, 0, 0.5], [3, 2, 0.5], [4, 1, 1],   // o bel-la ciao, bel-la ciao,
+      [4, 0, 0.5], [3, 2, 0.5], [5, 0, 1], [5, 0, 1], [5, 0, 1.5],                          // bel-la ciao, ciao, ciao
     ],
     bpm: 140, hook: [0, 0], chord: [69, 72, 76],                  // hit E2, the fifth · A minor
   }),
