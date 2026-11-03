@@ -3,8 +3,20 @@ import { ProgressClient } from '../../../src/services/progress/client';
 import { withBackend } from '../../../src/services/progress/difficultyRepo';
 import { DifficultySettingsRepository } from '../../../src/services/storage/repositories';
 
-const local: DifficultySettings = { mode: 'adaptive', adaptiveRank: 1, fixedRank: 1, streakKind: 'none', streakCount: 0 };
-const remote: DifficultySettings = { mode: 'adaptive', adaptiveRank: 5, fixedRank: 1, streakKind: 'correct', streakCount: 1 };
+const local: DifficultySettings = {
+  mode: 'adaptive',
+  adaptiveRank: 1,
+  fixedRank: 1,
+  streakKind: 'none',
+  streakCount: 0,
+};
+const remote: DifficultySettings = {
+  mode: 'adaptive',
+  adaptiveRank: 5,
+  fixedRank: 1,
+  streakKind: 'correct',
+  streakCount: 1,
+};
 
 function setup(token: string | null, server: DifficultySettings | null, accept = true) {
   let cache = local;
@@ -21,7 +33,11 @@ function setup(token: string | null, server: DifficultySettings | null, accept =
       return accept;
     },
   } as unknown as ProgressClient;
-  return { backed: withBackend(repo, { client, getToken: async () => token }), puts, cache: () => cache };
+  return {
+    backed: withBackend(repo, { client, getToken: async () => token }),
+    puts,
+    cache: () => cache,
+  };
 }
 
 describe('difficulty repository with a backend', () => {
