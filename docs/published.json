@@ -508,5 +508,25 @@
     "visibility": "public",
     "title": "Can you play this without tabs?",
     "publishedAt": "2026-11-03T16:34:15.957Z"
+  },
+  {
+    "file": "assets/video/remotion/out/rising-band.mp4",
+    "videoNo": 72,
+    "platform": "youtube",
+    "postId": "qd6AqnD8PWo",
+    "url": "https://www.youtube.com/shorts/qd6AqnD8PWo",
+    "visibility": "public",
+    "title": "Can you play it without tabs?",
+    "publishedAt": "2026-11-04T08:00:19.793Z"
+  },
+  {
+    "file": "assets/video/remotion/out/rising-band.mp4",
+    "videoNo": 72,
+    "platform": "instagram",
+    "postId": "17876173308649872",
+    "url": "https://www.instagram.com/reel/DfT-Z8GiSAV/",
+    "visibility": "public",
+    "title": "Can you play it without tabs?",
+    "publishedAt": "2026-11-04T08:01:00.719Z"
   }
 ]
