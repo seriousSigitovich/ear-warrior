@@ -1,7 +1,7 @@
 // Home screen (T035): start a practice session and navigate into the core loop.
 // Redesigned onto Nocturne — hero heading, waveform motif, quick stats, outlined actions.
 import React, { useCallback, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { MAX_RANK, notesLabel } from '../src/services/melody/levels';
 import { DEFAULT_DIFFICULTY_SETTINGS, effectiveRank } from '../src/features/difficulty/adapt';
@@ -9,6 +9,7 @@ import { KEY_VALUE_TABLE, defaultRowStore } from '../src/services/storage/db';
 import { keyValueOverRowStore } from '../src/lib/deviceId';
 import { isOnboarded } from '../src/lib/onboarding';
 import { getDifficultyRepository } from '../src/features/difficulty/difficultyRepository';
+import { heroScale, scaled } from '../src/lib/heroScale';
 import { Screen } from '../src/components/common/Screen';
 import { Button } from '../src/components/common/Button';
 import { Card } from '../src/components/common/Card';
@@ -20,6 +21,8 @@ import { colors, font, textAlpha } from '../src/theme/nocturne';
 export default function Home() {
   const router = useRouter();
   const [rank, setRank] = useState(effectiveRank(DEFAULT_DIFFICULTY_SETTINGS));
+  // The hero block grows on tall phones instead of leaving most of the screen empty.
+  const s = heroScale(useWindowDimensions().height);
 
   // Re-read on every focus, not just first mount: expo-router keeps this screen mounted while the
   // Difficulty screen is pushed on top, so a mount-only effect would show a stale level after the
@@ -61,16 +64,28 @@ export default function Home() {
 
   return (
     <Screen style={styles.screen}>
-      <Kicker>Ear Warrior</Kicker>
-      <Text style={styles.title}>
+      <Kicker style={{ fontSize: scaled(11, s) }}>Ear Warrior</Kicker>
+      <Text style={[styles.title, { fontSize: scaled(30, s), lineHeight: scaled(35, s) }]}>
         Hear it.{'\n'}Play it back.{'\n'}Nail it.
       </Text>
-      <Text style={styles.blurb}>
+      <Text
+        style={[
+          styles.blurb,
+          { fontSize: scaled(14, s), lineHeight: scaled(22, s), maxWidth: scaled(280, s) },
+        ]}
+      >
         A short melody plays. You find it on the fretboard by ear. We tell you exactly which notes
         landed.
       </Text>
 
-      <Waveform bars={HERO_BARS} height={48} style={styles.wave} />
+      <Waveform
+        bars={HERO_BARS}
+        height={scaled(48, s)}
+        barWidth={scaled(5, s)}
+        gap={scaled(4, s)}
+        breathe
+        style={styles.wave}
+      />
 
       <View style={styles.spacer} />
 
@@ -117,13 +132,11 @@ const styles = StyleSheet.create({
   screen: { paddingTop: 40 },
   title: {
     color: colors.text,
-    fontSize: 30,
     fontWeight: font.weightHeading,
-    lineHeight: 35,
     marginTop: 8,
     marginBottom: 10,
   },
-  blurb: { color: textAlpha[65], fontSize: 14, lineHeight: 22, maxWidth: 280 },
+  blurb: { color: textAlpha[65] },
   wave: { marginTop: 28 },
   spacer: { flex: 1 },
   statRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },

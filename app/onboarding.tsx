@@ -1,13 +1,14 @@
 // First-run onboarding (beta checklist): three screens — listen, find it on the fretboard, hear the
 // verdict. Shown once; Skip is always there. Finishing marks it seen and returns to Home.
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Screen } from '../src/components/common/Screen';
 import { Button } from '../src/components/common/Button';
 import { Kicker } from '../src/components/common/Kicker';
 import { Waveform, HERO_BARS } from '../src/components/common/Waveform';
 import { ONBOARDING_STEPS, markOnboarded } from '../src/lib/onboarding';
+import { heroScale, scaled } from '../src/lib/heroScale';
 import { KEY_VALUE_TABLE, defaultRowStore } from '../src/services/storage/db';
 import { keyValueOverRowStore } from '../src/lib/deviceId';
 import { track } from '../src/features/analytics/tracker';
@@ -18,6 +19,8 @@ export default function Onboarding() {
   const [index, setIndex] = useState(0);
   const step = ONBOARDING_STEPS[index];
   const last = index === ONBOARDING_STEPS.length - 1;
+  // The text block grows on tall phones instead of leaving most of the screen empty.
+  const s = heroScale(useWindowDimensions().height);
 
   // Which onboarding screens were seen: a drop between steps shows where people give up.
   useEffect(() => track('onboarding_step', { step: index + 1 }), [index]);
@@ -30,12 +33,24 @@ export default function Onboarding() {
 
   return (
     <Screen style={styles.screen}>
-      <Kicker>{step.kicker}</Kicker>
-      <Text accessibilityRole="header" style={styles.title}>
+      <Kicker style={{ fontSize: scaled(11, s) }}>{step.kicker}</Kicker>
+      <Text
+        accessibilityRole="header"
+        style={[styles.title, { fontSize: scaled(28, s), lineHeight: scaled(34, s) }]}
+      >
         {step.title}
       </Text>
-      <Text style={styles.body}>{step.body}</Text>
-      <Waveform bars={HERO_BARS} height={48} style={styles.wave} />
+      <Text style={[styles.body, { fontSize: scaled(15, s), lineHeight: scaled(23, s) }]}>
+        {step.body}
+      </Text>
+      <Waveform
+        bars={HERO_BARS}
+        height={scaled(48, s)}
+        barWidth={scaled(5, s)}
+        gap={scaled(4, s)}
+        breathe
+        style={styles.wave}
+      />
 
       <View style={styles.spacer} />
 
@@ -64,13 +79,11 @@ const styles = StyleSheet.create({
   screen: { paddingTop: 40 },
   title: {
     color: colors.text,
-    fontSize: 28,
     fontWeight: font.weightHeading,
-    lineHeight: 34,
     marginTop: 8,
     marginBottom: 12,
   },
-  body: { color: textAlpha[65], fontSize: 15, lineHeight: 23 },
+  body: { color: textAlpha[65] },
   wave: { marginTop: 28 },
   spacer: { flex: 1 },
   dots: { flexDirection: 'row', justifyContent: 'center', gap: 8, marginBottom: 16 },
