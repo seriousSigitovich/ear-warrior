@@ -3,7 +3,7 @@
 // learner's answer is drawn back as numbered markers in the order the notes were placed. When
 // `statuses` is given the markers take their grade colours instead (accent matched, warm wrong).
 // Purely presentational — what a tap *means* lives in lib/fretboard and the practice loop.
-import React from 'react';
+import React, { useState } from 'react';
 import { Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { NoteStatus } from '../../models';
 import {
@@ -16,6 +16,7 @@ import {
   STRING_LABELS,
 } from '../../lib/fretboard';
 import { fretCellLabel, resultBoardLabel } from '../../lib/fretboardA11y';
+import { MARKER_MAX, markerSize } from '../../lib/fretboardLayout';
 import { colors, radius, textAlpha, withAlpha } from '../../theme/nocturne';
 
 export interface FretboardProps {
@@ -35,16 +36,16 @@ export interface FretboardProps {
 
 /** Thickest on the low E, thinnest on the high e, like the real strings. */
 const STRING_WIDTH = [3.5, 3, 2.5, 2, 1.5, 1];
-/** Marker size; the cell is at least this wide even on a small phone. */
-const MARKER = 26;
 const GUTTER = 28;
 /**
  * Shortest a fret row may get on the answer board. The board fills whatever height the screen
  * leaves it, so rows adapt to the phone; only on a phone too short for 13 rows at this height does
- * the answer view scroll. 44 pt / 48 dp is the touch-target ideal (spec 004 FR-009) but does not
- * fit 13 frets on current phones, so this floor is an owner-accepted exception.
+ * the answer view scroll. 22 dp keeps all 13 frets on a 360×640 dp phone. 44 pt / 48 dp is the
+ * touch-target ideal (spec 004 FR-009) but does not fit 13 frets on any phone, so this floor is an
+ * owner-accepted exception: cells tile the board with no dead zones, are ~44 dp wide, and a wrong
+ * tap is heard at once and undone.
  */
-const MIN_ROW_HEIGHT = 30;
+const MIN_ROW_HEIGHT = 22;
 
 export function Fretboard({ taps, statuses, onTap, rowHeight, style }: FretboardProps) {
   // Last tap wins when the same cell is pressed twice, so its number is the most recent one.
@@ -55,6 +56,10 @@ export function Fretboard({ taps, statuses, onTap, rowHeight, style }: Fretboard
   // The read-only result board is one screen-reader stop with a summary; the answer board exposes
   // each cell as a button.
   const summary = !onTap && statuses ? resultBoardLabel(taps, statuses) : undefined;
+
+  // Flex rows are as tall as the board allows; markers shrink with them so neighbours never overlap.
+  const [measuredRow, setMeasuredRow] = useState<number | undefined>(undefined);
+  const marker = markerSize(rowHeight ?? measuredRow ?? MARKER_MAX + 2);
 
   return (
     <View
@@ -71,7 +76,14 @@ export function Fretboard({ taps, statuses, onTap, rowHeight, style }: Fretboard
         ))}
       </View>
 
-      <View style={[styles.rows, rowHeight === undefined && styles.rowsFlex]}>
+      <View
+        style={[styles.rows, rowHeight === undefined && styles.rowsFlex]}
+        onLayout={
+          rowHeight === undefined
+            ? (e) => setMeasuredRow(e.nativeEvent.layout.height / FRET_COUNT)
+            : undefined
+        }
+      >
         {Array.from({ length: FRET_COUNT }, (_, fret) => (
           <View
             key={fret}
@@ -88,7 +100,12 @@ export function Fretboard({ taps, statuses, onTap, rowHeight, style }: Fretboard
                   marker={
                     idx === undefined
                       ? undefined
-                      : { number: idx + 1, status: statuses?.[idx], latest: idx === latest }
+                      : {
+                          number: idx + 1,
+                          status: statuses?.[idx],
+                          latest: idx === latest,
+                          size: marker,
+                        }
                   }
                   onTap={onTap}
                 />
@@ -107,6 +124,8 @@ interface MarkerInfo {
   number: number;
   status?: NoteStatus;
   latest: boolean;
+  /** Diameter, from the row height. */
+  size: number;
 }
 
 function Cell({
@@ -162,7 +181,7 @@ function Cell({
   );
 }
 
-function Marker({ number, status, latest }: MarkerInfo) {
+function Marker({ number, status, latest, size }: MarkerInfo) {
   const look =
     status === undefined
       ? styles.markerPlaced
@@ -173,12 +192,18 @@ function Marker({ number, status, latest }: MarkerInfo) {
     status === undefined ? colors.accentRamp[300] : status === 'matched' ? colors.bg : colors.warm;
   return (
     <View style={styles.markerWrap} pointerEvents="none">
-      {latest ? <View style={styles.markerRing} /> : null}
-      <View style={[styles.marker, look]}>
-        <Text style={[styles.markerText, { color: textColor }]}>{number}</Text>
+      {latest ? <View style={[styles.markerRing, circle(size + 10)]} /> : null}
+      <View style={[styles.marker, circle(size), look]}>
+        <Text style={[styles.markerText, { color: textColor }]} maxFontSizeMultiplier={1.2}>
+          {number}
+        </Text>
       </View>
     </View>
   );
+}
+
+function circle(size: number): ViewStyle {
+  return { width: size, height: size, borderRadius: size / 2 };
 }
 
 const styles = StyleSheet.create({
@@ -229,15 +254,9 @@ const styles = StyleSheet.create({
   // Soft halo on the note just placed, so the eye finds where the last tap landed.
   markerRing: {
     position: 'absolute',
-    width: MARKER + 10,
-    height: MARKER + 10,
-    borderRadius: (MARKER + 10) / 2,
     backgroundColor: withAlpha(colors.accent, 0.2),
   },
   marker: {
-    width: MARKER,
-    height: MARKER,
-    borderRadius: MARKER / 2,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
