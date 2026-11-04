@@ -134,6 +134,9 @@ const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 /** Create a playback service over an injected native player (defaults to the real one). */
 export function createAudioPlayback(native: NativePlayer = defaultNativePlayer()): AudioPlayback {
+  // Bumped by every stop, tap and new melody: a note-by-note melody still being scheduled sees it
+  // changed and plays no further notes (a clip is one file, so silencing it is enough).
+  let generation = 0;
   return {
     async preload(midiNotes) {
       sampleManifest(midiNotes); // range guard: throws on any note outside E2–E6
@@ -141,24 +144,31 @@ export function createAudioPlayback(native: NativePlayer = defaultNativePlayer()
     },
     async playMelody(m, clipId) {
       // Nothing may still be ringing under the melody (a replay pressed mid-clip, a tapped fret).
+      const mine = ++generation;
       await native.stopAll();
       if (clipId && (await native.playClip(clipId, totalDurationMs(m)))) return;
-      // Schedule each note by startMs; resolve only after the final note completes.
+      // Schedule each note by startMs; resolve only after the final note completes, or early once
+      // something else has taken over the output.
       let cursor = 0;
       for (const note of m.notes) {
         if (note.startMs > cursor) {
           await wait(note.startMs - cursor);
           cursor = note.startMs;
         }
+        if (generation !== mine) return;
         await native.playTone(note.midi, note.durationMs);
         cursor += note.durationMs;
       }
     },
     async playReferenceTone(midi) {
       // One string at a time: the previous tap fades as the new one starts, so taps never stack.
+      generation++;
       await native.stopAll();
       await native.playTone(midi, TAP_HOLD_MS);
     },
-    stop: () => native.stopAll(),
+    stop: () => {
+      generation++;
+      return native.stopAll();
+    },
   };
 }

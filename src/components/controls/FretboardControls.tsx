@@ -1,14 +1,18 @@
 // Action bar while answering on the fretboard: Replay · Undo · Clear · Check. Replay stays live
-// (hearing the melody again is the whole exercise) and Check needs at least one note placed.
+// (hearing the melody again is the whole exercise) and turns into Stop while the melody sounds;
+// Check needs at least one note placed.
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Button } from '../common/Button';
-import { IconButton, ReplayIcon } from '../common/IconButton';
+import { IconButton, ReplayIcon, StopIcon } from '../common/IconButton';
 import { colors } from '../../theme/nocturne';
 
 export interface FretboardControlsProps {
   placed: number;
+  /** The melody is being replayed over the board. */
+  replaying: boolean;
   onReplay: () => void;
+  onStopReplay: () => void;
   onUndo: () => void;
   onClear: () => void;
   onCheck: () => void;
@@ -16,7 +20,9 @@ export interface FretboardControlsProps {
 
 export function FretboardControls({
   placed,
+  replaying,
   onReplay,
+  onStopReplay,
   onUndo,
   onClear,
   onCheck,
@@ -24,9 +30,15 @@ export function FretboardControls({
   const empty = placed === 0;
   return (
     <View style={styles.row}>
-      <IconButton accessibilityLabel="Replay melody" onPress={onReplay}>
-        <ReplayIcon />
-      </IconButton>
+      {replaying ? (
+        <IconButton accessibilityLabel="Stop melody" onPress={onStopReplay} active>
+          <StopIcon color={colors.accent} />
+        </IconButton>
+      ) : (
+        <IconButton accessibilityLabel="Replay melody" onPress={onReplay}>
+          <ReplayIcon />
+        </IconButton>
+      )}
       <IconButton accessibilityLabel="Undo last note" onPress={onUndo} disabled={empty}>
         <Text style={styles.glyph}>↶</Text>
       </IconButton>

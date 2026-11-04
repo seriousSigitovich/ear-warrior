@@ -83,6 +83,26 @@ describe('audio playback (contracts/audio-playback.md)', () => {
     expect(f.stops()).toBe(2);
   });
 
+  test('a stop or a tap ends a note-by-note melody: no further notes are played', async () => {
+    for (const interrupt of ['stop', 'tap'] as const) {
+      const f = fakePlayer();
+      // Each note holds until released, so the interrupt lands mid-melody.
+      let release = () => {};
+      const playTone = f.native.playTone;
+      f.native.playTone = async (midi, durationMs) => {
+        await playTone(midi, durationMs);
+        if (midi !== 72) await new Promise<void>((r) => (release = r));
+      };
+      const pb = createAudioPlayback(f.native);
+      const playing = pb.playMelody(scheduleMelody(melody([64, 67, 69]), 120));
+      await new Promise((r) => setTimeout(r, 0)); // the first note is sounding
+      await (interrupt === 'stop' ? pb.stop() : pb.playReferenceTone(72));
+      release();
+      await playing;
+      expect(f.played.map((p) => p.midi)).toEqual(interrupt === 'stop' ? [64] : [64, 72]);
+    }
+  });
+
   test('stop is idempotent', async () => {
     const f = fakePlayer();
     const pb = createAudioPlayback(f.native);

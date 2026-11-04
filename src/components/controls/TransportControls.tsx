@@ -1,5 +1,6 @@
 // Transport controls (T032, FR-003/FR-007/FR-008/FR-009): the bottom action bar for the phases
 // that are not the fretboard answer — Play melody on idle, Replay · Retry · Next on feedback.
+// Replay sounds over the result and turns into Stop while it plays.
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { LoopPhase } from '../../features/practice/usePracticeLoop';
@@ -7,16 +8,20 @@ import { Button } from '../common/Button';
 
 export interface TransportControlsProps {
   phase: LoopPhase;
+  replaying: boolean;
   onPlay: () => void;
   onReplay: () => void;
+  onStopReplay: () => void;
   onRetry: () => void;
   onNext: () => void;
 }
 
 export function TransportControls({
   phase,
+  replaying,
   onPlay,
   onReplay,
+  onStopReplay,
   onRetry,
   onNext,
 }: TransportControlsProps) {
@@ -31,7 +36,12 @@ export function TransportControls({
   if (phase === 'feedback') {
     return (
       <View style={styles.row}>
-        <Button label="Replay" variant="secondary" onPress={onReplay} style={styles.grow} />
+        <Button
+          label={replaying ? 'Stop' : 'Replay'}
+          variant="secondary"
+          onPress={replaying ? onStopReplay : onReplay}
+          style={styles.grow}
+        />
         <Button label="Retry" variant="secondary" onPress={onRetry} style={styles.grow} />
         <Button label="Next" onPress={onNext} style={styles.grow} />
       </View>

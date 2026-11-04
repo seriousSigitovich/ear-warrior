@@ -9,12 +9,15 @@ export function IconButton({
   accessibilityLabel,
   onPress,
   disabled,
+  active,
   children,
   style,
 }: {
   accessibilityLabel: string;
   onPress: () => void;
   disabled?: boolean;
+  /** Its action is under way (e.g. the melody is sounding): accent outline. */
+  active?: boolean;
   children: React.ReactNode;
   style?: ViewStyle;
 }) {
@@ -27,6 +30,7 @@ export function IconButton({
       onPress={onPress}
       style={({ pressed }) => [
         styles.base,
+        active && styles.active,
         pressed && styles.pressed,
         disabled && styles.dim,
         style,
@@ -34,6 +38,15 @@ export function IconButton({
     >
       {children}
     </Pressable>
+  );
+}
+
+/** Filled square: stop whatever is sounding. */
+export function StopIcon({ color = colors.text }: { color?: string }) {
+  return (
+    <View style={styles.icon}>
+      <View style={[styles.square, { backgroundColor: color }]} />
+    </View>
   );
 }
 
@@ -57,10 +70,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  active: { borderColor: colors.accent, backgroundColor: withAlpha(colors.accent, 0.14) },
   pressed: { backgroundColor: withAlpha(colors.text, 0.1) },
   dim: { opacity: 0.45 },
 
   icon: { width: 18, height: 18, alignItems: 'center', justifyContent: 'center' },
+  square: { width: 12, height: 12, borderRadius: 2 },
   ring: {
     width: 16,
     height: 16,

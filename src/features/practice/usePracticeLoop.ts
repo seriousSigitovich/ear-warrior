@@ -1,5 +1,7 @@
 // Practice-loop state machine (T028, US1). Orchestrates the core loop:
 // idle → playingMelody → awaitingInput → grading → feedback, with replay/retry/next.
+// A replay is not a phase: it sounds the melody over whatever is on screen (the answer being placed,
+// or the graded result), so the learner compares by ear without losing sight of their notes.
 // The learner answers by tapping notes on an on-screen fretboard; pure logic (melody, schedule,
 // grade) is composed with the injected playback service.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -84,6 +86,11 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
   const [rankChange, setRankChange] = useState<RankChange | null>(null);
   // The notes tapped so far for the current melody, in order.
   const [answer, setAnswer] = useState<FretTap[]>([]);
+  // A replay is sounding. Kept apart from `phase` so replaying never swaps the screen.
+  const [replaying, setReplaying] = useState(false);
+  // Bumped whenever a replay ends early (stop, a tap, check, next): a clip's promise resolves on its
+  // own clock, so a replay only clears the flag if nothing has superseded it meanwhile.
+  const replayTokenRef = useRef(0);
   // Adaptation counts only the FIRST graded attempt per melody (FR-011a): a retry does not move it.
   const gradedThisMelodyRef = useRef(false);
   // Settings are read through a ref inside callbacks so adaptation always folds into the freshest
@@ -197,7 +204,18 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
     [deps.gradingCfg, adapt, completeAttempt],
   );
 
+  /** End a sounding replay at once. With `silence`, also cut the audio (a tap cuts it by itself). */
+  const endReplay = useCallback(
+    (silence: boolean) => {
+      replayTokenRef.current += 1;
+      setReplaying(false);
+      if (silence) deps.playback.stop().catch(() => undefined);
+    },
+    [deps.playback],
+  );
+
   const next = useCallback(async () => {
+    endReplay(false); // the new melody's playback cuts the old audio itself
     await historyRef.current; // pick against the full history, not a half-loaded one
     const m = deps.nextMelody(level, deps.seed(), masteredRef.current, recentRef.current);
     recentRef.current.push(tuneIdOf(m.id));
@@ -207,32 +225,46 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
     setAnswer([]);
     gradedThisMelodyRef.current = false; // a new melody restarts first-attempt eligibility
     await playMelody(m);
-  }, [deps, level, playMelody]);
+  }, [deps, level, playMelody, endReplay]);
 
+  /** Sound the same melody again (FR-007) over the current screen; the phase does not change. */
   const replay = useCallback(async () => {
-    if (melody) await playMelody(melody); // same melody, unchanged (FR-007)
-  }, [melody, playMelody]);
+    if (!melody || (phase !== 'awaitingInput' && phase !== 'feedback')) return;
+    const token = ++replayTokenRef.current;
+    setReplaying(true);
+    try {
+      await deps.session.enterPlayback();
+      await deps.playback.playMelody(scheduleMelody(melody, level.tempoBpm), tuneIdOf(melody.id));
+    } finally {
+      if (replayTokenRef.current === token) setReplaying(false);
+    }
+  }, [deps, melody, phase, level.tempoBpm]);
+
+  const stopReplay = useCallback(() => endReplay(true), [endReplay]);
 
   const retry = useCallback(() => {
     if (!melody) return;
+    if (replaying) endReplay(true);
     // Clear the board and let the learner answer again, same melody (FR-008).
     setGrade(null);
     setRankChange(null);
     setAnswer([]);
     setPhase('awaitingInput');
-  }, [melody]);
+  }, [melody, replaying, endReplay]);
 
   /** Sound the tapped fret and add it to the answer (up to the melody's length). */
   const tapFret = useCallback(
     (position: FretPosition) => {
       if (phase !== 'awaitingInput' || !melody) return;
+      // Tapping means the learner has heard enough: the tone below cuts the replay's audio.
+      if (replaying) endReplay(false);
       const tap = makeTap(position, (deps.now?.() ?? new Date()).getTime());
       // Hearing the note is the point — it is how the learner compares it with the melody. It plays
       // even when the answer is already full, so a slot can be auditioned before undoing.
       deps.playback.playReferenceTone(tap.midi).catch(() => undefined);
       setAnswer((prev) => addTap(prev, tap, melody.notes.length));
     },
-    [deps, phase, melody],
+    [deps, phase, melody, replaying, endReplay],
   );
 
   const undoFret = useCallback(() => setAnswer((prev) => undoTap(prev)), []);
@@ -242,12 +274,14 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
   const submitAnswer = useCallback(async () => {
     const taps = answerRef.current;
     if (phase !== 'awaitingInput' || !melody || taps.length === 0) return;
+    if (replaying) endReplay(true);
     await finishAttempt(melody, tapsToDetected(taps));
-  }, [phase, melody, finishAttempt]);
+  }, [phase, melody, finishAttempt, replaying, endReplay]);
 
   return useMemo(
     () => ({
       phase,
+      replaying,
       answer,
       melody,
       grade,
@@ -256,6 +290,7 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
       rankChange,
       next,
       replay,
+      stopReplay,
       retry,
       tapFret,
       undoFret,
@@ -264,6 +299,7 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
     }),
     [
       phase,
+      replaying,
       answer,
       melody,
       grade,
@@ -272,6 +308,7 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
       rankChange,
       next,
       replay,
+      stopReplay,
       retry,
       tapFret,
       undoFret,

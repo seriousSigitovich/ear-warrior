@@ -21,6 +21,7 @@ export type AppEventName =
   | 'signin_skip'
   | 'session_start'
   | 'melody_play'
+  | 'melody_replay'
   | 'answer_start'
   | 'answer_check'
   | 'session_end';

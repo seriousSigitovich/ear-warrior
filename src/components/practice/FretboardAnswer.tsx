@@ -6,6 +6,7 @@ import { FretPosition, FretTap } from '../../lib/fretboard';
 import { placementAnnouncement } from '../../lib/fretboardA11y';
 import { noteName } from '../../lib/pitchNote';
 import { Fretboard } from '../fretboard/Fretboard';
+import { LISTENING_BARS, Waveform } from '../common/Waveform';
 import { colors, font, textAlpha, withAlpha } from '../../theme/nocturne';
 
 export interface FretboardAnswerProps {
@@ -13,9 +14,11 @@ export interface FretboardAnswerProps {
   noteCount: number;
   taps: FretTap[];
   onTap: (position: FretPosition) => void;
+  /** The melody is being replayed: the caption says so, the board and slots stay as they are. */
+  replaying?: boolean;
 }
 
-export function FretboardAnswer({ noteCount, taps, onTap }: FretboardAnswerProps) {
+export function FretboardAnswer({ noteCount, taps, onTap, replaying }: FretboardAnswerProps) {
   // Each tap, undo or clear is spoken to screen-reader users; the board itself does not change label.
   const announced = useRef(taps.length);
   useEffect(() => {
@@ -28,9 +31,23 @@ export function FretboardAnswer({ noteCount, taps, onTap }: FretboardAnswerProps
     <View style={styles.wrap}>
       <View style={styles.head}>
         <Text style={styles.title}>Your turn</Text>
-        <Text style={styles.sub}>
-          {taps.length} of {noteCount} placed. Tap a fret to hear it, then check.
-        </Text>
+        {replaying ? (
+          <View style={styles.listening}>
+            <Waveform
+              bars={LISTENING_BARS}
+              height={14}
+              barWidth={3}
+              gap={2}
+              align="center"
+              animated
+            />
+            <Text style={styles.sub}>Listening… tap a fret to stop.</Text>
+          </View>
+        ) : (
+          <Text style={styles.sub}>
+            {taps.length} of {noteCount} placed. Tap a fret to hear it, then check.
+          </Text>
+        )}
       </View>
 
       <View style={styles.slots}>
@@ -75,6 +92,7 @@ const styles = StyleSheet.create({
   head: { gap: 4 },
   title: { color: colors.accent, fontSize: 22, fontWeight: font.weightHeading },
   sub: { color: textAlpha[65], fontSize: 13 },
+  listening: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   slots: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   slot: {
     width: 40,

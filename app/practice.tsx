@@ -200,6 +200,16 @@ export default function Practice() {
     tappedMelody.current = melodyId; // once per melody, however often the answer is cleared
     track('answer_start', { rank });
   }, [tapped, melodyId, rank]);
+  // How often a melody is heard again before Check (`where` tells answering from the result view).
+  const replays = useRef({ melodyId: '', n: 0 });
+  const loopReplay = loop.replay;
+  const replay = useCallback(() => {
+    if (!melodyId) return;
+    if (replays.current.melodyId !== melodyId) replays.current = { melodyId, n: 0 };
+    replays.current.n += 1;
+    track('melody_replay', { rank, n: replays.current.n, where: loop.phase });
+    void loopReplay();
+  }, [melodyId, rank, loop.phase, loopReplay]);
 
   const grade = loop.grade;
   const showFeedback = loop.phase === 'feedback' && !!grade;
@@ -227,7 +237,12 @@ export default function Practice() {
           />
         </ScrollView>
       ) : answering ? (
-        <FretboardAnswer noteCount={noteCount} taps={loop.answer} onTap={loop.tapFret} />
+        <FretboardAnswer
+          noteCount={noteCount}
+          taps={loop.answer}
+          onTap={loop.tapFret}
+          replaying={loop.replaying}
+        />
       ) : (
         <PracticeStage phase={loop.phase} />
       )}
@@ -235,7 +250,9 @@ export default function Practice() {
       {answering ? (
         <FretboardControls
           placed={loop.answer.length}
-          onReplay={loop.replay}
+          replaying={loop.replaying}
+          onReplay={replay}
+          onStopReplay={loop.stopReplay}
           onUndo={loop.undoFret}
           onClear={loop.clearFrets}
           onCheck={loop.submitAnswer}
@@ -243,8 +260,10 @@ export default function Practice() {
       ) : (
         <TransportControls
           phase={loop.phase}
+          replaying={loop.replaying}
           onPlay={loop.next}
-          onReplay={loop.replay}
+          onReplay={replay}
+          onStopReplay={loop.stopReplay}
           onRetry={loop.retry}
           onNext={loop.next}
         />
