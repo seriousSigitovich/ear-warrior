@@ -1,8 +1,11 @@
 #!/usr/bin/env node
 // House of the Rising Sun on #60's cut in the warm-wood look:  node render-rising.mjs  →  public/rising-wood.wav + out/rising-wood.mp4 (1080×1920, 60 fps)
 // Timeline = king/tunes.mjs `rising`, picture in src/rising/RisingWood.tsx, soundtrack king/audio.mjs on that timeline.
-//   --tune=<id>  another tune in the same look (WOOD_TUNES in RisingWood.tsx: canon, scarborough, greensleeves, birthday)
+//   --tune=<id>  another tune in the same look (WOOD_TUNES in RisingWood.tsx: canon, scarborough, greensleeves, birthday, gladiators — the last with no wood, BOARDLESS)
 //                → public/wood-<id>.wav + out/wood-<id>.mp4, composition Wood-<id>; check it with  node king/check.mjs --tune=<id> --wav=wood-<id>.wav
+//   --look=<noneck|ghost|embers>  #71 without the neck, same soundtrack → out/rising-<look>.mp4: noneck = the notes still fall, nothing under
+//                them (RisingWood-noneck) · ghost = a string shows only while it rings (RisingWood-ghost) · embers = campfire embers hang
+//                as a garland by pitch, no guitar at all (src/rising/RisingEmbers.tsx)
 //   --cover  a frame of the hook → out/<name>-cover.{png,jpg}
 //   --audio-only        just the soundtrack            --still=<seconds>[,<seconds>…]   PNG frames → out/frames/
 import { execFileSync } from 'node:child_process';
@@ -16,8 +19,12 @@ import { TUNES } from './king/tunes.mjs';
 const tune = process.argv.find((a) => a.startsWith('--tune='))?.slice(7) ?? 'rising';
 const story = TUNES[tune];
 if (!story) throw new Error(`no tune "${tune}" in king/tunes.mjs`);
-const name = tune === 'rising' ? 'rising-wood' : `wood-${tune}`;  // #71 keeps its file names; must match woodWav() in RisingWood.tsx
-const comp = tune === 'rising' ? 'RisingWood' : `Wood-${tune}`;
+const LOOKS = { noneck: 'RisingWood-noneck', ghost: 'RisingWood-ghost', embers: 'RisingEmbers' };
+const look = process.argv.find((a) => a.startsWith('--look='))?.slice(7);
+if (look && (!LOOKS[look] || tune !== 'rising')) throw new Error(`--look takes ${Object.keys(LOOKS).join('|')}, for #71 (rising) only`);
+const wavName = tune === 'rising' ? 'rising-wood' : `wood-${tune}`;  // #71 keeps its file names; must match woodWav() in RisingWood.tsx
+const name = look ? `rising-${look}` : wavName;
+const comp = look ? LOOKS[look] : tune === 'rising' ? 'RisingWood' : `Wood-${tune}`;
 const COVER_AT = 0.9;                                           // the hook fully set, the neck revealed
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -40,7 +47,7 @@ if (process.argv.includes('--cover')) {
   console.log(`${name}: → ${jpg}`);
   process.exit(0);
 }
-const wav = join(here, 'public', `${name}.wav`);
+const wav = join(here, 'public', `${wavName}.wav`);
 const { peak, measureText } = renderKingAudio(wav, story);
 const l = finalizeLoudness(wav, measureText);
 console.log(`${name}: audio peak ${peak.toFixed(2)} → ${Number(l.input_i).toFixed(1)} LUFS in, normalised to −14 LUFS`);

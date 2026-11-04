@@ -48,6 +48,14 @@ const RISING = {
   bpm: 142, hook: [0, 0], chord: [69, 72, 76],                  // hit E2, the fifth · A minor
 };
 
+/** Entry of the Gladiators: the four-bar phrase the theme opens with and comes back to (`gladiators` below). */
+const PHRASE_GLADIATORS = [
+  [4, 1, 1], [4, 0, 1], [3, 3, 0.5], [4, 0, 0.5], [3, 3, 0.5], [3, 2, 0.5],
+  [3, 1, 1], [3, 0, 1], [2, 4, 1], [3, 0, 1],
+  [3, 2, 1], [3, 1, 1], [3, 0, 0.5], [3, 1, 0.5], [3, 0, 0.5], [2, 4, 0.5],
+  [2, 3, 1], [2, 2, 1], [2, 1, 1], [2, 2, 1],
+];
+
 export const TUNES = {
   // Korobeiniki (Russian folk song, public domain; the Tetris tune), A minor, the whole 8-bar theme as #14 (`classics.mjs`), 37 notes,
   // ♩ = 144. G, B and high E strings; the top A is fret 5 on the high E, so this one reaches past first position.
@@ -167,6 +175,38 @@ export const TUNES = {
     ],
     strum: [48, 52, 55, 60, 64],                                   // C x32010
     bpm: 132, hook: [0, 3], chord: [72, 76, 79],                  // hit G2, the fifth · C major
+  }),
+  // Fučík, Entry of the Gladiators (1897, public domain), the circus theme: the whole first strain with its second ending, 16 bars. Notes and
+  // rhythm from the MIDI on Wikimedia Commons (`File:Fucik entrée des gladiateurs.mid`, its bars 13–24 and 41–45), checked against the 1897
+  // piano reduction there (`File:Einzug der gladiatoren score.jpg`, where the second eighth is c-flat): the phrase c'4 h | b8 h b a | as4 g fis g | a as g8 as g fis | f4 e dis e,
+  // twice "g · f f cis d", the chromatic run up h8 … fis | g gis a h a4 g, the phrase again, and the second ending c c c a d | dis dis dis b2 |
+  // h8 d' cis' c' h4 a | g with the bass walking g g g f e d down to c. Two octaves down (the bass walk as written) so it sits in first
+  // position (B2–D4, frets 0–4); beats are quarters, ♩ = 200 (the MIDI's tempo, 𝅗𝅥 = 100), the one eighth rest folded into the note before it.
+  // Staccato, so no let-ring; home on a C strum.
+  gladiators: story({
+    id: 'gladiators', title: 'Entry of the Gladiators', hookText: 'tabs',
+    notes: [
+      'C4 B3 A#3 B3 A#3 A3 G#3 G3 F#3 G3 A3 G#3 G3 G#3 G3 F#3 F3 E3 D#3 E3',      // A♭ B♭ spelled as the checker names them
+      'G3 F3 F3 C#3 D3 G3 F3 F3 C#3 D3',
+      'B2 C3 C#3 D3 D#3 E3 F3 F#3 G3 G#3 A3 B3 A3 G3',
+      'C4 B3 A#3 B3 A#3 A3 G#3 G3 F#3 G3 A3 G#3 G3 G#3 G3 F#3 F3 E3 D#3 E3',
+      'C3 C3 C3 A3 D3 D#3 D#3 D#3 A#3 B3 D4 C#4 C4 B3 A3 G3 G3 G3 G3 F3 E3 D3 C3',
+    ].join(' '),
+    melody: [
+      ...PHRASE_GLADIATORS,
+      [3, 0, 1], [2, 3, 0.5], [2, 3, 0.5], [1, 4, 1], [2, 0, 1],
+      [3, 0, 1], [2, 3, 0.5], [2, 3, 0.5], [1, 4, 1], [2, 0, 1],
+      [1, 2, 0.5], [1, 3, 0.5], [1, 4, 0.5], [2, 0, 0.5], [2, 1, 0.5], [2, 2, 0.5], [2, 3, 0.5], [2, 4, 0.5],
+      [3, 0, 0.5], [3, 1, 0.5], [3, 2, 0.5], [4, 0, 0.5], [3, 2, 1], [3, 0, 1],
+      ...PHRASE_GLADIATORS,
+      [1, 3, 1], [1, 3, 0.5], [1, 3, 0.5], [3, 2, 1], [2, 0, 1],
+      [2, 1, 1], [2, 1, 0.5], [2, 1, 0.5], [3, 3, 2],
+      [4, 0, 0.5], [4, 3, 0.5], [4, 2, 0.5], [4, 1, 0.5], [4, 0, 1], [3, 2, 1],
+      [3, 0, 1], [3, 0, 0.5], [3, 0, 0.5], [3, 0, 0.5], [2, 3, 0.5], [2, 2, 0.5], [2, 0, 0.5],
+      [1, 3, 2],                                                                           // the last C sounds as the strum
+    ],
+    strum: [48, 52, 55, 60, 64],                                   // C x32010
+    bpm: 200, hook: [0, 3], chord: [72, 76, 79],                  // hit G2, the fifth · C major
   }),
   // The same arpeggio as a 10 s looping band cut (src/rising/RisingBand.tsx): the melody from frame 0, ♩ = 144 so the film is exactly eight bars
   // (seven of melody, one bar of E back into the top), the "your turn" gaps tightened.

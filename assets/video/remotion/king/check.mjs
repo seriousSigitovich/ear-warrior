@@ -48,7 +48,7 @@ const MAX_FRET = tune ? TUNES[tune].MAX_FRET : 4;
 ok(Math.max(...MELODY.map((n) => n.fret)) <= MAX_FRET, `frets 0–${MAX_FRET}`);
 HEARD.forEach((n, i) => {
   const end = Math.min(n.t + 0.3, HEARD[i + 1] ? HEARD[i + 1].t - 0.01 : n.t + 0.3), got = (LET_RING && !(i === HEARD.length - 1 && TUNES[tune].END_STRUM) ? struck : heard)(n.t + 0.05, end);
-  const strum = i === HEARD.length - 1 && LET_RING && TUNES[tune].END_STRUM;   // the home note sounds as a chord: any of its notes
+  const strum = i === HEARD.length - 1 && TUNES[tune].END_STRUM;   // the home note sounds as a chord: any of its notes
   const hit = strum ? strum.some((m) => (m - got) % 12 === 0) : LET_RING ? (got - n.midi) % 12 === 0 : got === n.midi;   // let ring: up to the octave
   ok(hit, `note ${i + 1} @ ${n.t.toFixed(3)} s: heard MIDI ${got}, timeline says ${n.name} (${n.midi})${strum ? ' as a strum' : ''}`);
 });

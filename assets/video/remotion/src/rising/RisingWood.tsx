@@ -125,7 +125,14 @@ function fibre(cam: Cam, zAt: (x: number) => number, x0: number, x1: number, str
 }
 
 // --- the guitar -------------------------------------------------------------------------------------------------------------------------
-export const Guitar: React.FC<{ t: number; cam: Cam; names: number; w: Wood }> = ({ t, cam, names, w: { S: { T }, HITS } }) => {
+/**
+ * `neck: false` draws only the notes (sparks, rings, landed dots) where they would fall, with no board, strings or frets under them.
+ * `ghost` (with `neck: false`): the invisible guitar — a string shows only while its note flies in and rings, the fret it lands on flashes,
+ * and the closing glint lights all six for a moment.
+ * `board: false` (with the neck): the wood and the fret wires are gone — no headstock, rosewood, binding, lamp pool or frets — but the
+ * strings, nut, inlays and fret numbers hang in the dark where they were.
+ */
+export const Guitar: React.FC<{ t: number; cam: Cam; names: number; w: Wood; neck?: boolean; ghost?: boolean; board?: boolean }> = ({ t, cam, names, w: { S: { T }, HITS }, neck = true, ghost = false, board = true }) => {
   const live = HITS.filter((h) => t >= h.land - FLY);
   const lit = live.filter((h) => t >= h.land && (h.gone === undefined || t < h.gone));
   const dots = lit.map((h) => ({ h, s: springAt(t, h.land, CALM) * (h.gone === undefined ? 1 : 1 - clamp((t - h.gone) / 0.25) ** 2) }))
@@ -163,6 +170,8 @@ export const Guitar: React.FC<{ t: number; cam: Cam; names: number; w: Wood }> =
         </filter>
       </defs>
 
+      {neck && <>
+      {board && <>
       {/* the headstock: a darker finish past the nut, lost in the dark */}
       <polygon points={polygon(cam, [[NUT_X + 0.2, -0.02, -HALF], [HEAD_X, -0.02, -HALF - 0.55], [HEAD_X + 0.4, -0.02, 0], [HEAD_X, -0.02, HALF + 0.55], [NUT_X + 0.2, -0.02, HALF]])} fill={WOOD.head} opacity={fog(depth(cam, [NUT_X + 2.3, 0, 0]))} />
       {/* the board's shadow side, the rosewood, its grain, the cream binding */}
@@ -171,11 +180,12 @@ export const Guitar: React.FC<{ t: number; cam: Cam; names: number; w: Wood }> =
       {GRAIN.map((g, i) => fibre(cam, (x) => g.z + g.a * Math.sin(x * g.f + g.ph) + 0.015 * Math.sin(x * 2.7 + g.ph * 3), NUT_X + 0.25, END_X, g.dark ? WOOD.grainDark : WOOD.grainLight, g.w, g.o * (g.dark ? 0.7 : 0.4), `g${i}`))}
       <polygon points={circleOnPlane(cam, noteX(2.5), 0.2, 5.2, 0.001, 48)} fill="url(#pool)" style={{ mixBlendMode: 'screen' }} />
       {[-HALF, HALF].map((z) => rod(cam, [NUT_X + 0.25, 0, z], [END_X, 0, z], WOOD.binding, 0.05, `bd${z}`, 10, 0.75))}
+      </>}
 
       {/* inlays, frets, nut */}
       {[3, 5, 7, 9].map((n) => { const x = (fretX(n - 1) + fretX(n)) / 2; return <polygon key={n} points={circleOnPlane(cam, x, 0, 0.21, 0.004, 28)} fill="url(#pearl)" opacity={0.92 * fog(depth(cam, [x, 0, 0]))} />; })}
       {[-1.5, 1.5].map((z) => { const x = (fretX(11) + fretX(12)) / 2; return <polygon key={z} points={circleOnPlane(cam, x, z, 0.21, 0.004, 28)} fill="url(#pearl)" opacity={0.92 * fog(depth(cam, [x, 0, z]))} />; })}
-      {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
+      {board && Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
         <g key={`f${n}`}>
           {rod(cam, [fretX(n) - 0.05, 0, -HALF + 0.02], [fretX(n) - 0.05, 0, HALF - 0.02], '#000', 0.09, `fs${n}`, 4, 0.35)}
           {rod(cam, [fretX(n), 0.02, -HALF + 0.02], [fretX(n), 0.02, HALF - 0.02], WOOD.fret, 0.07, `fb${n}`, 4)}
@@ -185,13 +195,13 @@ export const Guitar: React.FC<{ t: number; cam: Cam; names: number; w: Wood }> =
       {rod(cam, [NUT_X + 0.12, 0.04, -HALF], [NUT_X + 0.12, 0.04, HALF], WOOD.bone, 0.24, 'nut', 4)}
 
       {/* the lamp's light where notes have landed: warm spill on the wood under each lit dot */}
-      {dots.map(({ h, s }) => { const L = landPoint(h); return <polygon key={`${h.id}sp`} points={circleOnPlane(cam, L[0], L[2], (h.big ? 1.6 : 1.1) * s, 0.003, 32)} fill="url(#spill)" opacity={0.7 * fog(depth(cam, L))} style={{ mixBlendMode: 'screen' }} />; })}
+      {board && dots.map(({ h, s }) => { const L = landPoint(h); return <polygon key={`${h.id}sp`} points={circleOnPlane(cam, L[0], L[2], (h.big ? 1.6 : 1.1) * s, 0.003, 32)} fill="url(#spill)" opacity={0.7 * fog(depth(cam, L))} style={{ mixBlendMode: 'screen' }} />; })}
 
       {/* strings: a soft shadow on the wood, then the string; a plucked one warms and trembles beyond its fret */}
       {Array.from({ length: 6 }, (_, s) => {
         const z = stringZ(s), g = GAUGE[s], col = WOUND[s] ? WOOD.bronze : WOOD.steel, p = plucked(s);
         const head = <g key={`hs${s}`}>{rod(cam, [NUT_X + 0.12, STRING_Y, z], [HEAD_X, STRING_Y, z], col, g, `sh${s}`, 6, 0.5 * (1 - names))}</g>;
-        const shadow = rod(cam, [NUT_X, 0.001, z + 0.09], [END_X, 0.001, z + 0.09], '#000', g * 1.8, `ss${s}`, 10, 0.45);
+        const shadow = board ? rod(cam, [NUT_X, 0.001, z + 0.09], [END_X, 0.001, z + 0.09], '#000', g * 1.8, `ss${s}`, 10, 0.45) : null;
         if (!p) return <g key={`s${s}`}>{head}<g filter="url(#soft)">{shadow}</g>{rod(cam, [NUT_X + 0.12, STRING_Y, z], [END_X, STRING_Y, z], col, g, `s${s}`)}{rod(cam, [NUT_X + 0.12, STRING_Y + 0.01, z - g * 0.25], [END_X, STRING_Y + 0.01, z - g * 0.25], '#FFF6E6', g * 0.3, `sl${s}`, 10, 0.5)}</g>;
         const age = t - p.land, x0 = noteX(p.fret), amp = 0.1 * Math.exp(-age * 5) * Math.cos(age * 2 * Math.PI * 9), warm = Math.exp(-age * 2.2);
         const curve: P2[] = [];
@@ -218,8 +228,35 @@ export const Guitar: React.FC<{ t: number; cam: Cam; names: number; w: Wood }> =
         return p ? <text key={s} x={p[0] - 0.42 * pxPerUnit(cam, P)} y={p[1]} textAnchor="middle" dominantBaseline="central" fontFamily={SERIF} fontSize={0.42 * pxPerUnit(cam, P)} fill={WOOD.cream} opacity={names * 0.8}>{nm}</text> : null;
       })}
 
+      </>}
+
+      {/* the invisible guitar: a string glows up as its note flies in, rings warm from the fret on, fades; its fret wire flashes on the landing;
+          the closing glint brings all six back for a moment */}
+      {!neck && ghost && Array.from({ length: 6 }, (_, s) => {
+        const z = stringZ(s), g = GAUGE[s], col = WOUND[s] ? WOOD.bronze : WOOD.steel;
+        const h = live.filter((x) => x.string === s && t - x.land < 1.4).sort((p, q) => q.land - p.land)[0];
+        const sw = (t - T.sweep) / 0.9, swept = sw > 0 && sw < 1 ? Math.sin(Math.PI * sw) : 0;
+        if (!h && swept < 0.01) return null;
+        const age = h ? t - h.land : Infinity;
+        const pre = h && age < 0 ? ((age + FLY) / FLY) ** 2 : 0;                  // anticipation: the string shows before its note lands
+        const warm = age >= 0 ? Math.exp(-age * 2.2) : 0;
+        const o = Math.max(0.3 * pre, 0.9 * warm, 0.6 * swept);
+        if (!h || age < 0) return <g key={`gs${s}`} filter="url(#halo)">{rod(cam, [NUT_X + 0.12, STRING_Y, z], [END_X, STRING_Y, z], WOOD.amber, g, `gs${s}`, 10, o)}</g>;
+        const x0 = noteX(h.fret), fx = h.fret === 0 ? NUT_X + 0.12 : fretX(h.fret);
+        const amp = 0.1 * Math.exp(-age * 5) * Math.cos(age * 2 * Math.PI * 9), curve: P2[] = [];
+        for (let i = 0; i <= 30; i++) { const u = i / 30, q = project(cam, [x0 + (END_X - x0) * u, STRING_Y, z + amp * Math.sin(Math.PI * u)]); if (q) curve.push(q); }
+        const k = pxPerUnit(cam, [x0 - 2, 0, z]), far = fog(depth(cam, [x0 - 3, 0, z])), flash = Math.exp(-age * 4);
+        return (
+          <g key={`gs${s}`} filter="url(#halo)">
+            {rod(cam, [NUT_X + 0.12, STRING_Y, z], [x0, STRING_Y, z], col, g, `ga${s}`, 4, Math.max(0.35 * warm, 0.6 * swept))}
+            <polyline points={pts(curve)} fill="none" stroke={WOOD.amber} strokeWidth={Math.max(1, g * k * 1.3)} opacity={o * far} />
+            {rod(cam, [fx, 0.02, z - 0.55], [fx, 0.02, z + 0.55], WOOD.fretHi, 0.06, `gf${s}`, 2, flash * 0.9)}
+          </g>
+        );
+      })}
+
       {/* the closing glint: lamplight runs down every string, nut → body */}
-      {(() => {
+      {(neck || ghost) && (() => {
         const u = (t - T.sweep) / 0.9;
         if (u < 0 || u > 1) return null;
         const x = NUT_X - (NUT_X - END_X) * easeOut(u);
@@ -303,10 +340,12 @@ export const Beads: React.FC<{ t: number; y: number; S: TuneStory; from?: number
 
 // --- the film ---------------------------------------------------------------------------------------------------------------------------
 /** The tunes cut in this look: #71's Rising Sun, then the next ones from king/tunes.mjs. */
-export const WOOD_TUNES = ['rising', 'canon', 'scarborough', 'greensleeves', 'birthday'] as const;
+export const WOOD_TUNES = ['rising', 'canon', 'scarborough', 'greensleeves', 'birthday', 'gladiators'] as const;
 export type WoodTune = (typeof WOOD_TUNES)[number];
 /** The soundtrack render-rising.mjs lays for a tune (#71 keeps its old name). */
 export const woodWav = (tune: WoodTune) => (tune === 'rising' ? 'rising-wood.wav' : `wood-${tune}.wav`);
+/** Tunes cut with the wood and the frets taken away: strings in the dark (the author, for the Gladiators). */
+export const BOARDLESS: readonly WoodTune[] = ['gladiators'];
 const WOODS = Object.fromEntries(WOOD_TUNES.map((id) => [id, woodOf(TUNES[id])])) as Record<WoodTune, Wood>;
 
 /** The room behind the neck: a warm lamp glow above it, a lilac glow from the top. */
@@ -338,7 +377,8 @@ export const YourTurn: React.FC<{ t: number; T: TuneStory['T'] }> = ({ t, T }) =
 /** Scrims so the type reads over the wood. */
 export const SCRIM = 'linear-gradient(180deg, rgba(26,13,46,0.8) 0%, rgba(26,13,46,0.42) 26%, rgba(26,13,46,0) 40%, rgba(26,13,46,0) 70%, rgba(26,13,46,0.78) 92%)';
 
-export const RisingWood: React.FC<{ silent?: boolean; tune?: WoodTune }> = ({ silent, tune = 'rising' }) => {
+/** `neck: false` — the same film with the neck taken out (a viewer: "no tabs", then a tab on the neck): the notes still fall; room, type, beads, sound unchanged. `ghost`: see Guitar. */
+export const RisingWood: React.FC<{ silent?: boolean; tune?: WoodTune; neck?: boolean; ghost?: boolean; board?: boolean }> = ({ silent, tune = 'rising', neck = true, ghost = false, board = true }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const t = frame / fps;
@@ -348,7 +388,7 @@ export const RisingWood: React.FC<{ silent?: boolean; tune?: WoodTune }> = ({ si
   return (
     <AbsoluteFill style={{ background: WOOD.bg, overflow: 'hidden' }}>
       <LampRoom />
-      <Guitar t={t} cam={cam} names={ramp(t, T.hold + 0.5, T.hold + 0.9)} w={W} />
+      <Guitar t={t} cam={cam} names={ramp(t, T.hold + 0.5, T.hold + 0.9)} w={W} neck={neck} ghost={ghost} board={board} />
       <AbsoluteFill style={{ background: SCRIM }} />
 
       {/* scene 1 · the hook */}

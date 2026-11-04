@@ -27,6 +27,8 @@ export interface ReelUpload {
   coverUrl?: string;
   /** false = stage only: upload and process, but do not publish. */
   publish: boolean;
+  /** A trial Reel: shown to non-followers only, until graduated to followers by hand in the app (trial_params, graduation MANUAL). */
+  trial?: boolean;
 }
 
 export interface ReelResult {
@@ -95,6 +97,7 @@ export async function publishReel(ctx: InstagramContext, p: ReelUpload): Promise
       share_to_feed: 'true',
       caption: p.caption,
       ...(p.coverUrl ? { cover_url: p.coverUrl } : {}),
+      ...(p.trial ? { trial_params: JSON.stringify({ graduation_strategy: 'MANUAL' }) } : {}),
       access_token: token,
     }),
   );

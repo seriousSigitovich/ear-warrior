@@ -45,6 +45,7 @@ const OPTIONS = {
   category: { type: 'string' },
   confirm: { type: 'boolean', default: false },
   'no-publish': { type: 'boolean', default: false },
+  trial: { type: 'boolean', default: false }, // Instagram: a trial Reel, non-followers only
   force: { type: 'boolean', default: false },
   long: { type: 'boolean', default: false },
 } as const;
@@ -127,7 +128,7 @@ async function run(values: ReturnType<typeof parseArgs<{ options: typeof OPTIONS
     if (prior && !values.force) plan.blocked.push(`already published: ${prior.url} (use --force to publish again)`);
     planned.push(plan);
 
-    out(`── ${NAMES[platform]} (${platform === 'youtube' ? (values.long ? 'regular video, uploaded private' : 'Short, uploaded private') : values['no-publish'] ? 'Reel, stage only' : 'Reel'})`);
+    out(`── ${NAMES[platform]} (${platform === 'youtube' ? (values.long ? 'regular video, uploaded private' : 'Short, uploaded private') : values['no-publish'] ? 'Reel, stage only' : values.trial ? 'trial Reel, non-followers only' : 'Reel'})`);
     if (plan.youtube) {
       out(`   title: ${plan.youtube.title}`);
       out(`   description:\n${indent(plan.youtube.description, '     ')}`);
@@ -165,7 +166,7 @@ async function run(values: ReturnType<typeof parseArgs<{ options: typeof OPTIONS
         const cover = coverAbs ? await deps.host(await deps.readFile(coverAbs), coverAbs.split('/').pop() ?? 'cover.jpg', 'image/jpeg').catch(async (e) => { await hosted.remove().catch(() => {}); throw e; }) : undefined;
         let r;
         try {
-          r = await publishReel({ fetchFn: deps.fetchFn, env: deps.env, sleep: deps.sleep }, { videoUrl: hosted.url, coverUrl: cover?.url, caption: plan.instagram.caption, publish });
+          r = await publishReel({ fetchFn: deps.fetchFn, env: deps.env, sleep: deps.sleep }, { videoUrl: hosted.url, coverUrl: cover?.url, caption: plan.instagram.caption, publish, trial: values.trial });
         } finally {
           for (const h of [hosted, cover]) await h?.remove().catch(() => out('   (could not delete a temporary copy — remove it from the Blob store)'));
         }
@@ -178,11 +179,11 @@ async function run(values: ReturnType<typeof parseArgs<{ options: typeof OPTIONS
             platform: 'instagram',
             postId: r.mediaId,
             url: r.permalink ?? '',
-            visibility: 'public',
+            visibility: values.trial ? 'trial' : 'public',
             title: values.title ?? plan.instagram.caption.split('\n')[0]!.slice(0, 100),
             publishedAt: deps.now().toISOString(),
           });
-          out(`✓ Instagram: ${r.permalink ?? `published (media ${r.mediaId})`}`);
+          out(`✓ Instagram${values.trial ? ' (trial, non-followers only)' : ''}: ${r.permalink ?? `published (media ${r.mediaId})`}`);
         }
       }
     } catch (err) {

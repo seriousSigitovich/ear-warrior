@@ -113,6 +113,17 @@ test('a cover image is passed to Instagram as cover_url; without one the field i
   assert.equal(new URLSearchParams(String(without.calls.find((c) => /\/me\/media$/.test(c.url))!.body)).get('cover_url'), null);
 });
 
+test('a trial Reel sends trial_params with MANUAL graduation; a regular Reel sends none', async () => {
+  const trial = happy(['FINISHED']);
+  await publishReel({ fetchFn: trial.fetchFn, env, sleep: noSleep }, { videoUrl, caption: 'c', publish: false, trial: true });
+  const form = new URLSearchParams(String(trial.calls.find((c) => /\/me\/media$/.test(c.url))!.body));
+  assert.deepEqual(JSON.parse(form.get('trial_params')!), { graduation_strategy: 'MANUAL' });
+
+  const regular = happy(['FINISHED']);
+  await publishReel({ fetchFn: regular.fetchFn, env, sleep: noSleep }, { videoUrl, caption: 'c', publish: false });
+  assert.equal(new URLSearchParams(String(regular.calls.find((c) => /\/me\/media$/.test(c.url))!.body)).get('trial_params'), null);
+});
+
 // --- carousel ---
 
 const imageUrls = ['https://blob.example/publish/01-a.jpg', 'https://blob.example/publish/02-b.jpg', 'https://blob.example/publish/03-c.jpg'];

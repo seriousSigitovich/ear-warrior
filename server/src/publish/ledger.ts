@@ -9,7 +9,7 @@ export interface Entry {
   platform: PlatformName;
   postId: string;
   url: string;
-  visibility: 'private' | 'public';
+  visibility: 'private' | 'public' | 'trial';
   title: string;
   publishedAt: string; // ISO
 }
