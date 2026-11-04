@@ -106,6 +106,68 @@ export const TUNES = {
   }),
   // The House of the Rising Sun arpeggio (RISING above), #71.
   rising: story(RISING),
+  // New tunes for #71's warm-wood cut (src/rising/RisingWood.tsx, `node render-rising.mjs --tune=<id>`), the next untested tunes at the top of
+  // docs/tune-ranking.md. Notes and rhythm from real scores, an octave down, as guitar music is written; each ends on its home chord strummed.
+  // Pachelbel, Canon in D (public domain): violin I's entry over the ground bass, bars 3–4 of the Mutopia score (`PachelbelJ/
+  // Canon_per_3_Violini_e_Basso`, violin_common.ily + violoncello.ily): F# E D C# B A B C# over D A B F# G D G A, all quarters. Played
+  // as a guitarist would: each bass note, then its melody note, let ring; home on a D strum. Frets 0–3.
+  canon: story({
+    id: 'canon', title: 'Canon in D', hookText: 'tabs', letRing: true, ring: 1.6,
+    notes: 'D3 F#4 A2 E4 B2 D4 F#2 C#4 G2 B3 D3 A3 G2 B3 A2 C#4 D3',
+    melody: [
+      [2, 0, 1], [5, 2, 1], [1, 0, 1], [5, 0, 1], [1, 2, 1], [4, 3, 1], [0, 2, 1], [4, 2, 1],    // D–F#  A–E  Bm–D  F#m–C#
+      [0, 3, 1], [4, 0, 1], [2, 0, 1], [3, 2, 1], [0, 3, 1], [4, 0, 1], [1, 0, 1], [4, 2, 1],    // G–B   D–A  G–B   A–C#
+      [2, 0, 1.5],                                                                             // D, home: sounds as the strum below
+    ],
+    strum: [50, 57, 62, 66],                                       // D xx0232
+    bpm: 112, hook: [1, 0], chord: [74, 78, 81],                  // hit A2, the fifth · D major
+  }),
+  // Scarborough Fair (English traditional, public domain), D dorian, 6/8, the first two lines: "Are you going to Scarborough Fair? / Parsley,
+  // sage, rosemary and thyme". Wikibooks Liederbuch score (LilyPond, `de.wikibooks.org/wiki/Liederbuch/_Scarborough_Fair`):
+  // d4 d8 a a a | e8. f16 e8 d4. | r8 a c d4 c8 | a b g a4.~a8. D3–D4 on the D, G and B strings, frets 0–3; home on a Dm strum.
+  scarborough: story({
+    id: 'scarborough', title: 'Scarborough Fair', hookText: 'tabs', letRing: true, ring: 1.6,
+    notes: 'D3 D3 A3 A3 A3 E3 F3 E3 D3 A3 C4 D4 C4 A3 B3 G3 A3',
+    melody: [
+      [2, 0, 1], [2, 0, 0.5], [3, 2, 0.5], [3, 2, 0.5], [3, 2, 0.5],                       // Are you go-ing to
+      [2, 2, 0.75], [2, 3, 0.25], [2, 2, 0.5], [2, 0, 2],                                  // Scar-bo-rough Fair (and the rest)
+      [3, 2, 0.5], [4, 1, 0.5], [4, 3, 1], [4, 1, 0.5],                                    // Pars-ley, sage, rose-
+      [3, 2, 0.5], [4, 0, 0.5], [3, 0, 0.5], [3, 2, 2],                                    // -ma-ry and thyme: sounds as the strum
+    ],
+    strum: [50, 57, 62, 65],                                       // Dm xx0231
+    bpm: 80, hook: [1, 0], chord: [74, 77, 81],                   // hit A2, the fifth · D minor
+  }),
+  // Greensleeves (English traditional, public domain), A dorian, 6/8, the pickup and bars 5–8 ("For I have loved you well and long, delighting
+  // in your company" — bars 1–2 again, then the cadence). Wikibooks Liederbuch score (LilyPond, `de.wikibooks.org/wiki/Liederbuch/_Greensleeves`):
+  // a8 | c4 d8 e8. fis16 e8 | d4 h8 g8. a16 h8 | c8. h16 a8 gis8. fis16 gis8 | a4 a8 a4. F#3–F#4, frets 0–4; home on an Am strum.
+  greensleeves: story({
+    id: 'greensleeves', title: 'Greensleeves', hookText: 'tabs', letRing: true, ring: 1.6,
+    notes: 'A3 C4 D4 E4 F#4 E4 D4 B3 G3 A3 B3 C4 B3 A3 G#3 F#3 G#3 A3 A3 A3',
+    melody: [
+      [3, 2, 0.5],
+      [4, 1, 1], [4, 3, 0.5], [5, 0, 0.75], [5, 2, 0.25], [5, 0, 0.5],
+      [4, 3, 1], [4, 0, 0.5], [3, 0, 0.75], [3, 2, 0.25], [4, 0, 0.5],
+      [4, 1, 0.75], [4, 0, 0.25], [3, 2, 0.5], [3, 1, 0.75], [2, 4, 0.25], [3, 1, 0.5],
+      [3, 2, 1], [3, 2, 0.5], [3, 2, 1.5],                                                 // the last A sounds as the strum
+    ],
+    strum: [45, 52, 57, 60, 64],                                   // Am x02210
+    bpm: 90, hook: [0, 0], chord: [69, 72, 76],                   // hit E2, the fifth · A minor
+  }),
+  // Happy Birthday to You (Hill sisters, public domain), the whole tune, 3/4. Wikibooks Liederbuch score (LilyPond, `de.wikibooks.org/wiki/
+  // Liederbuch/_Happy_Birthday_to_You`), there in E major, here moved to C so it sits in first position (G3–G4, frets 0–3): G G A G C B ·
+  // G G A G D C · G G G' E C B A · F F E C D C. Home on a C strum.
+  birthday: story({
+    id: 'birthday', title: 'Happy Birthday', hookText: 'tabs', letRing: true, ring: 1.6,
+    notes: 'G3 G3 A3 G3 C4 B3 G3 G3 A3 G3 D4 C4 G3 G3 G4 E4 C4 B3 A3 F4 F4 E4 C4 D4 C4',
+    melody: [
+      [3, 0, 0.5], [3, 0, 0.5], [3, 2, 1], [3, 0, 1], [4, 1, 1], [4, 0, 2],
+      [3, 0, 0.5], [3, 0, 0.5], [3, 2, 1], [3, 0, 1], [4, 3, 1], [4, 1, 2],
+      [3, 0, 0.5], [3, 0, 0.5], [5, 3, 1], [5, 0, 1], [4, 1, 1], [4, 0, 1], [3, 2, 1],
+      [5, 1, 0.5], [5, 1, 0.5], [5, 0, 1], [4, 1, 1], [4, 3, 1], [4, 1, 1.5],              // the last C sounds as the strum
+    ],
+    strum: [48, 52, 55, 60, 64],                                   // C x32010
+    bpm: 132, hook: [0, 3], chord: [72, 76, 79],                  // hit G2, the fifth · C major
+  }),
   // The same arpeggio as a 10 s looping band cut (src/rising/RisingBand.tsx): the melody from frame 0, ♩ = 144 so the film is exactly eight bars
   // (seven of melody, one bar of E back into the top), the "your turn" gaps tightened.
   risingBand: story({ ...RISING, id: 'risingBand', bpm: 144, listenAt: 0, gaps: { hold: 0.15, cta: 0.15, sub: 0.3, comment: 0.45, sweep: 0.85, end: 1.5 } }),

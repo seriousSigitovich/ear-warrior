@@ -3,6 +3,8 @@ import {
   AppEventPayload,
   buildEventPayload,
   createAppEventOutbox,
+  defaultAppEventClient,
+  screenFromPath,
 } from '../../../src/services/logging/eventLog';
 
 const at = new Date('2026-10-27T10:00:00.000Z');
@@ -58,5 +60,37 @@ describe('app event outbox', () => {
     await box.log(payload('session_start'));
     expect(client.sent.map((e) => e.name)).toEqual(['app_open', 'session_start']);
     expect(box.pending()).toBe(0);
+  });
+});
+
+describe('screen names', () => {
+  test('maps expo-router paths to funnel names', () => {
+    expect(screenFromPath('/')).toBe('home');
+    expect(screenFromPath('/sign-in')).toBe('sign_in');
+    expect(screenFromPath('/practice')).toBe('practice');
+  });
+});
+
+describe('http client', () => {
+  const realFetch = global.fetch;
+  afterEach(() => {
+    global.fetch = realFetch;
+  });
+  const answer = (status: number) => {
+    global.fetch = jest.fn(async () => ({ ok: status < 400, status }) as Response);
+  };
+
+  test('drops an event the server rejects, so it cannot block the queue', async () => {
+    answer(400);
+    const box = createAppEventOutbox(defaultAppEventClient('https://api.example')!);
+    await box.log(payload('screen_view'));
+    expect(box.pending()).toBe(0);
+  });
+
+  test('keeps an event when the server is down', async () => {
+    answer(503);
+    const box = createAppEventOutbox(defaultAppEventClient('https://api.example')!);
+    await box.log(payload());
+    expect(box.pending()).toBe(1);
   });
 });

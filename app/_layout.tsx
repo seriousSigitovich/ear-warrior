@@ -1,14 +1,16 @@
 // Root navigation shell (T015). expo-router Stack inside the safe-area provider.
 // Nocturne: dark ground, headerless Home, slim accent-tinted back headers on inner screens.
 import React, { useEffect } from 'react';
-import { Stack } from 'expo-router';
+import { AppState } from 'react-native';
+import { Stack, usePathname } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useAuthLifecycle } from '../src/features/auth/useAuth';
 import { colors } from '../src/theme/nocturne';
 import { initSentry, setSentryUser, wrapWithSentry } from '../src/services/observability/sentry';
 import { getAuthService } from '../src/features/auth/authService';
-import { track } from '../src/features/analytics/tracker';
+import { currentPlace, setScreen, track } from '../src/features/analytics/tracker';
+import { screenFromPath } from '../src/services/logging/eventLog';
 import { getOrCreateDeviceId, keyValueOverRowStore } from '../src/lib/deviceId';
 import { KEY_VALUE_TABLE, defaultRowStore } from '../src/services/storage/db';
 
@@ -30,11 +32,44 @@ function useSentryUser(): void {
   }, []);
 }
 
+// Funnel analytics: every screen the learner reaches, and where they were when they left the app —
+// the last `app_background` of a device is where its first run stopped.
+function useScreenTracking(): void {
+  const pathname = usePathname();
+  useEffect(() => {
+    const screen = screenFromPath(pathname);
+    setScreen(screen);
+    track('screen_view', { screen });
+  }, [pathname]);
+
+  useEffect(() => {
+    let activeSince = Date.now();
+    let leftAt: number | null = null;
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'background' && leftAt === null) {
+        leftAt = Date.now();
+        const { screen, phase } = currentPlace();
+        track('app_background', {
+          screen,
+          phase,
+          active_s: Math.round((leftAt - activeSince) / 1000),
+        });
+      } else if (state === 'active' && leftAt !== null) {
+        track('app_resume', { away_s: Math.round((Date.now() - leftAt) / 1000) });
+        leftAt = null;
+        activeSince = Date.now();
+      }
+    });
+    return () => sub.remove();
+  }, []);
+}
+
 function RootLayout() {
   useAuthLifecycle();
   useSentryUser();
   // One launch of the app = one `app_open`; day-2 return is read off these server-side.
   useEffect(() => track('app_open'), []);
+  useScreenTracking();
   return (
     <SafeAreaProvider>
       <StatusBar style="light" />

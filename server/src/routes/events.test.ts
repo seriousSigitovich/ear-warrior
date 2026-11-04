@@ -15,6 +15,11 @@ test('accepts scalar props', () => {
   assert.equal(EventBody.safeParse({ ...base, name: 'session_end', props: { attempt_count: 4, duration_s: 90 } }).success, true);
 });
 
+test('accepts the funnel events with their props', () => {
+  assert.equal(EventBody.safeParse({ ...base, name: 'app_background', props: { screen: 'practice', phase: 'awaitingInput', active_s: 42 } }).success, true);
+  assert.equal(EventBody.safeParse({ ...base, name: 'signin_error', props: { step: 'requesting', error: 'mail_failed' } }).success, true);
+});
+
 test('rejects an unknown event name', () => {
   assert.equal(EventBody.safeParse({ ...base, name: 'purchase' }).success, false);
 });

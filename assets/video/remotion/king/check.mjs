@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Quality gate for the Mountain King cut's soundtrack: the pitch heard at every melody onset is the note in the timeline, the timeline holds
-// together, levels are sane.   node king/check.mjs [--tune=<id>]  (after render-king.mjs [--tune=<id>] --audio-only)
+// together, levels are sane.   node king/check.mjs [--tune=<id>] [--wav=<file in public/>]  (after render-king.mjs [--tune=<id>] --audio-only)
 // Eighth notes leave short windows, so the pitch is the semitone whose first four harmonics carry the most energy (an octave error loses).
 import { execFileSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
@@ -9,12 +9,13 @@ import * as KING from './story.mjs';
 import { TUNES } from './tunes.mjs';
 
 const tune = process.argv.find((a) => a.startsWith('--tune='))?.slice(7);
+const wav = process.argv.find((a) => a.startsWith('--wav='))?.slice(6);     // another cut's soundtrack of the same story, e.g. wood-<id>.wav
 const { HEARD, MELODY, T, DURATION } = tune ? TUNES[tune] : KING, { TUNING, midiAt } = KING;
 const NOTES = tune ? TUNES[tune].NOTES : 'B2 C#3 D3 E3 F#3 D3 F#3 F3 C#3 F3 E3 C3 E3';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const SR = 44100;
-const raw = execFileSync('ffmpeg', ['-v', 'error', '-i', join(here, '..', 'public', tune ? `king-${tune}.wav` : 'king-neon.wav'), '-ac', '1', '-ar', String(SR), '-f', 'f32le', '-'], { maxBuffer: 1 << 28 });
+const raw = execFileSync('ffmpeg', ['-v', 'error', '-i', join(here, '..', 'public', wav ?? (tune ? `king-${tune}.wav` : 'king-neon.wav')), '-ac', '1', '-ar', String(SR), '-f', 'f32le', '-'], { maxBuffer: 1 << 28 });
 const x = new Float32Array(raw.buffer, raw.byteOffset, raw.length / 4);
 const hz = (m) => 440 * 2 ** ((m - 69) / 12);
 function power(f, a, b) {
@@ -28,6 +29,14 @@ const heard = (a, b) => {
   for (let m = 40; m <= 84; m++) { const p = [1, 2, 3, 4].reduce((s, h) => s + Math.log(1e-12 + power(hz(m) * h, a, b)), 0); if (p > bp) { bp = p; best = m; } }
   return best;
 };
+/** A let-ring tune: earlier notes still sound over each onset, so the note heard is the semitone that gained the most energy at the onset. */
+const struck = (a, b) => {
+  const pre = Math.max(0, a - 0.05 - (b - a));
+  let best = 0, bp = -Infinity;
+  for (let m = 40; m <= 84; m++) { const p = [1, 0.5, 0.25].reduce((s, w, h) => s + w * (power(hz(m) * (h + 1), a, b) - power(hz(m) * (h + 1), pre, a - 0.05)), 0); if (p > bp) { bp = p; best = m; } }
+  return best;
+};
+const LET_RING = tune && TUNES[tune].LET_RING;
 
 let fail = 0;
 const ok = (cond, msg) => { console.log(`${cond ? 'PASS' : 'FAIL'}  ${msg}`); if (!cond) fail++; };
@@ -38,8 +47,10 @@ ok(MELODY.map((n) => n.name).join(' ') === NOTES, `melody = ${MELODY.map((n) => 
 const MAX_FRET = tune ? TUNES[tune].MAX_FRET : 4;
 ok(Math.max(...MELODY.map((n) => n.fret)) <= MAX_FRET, `frets 0–${MAX_FRET}`);
 HEARD.forEach((n, i) => {
-  const end = Math.min(n.t + 0.3, HEARD[i + 1] ? HEARD[i + 1].t - 0.01 : n.t + 0.3), got = heard(n.t + 0.05, end);
-  ok(got === n.midi, `note ${i + 1} @ ${n.t.toFixed(3)} s: heard MIDI ${got}, timeline says ${n.name} (${n.midi})`);
+  const end = Math.min(n.t + 0.3, HEARD[i + 1] ? HEARD[i + 1].t - 0.01 : n.t + 0.3), got = (LET_RING && !(i === HEARD.length - 1 && TUNES[tune].END_STRUM) ? struck : heard)(n.t + 0.05, end);
+  const strum = i === HEARD.length - 1 && LET_RING && TUNES[tune].END_STRUM;   // the home note sounds as a chord: any of its notes
+  const hit = strum ? strum.some((m) => (m - got) % 12 === 0) : LET_RING ? (got - n.midi) % 12 === 0 : got === n.midi;   // let ring: up to the octave
+  ok(hit, `note ${i + 1} @ ${n.t.toFixed(3)} s: heard MIDI ${got}, timeline says ${n.name} (${n.midi})${strum ? ' as a strum' : ''}`);
 });
 ok(Math.abs(x.length - DURATION * SR) <= 1, `exactly ${DURATION} s of audio (${(x.length / SR).toFixed(3)} s)`);
 ok(HEARD.at(-1).t + 0.3 < T.hold && T.hold < T.cta, `last note at ${HEARD.at(-1).t.toFixed(2)} s rings before the swing at ${T.hold}`);

@@ -15,6 +15,23 @@ const APP_VERSION = '0.1.0';
 
 let outbox: AppEventOutbox | null | undefined;
 
+/** Where the learner is right now, so `app_background` can say where they left from. */
+const where: { screen: string; phase: string } = { screen: 'home', phase: '' };
+
+export function setScreen(screen: string): void {
+  where.screen = screen;
+  where.phase = '';
+}
+
+/** The practice loop's phase (idle, playingMelody, awaitingInput, …); '' off the practice screen. */
+export function setPhase(phase: string): void {
+  where.phase = phase;
+}
+
+export function currentPlace(): { screen: string; phase: string } {
+  return { ...where };
+}
+
 function getOutbox(): AppEventOutbox | null {
   if (outbox === undefined) {
     const client = defaultAppEventClient(API_URL);

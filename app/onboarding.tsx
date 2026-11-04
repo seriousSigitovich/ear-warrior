@@ -1,6 +1,6 @@
 // First-run onboarding (beta checklist): three screens — listen, find it on the fretboard, hear the
 // verdict. Shown once; Skip is always there. Finishing marks it seen and returns to Home.
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Screen } from '../src/components/common/Screen';
@@ -19,9 +19,12 @@ export default function Onboarding() {
   const step = ONBOARDING_STEPS[index];
   const last = index === ONBOARDING_STEPS.length - 1;
 
+  // Which onboarding screens were seen: a drop between steps shows where people give up.
+  useEffect(() => track('onboarding_step', { step: index + 1 }), [index]);
+
   const finish = () => {
     void markOnboarded(keyValueOverRowStore(defaultRowStore(), KEY_VALUE_TABLE));
-    track('onboarding_done', { step_reached: index + 1 });
+    track('onboarding_done', { step_reached: index + 1, skipped: !last });
     router.back();
   };
 

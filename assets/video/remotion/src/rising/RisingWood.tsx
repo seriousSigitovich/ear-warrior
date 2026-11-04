@@ -3,7 +3,7 @@
 // fretboard under one tungsten lamp in a dark room, nickel frets, pearl inlays, bone nut, bronze and steel strings, film grain. A note
 // is a spark of lamplight running down its string; it lands on its fret, unnumbered, as a warm glowing dot and stays. Serif type
 // (Baskerville), cream on the brand's dark purple, lilac accents in the type, amber lamplight on the wood — no neon, glitch or flash. Ends by asking which song to play next.
-// A pure function of the frame; every time comes from king/tunes.mjs's `rising` story, which also lays the soundtrack.
+// A pure function of the frame; every time comes from a king/tunes.mjs story (prop `tune`, #71 = `rising`), which also lays the soundtrack.
 //   0–2.4 hook · 2.4–hold hear the melody · hold → end crane over the board, your turn, which song next
 import React from 'react';
 import { AbsoluteFill, Audio, staticFile, useCurrentFrame, useVideoConfig } from 'remotion';
@@ -302,8 +302,12 @@ export const Beads: React.FC<{ t: number; y: number; S: TuneStory; from?: number
 };
 
 // --- the film ---------------------------------------------------------------------------------------------------------------------------
-const W71 = woodOf(TUNES.rising);
-const { T } = W71.S;
+/** The tunes cut in this look: #71's Rising Sun, then the next ones from king/tunes.mjs. */
+export const WOOD_TUNES = ['rising', 'canon', 'scarborough', 'greensleeves', 'birthday'] as const;
+export type WoodTune = (typeof WOOD_TUNES)[number];
+/** The soundtrack render-rising.mjs lays for a tune (#71 keeps its old name). */
+export const woodWav = (tune: WoodTune) => (tune === 'rising' ? 'rising-wood.wav' : `wood-${tune}.wav`);
+const WOODS = Object.fromEntries(WOOD_TUNES.map((id) => [id, woodOf(TUNES[id])])) as Record<WoodTune, Wood>;
 
 /** The room behind the neck: a warm lamp glow above it, a lilac glow from the top. */
 export const LampRoom: React.FC = () => (
@@ -334,16 +338,17 @@ export const YourTurn: React.FC<{ t: number; T: TuneStory['T'] }> = ({ t, T }) =
 /** Scrims so the type reads over the wood. */
 export const SCRIM = 'linear-gradient(180deg, rgba(26,13,46,0.8) 0%, rgba(26,13,46,0.42) 26%, rgba(26,13,46,0) 40%, rgba(26,13,46,0) 70%, rgba(26,13,46,0.78) 92%)';
 
-export const RisingWood: React.FC<{ silent?: boolean }> = ({ silent }) => {
+export const RisingWood: React.FC<{ silent?: boolean; tune?: WoodTune }> = ({ silent, tune = 'rising' }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const t = frame / fps;
-  const cam = makeCam(W71.cameraAt(t));
+  const W = WOODS[tune], { T } = W.S;
+  const cam = makeCam(W.cameraAt(t));
 
   return (
     <AbsoluteFill style={{ background: WOOD.bg, overflow: 'hidden' }}>
       <LampRoom />
-      <Guitar t={t} cam={cam} names={ramp(t, T.hold + 0.5, T.hold + 0.9)} w={W71} />
+      <Guitar t={t} cam={cam} names={ramp(t, T.hold + 0.5, T.hold + 0.9)} w={W} />
       <AbsoluteFill style={{ background: SCRIM }} />
 
       {/* scene 1 · the hook */}
@@ -353,12 +358,12 @@ export const RisingWood: React.FC<{ silent?: boolean }> = ({ silent }) => {
 
       {/* scene 2 · hear the melody, once */}
       <Line t={t} at={T.listen + 0.05} outAt={T.hold} y={290} size={96} italic>Listen once.</Line>
-      <Beads t={t} y={400} S={W71.S} />
+      <Beads t={t} y={400} S={W.S} />
 
       {/* scene 3 · your turn, and which song next */}
       <YourTurn t={t} T={T} />
       <Lens frame={frame} />
-      {!silent && <Audio src={staticFile('rising-wood.wav')} />}
+      {!silent && <Audio src={staticFile(woodWav(tune))} />}
     </AbsoluteFill>
   );
 };

@@ -5,11 +5,30 @@ import { z } from 'zod';
 import { db } from '../db/client.js';
 import { appEvents } from '../db/schema.js';
 
+/** Matches AppEventName on the client (src/services/logging/eventLog.ts). Deploy before the app sends a new one. */
+export const EVENT_NAMES = [
+  'app_open',
+  'app_resume',
+  'app_background',
+  'screen_view',
+  'onboarding_step',
+  'onboarding_done',
+  'signin_code_request',
+  'signin_error',
+  'signin_done',
+  'signin_skip',
+  'session_start',
+  'melody_play',
+  'answer_start',
+  'answer_check',
+  'session_end',
+] as const;
+
 // Matches AppEventPayload on the client (src/services/logging/eventLog.ts).
 export const EventBody = z.object({
   device_id: z.string().min(1).max(80),
   app_version: z.string().min(1).max(40),
-  name: z.enum(['app_open', 'onboarding_done', 'session_start', 'session_end']),
+  name: z.enum(EVENT_NAMES),
   occurred_at: z.string().datetime(),
   // Small scalars only: this is a counter bag, not a place to put free text.
   props: z

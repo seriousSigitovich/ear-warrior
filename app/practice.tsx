@@ -25,7 +25,7 @@ import { createProgressOutbox } from '../src/services/progress/outbox';
 import { getDifficultyRepository } from '../src/features/difficulty/difficultyRepository';
 import { getAuthService } from '../src/features/auth/authService';
 import { getOrCreateDeviceId, keyValueOverRowStore } from '../src/lib/deviceId';
-import { track } from '../src/features/analytics/tracker';
+import { setPhase, track } from '../src/features/analytics/tracker';
 import { PracticeLoopDeps, usePracticeLoop } from '../src/features/practice/usePracticeLoop';
 import { persistGradedAttempt } from '../src/features/practice/persist';
 import { useSession } from '../src/features/practice/session';
@@ -172,12 +172,34 @@ export default function Practice() {
           .then(() => progress?.outbox.enqueue(attempt))
           .catch(() => undefined);
         session.recordAttempt(attempt.verdict === 'correct');
+        track('answer_check', {
+          verdict: attempt.verdict,
+          rank: level.rank,
+          n: attemptCountRef.current + 1,
+        });
       },
     }),
     [playback, repos, difficulty, loadHistory, progress, sessionId, outbox, deviceId, session],
   );
 
   const loop = usePracticeLoop(deps);
+
+  // Funnel analytics inside the loop: heard a melody → started tapping → checked (`answer_check` above).
+  // The phase rides along on `app_background`, so a leave mid-answer shows as such.
+  useEffect(() => setPhase(loop.phase), [loop.phase]);
+  const rank = loop.level.rank;
+  const melodyId = loop.melody?.id;
+  // Keyed on the melody alone: once per melody, not again when the level changes under it.
+  useEffect(() => {
+    if (melodyId) track('melody_play', { rank });
+  }, [melodyId]);
+  const tappedMelody = useRef<string | null>(null);
+  const tapped = loop.phase === 'awaitingInput' && loop.answer.length > 0;
+  useEffect(() => {
+    if (!tapped || !melodyId || tappedMelody.current === melodyId) return;
+    tappedMelody.current = melodyId; // once per melody, however often the answer is cleared
+    track('answer_start', { rank });
+  }, [tapped, melodyId, rank]);
 
   const grade = loop.grade;
   const showFeedback = loop.phase === 'feedback' && !!grade;

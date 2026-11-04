@@ -18,6 +18,7 @@ import {
 } from '../src/services/auth/flow';
 import { describeError } from '../src/services/auth/messages';
 import type { AuthError } from '../src/services/auth/client';
+import { track } from '../src/features/analytics/tracker';
 import { colors, font, radius, textAlpha } from '../src/theme/nocturne';
 
 export default function SignIn() {
@@ -28,6 +29,7 @@ export default function SignIn() {
   const [code, setCode] = useState('');
   const [now, setNow] = useState(Date.now());
   const handled = useRef<FlowState | null>(null);
+  const lastStep = useRef<FlowState['step']>('email');
 
   const dispatch = useCallback(
     (event: FlowEvent) => setFlow((s) => reduce(s, event, Date.now())),
@@ -46,6 +48,15 @@ export default function SignIn() {
   useEffect(() => {
     if (handled.current === flow) return;
     handled.current = flow;
+    // Funnel analytics: how far the offer goes, and what fails (mail_failed means the code never left).
+    const from = lastStep.current;
+    lastStep.current = flow.step;
+    if (flow.step === 'requesting') track('signin_code_request', { resend: !!flow.previous });
+    else if (flow.step === 'done') track('signin_done');
+    else if (flow.step === 'dismissed') track('signin_skip', { step: from });
+    else if ((flow.step === 'email' || flow.step === 'code') && flow.error) {
+      track('signin_error', { step: from, error: flow.error.code });
+    }
     if (flow.step === 'requesting') {
       void service
         .requestCode(flow.email)

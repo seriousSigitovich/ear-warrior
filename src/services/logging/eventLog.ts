@@ -1,10 +1,38 @@
-// Product events for the closed beta: did a tester open the app, finish onboarding, start and end a
-// practice session — and on which day. Same shape as the attempt log: anonymous (a random per-install
+// Product events for the closed beta: did a tester open the app, how far they got through onboarding,
+// sign-in and the first melody, and where they were when they left — and on which day. Same shape as the attempt log: anonymous (a random per-install
 // device id, no audio, no PII), best-effort, with an offline outbox so it never blocks the app.
 // The transport client is injected so queue/flush/retry logic is testable against a mock.
 
-/** The beta's one question: do testers come back? Day-2 return and sessions per week fall out of these four. */
-export type AppEventName = 'app_open' | 'onboarding_done' | 'session_start' | 'session_end';
+/**
+ * Two questions: do testers come back (app_open, app_resume, sessions), and where does a first run stop
+ * (the onboarding, sign-in and practice steps, and the screen an `app_background` was sent from).
+ * Matches the server's EventBody enum (server/src/routes/events.ts): ship the server first.
+ */
+export type AppEventName =
+  | 'app_open'
+  | 'app_resume'
+  | 'app_background'
+  | 'screen_view'
+  | 'onboarding_step'
+  | 'onboarding_done'
+  | 'signin_code_request'
+  | 'signin_error'
+  | 'signin_done'
+  | 'signin_skip'
+  | 'session_start'
+  | 'melody_play'
+  | 'answer_start'
+  | 'answer_check'
+  | 'session_end';
+
+/** A route as the funnel names it: `/` → `home`, `/sign-in` → `sign_in`. Pure. */
+export function screenFromPath(pathname: string): string {
+  const name = pathname
+    .replace(/^\/+|\/+$/g, '')
+    .replace(/[^a-z0-9]+/gi, '_')
+    .toLowerCase();
+  return name === '' ? 'home' : name.slice(0, 40);
+}
 
 export interface AppEventPayload {
   device_id: string;
@@ -60,6 +88,9 @@ export function defaultAppEventClient(baseUrl?: string): AppEventClient | null {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(row),
       });
+      // A 4xx will never be accepted (e.g. a name an older server does not know): drop it rather than
+      // let it block the queue forever. Only network errors and 5xx are worth retrying.
+      if (res.status >= 400 && res.status < 500) return;
       if (!res.ok) throw new Error(`event log failed: ${res.status}`);
     },
   };
