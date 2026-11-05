@@ -8,6 +8,10 @@ export const YT_SCOPES = [
 /** Upload only — a separate consent so the analytics token can never post and the upload token can never read. */
 export const YT_UPLOAD_SCOPES = ['https://www.googleapis.com/auth/youtube.upload'] as const;
 
+/** Comments (`npm run comments`): Google has no narrower scope that can read or answer comments than force-ssl, so it gets a
+ * token of its own and the analytics token stays read-only. */
+export const YT_COMMENTS_SCOPES = ['https://www.googleapis.com/auth/youtube.force-ssl'] as const;
+
 /** `access_type=offline` + `prompt=consent` is what makes Google hand back a refresh token. */
 export function buildAuthUrl(p: { clientId: string; redirectUri: string; state: string; scopes?: readonly string[] }): string {
   const q = new URLSearchParams({

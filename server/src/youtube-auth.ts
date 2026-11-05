@@ -8,7 +8,7 @@ import { execFile } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { getJson } from './social/http.js';
-import { buildAuthUrl, setEnvVar, YT_SCOPES, YT_UPLOAD_SCOPES } from './social/oauth.js';
+import { buildAuthUrl, setEnvVar, YT_COMMENTS_SCOPES, YT_SCOPES, YT_UPLOAD_SCOPES } from './social/oauth.js';
 
 const PORT = 8765;
 const REDIRECT = `http://localhost:${PORT}/callback`;
@@ -20,12 +20,15 @@ if (!clientId || !clientSecret) {
 }
 
 // `npm run yt:auth` -> read-only analytics token (YT_REFRESH_TOKEN);
-// `npm run yt:auth -- --upload` -> upload-only token (YT_UPLOAD_REFRESH_TOKEN) for `npm run publish`.
+// `npm run yt:auth -- --upload` -> upload-only token (YT_UPLOAD_REFRESH_TOKEN) for `npm run publish`;
+// `npm run yt:auth -- --comments` -> comments token (YT_COMMENTS_REFRESH_TOKEN, youtube.force-ssl) for `npm run comments`.
 const upload = process.argv.includes('--upload');
-const ENV_KEY = upload ? 'YT_UPLOAD_REFRESH_TOKEN' : 'YT_REFRESH_TOKEN';
+const commentsMode = process.argv.includes('--comments');
+const ENV_KEY = upload ? 'YT_UPLOAD_REFRESH_TOKEN' : commentsMode ? 'YT_COMMENTS_REFRESH_TOKEN' : 'YT_REFRESH_TOKEN';
+const SCOPES = upload ? YT_UPLOAD_SCOPES : commentsMode ? YT_COMMENTS_SCOPES : YT_SCOPES;
 
 const state = randomBytes(16).toString('hex');
-const url = buildAuthUrl({ clientId, redirectUri: REDIRECT, state, scopes: upload ? YT_UPLOAD_SCOPES : YT_SCOPES });
+const url = buildAuthUrl({ clientId, redirectUri: REDIRECT, state, scopes: SCOPES });
 
 const server = createServer(async (req, res) => {
   const u = new URL(req.url ?? '/', REDIRECT);

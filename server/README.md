@@ -146,6 +146,25 @@ token again (API setup with Instagram login → Generate token) and put it in `.
 (`vercel blob create-store ear-warrior-publish`) and keep its read-write token in `.env` as `BLOB_READ_WRITE_TOKEN` (local only).
 Spec: `specs/007-video-publishing/`.
 
+## Comments
+
+`npm run comments` reads the comments under our Shorts and Reels, checks the notes people wrote against the video's
+melody and writes `docs/comments-inbox.md` (gitignored): every thread the channel has not answered yet, a verdict
+(✅ right · 🟡 right up to note N · ❌ off · ❔ no key for this video · 💬 not an answer) and a reply draft. It posts nothing.
+`-- --all` includes threads already answered. Local only, like publishing.
+
+The melodies come from `docs/answer-key.json`; after publishing a new cut run `node answer-key.mjs` in
+`assets/video/remotion` (videos whose tune is not in that folder are listed as skipped there and show up as ❔).
+The check reads note names (`E B C D`, `EBCD`, `C#4`, `mi si do`, `ми си до`), ASCII tabs and bare frets; it compares pitch
+classes, ignores octaves and accepts another key and a repeated note written once.
+
+Credentials (one-time, local only):
+- YouTube: `npm run yt:auth -- --comments` writes `YT_COMMENTS_REFRESH_TOKEN`. Reading comments needs the
+  `youtube.force-ssl` scope (Google has nothing narrower for comments; `youtube.readonly` is refused), so it is a token of its own.
+- Instagram: add `instagram_business_manage_comments` to the Meta app (Use cases → Customize → Permissions and features),
+  generate a token (API setup with Instagram login → Generate token) and put it in `.env` as `IG_COMMENTS_TOKEN`. Without the
+  permission the API answers with empty pages, not an error; the command reports that.
+
 ## Deploy to Vercel (backend + daily collection)
 
 The backend runs on Vercel as one serverless function (`api/index.js` → compiled Fastify app); a daily

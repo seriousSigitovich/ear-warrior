@@ -52,3 +52,6 @@ assets/**/*.webm
 assets/**/*.mp3
 assets/**/*.wav
 /*.mp3
+
+# Comment checker output (commenters' names; rebuilt by `npm run comments` in server/)
+docs/comments-inbox.md
