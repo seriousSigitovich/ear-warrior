@@ -7,7 +7,7 @@ import { FPS, TUNING, noteName, midiAt } from './story.mjs';
 /** The scene gaps of the Mountain King cut: the hold after the last note, then each line of "your turn" after the hold, and the tail. */
 const GAPS = { hold: 0.35, cta: 0.45, sub: 0.95, comment: 1.45, sweep: 2.3, end: 1.6 };
 /** A story from a melody: the same scene gaps as the Mountain King cut, measured from the melody's last note. */
-function story({ id, title, notes, melody, bpm, hook, chord, maxFret = 4, ring, letRing = false, strum, listenAt = 2.75, gaps = GAPS, hookText = '97' }) {
+function story({ id, title, notes, melody, bpm, hook, chord, maxFret = 4, ring, letRing = false, strum, listenAt = 2.75, gaps = GAPS, hookText = '97', score }) {
   const MELODY = melody.map(([string, fret, beats]) => ({ string, fret, beats, midi: midiAt(string, fret), name: noteName(midiAt(string, fret)) }));
   const BEAT = 60 / bpm;
   const OFFSETS = MELODY.reduce((acc, n, i) => [...acc, i ? acc[i - 1] + MELODY[i - 1].beats * BEAT : 0], []);
@@ -25,6 +25,7 @@ function story({ id, title, notes, melody, bpm, hook, chord, maxFret = 4, ring, 
     HOOK_NOTE: { string: hook[0], fret: hook[1], midi: midiAt(hook[0], hook[1]) },
     HOOK_TEXT: hookText,                                            // '97': "97% of guitarists can't play this by ear" · 'tabs': "can you play this without tabs?"
     CHORD: chord,
+    SCORE: score,                                                   // the melody as written music (score() below), drawn as a staff
   };
 }
 
@@ -55,6 +56,34 @@ const PHRASE_GLADIATORS = [
   [3, 2, 1], [3, 1, 1], [3, 0, 0.5], [3, 1, 0.5], [3, 0, 0.5], [2, 4, 0.5],
   [2, 3, 1], [2, 2, 1], [2, 1, 1], [2, 2, 1],
 ];
+
+/** Durations of `score()` tokens, in quarter beats. */
+const DUR = { 8: 0.5, q: 1, 'q.': 1.5, h: 2, 'h.': 3 };
+/**
+ * A melody written as guitar music: bars of `<pitch><octave>:<dur>[~]` tokens (B♭ as Bb, sharps as #; `~` ties into the next token), written
+ * an octave above the sound as guitar parts are. Gives story() its `melody` (a tied note is one attack; each on the lowest fret it has) and
+ * `notes`, and the bars themselves as SCORE for the staff. The first bar may be a pickup.
+ */
+function score({ key, time, bars, maxFret = 4 }) {
+  const PC = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+  const parsed = bars.map((bar) => bar.split(/\s+/).map((tok) => {
+    const m = tok.match(/^([A-G])(#|b)?(\d):(8|q\.?|h\.?)(~)?$/);
+    if (!m) throw new Error(`score: bad token ${tok}`);
+    const written = 12 * (Number(m[3]) + 1) + PC[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0);
+    return { step: m[1], acc: m[2] ?? '', octave: Number(m[3]), dur: m[4], beats: DUR[m[4]], tie: !!m[5], midi: written - 12 };
+  }));
+  const flat = parsed.flat();
+  const melody = [];
+  flat.forEach((n, i) => {
+    if (i > 0 && flat[i - 1].tie) { melody.at(-1)[2] += n.beats; n.order = melody.length - 1; return; }
+    const [string, fret] = TUNING.map((open, s) => [s, n.midi - open]).filter(([, f]) => f >= 0 && f <= maxFret).sort((a, b) => a[1] - b[1])[0] ?? [];
+    if (string === undefined) throw new Error(`score: ${noteName(n.midi)} is off the first ${maxFret} frets`);
+    n.order = melody.length;
+    melody.push([string, fret, n.beats]);
+  });
+  const notes = melody.map(([s, f]) => noteName(midiAt(s, f))).join(' ');
+  return { melody, notes, maxFret, score: { key, time, bars: parsed } };
+}
 
 export const TUNES = {
   // Korobeiniki (Russian folk song, public domain; the Tetris tune), A minor, the whole 8-bar theme as #14 (`classics.mjs`), 37 notes,
@@ -207,6 +236,31 @@ export const TUNES = {
     ],
     strum: [48, 52, 55, 60, 64],                                   // C x32010
     bpm: 200, hook: [0, 3], chord: [72, 76, 79],                  // hit G2, the fifth · C major
+  }),
+  // Dark Eyes / Очи чёрные (Russian romance, Hrebinka's 1843 words on Hermann's 1884 Hommage-Valse, public domain), the whole verse, 3/4.
+  // Melody from the 8notes.com piano score "Dark Eyes" (Russian trad., arr. CM, E minor; its top voice, the second ending), moved down a
+  // tone to D minor, the key guitarists play it in. Frank Nordberg's ABC (Musica Viva X:2859) was used first and is wrong in three places
+  // the author heard: "очи жгучие" must hang on the leading note (D C# C#, not D C# D), and both "вас" in "как люблю я вас, как боюсь я
+  // вас" leap down (B♭, A), not stay up (E, D). Written as guitar music (treble clef an octave up, see `score()`); the staff in
+  // src/rising/Staff.tsx draws it. G#3–G4, frets 0–3, let ring, home on a Dm strum.
+  darkeyes: story({
+    id: 'darkeyes', title: 'Dark Eyes', hookText: 'tabs', letRing: true, ring: 1.6,
+    ...score({
+      key: 'Dm', time: [3, 4],
+      bars: [
+        'G#4:q A4:q',                          // О-чи
+        'Bb4:q. A4:8 A4:q~', 'A4:q G#4:q A4:q', // чёр-ны-е, о-чи
+        'Bb4:q. A4:8 A4:q~', 'A4:q A4:q D5:q',  // страст-ны-е, о-чи
+        'D5:q. C#5:8 C#5:q~', 'C#5:q E5:q F5:q', // жгу-чи-е и пре-
+        'E5:q. D5:8 D5:q~', 'D5:q F5:q G5:q',   // -крас-ны-е, как люб-
+        'F5:q. E5:8 Bb4:q~', 'Bb4:q E5:q F5:q', // -лю я вас, как бо-
+        'E5:q. D5:8 A4:q~', 'A4:q G#4:q A4:q',  // -юсь я вас, знать у-
+        'Bb4:q. A4:8 A4:q~', 'A4:q E5:q F5:q',  // -ви-дел вас, я не в
+        'E5:q. D5:8 D5:q~', 'D5:h.',            // доб-рый час: the last D sounds as the strum
+      ],
+    }),
+    strum: [50, 57, 62, 65],                                       // Dm xx0231
+    bpm: 176, hook: [1, 0], chord: [74, 77, 81],                  // hit A2, the fifth · D minor
   }),
   // The same arpeggio as a 10 s looping band cut (src/rising/RisingBand.tsx): the melody from frame 0, ♩ = 144 so the film is exactly eight bars
   // (seven of melody, one bar of E back into the top), the "your turn" gaps tightened.

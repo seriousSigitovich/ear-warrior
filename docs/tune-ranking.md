@@ -45,7 +45,7 @@ Wikipedia: 20251101–20261031. YouTube Shorts searched for 60 of 60 tunes. Scor
 | 38 | Kalinka | 0.46 (3) | 52 K | 23/25 | 37 K | 5.5 M |  |
 | 39 | Hava Nagila | 0.45 (3) | 216 K | 22/25 | 20 K | 540 K |  |
 | 40 | Radetzky March | 0.43 (3) | 75 K | 14/25 | 7 K | 15.3 M |  |
-| 41 | Dark Eyes | 0.42 (3) | 36 K | 21/25 | 18 K | 19.3 M |  |
+| 41 | Dark Eyes | 0.42 (3) | 36 K | 21/25 | 18 K | 19.3 M | #81 published 2026-11-05 (wood + staff) |
 | 42 | The Entertainer | 0.41 (3) | 10 K | 21/25 | 24 K | 9.6 M |  |
 | 43 | La Cucaracha | 0.40 (3) | 131 K | 23/25 | 17 K | 953 K |  |
 | 44 | Air on the G String | 0.38 (3) | 77 K | 9/25 | 70 K | 334 K |  |

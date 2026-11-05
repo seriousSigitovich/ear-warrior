@@ -13,6 +13,7 @@ import { SOFT, kick, ramp, springAt, type SpringCfg } from '../ten/motion';
 import { clamp, easeOut, rng } from '../util';
 import { TUNES } from '../../king/tunes.mjs';
 import type { TuneStory } from '../../king/tunes.d.mts';
+import { Staff } from './Staff';
 
 export const WOOD = {
   bg: '#1A0D2E',                                                          // the brand's dark purple (#57/#62's ground)
@@ -340,7 +341,7 @@ export const Beads: React.FC<{ t: number; y: number; S: TuneStory; from?: number
 
 // --- the film ---------------------------------------------------------------------------------------------------------------------------
 /** The tunes cut in this look: #71's Rising Sun, then the next ones from king/tunes.mjs. */
-export const WOOD_TUNES = ['rising', 'canon', 'scarborough', 'greensleeves', 'birthday', 'gladiators'] as const;
+export const WOOD_TUNES = ['rising', 'canon', 'scarborough', 'greensleeves', 'birthday', 'gladiators', 'darkeyes'] as const;
 export type WoodTune = (typeof WOOD_TUNES)[number];
 /** The soundtrack render-rising.mjs lays for a tune (#71 keeps its old name). */
 export const woodWav = (tune: WoodTune) => (tune === 'rising' ? 'rising-wood.wav' : `wood-${tune}.wav`);
@@ -398,7 +399,7 @@ export const RisingWood: React.FC<{ silent?: boolean; tune?: WoodTune; neck?: bo
 
       {/* scene 2 · hear the melody, once */}
       <Line t={t} at={T.listen + 0.05} outAt={T.hold} y={290} size={96} italic>Listen once.</Line>
-      <Beads t={t} y={400} S={W.S} />
+      {W.S.SCORE ? <Staff t={t} y={350} S={W.S} show={presence(t, T.listen + 0.15, T.hold)} /> : <Beads t={t} y={400} S={W.S} />}
 
       {/* scene 3 · your turn, and which song next */}
       <YourTurn t={t} T={T} />
