@@ -140,3 +140,19 @@ npm run dev                          # Studio → composition "ByEar"
 ```
 
 `by-ear/story.mjs` is the timeline (heard notes, played notes incl. the miss, chord) and drives both `by-ear/audio.mjs` and the picture. `Person` gained two optional props for this: `guitar.ear` (hand to the ear) and `head` (head moves independently of the body). The rendered files were deleted; re-render with the command above.
+
+## Disco jam loop — 8 s, two cuts (`GrooveJam`, `GrooveCall`)
+
+A seamless 8 s loop for jamming: | Cmaj7 | Am7 | Dm7 | G7 | at ♩ = 120, four on the floor (kick every beat, claps on 2 and 4, open hats on the "and"), a disco octave bass, a quiet string pad and a 16th clean-guitar chop. On the neck: the C major pentatonic box at fret 5; each bar lights the chord's own triad inside it ("land here"), the key root C has a white ring.
+
+- `GrooveJam` — "Can you solo over this *without tabs?*": big chord name (settles before each downbeat), beat dots, the next chord.
+- `GrooveCall` — "The guitar asks. Can you *answer by ear?*": bars 1–2 a guitar phrase (E G A G E D C … A C D C) pops note by note on the box (LISTEN), bars 3–4 are empty with the landing notes lit and the beats draining (YOUR TURN). Same band sample for sample, so the two cuts differ only by the call (H31).
+
+```bash
+node render-groove.mjs                    # → public/groove-{jam,call}.wav + out/groove-{jam,call}.mp4 (~90 s)
+node render-groove.mjs --only=call        # one cut      --audio-only   just the soundtracks
+node render-groove.mjs --still=0.6,5      # PNG frames → out/frames/groove-<cut>_<s>.png
+node render-groove.mjs --cover            # out/groove-<cut>-cover.{png,jpg}
+```
+
+`groove/story.mjs` is the one timeline (chords, box, band pattern, the call as (string, fret) pairs — pitches derived from the tuning). `groove/audio.mjs` synthesizes drums/bass/pad and renders the guitars with `groove/guitar.py` through guitar-rig's `clean` amp (needs `assets/guitar-rig/.venv`); everything rings past the end is folded onto the start. Picture `src/groove/Groove.tsx`. Another groove = new chords/box/call in `story.mjs`. Rendered from data, not listened to — **play it before posting**.

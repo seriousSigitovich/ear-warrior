@@ -334,6 +334,19 @@
   .form-err { display: none; margin: 12px 0 0; font-size: 14px; color: #ff8f8f; }
   .form-err.show { display: block; }
 
+  /* ---------- Android beta (shown after signup on Android) ---------- */
+  .beta { max-width: 460px; margin: 14px 0 0; padding: 16px; border-radius: var(--radius-sm);
+          border: 1px solid var(--border-strong); background: var(--surface); }
+  .beta[hidden] { display: none; }
+  .beta-title { margin: 0 0 4px; font-size: 16px; font-weight: 600; color: var(--text); }
+  .beta-sub { margin: 0 0 12px; font-size: 14px; color: var(--muted); line-height: 1.4; }
+  .beta ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; counter-reset: step; }
+  .beta li { display: flex; align-items: center; gap: 10px; counter-increment: step; }
+  .beta li::before { content: counter(step); flex: none; width: 24px; height: 24px; border-radius: 50%;
+                     display: grid; place-items: center; font-size: 13px; font-weight: 600;
+                     color: var(--accent-bright); background: var(--accent-tint); }
+  .beta .btn-primary { flex: 1; text-decoration: none; padding: 11px 16px; white-space: normal; text-align: center; }
+
 
   /* ---------- footer ---------- */
   footer { border-top: 1px solid var(--border); padding: 28px 0 40px; }
@@ -425,6 +438,15 @@
           <div class="form-ok" id="formOk" role="status">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
             <span id="okText">You&rsquo;re on the list. We&rsquo;ll email you at launch.</span>
+          </div>
+          <div class="beta" id="beta" hidden>
+            <p class="beta-title">The Android beta is open</p>
+            <p class="beta-sub">Use the Google account that&rsquo;s on your phone. Do the steps in order.</p>
+            <ol>
+              <li><a class="btn-primary" id="betaGroup" href="https://groups.google.com/g/earwarrior-beta" target="_blank" rel="noopener">Join the beta group</a></li>
+              <li><a class="btn-primary" id="betaOptin" href="https://play.google.com/apps/testing/com.earwarrior.app" target="_blank" rel="noopener">Become a tester</a></li>
+              <li><a class="btn-primary" id="betaInstall" href="https://play.google.com/store/apps/details?id=com.earwarrior.app" target="_blank" rel="noopener">Install from Google Play</a></li>
+            </ol>
           </div>
           <p class="fineprint" id="fineprint">One email when we launch. No spam. Coming soon on iOS and Android.</p>
         </div>
@@ -693,6 +715,21 @@
     .then(function (d) { renderMeter(d.count, d.cap); })
     .catch(function () {});
 
+  // Android beta: self-serve through a separate closed track whose testers are the Google Group
+  // earwarrior-beta (the Alpha track keeps its own email list). Shown only after the email is in,
+  // so every beta tester is still a lead. ?beta=1 forces it for checking on desktop.
+  function showBeta() {
+    var android = /Android/i.test(navigator.userAgent);
+    if (!android && new URLSearchParams(location.search).get("beta") !== "1") return;
+    document.getElementById("beta").hidden = false;
+    track("beta-shown");
+  }
+  ["betaGroup", "betaOptin", "betaInstall"].forEach(function (id) {
+    document.getElementById(id).addEventListener("click", function () {
+      track(id.replace("beta", "beta-").toLowerCase());
+    });
+  });
+
   var form = document.getElementById("notifyForm");
   var ok = document.getElementById("formOk");
   var err = document.getElementById("formErr");
@@ -732,6 +769,7 @@
         document.getElementById("fineprint").style.display = "none";
         ok.classList.add("show");
         if (!data.duplicate) track("signup-ok");
+        showBeta();
       })
       .catch(function () {
         btn.disabled = false;

@@ -44,6 +44,9 @@ PRESETS = {
                 (Stage(14, 0.40, 150, 7500), Stage(3, 0.20, 100, 8000), Stage(1.4, 0.08, 70, 9000)), 6500, -50),
     "crunch": Amp("crunch", 70, 1200, 3.0,
                   (Stage(7, 0.35, 100, 9000), Stage(2.2, 0.15, 70, 9000)), 8000, -55),
+    # funk/disco clean: one barely-driven stage, thin low end and a presence push, so 16th chops snap instead of bloom
+    "clean": Amp("clean", 140, 1800, 3.0,
+                 (Stage(1.4, 0.06, 110, 12000),), 10000, -62),
 }
 
 

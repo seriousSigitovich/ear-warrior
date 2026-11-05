@@ -608,5 +608,45 @@
     "visibility": "public",
     "title": "Can you play it without tabs?",
     "publishedAt": "2026-11-05T10:30:33.929Z"
+  },
+  {
+    "file": "assets/video/remotion/out/groove-jam.mp4",
+    "videoNo": 82,
+    "platform": "youtube",
+    "postId": "dUCHcEwpb4M",
+    "url": "https://www.youtube.com/shorts/dUCHcEwpb4M",
+    "visibility": "private",
+    "title": "Can you solo over this without tabs?",
+    "publishedAt": "2026-11-05T10:53:20.627Z"
+  },
+  {
+    "file": "assets/video/remotion/out/groove-jam.mp4",
+    "videoNo": 82,
+    "platform": "instagram",
+    "postId": "18138291037637742",
+    "url": "https://www.instagram.com/reel/DfW3ACfDHI4/",
+    "visibility": "public",
+    "title": "Can you solo over this without tabs?",
+    "publishedAt": "2026-11-05T10:53:50.937Z"
+  },
+  {
+    "file": "assets/video/remotion/out/groove-call.mp4",
+    "videoNo": 83,
+    "platform": "youtube",
+    "postId": "NvvI0WoJNxU",
+    "url": "https://www.youtube.com/shorts/NvvI0WoJNxU",
+    "visibility": "private",
+    "title": "The guitar asks. Can you answer by ear?",
+    "publishedAt": "2026-11-05T10:54:20.506Z"
+  },
+  {
+    "file": "assets/carousel/out/caged",
+    "videoNo": null,
+    "platform": "instagram",
+    "postId": "18469154872140924",
+    "url": "https://www.instagram.com/p/DfW8xLkl0T5/",
+    "visibility": "public",
+    "title": "CAGED for playing by ear: find any melody on the neck.",
+    "publishedAt": "2026-11-05T11:44:04.310Z"
   }
 ]

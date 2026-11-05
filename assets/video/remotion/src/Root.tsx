@@ -33,6 +33,8 @@ import { TUNES as KING_TUNES } from '../king/tunes.mjs';
 import { DURATION as MOZART_DURATION, FPS as MOZART_FPS } from '../mozart/story.mjs';
 import { HumVideo } from './hum/HumVideo';
 import { JamBlues } from './jam/JamScene';
+import { GrooveJam, GrooveCall } from './groove/Groove';
+import { DURATION as GROOVE_DURATION, FPS as GROOVE_FPS } from '../groove/story.mjs';
 import { DURATION as JAM_DURATION, FPS as JAM_FPS } from '../jam/story.mjs';
 import { HairProof } from './hum/HairProof';
 import { Thumb, ThumbVertical } from './pain/Thumb';
@@ -83,6 +85,8 @@ export const Root: React.FC = () => (
   <Composition id="ToccataMinimal" component={ToccataMinimal} durationInFrames={Math.round(TOCCATA_DURATION * TOCCATA_FPS)} fps={TOCCATA_FPS} width={1080} height={1920} />
   <Composition id="BeeMinimal" component={BeeMinimal} durationInFrames={Math.round(BEE_DURATION * BEE_FPS)} fps={BEE_FPS} width={1080} height={1920} />
   <Composition id="SwanMinimal" component={SwanMinimal} durationInFrames={Math.round(SWAN_DURATION * SWAN_FPS)} fps={SWAN_FPS} width={1080} height={1920} />
+  <Composition id="GrooveJam" component={GrooveJam} durationInFrames={Math.round(GROOVE_DURATION * GROOVE_FPS)} fps={GROOVE_FPS} width={1080} height={1920} />
+  <Composition id="GrooveCall" component={GrooveCall} durationInFrames={Math.round(GROOVE_DURATION * GROOVE_FPS)} fps={GROOVE_FPS} width={1080} height={1920} />
   <Composition id="JamBlues" component={JamBlues} durationInFrames={Math.round(JAM_DURATION * JAM_FPS)} fps={JAM_FPS} width={1080} height={1920} />
   <Composition id="HumSolo" component={HumVideo} durationInFrames={900} fps={60} width={1080} height={1920} />
   <Composition id="HairProof" component={HairProof} durationInFrames={1} fps={60} width={1800} height={1500} />
