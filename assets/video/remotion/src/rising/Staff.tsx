@@ -3,13 +3,13 @@
 // sounding note left of centre. VexFlow lays the music out once into two SVG layers: the whole score in dim cream, and the notes alone in
 // amber, shown only up to the last note heard (a clip that moves note by note), so a note, its accidental, dot, flag and tie light together.
 import React, { useMemo } from 'react';
-import { Accidental, Dot, Formatter, Renderer, Stave, StaveNote, StaveTie, Voice } from 'vexflow';
+import { Accidental, Beam, Dot, Formatter, Renderer, Stave, StaveNote, StaveTie, Voice } from 'vexflow';
 import { kick, springAt, type SpringCfg } from '../ten/motion';
 import { clamp, easeOut } from '../util';
 import type { TuneStory, ScoreNote } from '../../king/tunes.d.mts';
 
 const SCALE = 2.6;                      // VexFlow units → px: a staff space of 23.5 px
-const BAR_W = 150;                      // a full bar, VexFlow units
+const BEAT_W = 50;                      // a quarter beat, VexFlow units: a 3/4 bar is 150, a 4/4 bar 200
 const PAD = 12;
 const STAVE_Y = 34;
 const H = 150;
@@ -21,7 +21,7 @@ const CALM: SpringCfg = { damping: 18, stiffness: 140, mass: 0.9 };
 type Head = { order: number; x: number; y: number; left: number };
 type Layout = { dim: string; lit: string; width: number; heads: Head[] };
 
-const DURATION: Record<ScoreNote['dur'], string> = { 8: '8', q: 'q', 'q.': 'qd', h: 'h', 'h.': 'hd' };
+const DURATION: Record<ScoreNote['dur'], string> = { 8: '8', q: 'q', 'q.': 'qd', h: 'h', 'h.': 'hd', w: 'w' };
 
 /** Lays the score out once. `notesOnly`: the amber layer, with no staff lines, clef or bar lines. */
 function draw(S: NonNullable<TuneStory['SCORE']>, ink: string, notesOnly: boolean) {
@@ -31,7 +31,7 @@ function draw(S: NonNullable<TuneStory['SCORE']>, ink: string, notesOnly: boolea
   const beatsPerBar = S.time[0] * (4 / S.time[1]);
   const widths = S.bars.map((bar, i) => {
     const beats = bar.reduce((a, n) => a + n.beats, 0);
-    return (i === 0 ? 120 : 0) + BAR_W * (beats / beatsPerBar);
+    return (i === 0 ? 120 : 0) + BEAT_W * beats;
   });
   const width = PAD * 2 + widths.reduce((a, w) => a + w, 0);
   const renderer = new Renderer(host, Renderer.Backends.SVG);
@@ -56,11 +56,27 @@ function draw(S: NonNullable<TuneStory['SCORE']>, ink: string, notesOnly: boolea
       all.push({ note, n });
       return note;
     });
+    // eighths that share a beat are beamed in pairs, as a guitar part is written (a lone eighth keeps its flag); a pickup bar counts its
+    // beats from where it starts inside the bar, so three pickup eighths read ♪ ♫, not ♫ ♪
+    const barBeats = bar.reduce((a, n) => a + n.beats, 0);
+    let pos = i === 0 ? beatsPerBar - barBeats : 0;
+    const groups: { beat: number; end: number; notes: StaveNote[] }[] = [];
+    bar.forEach((n, j) => {
+      const beat = Math.floor(pos + 1e-6);
+      pos += n.beats;
+      if (n.dur !== '8') return;
+      const last = groups.at(-1);
+      if (last && last.beat === beat && last.end === j) { last.notes.push(notes[j]); last.end = j + 1; }
+      else groups.push({ beat, end: j + 1, notes: [notes[j]] });
+    });
+    const beams = groups.filter((g) => g.notes.length > 1).map((g) => new Beam(g.notes, true));
+    beams.forEach((b) => b.setStyle({ fillStyle: ink, strokeStyle: ink }));
     const voice = new Voice({ num_beats: bar.reduce((a, n) => a + n.beats, 0) * (S.time[1] / 4), beat_value: S.time[1] });
     voice.addTickables(notes);
     Accidental.applyAccidentals([voice], S.key);
     new Formatter().joinVoices([voice]).format([voice], stave.getNoteEndX() - stave.getNoteStartX() - 14);
     voice.draw(ctx, stave);
+    beams.forEach((b) => b.setContext(ctx).draw());
     x += widths[i];
   });
   all.forEach(({ note, n }, i) => {

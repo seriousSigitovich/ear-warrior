@@ -52,6 +52,7 @@ const ALIASES = {
   birthday: ['happy birthday', 'с днем рождения'],
   gladiators: ['gladiators', 'entry of the gladiators', 'circus theme', 'выход гладиаторов'],
   darkeyes: ['dark eyes', 'ochi chernye', 'ochi chornye', 'очи черные', 'очи чёрные'],
+  cucaracha: ['cucaracha', 'кукарача'],
   king: ['mountain king', 'hall of the mountain', 'peer gynt', 'пещере горного короля'],
   neon: ['nu pogodi', 'nu, pogodi', 'ну погоди', 'ну, погоди'],
   winter: ['vivaldi', 'four seasons'],

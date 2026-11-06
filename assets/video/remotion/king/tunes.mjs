@@ -58,7 +58,7 @@ const PHRASE_GLADIATORS = [
 ];
 
 /** Durations of `score()` tokens, in quarter beats. */
-const DUR = { 8: 0.5, q: 1, 'q.': 1.5, h: 2, 'h.': 3 };
+const DUR = { 8: 0.5, q: 1, 'q.': 1.5, h: 2, 'h.': 3, w: 4 };
 /**
  * A melody written as guitar music: bars of `<pitch><octave>:<dur>[~]` tokens (B♭ as Bb, sharps as #; `~` ties into the next token), written
  * an octave above the sound as guitar parts are. Gives story() its `melody` (a tied note is one attack; each on the lowest fret it has) and
@@ -67,7 +67,7 @@ const DUR = { 8: 0.5, q: 1, 'q.': 1.5, h: 2, 'h.': 3 };
 function score({ key, time, bars, maxFret = 4 }) {
   const PC = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
   const parsed = bars.map((bar) => bar.split(/\s+/).map((tok) => {
-    const m = tok.match(/^([A-G])(#|b)?(\d):(8|q\.?|h\.?)(~)?$/);
+    const m = tok.match(/^([A-G])(#|b)?(\d):(8|q\.?|h\.?|w)(~)?$/);
     if (!m) throw new Error(`score: bad token ${tok}`);
     const written = 12 * (Number(m[3]) + 1) + PC[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0);
     return { step: m[1], acc: m[2] ?? '', octave: Number(m[3]), dur: m[4], beats: DUR[m[4]], tie: !!m[5], midi: written - 12 };
@@ -261,6 +261,53 @@ export const TUNES = {
     }),
     strum: [50, 57, 62, 65],                                       // Dm xx0231
     bpm: 176, hook: [1, 0], chord: [74, 77, 81],                  // hit A2, the fifth · D minor
+  }),
+  // La Cucaracha (Mexican folk song, public domain), the chorus "La cucaracha, la cucaracha, ya no puede caminar…", F major, with its
+  // three-eighth pickup. Pitches agree in four sources: the Public Domain Song Anthology scan on Wikimedia Commons (`File:La Cucaracha
+  // (Public Domain Song Anthology).jpg`, 3/4), en.wikipedia's LilyPond copy of it, that anthology's MIDI (`File:La Cucaracha (pg).mid`) and the
+  // flutetunes.com MIDI (id 228, in G). The rhythm is the two MIDIs', which agree note for note: the familiar swaying 4/4 — "RA" long, "CHA"
+  // off the beat, "ya" and "ma" a quarter, "-nar" held. The 3/4 scan squares it into even eighths, which the author heard as off (2026-11-06).
+  // Bars laid out as flutetunes', "ra" on the downbeat, every bar 3+3+2. Written an octave above the sound: C3–D4, frets 0–3, 34 notes.
+  // Home on an F strum (xx3211).
+  cucaracha: story({
+    id: 'cucaracha', title: 'La Cucaracha', hookText: 'tabs', ring: 0.6,           // no let ring: the open G of "fal-ta" rang over the C pickups
+    ...score({
+      key: 'F', time: [4, 4],
+      bars: [
+        'C4:8 C4:8 C4:8',                          // la cu-ca-
+        'F4:q. A4:q C4:8 C4:8 C4:8',               // -ra-cha, la cu-ca-
+        'F4:q. A4:q~ A4:q.~',                      // -ra-cha,
+        'A4:8 F4:q F4:8 E4:8 E4:8 D4:8 D4:8',      // ya no pue-de ca-mi-
+        'C4:q.~ C4:q C4:8 C4:8 C4:8',              // -nar, por-que no
+        'E4:q. G4:q C4:8 C4:8 C4:8',               // tie-ne, por-que le
+        'E4:q. G4:q~ G4:q.~',                      // fal-ta
+        'G4:8 C5:q D5:8 C5:8 Bb4:8 A4:8 G4:8',     // ma-ri-hua-na que fu-
+        'F4:w',                                    // -mar: the last F sounds as the strum
+      ],
+    }),
+    strum: [53, 57, 60, 65],                                       // F xx3211
+    bpm: 180, hook: [1, 3], chord: [72, 77, 81],                  // hit C3, the fifth · F major
+  }),
+  // Paco Cepero, the bulería falseta behind El Turronero's "Olivares del campo" (NOT public domain: Cepero, b. 1942, is alive), the thumb
+  // line of its repeated section. Notes and rhythm from the free canteytoque.es transcription (`canteytoque.es/ceperoturroneroolivares.htm`,
+  // image `bulceperoolivares.png`), bars 6–12 with the first ending: E E E E E | E F G A G | F E D E D | C# E F E | F E F E F E D |
+  // D E D C# D | E D C#. Played there with a capo at 2 (sounding B phrygian); here without it, A phrygian por medio, frets 0–4 on the A, D
+  // and G strings, as the tab fingers it. The beamed eighth threes are triplets (each 3/4 bar adds up only that way), so ⅓-beat notes;
+  // the slurs are hammer-ons and pull-offs, legato, let ring. ♩ = 200, a calm bulería. Home on the A major chord the falseta lands on.
+  bulerias: story({
+    id: 'bulerias', title: 'Bulerías (Paco Cepero)', hookText: 'tabs', ring: 0.5,
+    notes: 'E3 E3 E3 E3 E3 E3 F3 G3 A3 G3 F3 E3 D3 E3 D3 C#3 E3 F3 E3 F3 E3 F3 E3 F3 E3 D3 D3 E3 D3 C#3 D3 E3 D3 C#3',
+    melody: [
+      [2, 2, 1 / 3], [2, 2, 1 / 3], [2, 2, 1 / 3], [2, 2, 1], [2, 2, 1],
+      [2, 2, 1], [2, 3, 1], [3, 0, 1 / 3], [3, 2, 1 / 3], [3, 0, 1 / 3],
+      [2, 3, 1], [2, 2, 1], [2, 0, 1 / 3], [2, 2, 1 / 3], [2, 0, 1 / 3],
+      [1, 4, 2], [2, 2, 1 / 3], [2, 3, 1 / 3], [2, 2, 1 / 3],
+      [2, 3, 1 / 3], [2, 2, 1 / 3], [2, 3, 1 / 3], [2, 2, 1 / 3], [2, 3, 1 / 3], [2, 2, 1 / 3], [2, 0, 1],
+      [2, 0, 1 / 3], [2, 2, 1 / 3], [2, 0, 1 / 3], [1, 4, 1], [2, 0, 1],
+      [2, 2, 0.5], [2, 0, 0.5], [1, 4, 2],                                                // the last C# sounds as the strum
+    ],
+    strum: [45, 52, 57, 61, 64],                                   // A major x02220
+    bpm: 200, hook: [0, 0], chord: [69, 73, 76],                  // hit E2, the fifth · A major (phrygian home)
   }),
   // The same arpeggio as a 10 s looping band cut (src/rising/RisingBand.tsx): the melody from frame 0, ♩ = 144 so the film is exactly eight bars
   // (seven of melody, one bar of E back into the top), the "your turn" gaps tightened.

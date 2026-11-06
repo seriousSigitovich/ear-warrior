@@ -5,5 +5,5 @@ export interface TuneStory extends Pick<typeof KING, 'FPS' | 'DURATION' | 'MELOD
   SCORE?: { key: string; time: [number, number]; bars: ScoreNote[][] };
 }
 /** One written note: pitch as on the staff (an octave above the sound), duration, a tie into the next, and the melody note it sounds as. */
-export interface ScoreNote { step: string; acc: '' | '#' | 'b'; octave: number; dur: '8' | 'q' | 'q.' | 'h' | 'h.'; beats: number; tie: boolean; midi: number; order: number }
+export interface ScoreNote { step: string; acc: '' | '#' | 'b'; octave: number; dur: '8' | 'q' | 'q.' | 'h' | 'h.' | 'w'; beats: number; tie: boolean; midi: number; order: number }
 export const TUNES: Record<string, TuneStory>;
