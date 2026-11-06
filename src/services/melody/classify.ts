@@ -1,6 +1,6 @@
-// Classifies a melody from its notes alone (pure, no IO): how many notes it has (the difficulty) and
-// which base it is built on. The base comes from the pitch-class set, so a label can never disagree
-// with the notes. Used to plan and audit the melody library.
+// Classifies a melody from its notes alone (pure, no IO): which base it is built on, its length, range
+// and widest leap. The base comes from the pitch-class set, so a label can never disagree with the
+// notes. Used to build and audit the melody library.
 import { pitchClass } from '../../lib/pitchNote';
 import { ROOT_PC, scalePitchClasses } from './scales';
 
@@ -10,25 +10,6 @@ import { ROOT_PC, scalePitchClasses } from './scales';
  * the notes need more than one key.
  */
 export type Base = 'pentatonic' | 'diatonic' | 'chromatic';
-
-export interface NoteBand {
-  min: number;
-  max: number;
-  label: string;
-}
-
-/** The note-count bands the library is planned in. Difficulty is the number of notes. */
-export const NOTE_BANDS: readonly NoteBand[] = [
-  { min: 3, max: 4, label: '3–4' },
-  { min: 5, max: 6, label: '5–6' },
-  { min: 7, max: 8, label: '7–8' },
-  { min: 9, max: 12, label: '9–12' },
-  { min: 13, max: 16, label: '13–16' },
-];
-
-export function bandOf(noteCount: number): NoteBand | undefined {
-  return NOTE_BANDS.find((b) => noteCount >= b.min && noteCount <= b.max);
-}
 
 export interface ParsedNote {
   midi: number;
@@ -93,11 +74,6 @@ export function classify(midis: readonly number[]): Classification {
     if (scales.length > 0) return { ...shape, base: tier.base, scales };
   }
   return { ...shape, base: 'chromatic', scales: [] };
-}
-
-/** Orders melodies from easiest to hardest: fewer notes first, then the smaller leap. */
-export function compareDifficulty(a: Classification, b: Classification): number {
-  return a.noteCount - b.noteCount || a.maxLeap - b.maxLeap;
 }
 
 /** Lowest and highest note of the 12-fret neck (E2–E5). */

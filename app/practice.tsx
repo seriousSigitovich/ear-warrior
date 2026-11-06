@@ -214,7 +214,7 @@ export default function Practice() {
   const grade = loop.grade;
   const showFeedback = loop.phase === 'feedback' && !!grade;
   const answering = loop.phase === 'awaitingInput';
-  const noteCount = loop.melody?.notes.length ?? loop.level.noteCount;
+  const noteCount = loop.melody?.notes.length ?? 0;
 
   return (
     <Screen edges={['bottom']}>

@@ -7,6 +7,7 @@ function melody(midis: number[]): Melody {
     id: 'm',
     difficultyId: 'L1',
     scale: 'C_major',
+    tempoBpm: 90,
     createdAt: '',
     notes: midis.map((midi, index) => ({
       index,

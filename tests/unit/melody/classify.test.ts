@@ -1,13 +1,6 @@
-// The classifier decides a melody's base and difficulty from its notes alone, so these tests pin the
+// The classifier decides a melody's base and shape from its notes alone, so these tests pin the
 // boundaries between the three bases with tunes whose answer is known.
-import {
-  NOTE_BANDS,
-  bandOf,
-  classify,
-  compareDifficulty,
-  fitToNeck,
-  parseMelody,
-} from '../../../src/services/melody/classify';
+import { classify, fitToNeck, parseMelody } from '../../../src/services/melody/classify';
 
 function classifyTokens(notes: string) {
   return classify(parseMelody(notes).map((n) => n.midi));
@@ -85,15 +78,6 @@ describe('classify: shape', () => {
   });
 });
 
-describe('compareDifficulty', () => {
-  test('fewer notes is easier; a smaller leap breaks a tie', () => {
-    const three = classifyTokens('C4:1 D4:1 E4:1');
-    const fourSmall = classifyTokens('C4:1 D4:1 E4:1 D4:1');
-    const fourBig = classifyTokens('C4:1 G4:1 E4:1 D4:1');
-    expect([fourBig, three, fourSmall].sort(compareDifficulty)).toEqual([three, fourSmall, fourBig]);
-  });
-});
-
 describe('fitToNeck', () => {
   test('leaves a melody that already fits alone', () => {
     expect(fitToNeck([60, 64, 67])).toEqual([60, 64, 67]);
@@ -106,19 +90,5 @@ describe('fitToNeck', () => {
 
   test('gives up when the range is wider than the neck', () => {
     expect(fitToNeck([40, 77])).toBeUndefined();
-  });
-});
-
-describe('note bands', () => {
-  test('are contiguous, so every length from 3 to 16 has exactly one band', () => {
-    for (let n = NOTE_BANDS[0].min; n <= NOTE_BANDS[NOTE_BANDS.length - 1].max; n++) {
-      expect(NOTE_BANDS.filter((b) => n >= b.min && n <= b.max)).toHaveLength(1);
-    }
-  });
-
-  test('bandOf is undefined outside the planned range', () => {
-    expect(bandOf(2)).toBeUndefined();
-    expect(bandOf(17)).toBeUndefined();
-    expect(bandOf(9)?.label).toBe('9–12');
   });
 });

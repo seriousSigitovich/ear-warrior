@@ -1,0 +1,1369 @@
+% The melody library: 100 whole public-domain melodies, easiest first (docs/melody-library-100.md).
+% Build with `npm run library` (scripts/build-library.ts writes library.ts next to this file).
+%
+% Per tune: %%id (stable, hyphen-free), %%level (1-9), %%source (where the notes come from), %%tempo
+% (where its Q: comes from: the composer's marking, the source MIDI or the usual performance), and the
+% usual T:, M:, L:, Q: (the tune's own tempo) and K: fields. Write repeats out in full, no rests (fold a
+% rest into the note before it), modes as their major/minor key signature (D dorian = K:C).
+% Rights: a composed tune qualifies when its composer died in 1955 or earlier and it was published in
+% 1930 or earlier; folk tunes carry no composer. The melody only, never a modern arrangement of it.
+
+% ═══ Level 1 ═══════════════════════════════════════════════════════════════════════════════════
+
+X:1
+T:Hot Cross Buns
+%%id hotcrossbuns
+%%level 1
+%%source traditional, the three-note playground version — written from memory, checked by ear by the owner (2026-11-06)
+%%tempo traditional performance
+M:4/4
+L:1/4
+Q:1/4=100
+K:C
+E D C2 | E D C2 | C/C/C/C/ D/D/D/D/ | E D C2 |]
+
+X:2
+T:Mary Had a Little Lamb
+%%id mary
+%%level 1
+%%source traditional — written from memory, checked by ear by the owner (2026-11-06)
+%%tempo traditional performance
+M:4/4
+L:1/4
+Q:1/4=110
+K:C
+E D C D | E E E2 | D D D2 | E G G2 | E D C D | E E E E | D D E D | C4 |]
+
+X:3
+T:Westminster Quarters
+%%id westminster
+%%level 1
+%%source en.wikipedia.org Westminster Quarters, the hour (changes 2-5)
+%%tempo the clock chime, about one note a second
+M:5/4
+L:1/4
+Q:1/4=72
+K:E
+E G F B,2 | E F G E2 | G E F B,2 | B, F G E2 |]
+
+X:4
+T:London Bridge Is Falling Down
+%%id london
+%%level 1
+%%source en.wikipedia.org London Bridge Is Falling Down (score in F, moved to C)
+%%tempo traditional performance
+M:4/4
+L:1/8
+Q:1/4=112
+K:C
+G3 A G2 F2 | E2 F2 G4 | D2 E2 F4 | E2 F2 G4 | G3 A G2 F2 | E2 F2 G4 | D4 G4 | E2 C6 |]
+
+X:5
+T:Frère Jacques
+%%id frere
+%%level 1
+%%source de.wikibooks.org Liederbuch/Bruder Jakob (score in D, moved to C)
+%%tempo traditional performance
+M:4/4
+L:1/4
+Q:1/4=112
+K:C
+C D E C | C D E C | E F G2 | E F G2 | G/A/G/F/ E C | G/A/G/F/ E C | C G, C2 | C G, C2 |]
+
+X:6
+T:Michael, Row the Boat Ashore
+%%id michael
+%%level 1
+%%source de.wikibooks.org Liederbuch/Michael row the boat ashore
+%%tempo traditional performance
+M:4/4
+L:1/4
+Q:1/4=96
+K:C
+C E | G3/2 E/ G A | G2 E G | A4 | G2 E G | G3/2 E/ F E | D2 C D | E2 D2 | C4 |]
+
+X:7
+T:Twinkle, Twinkle, Little Star
+%%id twinkle
+%%level 1
+%%source en.wikipedia.org Twinkle, Twinkle, Little Star
+%%tempo traditional performance
+M:4/4
+L:1/4
+Q:1/4=100
+K:C
+C C G G | A A G2 | F F E E | D D C2 | G G F F | E E D2 | G G F F | E E D2 |
+C C G G | A A G2 | F F E E | D D C2 |]
+
+X:8
+T:Row, Row, Row Your Boat
+%%id row
+%%level 1
+%%source en.wikipedia.org Row, Row, Row Your Boat
+%%tempo traditional performance, dotted quarter = 70
+M:6/8
+L:1/8
+Q:1/4=105
+K:C
+C3 C3 | C2 D E3 | E2 D E2 F | G6 | c c c G G G | E E E C C C | G2 F E2 D | C6 |]
+
+X:9
+T:When the Saints Go Marching In
+%%id saints
+%%level 1
+%%source Wikimedia Commons MIDI 'When The Saints.mid' (the first verse)
+%%tempo traditional performance (cut time, half = 100); source MIDI 240
+M:4/4
+L:1/4
+Q:1/4=200
+K:G
+%%notes G4:1 B4:1 C5:1 D5:4 G4:1 B4:1 C5:1 D5:4 G4:1 B4:1 C5:1 D5:2 B4:2 G4:2 B4:2 A4:4
+%%notes A4:1 B4:1 A4:1 G4:3 G4:1 B4:2 D5:2 D5:1 C5:4 C5:1 B4:1 C5:1 D5:2 B4:2 G4:2 A4:2
+%%notes G4:4
+
+X:10
+T:Ode to Joy
+%%id joy
+%%level 1
+%%source en.wikipedia.org Ode to Joy (the theme, 16 bars)
+%%tempo composer marking: Allegro assai, half = 80 (Beethoven)
+M:4/4
+L:1/4
+Q:1/4=160
+K:G
+B B c d | d c B A | G G A B | B3/2 A/ A2 | B B c d | d c B A | G G A B | A3/2 G/ G2 |
+A A B G | A B/c/ B G | A B/c/ B A | G A D2 | B B c d | d c B A | G G A B | A3/2 G/ G2 |]
+
+X:11
+T:Taps
+%%id taps
+%%level 1
+%%source Wikimedia Commons MIDI 'Taps.mid'
+%%tempo US Army bugle manual; source MIDI 60
+M:4/4
+L:1/8
+Q:1/4=60
+K:C
+%%notes G4:0.75 G4:0.25 C5:3 G4:0.75 C5:0.25 E5:3 G4:0.5 C5:0.5 E5:1 G4:0.5 C5:0.5 E5:1 G4:0.5 C5:0.5 E5:3 C5:0.5
+%%notes E5:0.5 G5:2 E5:1 C5:1 G4:3 G4:0.75 G4:0.25 C5:3
+
+
+% ═══ Level 2 ═══════════════════════════════════════════════════════════════════════════════════
+
+X:12
+T:Song of the Volga Boatmen
+%%id volga
+%%level 2
+%%source Wikimedia Commons MIDI 'Ej, uchnem!.mid' (the melody voice)
+%%tempo source MIDI 81
+M:4/4
+L:1/8
+Q:1/4=80
+K:Dm
+%%notes C5:0.5 A4:0.5 D5:1 A4:3 C5:0.5 A4:0.5 D5:1 A4:3 C5:1 F5:1 E5:0.6667 F5:0.25 E5:0.1667 D5:1 C5:0.5 A4:0.5
+%%notes D5:1 A4:3 C5:1.5 C5:0.5 C5:0.5 Bb4:0.5 A4:0.5 G4:0.5 F4:1 C5:1 A4:3 D5:1 F5:1 E5:0.6667 F5:0.25 E5:0.1667
+%%notes D5:1 C5:0.5 A4:0.6667 D5:1.333 A4:2.5
+
+X:13
+T:Old MacDonald Had a Farm
+%%id macdonald
+%%level 2
+%%source Wikimedia Commons MIDI 'Old MacDonald Had a Farm.mid'
+%%tempo source MIDI 150
+M:4/4
+L:1/4
+Q:1/4=140
+K:G
+%%notes G4:1 G4:1 G4:1 D4:1 E4:1 E4:1 D4:2 B4:1 B4:1 A4:1 A4:1 G4:3 D4:1 G4:1 G4:1 G4:1
+%%notes D4:1 E4:1 E4:1 D4:2 B4:1 B4:1 A4:1 A4:1 G4:3 D4:0.5 D4:0.5 G4:1 G4:1 G4:1 D4:0.5 D4:0.5
+%%notes G4:1 G4:1 G4:2 G4:0.5 G4:0.5 G4:1 G4:0.5 G4:0.5 G4:1 G4:0.5 G4:0.5 G4:0.5 G4:0.5 G4:1 G4:1 G4:1
+%%notes G4:1 G4:1 D4:1 E4:1 E4:1 D4:2 B4:1 B4:1 A4:1 A4:1 G4:2
+
+X:14
+T:Happy Birthday to You
+%%id birthday
+%%level 2
+%%source en.wikipedia.org Happy Birthday to You
+%%tempo traditional performance
+M:3/4
+L:1/8
+Q:1/4=120
+K:G
+D3/2 D/ | E2 D2 G2 | F4 D3/2 D/ | E2 D2 A2 | G4 D3/2 D/ | d2 B2 G2 | F2 E2 c3/2 c/ | B2 G2 A2 | G6 |]
+
+X:15
+T:Jingle Bells
+%%id jingle
+%%level 2
+%%source Pierpont 1857, the chorus; matches Wikimedia Commons MIDI 'Jingle Bells.mid'
+%%tempo traditional performance (cut time, half = 100); source MIDI 215
+M:4/4
+L:1/4
+Q:1/4=200
+K:C
+E E E2 | E E E2 | E G C3/2 D/ | E4 | F F F3/2 F/ | F E E E/E/ | E D D E | D2 G2 |
+E E E2 | E E E2 | E G C3/2 D/ | E4 | F F F F | F E E E/E/ | G G F D | C4 |]
+
+X:16
+T:Amazing Grace
+%%id grace
+%%level 2
+%%source en.wikipedia.org Amazing Grace (the first verse)
+%%tempo traditional performance
+M:3/4
+L:1/8
+Q:1/4=84
+K:G
+D2 | G4 BG | B4 A2 | G4 E2 | D4 D2 | G4 BG | B4 A2 | d4 B2 | d3 B dB | G4 D2 | E3 G GE | D4 D2 |
+G4 BG | B4 A2 | G6 |]
+
+X:17
+T:Auld Lang Syne
+%%id auld
+%%level 2
+%%source en.wikipedia.org Auld Lang Syne (verse and chorus)
+%%tempo traditional performance
+M:4/4
+L:1/8
+Q:1/4=80
+K:F
+C2 | F3 F F2 A2 | G3 F G2 A2 | F3 F A2 c2 | d6 d2 | c3 A A2 F2 | G3 F G2 A2 | F3 D D2 C2 | F6 d2 |
+c3 A A2 F2 | G3 F G2 d2 | c3 A A2 c2 | d6 d2 | c3 A A2 F2 | G3 F G2 A2 | F3 D D2 C2 | F6 |]
+
+X:18
+T:Swing Low, Sweet Chariot
+%%id swinglow
+%%level 2
+%%source spiritual, the refrain; de.wikibooks.org Liederbuch (score in E, moved to C)
+%%tempo traditional performance
+M:4/4
+L:1/8
+Q:1/4=76
+K:C
+E2 C4 E2 | C3 C A,2 G,2- | G,2 C2 E2 G2 | G8 | E2 C4 E2 | C3 C A,2 G,2- | G,2 C2 D2 E2 | D2 C6 |]
+
+X:19
+T:Goin' Home (New World Symphony, Largo)
+%%id newworld
+%%level 2
+%%source Dvořák, Symphony No. 9, Largo, the cor anglais theme (moved to C) — written from memory, checked by ear by the owner (2026-11-06)
+%%tempo composer marking: Largo, quarter = 52 (Dvořák)
+M:4/4
+L:1/8
+Q:1/4=52
+K:C
+E3 G G4 | E3 D C4 | D2 E2 G2 E2 | D8 | E3 G G4 | E3 D C4 | D2 E2 D2 C2 | C8 |]
+
+X:20
+T:Bridal Chorus (Here Comes the Bride)
+%%id bridal
+%%level 2
+%%source Wagner, Lohengrin, the first period (moved to C) — written from memory, checked by ear by the owner (2026-11-06)
+%%tempo composer marking "Mäßig bewegt"; traditional performance
+M:4/4
+L:1/8
+Q:1/4=66
+K:C
+G2 | c3 c c4 | G2 d2 B2 c2 | G2 c2 f3 f | e2 d2 c2 B2 | c2 d6 | G2 c3 c c4 | G2 d2 B2 c2 |
+G2 c2 e3 c | A2 c2 B2 A2 | G6 |]
+
+X:21
+T:Brahms' Lullaby
+%%id brahms
+%%level 2
+%%source en.wikipedia.org Wiegenlied (Brahms)
+%%tempo composer marking "Zart bewegt"; traditional performance
+M:3/4
+L:1/8
+Q:1/4=80
+K:Eb
+GG | B3 G G2 | B4 GB | e2 d3 c | c2 B2 FG | A2 F2 FG | A4 FA | d c B2 d2 | e4 EE | e4 cA | B4 GE |
+A2 B2 c2 | B4 EE | e4 cA | B4 GE | B/A/ G2 F2 | E4 |]
+
+X:22
+T:Morning Mood
+%%id morning
+%%level 2
+%%source Grieg, Peer Gynt, the flute theme (moved to C) — written from memory, checked by ear by the owner (2026-11-06)
+%%tempo composer marking "Allegretto pastorale" (Grieg); traditional performance
+M:6/8
+L:1/8
+Q:1/4=90
+K:C
+G E D C D E | G E D C D E | G E G A E A | G E D C3 | G E D C D E | G E D C D E | G E G A E A | c A G E3 |]
+
+% ═══ Level 3 ═══════════════════════════════════════════════════════════════════════════════════
+
+X:23
+T:Camptown Races
+%%id camptown
+%%level 3
+%%source Wikimedia Commons MIDI 'Camptown Races.mid' (verse and chorus)
+%%tempo source MIDI 108
+M:4/4
+L:1/4
+Q:1/4=112
+K:F
+%%notes C5:0.6667 C5:0.3333 A4:0.6667 C5:0.3333 D5:0.6667 C5:0.3333 A4:1 A4:0.6667 G4:1.333 A4:0.6667 G4:1.333 C5:0.6667 C5:0.3333 A4:0.6667 C5:0.3333 D5:0.6667
+%%notes C5:0.3333 A4:1 G4:0.6667 Bb4:0.3333 A4:0.6667 G4:0.3333 F4:2 F4:0.6667 F4:0.3333 A4:0.6667 C5:0.3333 F5:2 D5:0.6667 D5:0.3333 F5:0.6667 D5:0.3333
+%%notes C5:2 C5:0.6667 C5:0.3333 A4:0.6667 C5:0.3333 D5:0.6667 C5:0.3333 A4:1 G4:0.6667 Bb4:0.3333 A4:0.6667 G4:0.3333 F4:2
+
+X:24
+T:Promenade (Pictures at an Exhibition)
+%%id promenade
+%%level 3
+%%source en.wikipedia.org Pictures at an Exhibition, the Promenade theme
+%%tempo composer marking "Allegro giusto … poco sostenuto"; traditional performance
+M:5/4
+L:1/4
+Q:1/4=104
+K:Bb
+G F B c/f/ d | c/f/ d B c G F | G F B c/f/ d | c/f/ d4 |]
+
+X:25
+T:Symphony No. 5 (opening)
+%%id fifth
+%%level 3
+%%source Mutopia Project, Beethoven Op. 67, piano reduction (bars 1-21, top line)
+%%tempo composer marking: Allegro con brio, half = 108 (Beethoven)
+M:2/4
+L:1/8
+Q:1/4=216
+K:Cm
+%%notes G4:0.5 G4:0.5 G4:0.5 Eb4:2.5 F4:0.5 F4:0.5 F4:0.5 D4:4 G4:0.5 G4:0.5 G4:1 Ab4:0.5 Ab4:0.5 Ab4:0.5 G4:0.5 Eb5:0.5
+%%notes Eb5:0.5 Eb5:0.5 C5:2.5 G4:0.5 G4:0.5 G4:1 Ab4:0.5 Ab4:0.5 Ab4:0.5 G4:0.5 F5:0.5 F5:0.5 F5:0.5 D5:2.5 G5:0.5 G5:0.5
+%%notes F5:0.5 Eb5:2 D5:0.5 G5:0.5 G5:0.5 F5:0.5 Eb5:2 D5:0.5 G5:0.5 G5:0.5 F5:0.5 Eb5:2 C5:2 G5:2
+
+X:26
+T:Shchedryk (Carol of the Bells)
+%%id shchedryk
+%%level 3
+%%source Leontovych 1916, en.wikipedia.org Shchedryk (song)
+%%tempo traditional performance
+M:3/4
+L:1/8
+Q:1/4=152
+K:Gm
+B2 AB G2 | B2 AB G2 | B2 AB G2 | B2 AB G2 | d2 cd B2 | d2 cd B2 | d2 cd B2 | d2 cd B2 |
+B2 AB G2 | B2 AB G2 | B2 AB G2 | B2 AB G2 |]
+
+X:27
+T:Drunken Sailor
+%%id sailor
+%%level 3
+%%source Wikimedia Commons MIDI 'What shall we do with the drunken sailor.mid' (verse) + de.wikibooks.org Liederbuch (chorus), D dorian
+%%tempo source MIDI 186
+M:4/4
+L:1/8
+Q:1/4=186
+K:Dm
+%%notes A4:1 A4:0.5 A4:0.5 A4:1 A4:0.5 A4:0.5 A4:1 D4:1 F4:1 A4:1 G4:1 G4:0.5 G4:0.5 G4:1 G4:0.5 G4:0.5
+%%notes G4:1 C4:1 E4:1 G4:1 A4:1 A4:0.5 A4:0.5 A4:1 A4:0.5 A4:0.5 A4:1 B4:1 C5:1 D5:1 C5:1 A4:1
+%%notes G4:1 E4:1 D4:2 D4:1.417 A4:1 A4:0.5 D4:0.5 F4:0.5 A4:0.5 G4:1 G4:0.5 C4:0.5 E4:0.5 G4:0.5 A4:1 A4:0.5
+%%notes B4:0.5 C5:0.5 D5:0.5 C5:0.5 A4:0.5 G4:0.5 E4:0.5 D4:1 D4:1
+
+X:28
+T:Silent Night
+%%id silent
+%%level 3
+%%source en.wikipedia.org Silent Night (Gruber 1818, in C)
+%%tempo traditional performance, 6/8
+M:6/8
+L:1/8
+Q:1/4=75
+K:C
+G3/2 A/ G E3 | G3/2 A/ G E3 | d2 d B3 | c2 c G3 | A2 A c3/2 B/ A | G3/2 A/ G E3 | A2 A c3/2 B/ A |
+G3/2 A/ G E3 | d2 d f3/2 d/ B | c3 e3 | c3/2 G/ E G3/2 F/ D | C6 |]
+
+X:29
+T:Also sprach Zarathustra (fanfare)
+%%id zarathustra
+%%level 3
+%%source Wikimedia Commons MIDI 'Also Sprach Zarathustra.mid' (the climbing statements raised to the trumpets' octave)
+%%tempo composer marking "Sehr breit"; source MIDI 95
+M:4/4
+L:1/8
+Q:1/4=100
+K:C
+%%notes C4:4 G4:4 C5:4 E5:0.5 Eb5:4 C4:4 G4:4 C5:4 Eb5:0.5 E5:4 C4:4 G4:4 C5:4 E5:0.5 A5:4 A5:0.5
+%%notes B5:0.5 C6:4 D6:4 G5:1 E5:1 C5:1 G4:1 E4:1 E5:0.5 F5:0.5 G5:4 A5:2 B5:2 C6:4
+
+X:30
+T:Oh! Susanna
+%%id susanna
+%%level 3
+%%source de.wikibooks.org Liederbuch/Oh Susanna (Foster 1848)
+%%tempo traditional performance
+M:4/4
+L:1/4
+Q:1/4=120
+K:G
+G/A/ | B d d3/2 e/ | d B G3/2 A/ | B B A G | A3 G/A/ | B d d3/2 e/ | d B G3/2 A/ | B B A A | G4 |
+c2 c2 | e d d B | G A2 G/A/ | B d d3/2 e/ | d B G3/2 A/ | B B A A | G4 |]
+
+X:31
+T:Yankee Doodle
+%%id yankee
+%%level 3
+%%source traditional, verse and chorus — written from memory, checked by ear by the owner (2026-11-06)
+%%tempo traditional performance
+M:4/4
+L:1/8
+Q:1/4=120
+K:C
+C2 C2 D2 E2 | C2 E2 D2 G,2 | C2 C2 D2 E2 | C4 B,4 | C2 C2 D2 E2 | F2 E2 D2 C2 | B,2 G,2 A,2 B,2 | C4 C4 |
+A,3 B, A,2 G,2 | A,2 B,2 C4 | G,3 A, G,2 F,2 | E,4 G,4 | A,3 B, A,2 G,2 | A,2 B,2 C2 A,2 | G,2 C2 B,2 D2 | C4 C4 |]
+
+X:32
+T:We Wish You a Merry Christmas
+%%id wewish
+%%level 3
+%%source Wikimedia Commons MIDI 'We Wish You A Merry Christmas.mid' (verse and refrain)
+%%tempo source MIDI 171
+M:3/4
+L:1/8
+Q:1/4=160
+K:G
+%%notes D4:1 G4:1 G4:0.5 A4:0.5 G4:0.5 F#4:0.5 E4:1 E4:1 E4:1 A4:1 A4:0.5 B4:0.5 A4:0.5 G4:0.5 F#4:1 D4:1
+%%notes F#4:1 B4:1 B4:0.5 C5:0.5 B4:0.5 A4:0.5 G4:1 E4:1 D4:0.5 D4:0.5 E4:1 A4:1 F#4:1 G4:1.917 D4:1 G4:1
+%%notes G4:1 G4:1 F#4:2 F#4:1 G4:1 F#4:1 E4:1 D4:2 A4:1 B4:1 A4:0.5 A4:0.5 G4:0.5 G4:0.5 D5:1 D4:1
+%%notes D4:0.5 D4:0.5 E4:1 A4:1 F#4:1 G4:1.917
+
+X:33
+T:Deck the Halls
+%%id deck
+%%level 3
+%%source Wikimedia Commons MIDI 'Deck the Halls.mid'
+%%tempo source MIDI 142
+M:4/4
+L:1/8
+Q:1/4=136
+K:D
+%%notes A4:1.5 G4:0.5 F#4:1 E4:1 D4:1 E4:1 F#4:1 D4:1 E4:0.5 F#4:0.5 G4:0.5 E4:0.5 F#4:1.5 E4:0.5 D4:1 C#4:1
+%%notes D4:2 A4:1.5 G4:0.5 F#4:1 E4:1 D4:1 E4:1 F#4:1 D4:1 E4:0.5 F#4:0.5 G4:0.5 E4:0.5 F#4:1.5 E4:0.5 D4:1
+%%notes C#4:1 D4:2 E4:1.5 F#4:0.5 G4:1 E4:1 F#4:1.5 G4:0.5 A4:1 E4:1 F#4:0.5 G4:0.5 A4:1 B4:0.5 C#5:0.5 D5:1
+%%notes C#5:1 B4:1 A4:2 A4:1.5 G4:0.5 F#4:1 E4:1 D4:1 E4:1 F#4:1 D4:1 B4:0.5 B4:0.5 B4:0.5 B4:0.5 A4:1.5
+%%notes G4:0.5 F#4:1 E4:1 D4:1.917
+
+
+% ═══ Level 4 ═══════════════════════════════════════════════════════════════════════════════════
+
+X:34
+T:Joy to the World
+%%id joyworld
+%%level 4
+%%source Wikimedia Commons MIDI 'Joy to the World (Freue dich, Welt).mid'
+%%tempo source MIDI 173 (hymn tune Antioch)
+M:2/4
+L:1/8
+Q:1/4=160
+K:C
+%%notes C5:2 B4:1.5 A4:0.5 G4:3 F4:1 E4:2 D4:2 C4:3 G4:1 A4:3 A4:1 B4:3 B4:1 C5:4 C5:1 C5:1
+%%notes B4:1 A4:1 G4:1 G4:1.5 F4:0.5 E4:1 C5:1 C5:1 B4:1 A4:1 G4:1 G4:1.5 F4:0.5 E4:1 E4:1 E4:1
+%%notes E4:1 E4:1 E4:0.5 F4:0.5 G4:3 F4:0.5 E4:0.5 D4:1 D4:1 D4:1 D4:0.5 E4:0.5 F4:3 E4:0.5 D4:0.5 C4:1
+%%notes C5:2 A4:1 G4:1.5 F4:0.5 E4:1 F4:1 E4:2 D4:2 C4:2.833
+
+X:35
+T:O Tannenbaum
+%%id tannenbaum
+%%level 4
+%%source Wikimedia Commons MIDI 'O Tannenbaum.mid' (one verse)
+%%tempo source MIDI 97
+M:3/4
+L:1/4
+Q:1/4=96
+K:G
+%%notes D4:0.5 G4:0.75 G4:0.25 G4:1.5 A4:0.5 B4:0.75 B4:0.25 B4:1.5 B4:0.5 A4:0.5 B4:0.5 C5:1 F#4:1 A4:1 G4:1.5 D5:0.5
+%%notes D5:0.5 B4:0.5 E5:1.5 D5:0.5 D5:0.5 C5:0.5 C5:1.5 C5:0.5 C5:0.5 A4:0.5 D5:1.5 C5:0.5 C5:0.5 B4:0.5 B4:1.5 D4:0.5
+%%notes G4:0.75 G4:0.25 G4:1.5 A4:0.5 B4:0.75 B4:0.25 B4:1.5 B4:0.5 A4:0.5 B4:0.5 C5:1 F#4:1 A4:1 G4:0.9167
+
+X:36
+T:Red River Valley
+%%id redriver
+%%level 4
+%%source en.wikipedia.org Red River Valley (song)
+%%tempo traditional performance
+M:4/4
+L:1/8
+Q:1/4=104
+K:G
+DG | B2 BB B2 AB | A2 G4 BB | B2 GB d2 cB | A6 dc | B2 BA G2 AB | d2 c4 EE | D2 EG A2 BA | G8 |]
+
+X:37
+T:Oh My Darling, Clementine
+%%id clementine
+%%level 4
+%%source Wikimedia Commons MIDI 'O My Darling Clementine.mid' (one strophe)
+%%tempo source MIDI 120
+M:3/4
+L:1/8
+Q:1/4=120
+K:G
+%%notes G4:0.75 G4:0.25 G4:1 D4:1 B4:0.75 B4:0.25 B4:1 G4:1 G4:0.75 B4:0.25 D5:1.5 D5:0.5 C5:0.5 B4:0.5 A4:2 A4:0.75
+%%notes B4:0.25 C5:1 C5:1 B4:0.75 A4:0.25 B4:1 G4:1 G4:0.75 B4:0.25 A4:1.5 D4:0.5 F#4:0.75 A4:0.25 G4:1.917
+
+X:38
+T:Sakura Sakura
+%%id sakura
+%%level 4
+%%source Wikimedia Commons MIDI 'Sakura.MID'
+%%tempo source MIDI 88; traditional performance
+M:4/4
+L:1/4
+Q:1/4=80
+K:Am
+%%notes A4:1 A4:1 B4:2 A4:1 A4:1 B4:2 A4:1 B4:1 C5:1 B4:1 A4:1 B4:0.5 A4:0.5 F4:2 E4:1 C4:1
+%%notes E4:1 F4:1 E4:1 E4:0.5 C4:0.5 B3:2 A4:1 B4:1 C5:1 B4:1 A4:1 B4:0.5 A4:0.5 F4:2 E4:1 C4:1
+%%notes E4:1 F4:1 E4:1 E4:0.5 C4:0.5 B3:2 A4:1 A4:1 B4:2 A4:1 A4:1 B4:2.5 E4:0.5 F4:2 B4:0.5 A4:0.5
+%%notes F4:3 E4:4
+
+X:39
+T:Funeral March (Chopin)
+%%id funeral
+%%level 4
+%%source Wikimedia Commons MIDI 'Chopin - Funeral March.mid' (the leading-tone A, hidden in the chords, from memory)
+%%tempo composer marking "Lento" (Chopin); source MIDI 57
+M:4/4
+L:1/16
+Q:1/4=52
+K:Bbm
+%%notes Bb3:1 Bb3:0.75 Bb3:0.25 Bb3:2 Db4:0.75 C4:0.25 C4:0.75 Bb3:0.25 Bb3:0.75 A3:0.25 Bb3:1 Bb3:1 Bb3:0.75 Bb3:0.25 Bb3:2 Db4:0.75
+%%notes C4:0.25 C4:0.75 Bb3:0.25 Bb3:0.75 A3:0.25 Bb3:1 Db4:1 Db4:0.75 Db4:0.25 Db4:2 F4:0.75 Eb4:0.25 Eb4:0.75 Db4:0.25 Db4:0.75 C4:0.25
+%%notes Db4:1 Bb4:0.5 Ab4:0.5 Ab4:0.75 Gb4:0.25 F4:1 Db4:1 Bb4:0.5 Ab4:0.5 Ab4:0.75 Gb4:0.25 F4:1 Db4:1
+
+X:40
+T:Korobeiniki
+%%id koro
+%%level 4
+%%source Russian traditional, the whole theme (as checked for video #14/#60)
+%%tempo as checked for video #14
+M:4/4
+L:1/8
+Q:1/4=144
+K:Am
+e2 Bc d2 cB | A2 Ac e2 dc | B3 c d2 e2 | c2 A2 A4 | d3 f a2 gf | e3 c e2 dc | B2 Bc d2 e2 | c2 A2 A4 |]
+
+X:41
+T:Scarborough Fair
+%%id scarborough
+%%level 4
+%%source English traditional; de.wikibooks.org Liederbuch/Scarborough Fair, D dorian
+%%tempo traditional performance
+M:3/4
+L:1/8
+Q:1/4=96
+K:C
+D2 DA AA | E3/2F/ E D4 | A c d2 cA | B G A4- | A d d2 d | c2 AA GF | E3 D2 A | G2 FE DC | D6 |]
+
+X:42
+T:Home on the Range
+%%id range
+%%level 4
+%%source Kelley/Higley, the verse — written from memory, checked by ear by the owner (2026-11-06)
+%%tempo traditional performance
+M:3/4
+L:1/4
+Q:1/4=120
+K:C
+G, G, | C D E | C3/2 B,/ A, | F F F2 | E F | G C C | C B, C | D3 | G, G, | C D E | C3/2 B,/ A, | F F F |
+F F | F E D | C B, C | D C3 |]
+
+X:43
+T:Battle Hymn of the Republic
+%%id battle
+%%level 4
+%%source Wikimedia Commons MIDI 'The battle hymn of the republic.mid' (verse and chorus)
+%%tempo traditional performance; source MIDI 60 is half speed
+M:4/4
+L:1/16
+Q:1/4=96
+K:Bb
+%%notes F4:0.25 F4:0.25 F4:0.75 F4:0.25 F4:0.75 Eb4:0.25 D4:0.75 F4:0.25 Bb4:0.75 C5:0.25 D5:0.75 D5:0.25 D5:0.75 C5:0.25 Bb4:1.5 Bb4:0.25
+%%notes Bb4:0.25 G4:0.75 G4:0.25 G4:0.75 A4:0.25 Bb4:0.75 A4:0.25 Bb4:0.75 G4:0.25 F4:0.75 G4:0.25 F4:0.75 D4:0.25 F4:1.5 F4:0.25 F4:0.25
+%%notes F4:0.75 F4:0.25 F4:0.75 Eb4:0.25 D4:0.75 F4:0.25 Bb4:0.75 C5:0.25 D5:0.75 D5:0.25 D5:0.75 C5:0.25 Bb4:1.5 Bb4:0.5 C5:1 C5:1
+%%notes Bb4:1 A4:1 Bb4:4 F4:1.5 Eb4:0.5 D4:0.75 F4:0.25 Bb4:0.75 C5:0.25 D5:2 Bb4:2 G4:1.5 A4:0.5 Bb4:0.75 A4:0.25 Bb4:0.75
+%%notes G4:0.25 F4:2 D4:2 F4:1.5 Eb4:0.5 D4:0.75 F4:0.25 Bb4:0.75 C5:0.25 D5:2 Bb4:1.5 Bb4:0.5 C5:1 C5:1 Bb4:1 A4:1
+%%notes Bb4:2
+
+X:44
+T:Hallelujah Chorus
+%%id hallelujah
+%%level 4
+%%source Mutopia Project, Handel HWV 56, Hallelujah (the soprano, bars 4-14)
+%%tempo composer marking "Allegro" (Handel); traditional performance
+M:4/4
+L:1/8
+Q:1/4=88
+K:D
+%%notes D5:1.5 A4:0.5 B4:0.5 A4:1.5 D5:1.5 A4:0.5 B4:0.5 A4:1 D5:0.25 D5:0.25 D5:0.5 D5:1 D5:0.25 D5:0.25 D5:0.5 D5:1
+%%notes D5:0.5 C#5:0.5 D5:1 C#5:0.5 D5:2 E5:1.5 A4:0.5 F#5:0.5 E5:1.5 E5:1.5 A4:0.5 F#5:0.5 E5:1 E5:0.25 E5:0.25 F#5:0.5
+%%notes E5:1 E5:0.25 E5:0.25 F#5:0.5 E5:1 E5:0.5 F#5:0.5 E5:0.5 D5:1 C#5:2 A4:2 B4:1 C#5:1 D5:0.5 D4:0.5 D5:1.5
+%%notes D5:0.5 C#5:1 B4:2 A4:1.5
+
+
+% ═══ Level 5 ═══════════════════════════════════════════════════════════════════════════════════
+
+X:45
+T:Canon in D
+%%id canon
+%%level 5
+%%source Pachelbel; the violin line from en.wikipedia.org Pachelbel's Canon and Mutopia (first three variations)
+%%tempo traditional performance
+M:4/4
+L:1/4
+Q:1/4=63
+K:D
+f e d c | B A B c | d c B A | G F G E | D/F/A/G/ F/D/F/E/ | D/B,/D/A/ G/B/A/G/ | F/D/E/c/ d/f/a/A/ | B/G/A/F/ D/d/ d3/4 c/4 | d4 |]
+
+X:46
+T:Minuet in G
+%%id minuet
+%%level 5
+%%source Petzold (BWV Anh. 114), part A; en.wikipedia.org Minuet in G major
+%%tempo traditional performance
+M:3/4
+L:1/8
+Q:1/4=120
+K:G
+d2 GABc | d2 G2 G2 | e2 cdef | g2 G2 G2 | c2 dcBA | B2 cBAG | F2 GABG | A6 |
+d2 GABc | d2 G2 G2 | e2 cdef | g2 G2 G2 | c2 dcBA | B2 cBAG | A2 BAGF | G6 |]
+
+X:47
+T:La Cucaracha
+%%id cucaracha
+%%level 5
+%%source Mexican traditional; de.wikibooks.org Liederbuch/La Cucaracha (chorus and second strain)
+%%tempo traditional performance
+M:3/4
+L:1/8
+Q:1/4=170
+K:C
+G G G c3 e2 | G G G c3 e4 | c c B B A A G4- | G G G B3 d2 | G G G B3 d4 | g a g f e d c4- |
+c G G c c e e g3 e4 | g a g f e g f3 d4 | G G B B d d f3 d4 | g a g f e d c4 |]
+
+X:48
+T:Kalinka
+%%id kalinka
+%%level 5
+%%source Larionov 1860, chorus and verse — written from memory, checked by ear by the owner (2026-11-06)
+%%tempo traditional performance
+M:2/4
+L:1/8
+Q:1/4=120
+K:Am
+e2 cd | B2 cA | A2 G2 | A4 | e2 cd | B2 cA | A2 G2 | A4 | c2 BA | B2 AG | A2 B2 | c4 | e2 dc | d2 cB | c2 B2 | A4 |]
+
+X:49
+T:Te Deum Prelude
+%%id tedeum
+%%level 5
+%%source Charpentier, Te Deum H.146, prelude; en.wikipedia.org Te Deum (Charpentier)
+%%tempo traditional performance
+M:4/4
+L:1/4
+Q:1/4=108
+K:D
+A | d d/e/ f d | a2 f3/2 f/ | g a/g/ f/g/ a | e/d/ e/f/ e A | d d/e/ f d | a2 f3/2 f/ | g/a/ f/g/ e3/2 d/ | d3 |]
+
+X:50
+T:Land of Hope and Glory
+%%id hope
+%%level 5
+%%source Elgar, Pomp and Circumstance March No. 1, the trio (moved to C) — written from memory, checked by ear by the owner (2026-11-06)
+%%tempo composer marking "Largamente" (Elgar); traditional performance
+M:4/4
+L:1/4
+Q:1/4=84
+K:C
+E3/2 D/ C D | E2 C2 | A3/2 G/ F A | G4 | c3/2 B/ A B | c2 G2 | A3/2 G/ F A | E2 D2 |
+E3/2 D/ C D | E2 C2 | A3/2 G/ F A | G2 E2 | F E D c | B A G c | A F D B, | C4 |]
+
+X:51
+T:The House of the Rising Sun
+%%id rising
+%%level 5
+%%source traditional; the guitar arpeggio Am C D F Am E Am, as checked for video #71
+%%tempo as checked for video #71
+M:6/8
+L:1/8
+Q:1/4=143
+K:Am
+A,, A, C E C A, | C, G, C E C G, | D, A, D ^F D A, | F, A, C F C A, | A,, A, C E C A, | E,, ^G, B, E B, G, | A,,6 |]
+
+X:52
+T:Funiculì, Funiculà
+%%id funiculi
+%%level 5
+%%source Wikimedia Commons MIDI 'Melody to Funiculi Funicula.mid' (the chorus)
+%%tempo source MIDI 140
+M:6/8
+L:1/8
+Q:1/4=140
+K:F
+%%notes E5:1.167 D5:1 E5:1.167 D5:1 F5:0.75 E5:0.3333 D5:0.75 F5:0.3333 E5:2 E5:1.167 D5:1 E5:1.167 D5:1 F5:0.75 E5:0.3333 D5:0.75
+%%notes F5:0.3333 C5:0.75 A4:0.3333 A4:0.75 A4:0.3333 A4:0.75 A4:0.3333 A4:0.75 A4:0.3333 A4:0.75 A4:0.3333 A4:0.75 A4:0.3333 A4:0.75 A4:0.3333 A4:0.75
+%%notes A4:0.3333 F5:2 G5:0.75 F5:0.3333 D5:0.75 F5:0.3333 C5:0.75 A4:0.3333 A4:0.75 Bb4:0.3333 C5:0.75 C5:0.3333 F5:0.75 G5:0.3333 F5:2.25
+
+X:53
+T:The Blue Danube
+%%id danube
+%%level 5
+%%source Mutopia Project, Strauss Op. 314, The Blue Danube (main theme, simplified piano)
+%%tempo composer marking "Tempo di valse"; dotted half = 57
+M:3/4
+L:1/4
+Q:1/4=170
+K:C
+%%notes C4:1 C4:1 E4:1 G4:1 G4:2 G5:1 G5:2 E5:1 E5:2 C4:1 C4:1 E4:1 G4:1 G4:2 G5:1 G5:2
+%%notes F5:1 F5:2 B3:1 B3:1 D4:1 A4:1 A4:2 A5:1 A5:2 F5:1 F5:2 B3:1 B3:1 D4:1 A4:1 A4:2
+%%notes A5:1 A5:2 E5:1 E5:2 C4:1 C4:1 E4:1 G4:1 C5:2 C6:1 C6:2 G5:1 G5:2 C4:1 C4:1 E4:1
+%%notes G4:1 C5:2 C6:1 C6:2 A5:1 A5:2 D4:1 D4:1 F4:1 A4:1 A4:4 F#4:1 G4:1 E5:4 C5:1 E4:1
+%%notes E4:2 D4:1 A4:2 G4:1 C4:1.5
+
+X:54
+T:Swan Lake (theme)
+%%id swan
+%%level 5
+%%source Tchaikovsky, Swan Lake, the oboe theme — written from memory, checked by ear by the owner (2026-11-06)
+%%tempo composer marking "Moderato" (Tchaikovsky); traditional performance
+M:4/4
+L:1/8
+Q:1/4=72
+K:Bm
+F8- | F2 B c d e F2- | F6 d2 | F6 d2 | F6 B2 | d B G d B4- | B8 |
+c B A c B4- | B6 A2 | B c d e f4- | f2 e d c4 | B8 |]
+
+X:55
+T:Vltava (The Moldau)
+%%id moldau
+%%level 5
+%%source Wikimedia Commons MIDI 'Picking moldau smetana.mid' (the theme read off the top of the picking)
+%%tempo source MIDI 120
+M:6/8
+L:1/8
+Q:1/4=120
+K:Am
+%%notes A3:1 B3:1 C4:1 D4:1 E4:2 E4:2 F4:2 F4:2 E4:2 E4:2 D4:2 D4:2 C4:2 C4:2 B3:2 B3:2
+%%notes A3:4
+
+
+% ═══ Level 6 ═══════════════════════════════════════════════════════════════════════════════════
+
+X:56
+T:Spring (The Four Seasons)
+%%id spring
+%%level 6
+%%source Mutopia Project, Vivaldi Op. 8 No. 1 (violin I, bars 1-7)
+%%tempo composer marking "Allegro" (Vivaldi); source MIDI 115
+M:4/4
+L:1/8
+Q:1/4=108
+K:E
+%%notes E5:0.5 Ab5:0.5 Ab5:0.5 Ab5:0.5 F#5:0.25 E5:0.25 B5:1.5 B5:0.25 A5:0.25 Ab5:0.5 Ab5:0.5 Ab5:0.5 F#5:0.25 E5:0.25 B5:1.5 B5:0.25
+%%notes A5:0.25 Ab5:0.5 A5:0.25 B5:0.25 A5:0.5 Ab5:0.5 F#5:0.5 Eb5:0.5 B4:0.5 E5:0.5 Ab5:0.5 Ab5:0.5 Ab5:0.5 F#5:0.25 E5:0.25 B5:1.5
+%%notes B5:0.25 A5:0.25 Ab5:0.5 Ab5:0.5 Ab5:0.5 F#5:0.25 E5:0.25 B5:1.5 B5:0.25 A5:0.25 Ab5:0.5 A5:0.25 B5:0.25 A5:0.5 Ab5:0.5 F#5:1.5
+%%notes E5:0.5 B5:0.5 A5:0.25 Ab5:0.25 A5:0.5 B5:0.5 C#6:0.5 B5:1
+
+X:57
+T:Winter, Largo (The Four Seasons)
+%%id winter
+%%level 6
+%%source Mutopia Project, Vivaldi Op. 8 No. 4, Largo (the solo violin, bars 1-8)
+%%tempo composer marking "Largo" (Vivaldi); source MIDI 46
+M:4/4
+L:1/8
+Q:1/4=50
+K:Eb
+%%notes Eb5:0.5 Bb5:0.25 Ab5:0.25 G5:0.5 F5:0.25 Eb5:0.25 F5:0.5 Bb4:1 Bb4:0.5 Ab5:0.25 G5:0.25 F5:0.25 Eb5:0.25 D5:0.5 Ab5:0.5 Ab5:0.5
+%%notes G5:1 G5:0.5 F5:0.5 G5:0.25 Ab5:0.25 Bb5:0.5 C6:0.25 D6:0.25 Eb5:0.5 F5:0.25 G5:0.25 Ab5:0.5 Bb5:0.25 C6:0.25 D5:0.5 Eb5:0.25
+%%notes F5:0.25 G5:0.5 Ab5:0.25 Bb5:0.25 C5:0.5 D5:0.25 Eb5:0.25 F5:0.5 G5:0.25 Eb5:0.25 D5:1.25 Bb4:0.25 A4:0.25 Bb4:0.25 F5:1.25 Bb4:0.25
+%%notes A4:0.25 Bb4:0.25 G5:1.25 Bb4:0.25 A4:0.25 Bb4:0.25 A5:1.25 F5:0.25 Eb5:0.25 F5:0.25 Bb5:0.5 Bb4:1 Bb5:0.5 Bb5:0.25 Ab5:0.25 G5:0.25
+%%notes F5:0.25 Eb5:0.25 D5:0.25 C5:0.25 Bb4:0.25 C5:1.5 Bb4:0.5 Bb4:1
+
+X:58
+T:Eine kleine Nachtmusik
+%%id nachtmusik
+%%level 6
+%%source Mozart K. 525, the opening theme; en.wikipedia.org Eine kleine Nachtmusik
+%%tempo composer marking "Allegro" (Mozart); traditional performance
+M:4/4
+L:1/8
+Q:1/4=140
+K:G
+G3 D G3 D | G D G B d4 | c3 A c3 A | c A F A D4 | G2 G2 G2 B2 | A2 G2 G2 F2 | F2 A2 c2 F2 | A2 G2 G4 |]
+
+X:59
+T:Romance (Spanish Romance)
+%%id romance
+%%level 6
+%%source Wikimedia Commons MIDI 'A Spanish Romance.mid' (part A, top voice)
+%%tempo source MIDI 129 (one beat per triplet note)
+M:3/4
+L:1/4
+Q:1/4=132
+K:Dm
+%%notes A4:1 A4:1 A4:1 A4:1 G4:1 F4:1 F4:1 E4:1 D4:1 D4:1 F4:1 A4:1 D5:1 D5:1 D5:1 D5:1
+%%notes C5:1 Bb4:1 Bb4:1 A4:1 G4:1 G4:1 A4:1 Bb4:1 A4:1 Bb4:1 A4:1 C#5:1 Bb4:1 A4:1 A4:1 G4:1
+%%notes F4:1 F4:1 E4:1 D4:1 E4:1 E4:1 E4:1 E4:1 F4:1 E4:1 E4:1 D4:1 D4:1 D4:1 D4:0.9167
+
+X:60
+T:Gran Vals
+%%id granvals
+%%level 6
+%%source Tárrega 1902, the first period (the "Nokia" motif in bar 13) — written from memory, checked by ear by the owner (2026-11-06)
+%%tempo traditional performance
+M:3/4
+L:1/8
+Q:1/4=150
+K:A
+e2 c2 A2 | e2 c2 A2 | f e d c B A | B6 | d2 B2 G2 | d2 B2 G2 | e d c B A G | A6 |
+e d f2 B2 | c B d2 E2 | B A c2 E2 | A6 |]
+
+X:61
+T:Bourrée in E minor
+%%id bourree
+%%level 6
+%%source Mutopia Project, Bach BWV 996, Bourrée (part A with both endings, upper voice with the bass answers; the low D raised an octave to fit the neck)
+%%tempo source MIDI 132
+M:2/2
+L:1/8
+Q:1/4=136
+K:Em
+%%notes E4:0.5 F#4:0.5 G4:1 F#4:0.5 E4:0.5 Eb4:1 E4:0.5 F#4:0.5 B3:1 C#4:0.5 Eb4:0.5 E4:1 D4:0.5 C4:0.5 B3:1 A3:0.5
+%%notes G3:0.5 F#3:1 G3:0.5 A3:0.5 B3:0.5 A3:0.5 G3:0.5 F#3:0.5 E3:0.5 F#2:0.5 E4:0.5 F#4:0.5 G4:1 F#4:0.5 E4:0.5 Eb4:1
+%%notes E4:0.5 F#4:0.5 B3:1 C#4:0.5 Eb4:0.5 E4:1 D4:0.5 C4:0.5 B3:1 A3:0.5 G3:0.5 F#3:1 D3:0.5 G3:3.5
+
+X:62
+T:Jesu, Joy of Man's Desiring
+%%id jesu
+%%level 6
+%%source Bach BWV 147, the triplet line — written from memory, checked by ear by the owner (2026-11-06)
+%%tempo traditional performance, dotted quarter of 9/8 = 60
+M:3/4
+L:1/8
+Q:1/4=60
+K:G
+(3GAB (3dcc (3edd | (3gfg (3dBG (3ABc | (3dec (3BAB (3GEF | (3GDE (3FAc (3BAG |
+(3GAB (3dcc (3edd | (3gfg (3dBG (3ABc | (3dec (3BAB (3GBd | g6 |]
+
+X:63
+T:William Tell Overture (finale)
+%%id tell
+%%level 6
+%%source Rossini 1829, the galop — written from memory, checked by ear by the owner (2026-11-06)
+%%tempo composer marking "Allegro vivace" (Rossini); traditional performance
+M:2/4
+L:1/16
+Q:1/4=150
+K:E
+BBB2 BBB2 | BBBB e2 f2 | g2 BBB2 BB | BBe2 g2 f2 | BBB2 BBB2 | BBBB e2 g2 | b2 a2 g2 f2 | e4 e4 |]
+
+X:64
+T:Radetzky March
+%%id radetzky
+%%level 6
+%%source Johann Strauss I 1848, the main theme; en.wikipedia.org Radetzky March
+%%tempo traditional performance
+M:2/4
+L:1/8
+Q:1/4=116
+K:C
+c c c2 | c c c2 | e2 d2 | c3 B | A ^G A B | c2 d2 | G6 | e ^d e2 | e ^d e2 | e ^d e2 | d2 c2 |]
+
+X:65
+T:Gymnopédie No. 1
+%%id gymnopedie
+%%level 6
+%%source Mutopia Project, Satie, Gymnopédie No. 1 (the melody, bars 5-30, accompaniment removed)
+%%tempo composer marking "Lent et douloureux" (Satie); traditional performance
+M:3/4
+L:1/4
+Q:1/4=70
+K:D
+%%notes F#5:1 A5:1 G5:1 F#5:1 C#5:1 B4:1 C#5:1 D5:1 A4:1 F#4:9 F#5:1 A5:1 G5:1 F#5:1 C#5:1 B4:1
+%%notes C#5:1 D5:1 A4:1 C#5:3 F#5:3 E4:9 A4:1 B4:1 C5:1 E5:1 D5:1 B4:1 D5:1 C5:1 B4:1 D5:6
+%%notes D5:1 E5:1 F5:1 G5:1 A5:1 C5:1 D5:1 E5:1 D5:1 B4:1 D5:6
+
+X:66
+T:Danny Boy (Londonderry Air)
+%%id dannyboy
+%%level 6
+%%source traditional; en.wikipedia.org Londonderry Air (the whole air)
+%%tempo traditional performance
+M:4/4
+L:1/8
+Q:1/4=66
+K:Eb
+DEF | G3 F GcBG | FE C3 EGA | B3 c BGEG | F5 DEF | G3 F GcBG | FE C=B, CDEF | G3 A GFEF | E5 Bcd |
+e3 d dcBG | BG E3 Bcd | e3 d dcBG | F5 BBB | g3 f fec | eB G3 DEF | GcBG FECD | E5 |]
+
+% ═══ Level 7 ═══════════════════════════════════════════════════════════════════════════════════
+
+X:67
+T:Greensleeves
+%%id greensleeves
+%%level 7
+%%source English traditional; de.wikibooks.org Liederbuch/Greensleeves (parts A and B)
+%%tempo traditional performance
+M:6/8
+L:1/8
+Q:1/4=90
+K:Am
+A | c2 d e3/2^f/ e | d2 B G3/2A/ B | c2 A A3/2^G/ A | B2 ^G E2 A | c2 d e3/2^f/ e | d2 B G3/2A/ B |
+c3/2B/ A ^G3/2^F/ ^G | A2 A A3 | g3 ^f3/2e/ | d2 B G3/2A/ B | c2 A A3/2^G/ A | B2 ^G E3 | g3 ^f3/2e/ |
+d2 B G3/2A/ B | c3/2B/ A ^G3/2^F/ ^G | A3 A3 |]
+
+X:68
+T:Dark Eyes
+%%id darkeyes
+%%level 7
+%%source Hermann 1884; 8notes.com score, as checked for video #81
+%%tempo as checked for video #81
+M:3/4
+L:1/4
+Q:1/4=176
+K:Dm
+^G A | B3/2 A/ A- | A ^G A | B3/2 A/ A- | A A d | d3/2 ^c/ ^c- | ^c e f | e3/2 d/ d- | d f g |
+f3/2 e/ B- | B e f | e3/2 d/ A- | A ^G A | B3/2 A/ A- | A e f | e3/2 d/ d- | d3 |]
+
+X:69
+T:Hava Nagila
+%%id hava
+%%level 7
+%%source Idelsohn 1918; en.wikipedia.org Hava Nagila (parts A and B), D freygish
+%%tempo traditional performance
+M:4/4
+L:1/8
+Q:1/4=132
+K:Gm
+D2 D3 ^F ED | ^F2 ^F3 A G^F | G2 G3 B AG | ^F2 E/D/E D4 | D2 D3 ^F ED | ^F2 ^F3 A G^F | G2 G3 B AG | ^F2 E/D/E D4 |
+^F ^F2 E D D D2 | E E2 D C C C2 | C2 E3/2 D/ C C G2 | ^F2 E/D/E D4 | ^F ^F2 E D D D2 | E E2 D C C C2 | C2 E3/2 D/ C C G2 | ^F2 E/D/E D4 |]
+
+X:70
+T:Toccata and Fugue in D minor
+%%id toccata
+%%level 7
+%%source en.wikipedia.org Toccata and Fugue in D minor (the opening, two of its three octaves)
+%%tempo composer marking "Adagio" (Bach)
+M:4/4
+L:1/16
+Q:1/4=60
+K:Dm
+%%notes A5:0.25 G5:0.25 A5:3 G5:0.25 F5:0.25 E5:0.25 D5:0.25 C#5:1 D5:2 A4:0.25 G4:0.25 A4:3 G4:0.25 F4:0.25 E4:0.25 D4:0.25
+%%notes C#4:1 D4:3
+
+X:71
+T:In the Hall of the Mountain King
+%%id mountainking
+%%level 7
+%%source Grieg, Peer Gynt; en.wikipedia.org In the Hall of the Mountain King (the theme and its answer)
+%%tempo composer marking "Alla marcia e molto marcato" (Grieg); the opening speed
+M:4/4
+L:1/8
+Q:1/4=120
+K:Bm
+B, C D E F D F2 | =F C =F2 =E =C E2 | B, C D E F D F B | A F D F A4 |
+F ^G ^A B c ^A c2 | d ^A d2 c ^A c2 | F ^G ^A B c ^A c d | ^A d c4 |]
+
+X:72
+T:La donna è mobile
+%%id donna
+%%level 7
+%%source Verdi, Rigoletto (moved to C) — written from memory, checked by ear by the owner (2026-11-06)
+%%tempo composer marking "Allegretto" (Verdi); traditional performance
+M:3/8
+L:1/8
+Q:1/4=72
+K:C
+E E E | G3/2 F/ D | D D D | F3/2 E/ C | C C C | E3/2 D/ B, | C B, A, | G,3 |
+G A B | c3/2 B/ A | B c d | e3 | d c B | c3/2 d/ e | d B G | c3 |]
+
+X:73
+T:Ride of the Valkyries
+%%id valkyries
+%%level 7
+%%source Wagner, Die Walküre, the main theme — written from memory, checked by ear by the owner (2026-11-06)
+%%tempo traditional performance, dotted quarter = 60
+M:9/8
+L:1/16
+Q:1/4=90
+K:Bm
+F,2 B,3 F, B,2 D6 B,6 | D3 B, D2 F6 D6 | F3 D F2 A6 A,6 | D3 A, D2 F12 |
+G,3 C D2 E6 C6 | E3 C E2 G6 E6 | G3 E G2 B6 B,6 | E3 B, E2 G12 |]
+
+X:74
+T:Can-Can (Galop infernal)
+%%id cancan
+%%level 7
+%%source Offenbach, Orpheus in the Underworld — written from memory, checked by ear by the owner (2026-11-06)
+%%tempo traditional performance
+M:2/4
+L:1/8
+Q:1/4=150
+K:C
+C4 | D F E D | G2 G2 | G A E F | D2 D2 | D F E D | C c B A | G F E D | C4 |
+C4 | D F E D | G2 G2 | G A E F | D2 D2 | D F E D | C G D E | C4 |]
+
+X:75
+T:Triumphal March (Aida)
+%%id aida
+%%level 7
+%%source Verdi, Aida, the trumpet theme — written from memory, checked by ear by the owner (2026-11-06)
+%%tempo composer marking "Marcia" (Verdi); traditional performance
+M:4/4
+L:1/8
+Q:1/4=100
+K:Ab
+E2 | A4 B c d2 | c4 B2 A2 | G4 F G A B | A6 E2 | A4 B c d2 | c4 B2 A2 | e4 d c B A | B6 E2 |
+A4 B c d2 | c4 B2 A2 | G4 F G A B | A8 |]
+
+X:76
+T:Habanera
+%%id habanera
+%%level 7
+%%source Wikimedia Commons MIDI 'Carmen Aria L'amour est un oiseau rebelle.mid' (both phrases)
+%%tempo composer marking: quarter = 72 (Bizet)
+M:2/4
+L:1/8
+Q:1/4=72
+K:Em
+%%notes E5:0.5 Eb5:0.5 D5:0.3333 D5:0.25 D5:0.1667 C#5:0.5 C5:0.5 B4:0.75 B4:0.25 Bb4:0.5 A4:0.5 G4:0.1667 A4:0.25 G4:0.1667 F#4:0.25 G4:0.25
+%%notes A4:0.5 G4:0.5 F#4:0.75 E5:0.5 Eb5:0.5 D5:0.3333 D5:0.25 D5:0.1667 C#5:0.5 C5:0.5 B4:0.75 B4:0.25 A4:0.5 G4:0.5 F#4:0.1667 G4:0.25
+%%notes F#4:0.1667 E4:0.25 F#4:0.25 G4:0.5 F#4:0.5 E4:1
+
+X:77
+T:Toreador Song
+%%id toreador
+%%level 7
+%%source Mutopia Project, Bizet, Carmen Prelude (the Toreador refrain, bars 55-77)
+%%tempo composer marking "Allegro molto moderato" (Bizet); traditional performance
+M:4/4
+L:1/8
+Q:1/4=108
+K:F
+%%notes C5:1 D5:0.75 C5:0.25 A4:1 A4:0.8333 Bb4:0.1667 A4:0.75 G4:0.25 A4:0.75 Bb4:0.25 A4:1 F4:1 Bb4:1 G4:0.75 C5:0.25 A4:1
+%%notes F4:1 F4:1 D4:0.75 G4:0.25 C4:2 G4:2 G4:0.5 D5:0.5 C5:0.5 Bb4:0.5 A4:0.5 G4:0.5 A4:0.5 Bb4:0.5 A4:2 E4:1
+%%notes A4:1 A4:1 Ab4:0.75 B4:0.25 E5:1 E4:1 A4:1 A4:1 G4:0.5 D5:0.1667 E5:0.25 D5:0.1667 C5:0.5 D5:0.5 G4:0.5 A4:0.5
+%%notes Bb4:1.5 A4:0.1667 Bb4:0.25 A4:0.1667 F4:0.5 D5:0.5 C5:2.5 F4:0.1667 G4:0.25 F4:0.1667 C4:0.5 Bb4:0.5 A4:1 G4:0.1667 A4:1 F4:0.5
+%%notes C4:0.25 D4:0.25 E4:0.25 F4:0.25
+
+
+% ═══ Level 8 ═══════════════════════════════════════════════════════════════════════════════════
+
+X:78
+T:Wedding March (Mendelssohn)
+%%id wedding
+%%level 8
+%%source Mutopia Project, Mendelssohn Op. 61, Wedding March (the theme, bars 6-13)
+%%tempo composer marking "Allegro vivace" (Mendelssohn); source MIDI 130
+M:4/4
+L:1/8
+Q:1/4=120
+K:C
+%%notes C6:2 B5:1.5 F#5:0.5 A5:1 G5:1 F5:1 D5:1 C5:1.833 B4:0.1667 D5:1 G4:0.75 D5:0.25 E5:2.5 C5:0.5 E5:0.5 G5:0.5
+%%notes C6:2 B5:1.5 F#5:0.5 A5:1 G5:1 F5:1 D5:1 C5:1.833 B4:0.1667 E5:1 D5:0.75 E5:0.25 D5:2 C5:1
+
+X:79
+T:Für Elise
+%%id elise
+%%level 8
+%%source Beethoven WoO 59, part A; en.wikipedia.org Für Elise
+%%tempo composer marking "Poco moto" (Beethoven); traditional performance
+M:3/8
+L:1/16
+Q:1/4=66
+K:Am
+e^d | e^d e B =d c | A4 CE A | B4 E^G B | c4 E e^d | e^d e B =d c | A4 CE A | B4 E c B | A4 e^d |
+e^d e B =d c | A4 CE A | B4 E^G B | c4 E e^d | e^d e B =d c | A4 CE A | B4 E c B | A6 |]
+
+X:80
+T:Symphony No. 40
+%%id mozart40
+%%level 8
+%%source en.wikipedia.org Symphony No. 40 (Mozart) (the first phrase of the main theme)
+%%tempo composer marking "Molto allegro" (Mozart), half ≈ 110
+M:4/4
+L:1/8
+Q:1/4=220
+K:Gm
+%%notes Eb5:0.5 D5:0.5 D5:1 Eb5:0.5 D5:0.5 D5:1 Eb5:0.5 D5:0.5 D5:1 Bb5:2 Bb5:0.5 A5:0.5 G5:1 G5:0.5 F5:0.5 Eb5:1
+%%notes Eb5:0.5 D5:0.5 C5:1 C5:1
+
+X:81
+T:Dance of the Sugar Plum Fairy
+%%id sugarplum
+%%level 8
+%%source Tchaikovsky, The Nutcracker, the celesta theme — written from memory, checked by ear by the owner (2026-11-06)
+%%tempo composer marking "Andante ma non troppo" (Tchaikovsky)
+M:2/4
+L:1/16
+Q:1/4=72
+K:Em
+G2E2 G2^F2 | ^D2 E2 =D4 | ^C2 C2 C2 B,2 | ^A,4 B,4 | G2E2 G2^F2 | ^D2 E2 =D4 | ^C2 C2 E2 D2 | B,8 |]
+
+X:82
+T:March (The Nutcracker)
+%%id nutmarch
+%%level 8
+%%source Tchaikovsky, The Nutcracker, the march theme — written from memory, checked by ear by the owner (2026-11-06)
+%%tempo composer marking "Tempo di marcia viva" (Tchaikovsky)
+M:4/4
+L:1/16
+Q:1/4=126
+K:G
+d4 d3d d2B2 d4 | d4 d3d d2B2 d4 | e4 e3e e2c2 e4 | d4 d3d B2G2 B4 |
+d4 d3d d2B2 d4 | d4 d3d d2B2 d4 | e2d2 c2B2 A2G2 F2E2 | D4 F4 G8 |]
+
+X:83
+T:Humoresque
+%%id humoresque
+%%level 8
+%%source Dvořák, Humoresque No. 7 (moved to G) — written from memory, checked by ear by the owner (2026-11-06)
+%%tempo composer marking "Poco lento e grazioso" (Dvořák)
+M:2/4
+L:1/16
+Q:1/4=72
+K:G
+G3A G3A B3d e3d | e3g d3B A3B A4 | G3A G3A B3d e3d | f3g f3a d8 |
+G3A G3A B3d e3d | e3g d3B A3B A4 | d3c B3A G3E D3G | A3B A3F G8 |]
+
+X:84
+T:O sole mio
+%%id solemio
+%%level 8
+%%source di Capua 1898, the chorus — written from memory, checked by ear by the owner (2026-11-06)
+%%tempo traditional performance
+M:4/4
+L:1/8
+Q:1/4=72
+K:G
+B6 c B | A3 B G4 | c6 d c | B3 c A4 | d6 e d | c3 B A G ^F G | A8- | A4 B c d e |
+f6 e d | c3 B A4 | e6 d c | B3 A G4 | A6 B c | d3 c B A G A | G8 |]
+
+X:85
+T:Nessun dorma
+%%id nessun
+%%level 8
+%%source Puccini, Turandot, the final section "Dilegua, o notte" — written from memory, checked by ear by the owner (2026-11-06)
+%%tempo composer marking "Andante sostenuto" (Puccini)
+M:4/4
+L:1/8
+Q:1/4=60
+K:D
+F2 F E D3 F | E4 B,4 | D2 D C B,3 D | C8 | F2 F E D3 F | E4 B,4 | D2 D E F3 G | A8 |
+d6 c B | c4 A4 | B6 A G | A4 F4 | G2 A2 B3 c | d8 |]
+
+X:86
+T:O mio babbino caro
+%%id babbino
+%%level 8
+%%source Puccini, Gianni Schicchi — written from memory, checked by ear by the owner (2026-11-06)
+%%tempo composer marking "Andantino ingenuo" (Puccini), dotted quarter = 50
+M:6/8
+L:1/8
+Q:1/4=75
+K:Ab
+E3 G F E | c3 B3 | A3 B c d | e6 | E3 G F E | f3 e3 | d3 c B A | B6 |
+c3 e d c | a3 g3 | f3 e d c | e3 d3 | c3 B A G | A6 |]
+
+X:87
+T:The Swan (Saint-Saëns)
+%%id theswan
+%%level 8
+%%source Saint-Saëns, Carnival of the Animals, the cello theme — written from memory, checked by ear by the owner (2026-11-06)
+%%tempo composer marking "Andantino grazioso" (Saint-Saëns)
+M:6/4
+L:1/8
+Q:1/4=76
+K:G
+g6 f4 B2 | e4 d4 G4 | B8 A4 | D6 E4 F2 | G4 A4 B4 | c4 d4 e4 | B12- | B12 |
+g6 f4 B2 | e4 d4 G4 | B8 A4 | F6 G4 A2 | B4 c4 ^c4 | d4 e4 f4 | g12 |]
+
+X:88
+T:Hungarian Dance No. 5
+%%id hungarian5
+%%level 8
+%%source Brahms, the main theme — written from memory, checked by ear by the owner (2026-11-06)
+%%tempo composer marking "Allegro" (Brahms)
+M:2/4
+L:1/16
+Q:1/4=100
+K:Gm
+D8 G6 B2 | A6 G2 ^F4 D4 | G8 B6 d2 | c6 B2 A4 F4 | B8 d6 g2 | f6 e2 d4 B4 | A4 G4 ^F4 E4 | D8 |]
+
+% ═══ Level 9 ═══════════════════════════════════════════════════════════════════════════════════
+
+X:89
+T:Rondo alla Turca
+%%id turca
+%%level 9
+%%source Mutopia Project, Mozart K. 331, Rondo alla Turca (bars 1-24)
+%%tempo composer marking "Allegretto" (Mozart); source MIDI 60 is half speed
+M:2/4
+L:1/16
+Q:1/4=120
+K:Am
+%%notes B4:0.25 A4:0.25 Ab4:0.25 A4:0.25 C5:1 D5:0.25 C5:0.25 B4:0.25 C5:0.25 E5:1 F5:0.25 E5:0.25 Eb5:0.25 E5:0.25 B5:0.25 A5:0.25
+%%notes Ab5:0.25 A5:0.25 B5:0.25 A5:0.25 Ab5:0.25 A5:0.25 C6:1 A5:0.5 C6:0.5 B5:0.5 A5:0.5 G5:0.5 A5:0.5 B5:0.5 A5:0.5 G5:0.5
+%%notes A5:0.5 B5:0.5 A5:0.5 G5:0.5 F#5:0.5 E5:1 E5:0.5 F5:0.5 G5:0.5 G5:0.5 A5:0.25 G5:0.25 F5:0.25 E5:0.25 D5:0.5 G4:0.5
+%%notes E5:0.5 F5:0.5 G5:0.5 G5:0.5 A5:0.25 G5:0.25 F5:0.25 E5:0.25 D5:1 C5:0.5 D5:0.5 E5:0.5 E5:0.5 F5:0.25 E5:0.25 D5:0.25
+%%notes C5:0.25 B4:0.5 E4:0.5 C5:0.5 D5:0.5 E5:0.5 E5:0.5 F5:0.25 E5:0.25 D5:0.25 C5:0.25 B4:1 B4:0.25 A4:0.25 Ab4:0.25 A4:0.25
+%%notes C5:1 D5:0.25 C5:0.25 B4:0.25 C5:0.25 E5:1 F5:0.25 E5:0.25 Eb5:0.25 E5:0.25 B5:0.25 A5:0.25 Ab5:0.25 A5:0.25 B5:0.25 A5:0.25
+%%notes Ab5:0.25 A5:0.25 C6:1 A5:0.5 B5:0.5 C6:0.5 B5:0.5 A5:0.5 Ab5:0.5 A5:0.5 E5:0.5 F5:0.5 D5:0.5 C5:1 B4:0.75 A4:0.1667
+%%notes B4:0.1667 A4:1
+
+X:90
+T:Air on the G String
+%%id air
+%%level 9
+%%source Mutopia Project, Bach BWV 1068, Air (the melody, bars 1-6)
+%%tempo traditional performance; source MIDI 72
+M:4/4
+L:1/16
+Q:1/4=60
+K:D
+%%notes F#5:4 B5:0.25 G5:0.1667 F#5:0.1667 E5:0.25 D5:0.25 C#5:0.25 D5:0.25 C#5:0.8333 B4:0.1667 A4:1 A5:2.25 F#5:0.25 C5:0.25 B4:0.25 E5:0.25
+%%notes Eb5:0.25 A5:0.25 G5:0.25 G5:2.25 E5:0.25 B4:0.25 A4:0.25 D5:0.25 C#5:0.25 G5:0.25 F#5:0.25 F#5:1.5 Ab5:0.25 A5:0.25 D5:0.5 D5:0.1667
+%%notes E5:0.1667 F#5:0.5 E5:0.25 E5:0.25 D5:0.25 C#5:0.25 B4:0.25 B4:0.1667 C#5:0.1667 D5:0.75 C#5:0.25 B4:0.25 A4:2
+
+X:91
+T:Ave Maria (Schubert)
+%%id avemaria
+%%level 9
+%%source Mutopia Project, Schubert D. 839 (the voice, bars 3-14)
+%%tempo composer marking "Sehr langsam" (Schubert)
+M:4/4
+L:1/8
+Q:1/4=56
+K:Bb
+%%notes Bb4:1.5 A4:0.25 Bb4:0.25 D5:1.75 C5:0.25 Bb4:2 C5:1 D5:0.25 A4:0.25 G4:0.25 A4:0.25 Bb4:1.5 D5:0.5 D5:0.75 C5:0.1667 Bb4:0.1667
+%%notes A4:0.25 G4:0.25 D5:0.25 E5:0.25 D5:1 C#5:0.75 A4:0.25 C5:0.75 Bb4:0.25 A4:0.1667 C5:0.25 D5:0.1667 Eb5:0.1667 C5:0.25 A4:0.1667 Bb4:1.5
+%%notes D5:0.25 C5:0.25 C5:0.75 A4:0.25 G4:0.1667 B4:0.25 D5:0.1667 F5:0.1667 D5:0.25 B4:0.1667 C5:1.167 G4:0.25 A4:0.1667 Bb4:0.1667 C5:0.25 G4:0.1667
+%%notes F4:1.5 F4:0.5 C5:0.75 C5:0.25 C5:0.3333 B4:0.1667 C5:0.3333 D5:0.1667 C5:0.3333 D5:0.1667 Bb4:1 Bb4:0.5 C5:0.75 C5:0.25 C5:0.1667 B4:0.25
+%%notes C5:0.1667 Eb5:0.1667 D5:0.25 C5:0.1667 Bb4:1.5 Bb4:0.5 C5:0.75 C5:0.25 D5:0.3333 Eb5:0.1667 Eb5:0.1667 C5:0.25 D5:0.1667 F5:0.5 Eb5:1.25 G4:0.25
+%%notes D5:0.75 C5:0.25 Bb4:0.1667 A4:0.25 Bb4:0.1667 C#5:0.1667 C5:0.25 Bb4:0.1667 C5:2 Bb4:1.5 A4:0.25 Bb4:0.25 D5:1.75 C5:0.25 Bb4:1
+
+X:92
+T:Cello Suite No. 1, Prelude
+%%id cello
+%%level 9
+%%source Mutopia Project, Bach BWV 1007, Prelude, bars 1-4
+%%tempo traditional performance; source MIDI 80
+M:4/4
+L:1/16
+Q:1/4=76
+K:G
+G,DBA BDBD G,DBA BDBD | G,EcB cEcE G,EcB cEcE | G,^FcB c^FcF G,FcB cFcF | G,GBA BGB^F G,GBA BGBF |]
+
+X:93
+T:The Entertainer
+%%id entertainer
+%%level 9
+%%source Mutopia Project, Joplin, The Entertainer (part A, bars 4-20)
+%%tempo composer marking "Not fast" (Joplin); source MIDI 72
+M:2/4
+L:1/16
+Q:1/4=76
+K:C
+%%notes D4:0.25 Eb4:0.25 E4:0.25 C5:0.5 E4:0.25 C5:0.5 E4:0.25 C5:1.5 C6:0.25 D6:0.25 Eb6:0.25 E6:0.25 C6:0.25 D6:0.25 E6:0.5 B5:0.25
+%%notes D6:0.5 C6:1.5 D4:0.25 Eb4:0.25 E4:0.25 C5:0.5 E4:0.25 C5:0.5 E4:0.25 C5:1.75 A5:0.25 G5:0.25 F#5:0.25 A5:0.25 C6:0.25 E6:0.5
+%%notes D6:0.25 C6:0.25 A5:0.25 D6:1.5 D4:0.25 Eb4:0.25 E4:0.25 C5:0.5 E4:0.25 C5:0.5 E4:0.25 C5:1.5 C6:0.25 D6:0.25 Eb6:0.25 E6:0.25
+%%notes C6:0.25 D6:0.25 E6:0.5 B5:0.25 D6:0.5 C6:1.5 C6:0.25 D6:0.25 E6:0.25 C6:0.25 D6:0.25 E6:0.5 C6:0.25 D6:0.25 C6:0.25 E6:0.25
+%%notes C6:0.25 D6:0.25 E6:0.5 C6:0.25 D6:0.25 C6:0.25 E6:0.25 C6:0.25 D6:0.25 E6:0.5 B5:0.25 D6:0.5 C6:1.5
+
+X:94
+T:Maple Leaf Rag
+%%id mapleleaf
+%%level 9
+%%source Mutopia Project, Joplin, Maple Leaf Rag (part A, bars 1-16, top line)
+%%tempo composer marking "Tempo di marcia" (Joplin)
+M:2/4
+L:1/16
+Q:1/4=96
+K:Ab
+%%notes Ab4:0.25 Eb5:0.25 Ab4:0.25 C5:0.25 Eb5:0.5 G4:0.25 Eb5:0.25 G4:0.25 Bb4:0.25 Eb5:1.5 Ab4:0.25 Eb5:0.25 Ab4:0.25 C5:0.25 Eb5:0.5 G4:0.25
+%%notes Eb5:0.25 G4:0.25 Bb4:0.25 Eb5:1 Eb5:0.5 Ab4:0.25 B4:0.25 E5:0.5 Eb5:0.5 Eb5:0.5 Ab4:0.25 B4:0.25 E5:0.5 Eb5:3 Ab4:0.25 B4:0.25
+%%notes Ab5:0.5 Ab5:0.25 B5:0.25 Ab6:0.25 Ab6:0.5 Ab6:0.5 Ab6:0.5 Ab6:0.25 Ab6:0.5 Eb6:0.25 F6:0.25 C6:0.25 Eb6:0.25 F6:0.5 Ab5:0.5 Bb5:0.25
+%%notes B5:0.25 Ab5:0.25 Bb5:0.25 C6:0.5 Ab5:0.25 C6:0.25 Ab5:0.25 Bb5:0.5 Ab5:0.75 Ab5:0.75 Ab5:0.5 Ab5:0.5 Ab5:0.25 Ab5:0.5 Eb5:0.25 F5:0.25
+%%notes C5:0.25 Eb5:0.25 F5:0.5 Ab4:0.5 Bb4:0.25 B4:0.25 Ab4:0.25 Bb4:0.25 C5:0.5 Ab4:0.25 C5:0.25 Ab4:0.25 Bb4:0.5 Ab4:0.5
+
+X:95
+T:Entry of the Gladiators
+%%id gladiators
+%%level 9
+%%source Fučík 1897, the first strain; Wikimedia Commons MIDI and 1897 piano score, as checked for video #80
+%%tempo source MIDI (half = 100)
+M:2/4
+L:1/8
+Q:1/4=200
+K:C
+c2 B2 | ^A B ^A =A | ^G2 =G2 ^F2 G2 | A2 ^G2 =G ^G G ^F | =F2 E2 ^D2 E2 |
+G2 F F ^C2 D2 | G2 F F ^C2 D2 | B, C ^C D ^D E F ^F | G ^G A B A2 G2 |
+c2 B2 | ^A B ^A =A | ^G2 =G2 ^F2 G2 | A2 ^G2 =G ^G G ^F | =F2 E2 ^D2 E2 |
+C2 C C A2 D2 | ^D2 D D ^A4 | B d ^c =c B2 A2 | G2 G G G =F E D | C4 |]
+
+X:96
+T:Boléro
+%%id bolero
+%%level 9
+%%source Wikimedia Commons MIDI 'Bolero flute ravel.mid' (theme 1)
+%%tempo composer marking: quarter = 72 (Ravel)
+M:3/4
+L:1/16
+Q:1/4=72
+K:C
+%%notes C5:1.5 B4:0.25 C5:0.25 D5:0.25 C5:0.25 B4:0.25 A4:0.25 C5:0.5 C5:0.25 A4:0.25 C5:1.5 B4:0.25 C5:0.25 A4:0.25 G4:0.25 E4:0.25
+%%notes F4:0.25 G4:2.25 F4:0.25 E4:0.25 D4:0.25 E4:0.25 F4:0.25 G4:0.25 A4:0.25 G4:2.25 A4:0.25 B4:0.25 A4:0.25 G4:0.25 F4:0.25 E4:0.25
+%%notes D4:0.25 E4:0.25 D4:0.25 C4:0.9167
+
+X:97
+T:Badinerie
+%%id badinerie
+%%level 9
+%%source Bach, Orchestral Suite No. 2, Badinerie, part A — written from memory, checked by ear by the owner (2026-11-06)
+%%tempo traditional performance
+M:2/4
+L:1/16
+Q:1/4=120
+K:Bm
+b2 fd fB dB FB DB | F4 B4 | b2 fd fB dB FB DB | F4 B4 |
+B^ABc B^ABc | dBc^A B4 | F^EF^G F^EFG | ^AFG^E F4 |]
+
+X:98
+T:Nocturne Op. 9 No. 2
+%%id nocturne
+%%level 9
+%%source Mutopia Project, Chopin Op. 9 No. 2 (bars 1-4, top line)
+%%tempo composer marking: Andante, eighth = 132 (Chopin)
+M:12/8
+L:1/8
+Q:1/4=88
+K:Eb
+%%notes Bb4:0.5 G5:2 F5:0.5 G5:0.5 F5:1.5 Eb5:1 Bb4:0.5 G5:1 C5:0.5 C6:1 G5:0.5 Bb5:1.5 Ab5:1 G5:0.5 F5:1.5 G5:1
+%%notes D5:0.5 Eb5:1.5 C5:1.5 Bb4:0.5 D6:0.5 C6:0.5 Bb5:0.25 Ab5:0.25 G5:0.25 Ab5:0.25 C5:0.25 D5:0.25 Eb5:1.5
+
+X:99
+T:Hungarian Rhapsody No. 2
+%%id rhapsody2
+%%level 9
+%%source en.wikipedia.org Hungarian Rhapsody No. 2 (the friska's opening phrase)
+%%tempo composer marking "Vivace" (Liszt), friska; traditional performance
+M:2/4
+L:1/16
+Q:1/4=132
+K:F#
+%%notes C6:0.5 B5:0.75 C#6:0.25 C6:0.5 B5:0.75 C#6:0.25 C6:0.5 Bb5:0.75 C#6:0.25 C6:0.5 Bb5:0.75 C#6:0.25 C6:0.5 Eb6:0.75 C#6:0.25 C6:0.5
+%%notes Eb6:0.75 C#6:0.25 C6:0.5 F#6:0.75 C#6:0.25 C6:0.5 F#6:2
+
+X:100
+T:Flight of the Bumblebee
+%%id bumblebee
+%%level 9
+%%source Rimsky-Korsakov 1900, the main theme (from memory; the opening run as checked for video #31)
+%%tempo composer marking "Vivace" (Rimsky-Korsakov)
+M:2/4
+L:1/16
+Q:1/4=160
+K:Am
+e^d=d^c d^c=cB c=B^A=A ^G=G^F=F | E^F=F^D E=F=F^F ^G=G^F=F E^F=F^D | E^F=F^D E=F^F^G ^A=A^G^F =F=E^D=E |
+a^g=g^f g^f=f=e f=e^d=d ^c=c=B^A | A=B^A^G A^A=B=c ^c=c=B^A A=B^A^G | A=B^A^G A^A=B^c d^c=c=B ^A^G=A=A |]

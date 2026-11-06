@@ -185,10 +185,10 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
     async (m: Melody) => {
       setPhase('playingMelody');
       await deps.session.enterPlayback();
-      await deps.playback.playMelody(scheduleMelody(m, level.tempoBpm), tuneIdOf(m.id));
+      await deps.playback.playMelody(scheduleMelody(m, m.tempoBpm), tuneIdOf(m.id));
       setPhase('awaitingInput');
     },
-    [deps, level.tempoBpm],
+    [deps],
   );
 
   /** Grade the notes the learner tapped and fold the result into feedback, the record and difficulty. */
@@ -234,11 +234,11 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
     setReplaying(true);
     try {
       await deps.session.enterPlayback();
-      await deps.playback.playMelody(scheduleMelody(melody, level.tempoBpm), tuneIdOf(melody.id));
+      await deps.playback.playMelody(scheduleMelody(melody, melody.tempoBpm), tuneIdOf(melody.id));
     } finally {
       if (replayTokenRef.current === token) setReplaying(false);
     }
-  }, [deps, melody, phase, level.tempoBpm]);
+  }, [deps, melody, phase]);
 
   const stopReplay = useCallback(() => endReplay(true), [endReplay]);
 

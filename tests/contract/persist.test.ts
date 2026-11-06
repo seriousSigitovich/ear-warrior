@@ -18,6 +18,7 @@ const MELODY: Melody = {
   notes: [],
   difficultyId: LEVEL.id,
   scale: 'C_major_pentatonic',
+  tempoBpm: 90,
   createdAt: '2026-07-24T00:00:00.000Z',
 };
 

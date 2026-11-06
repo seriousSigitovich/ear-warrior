@@ -1,9 +1,9 @@
-// FR-021: the melodies are a curated library. These tests guard the library itself —
-// every tune must be answerable on the 12-fret neck, belong to its scale (a typo shows up as a note
-// outside it) and every difficulty level must have something to play.
+// FR-021: the melodies are a library of 100 whole public-domain tunes. These tests guard the library
+// itself — every tune must be answerable on the 12-fret neck, belong to its scale, appear once, carry
+// its own tempo, and every difficulty level must hold a fair share of the tunes.
 import { DifficultyLevel } from '../../../src/models';
-import { CURATED, LIBRARY, curatedMelody, masteredTuneIds, historyFromAttempts, tuneIdOf } from '../../../src/services/melody/curated';
-import { MAX_RANK, MIN_RANK, getLevelByRank, notesLabel } from '../../../src/services/melody/levels';
+import { LIBRARY, curatedMelody, masteredTuneIds, historyFromAttempts, tuneIdOf } from '../../../src/services/melody/curated';
+import { MAX_RANK, MIN_RANK, getLevelByRank } from '../../../src/services/melody/levels';
 import { scalePitchClasses } from '../../../src/services/melody/scales';
 import { MAX_FRET, OPEN_STRING_MIDI, positionsForMidi } from '../../../src/lib/fretboard';
 import { hzFromMidi, noteName, pitchClass } from '../../../src/lib/pitchNote';
@@ -23,21 +23,36 @@ describe('melody library (FR-021)', () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  test.each(RANKS)('level %i has at least one tune', (rank) => {
-    expect(LIBRARY.some((t) => t.rank === rank)).toBe(true);
+  test('the library holds 100 tunes, none of them twice', () => {
+    expect(LIBRARY).toHaveLength(100);
+    expect(new Set(LIBRARY.map((t) => t.title)).size).toBe(LIBRARY.length);
+    // The same melody under two names (Twinkle / ABC Song) shows up as the same opening intervals.
+    const openings = LIBRARY.map((t) => {
+      const m = curatedMelody(level(t.rank), 0, t.id).notes.map((n) => n.midi);
+      return m.slice(1, 9).map((x, i) => x - m[i]).join(',');
+    });
+    expect(new Set(openings).size).toBe(LIBRARY.length);
   });
 
-  test('the library serves the curated tunes and the candidates', () => {
-    expect(LIBRARY.length).toBeGreaterThan(CURATED.length);
+  test.each(RANKS)('level %i holds 11 or 12 tunes', (rank) => {
+    const n = LIBRARY.filter((t) => t.rank === rank).length;
+    expect(n).toBeGreaterThanOrEqual(11);
+    expect(n).toBeLessThanOrEqual(12);
   });
 
-  test('every tune sits on the rank whose note span holds its note count', () => {
+  test('every tune is a whole melody with its own tempo and a named source', () => {
     for (const t of LIBRARY) {
-      const n = curatedMelody(level(t.rank), 0, t.id).notes.length;
-      const [min, max] = notesLabel(t.rank).split('–').map(Number);
-      expect(n).toBeGreaterThanOrEqual(min);
-      expect(n).toBeLessThanOrEqual(max ?? min);
+      const m = curatedMelody(level(t.rank), 0, t.id);
+      expect({ tune: t.id, long: m.notes.length >= 15 }).toEqual({ tune: t.id, long: true });
+      expect(m.tempoBpm).toBe(t.tempoBpm);
+      expect(t.tempoBpm).toBeGreaterThanOrEqual(40);
+      expect(t.tempoBpm).toBeLessThanOrEqual(220);
+      expect(t.source.length).toBeGreaterThan(0);
     }
+  });
+
+  test('tunes do not share one tempo', () => {
+    expect(new Set(LIBRARY.map((t) => t.tempoBpm)).size).toBeGreaterThan(10);
   });
 
   test('every note lies on the neck (E2–E5) and has a position to tap', () => {
@@ -132,19 +147,22 @@ describe('historyFromAttempts', () => {
   });
 
   test('lists the attempted tunes oldest first, whatever order the store returns them in', () => {
-    const { recent } = historyFromAttempts([at('frere3-9', 'incorrect', '02'), at('hotcrossbuns-4', 'incorrect', '01')]);
-    expect(recent).toEqual(['hotcrossbuns', 'frere3']);
+    const { recent } = historyFromAttempts([at('frere-9', 'incorrect', '02'), at('hotcrossbuns-4', 'incorrect', '01')]);
+    expect(recent).toEqual(['hotcrossbuns', 'frere']);
   });
 
   test('mastered holds the tunes played at 100%', () => {
-    const { mastered } = historyFromAttempts([at('frere3-9', 'incorrect', '02'), at('hotcrossbuns-4', 'correct', '01')]);
+    const { mastered } = historyFromAttempts([at('frere-9', 'incorrect', '02'), at('hotcrossbuns-4', 'correct', '01')]);
     expect(mastered).toEqual(['hotcrossbuns']);
   });
 
-  test('the tune attempted last is the last one a level offers again', () => {
-    const { recent } = historyFromAttempts([at('hotcrossbuns-4', 'incorrect', '01'), at('frere3-9', 'incorrect', '02')]);
+  test('once a level has been played through, the tune attempted longest ago comes back first', () => {
+    const ids = LIBRARY.filter((t) => t.rank === 1).map((t) => t.id);
+    const { recent } = historyFromAttempts(
+      ids.map((id, i) => at(`${id}-${i}`, 'incorrect', String(10 + i))).reverse(),
+    );
     for (let seed = 0; seed < 20; seed++) {
-      expect(tuneIdOf(curatedMelody(level(1), seed, undefined, new Set(), recent).id)).toBe('hotcrossbuns');
+      expect(tuneIdOf(curatedMelody(level(1), seed, undefined, new Set(), recent).id)).toBe(ids[0]);
     }
   });
 });
@@ -158,11 +176,11 @@ describe('tunes played at 100%', () => {
 
   test('only a fully correct attempt counts as mastered', () => {
     const mastered = masteredTuneIds([
-      { melodyId: 'joy8-1', verdict: 'incorrect' },
-      { melodyId: 'world8-2', verdict: 'correct' },
-      { melodyId: 'world8-3', verdict: 'correct' },
+      { melodyId: 'joy-1', verdict: 'incorrect' },
+      { melodyId: 'joyworld-2', verdict: 'correct' },
+      { melodyId: 'joyworld-3', verdict: 'correct' },
     ]);
-    expect([...mastered]).toEqual(['world8']);
+    expect([...mastered]).toEqual(['joyworld']);
   });
 
   test('a mastered tune is not offered while the level has others', () => {

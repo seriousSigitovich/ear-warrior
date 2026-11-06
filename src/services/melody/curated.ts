@@ -1,124 +1,17 @@
-// The melody library (FR-021): hand-written public-domain tunes. The served library is `CURATED`
-// (listened to and kept by the owner) plus `CANDIDATES` (candidates.ts, drafted from memory, so a
-// note may be off until the owner has listened). Every tune is inside the 12-fret neck (E2–E5,
-// MIDI 40–76), so any note can be answered on the on-screen fretboard, and sits on the difficulty
-// rank (1–9) whose span holds its note count (levels.ts).
+// The melody library (FR-021): 100 whole public-domain melodies, one per tune, each on one difficulty
+// rank (1–9) and at its own tempo. The tunes are written in ABC in `library.abc`; `npm run library`
+// turns them into `library.ts`, which this module serves. Every tune is inside the 12-fret neck (E2–E5,
+// MIDI 40–76), so any note can be answered on the on-screen fretboard.
 //
 // `notes` is "pitch:beats" tokens, e.g. "E4:1 D4:2". Rhythm is played back but never graded.
 import { Attempt, DifficultyLevel, Melody, Note } from '../../models';
 import { hzFromMidi, noteName } from '../../lib/pitchNote';
-import { CANDIDATES } from './candidates';
-import { rankOfNoteCount } from './levels';
+import { LibraryTune, TUNES } from './library';
 
-export interface CuratedTune {
-  /** Stable, hyphen-free id; it prefixes the Melody id. */
-  id: string;
-  title: string;
-  /** "<Root>_<family>", the key the tune is written in (checked against its notes by the tests). */
-  scale: string;
-  notes: string;
-}
+export type { LibraryTune } from './library';
 
-/** A tune of the served library with the rank it is offered at. */
-export interface LibraryTune extends CuratedTune {
-  rank: number;
-}
-
-export const CURATED: readonly CuratedTune[] = [
-  {
-    id: 'hotcrossbuns',
-    title: 'Hot Cross Buns',
-    scale: 'C_major',
-    notes: 'E4:1 D4:1 C4:2',
-  },
-  {
-    id: 'frere3',
-    title: 'Frère Jacques (opening)',
-    scale: 'C_major',
-    notes: 'C4:1 D4:1 E4:2',
-  },
-
-  {
-    id: 'mary4',
-    title: 'Mary Had a Little Lamb (opening)',
-    scale: 'C_major',
-    notes: 'E4:1 D4:1 C4:1 D4:2',
-  },
-  { id: 'frere4', title: 'Frère Jacques', scale: 'C_major', notes: 'C4:1 D4:1 E4:1 C4:2' },
-
-  {
-    id: 'grace6',
-    title: 'Amazing Grace (opening)',
-    scale: 'G_major_pentatonic',
-    notes: 'D4:1 G4:2 B4:0.5 G4:0.5 B4:1 A4:2',
-  },
-  {
-    id: 'silent6',
-    title: 'Silent Night (opening)',
-    scale: 'C_major_pentatonic',
-    notes: 'G4:1.5 A4:0.5 G4:1 E4:2 G4:1.5 A4:0.5',
-  },
-
-  {
-    id: 'joy4',
-    title: 'Ode to Joy (second bar)',
-    scale: 'C_major',
-    notes: 'G4:1 F4:1 E4:1 D4:2',
-  },
-
-  {
-    id: 'doe6',
-    title: 'Do-Re-Mi (opening)',
-    scale: 'C_major',
-    notes: 'C4:1.5 D4:0.5 E4:1.5 C4:0.5 E4:1 C4:2',
-  },
-  {
-    id: 'twinkle6',
-    title: 'Twinkle, Twinkle (opening)',
-    scale: 'C_major',
-    notes: 'C4:1 C4:1 G4:1 G4:1 A4:1 A4:2',
-  },
-
-  {
-    id: 'joy8',
-    title: 'Ode to Joy',
-    scale: 'C_major',
-    notes: 'E4:1 E4:1 F4:1 G4:1 G4:1 F4:1 E4:1 D4:2',
-  },
-  {
-    id: 'world8',
-    title: 'Joy to the World',
-    scale: 'C_major',
-    notes: 'C5:1.5 B4:0.5 A4:1.5 G4:0.5 F4:1 E4:1 D4:1 C4:2',
-  },
-
-  {
-    id: 'sleeves6',
-    title: 'Greensleeves (opening, in E minor)',
-    scale: 'E_natural_minor',
-    notes: 'E4:1 G4:2 A4:1 B4:1.5 C5:0.5 B4:2',
-  },
-
-  {
-    id: 'sleeves8',
-    title: 'Greensleeves (two bars, in E minor)',
-    scale: 'E_natural_minor',
-    notes: 'E4:1 G4:2 A4:1 B4:1.5 C5:0.5 B4:1 A4:1 F#4:2',
-  },
-
-  {
-    id: 'sleeves10',
-    title: 'Greensleeves (phrase, in E minor)',
-    scale: 'E_natural_minor',
-    notes: 'E4:1 G4:2 A4:1 B4:1.5 C5:0.5 B4:1 A4:1 F#4:1 D4:1 E4:2',
-  },
-  {
-    id: 'joy10',
-    title: 'Ode to Joy (to the second line)',
-    scale: 'C_major',
-    notes: 'E4:1 E4:1 F4:1 G4:1 G4:1 F4:1 E4:1 D4:1 C4:1 C4:2',
-  },
-];
+/** Everything the app serves, easiest rank first. */
+export const LIBRARY: readonly LibraryTune[] = TUNES;
 
 const PITCH_CLASS: Record<string, number> = {
   C: 0,
@@ -143,7 +36,7 @@ const PITCH_CLASS: Record<string, number> = {
 /** Fixed placeholder; the storage layer stamps the real creation time on persist. */
 const CREATED_AT_PLACEHOLDER = new Date(0).toISOString();
 
-function parseNotes(tune: CuratedTune): Note[] {
+function parseNotes(tune: LibraryTune): Note[] {
   return tune.notes
     .trim()
     .split(/\s+/)
@@ -152,7 +45,7 @@ function parseNotes(tune: CuratedTune): Note[] {
       const match = name.match(/^([A-G][#b]?)(-?\d)$/);
       const durationBeats = Number(beats);
       if (!match || !(durationBeats > 0)) {
-        throw new Error(`Bad note "${token}" in curated tune "${tune.id}".`);
+        throw new Error(`Bad note "${token}" in library tune "${tune.id}".`);
       }
       const midi = PITCH_CLASS[match[1]] + 12 * (Number(match[2]) + 1);
       return {
@@ -166,21 +59,22 @@ function parseNotes(tune: CuratedTune): Note[] {
     });
 }
 
-function rankOf(tune: CuratedTune): number {
-  const count = tune.notes.trim().split(/\s+/).length;
-  const rank = rankOfNoteCount(count);
-  if (rank === undefined) throw new Error(`Curated tune "${tune.id}" has ${count} notes: no rank.`);
-  return rank;
+function span(values: number[], unit = ''): string {
+  const lo = Math.min(...values);
+  const hi = Math.max(...values);
+  return `${lo === hi ? lo : `${lo}–${hi}`}${unit}`;
 }
 
-/** Everything the app serves: the curated tunes and the candidates, each on its rank. */
-export const LIBRARY: readonly LibraryTune[] = [...CURATED, ...CANDIDATES].map((t) => ({
-  id: t.id,
-  title: t.title,
-  scale: t.scale,
-  notes: t.notes,
-  rank: rankOf(t),
-}));
+/** What a rank holds, for display: how many tunes, their note counts ("17–62") and tempos ("60–140 BPM"). */
+export function levelSummary(rank: number): { tunes: number; notes: string; tempo: string } {
+  const ofRank = LIBRARY.filter((t) => t.rank === rank);
+  if (ofRank.length === 0) return { tunes: 0, notes: '–', tempo: '–' };
+  return {
+    tunes: ofRank.length,
+    notes: span(ofRank.map((t) => t.notes.trim().split(/\s+/).length)),
+    tempo: span(ofRank.map((t) => t.tempoBpm), ' BPM'),
+  };
+}
 
 /** The tune a melody id came from (`<tune id>-<seed>`; tune ids hold no hyphen). */
 export function tuneIdOf(melodyId: string): string {
@@ -220,7 +114,7 @@ export function historyFromAttempts(
  * in play. Among those, the tune played longest ago (`recent`: tune ids, oldest first) wins, so a
  * level cycles through its tunes instead of repeating one; `seed` breaks ties. `tuneId` forces a
  * specific tune.
- * @throws if the level has no tune — the tests require every level 1–9 to have one.
+ * @throws if the level has no tune — the tests require every level 1–9 to have some.
  */
 export function curatedMelody(
   level: DifficultyLevel,
@@ -238,12 +132,13 @@ export function curatedMelody(
   const tune = tuneId
     ? ofLevel.find((t) => t.id === tuneId)
     : tunes[Math.abs(seed) % tunes.length];
-  if (!tune) throw new Error(`No curated tune for level ${level.id}.`);
+  if (!tune) throw new Error(`No library tune for level ${level.id}.`);
   return {
     id: `${tune.id}-${seed}`,
     notes: parseNotes(tune),
     difficultyId: level.id,
     scale: tune.scale,
+    tempoBpm: tune.tempoBpm,
     createdAt: CREATED_AT_PLACEHOLDER,
   };
 }

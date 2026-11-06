@@ -15,7 +15,8 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { DifficultyMode, DifficultySettings } from '../src/models';
-import { MAX_RANK, MIN_RANK, getLevelByRank, notesLabel } from '../src/services/melody/levels';
+import { MAX_RANK, MIN_RANK } from '../src/services/melody/levels';
+import { levelSummary } from '../src/services/melody/curated';
 import {
   DEFAULT_DIFFICULTY_SETTINGS,
   effectiveRank,
@@ -61,7 +62,7 @@ export default function Settings() {
   );
 
   const rank = effectiveRank(settings);
-  const level = getLevelByRank(rank);
+  const summary = levelSummary(rank);
   const fixed = settings.mode === 'fixed';
 
   return (
@@ -103,11 +104,11 @@ export default function Settings() {
         <Card style={styles.levelCard}>
           <Text style={styles.cardKicker}>Current level</Text>
           <Text style={styles.cardTitle}>
-            Level {rank} · {notesLabel(rank)} notes
+            Level {rank} · {summary.tunes} melodies
           </Text>
           <View style={styles.hr} />
-          <Row label="Notes per melody" value={notesLabel(rank)} />
-          <Row label="Tempo" value={`${level.tempoBpm} BPM`} />
+          <Row label="Notes per melody" value={summary.notes} />
+          <Row label="Tempo" value={summary.tempo} />
         </Card>
 
         <Text style={styles.footnote}>

@@ -1,7 +1,12 @@
 """Voices the app's melody library offline: one clip per tune and one sample per fretboard note, as m4a.
 
-The app plays these bundled files instead of synthesising tones at run time. The voice is the rig's string model
-(`guitar_rig.synth`), clean (no amp or cabinet), with a light EQ, a short room and loudness matched across files.
+The app plays these bundled files instead of synthesising tones at run time. The voice is a recorded nylon-string
+guitar (FreePats "Spanish Classical Guitar", CC0) played by fluidsynth, each tune at its own tempo, with a short room
+and loudness matched across files. Needs `brew install fluid-synth sevenzip` and the sound bank in samples/:
+
+    mkdir -p samples && cd samples
+    curl -LO https://freepats.zenvoid.org/Guitar/SpanishClassicalGuitar/SpanishClassicalGuitar-SF2-20190618.7z
+    7zz x SpanishClassicalGuitar-SF2-20190618.7z
 
     cd assets/guitar-rig
     ../../server/node_modules/.bin/tsx ../../scripts/export-library.ts library.json
@@ -22,31 +27,59 @@ import numpy as np
 from pedalboard import Compressor, HighpassFilter, LowShelfFilter, Pedalboard, PeakFilter, Reverb
 from pedalboard.io import AudioFile
 
+import mido
+
 from guitar_rig.render import to_lufs
-from guitar_rig.synth import SR, Note, render_di
+
+SR = 44100
+SOUND_BANK = Path(__file__).resolve().parent / "samples" / "SpanishClassicalGuitar-SF2-20190618" / "SpanishClassicalGuitar-20190618.sf2"
+TAIL_S = 1.2            # let the last note ring
 
 ROOT = Path(__file__).resolve().parents[2]
 AUDIO = ROOT / "assets" / "app" / "audio"
 REGISTRY = ROOT / "src" / "services" / "audio" / "bundled.ts"
 
-TEMPO_BPM = 90          # the app's constant tempo (levels.ts)
 NOTE_S = 2.0            # a fretboard sample: long enough for the tap tone and any held note
 NECK_LOW, NECK_HIGH = 40, 76   # E2..E5, the 12-fret neck
 LUFS = -14.0
 
-VOICE = Pedalboard([
+ROOM = Pedalboard([
     HighpassFilter(cutoff_frequency_hz=70),
-    LowShelfFilter(cutoff_frequency_hz=200, gain_db=2.5, q=0.7),
-    PeakFilter(cutoff_frequency_hz=2800, gain_db=-3.0, q=0.8),   # take the pickup's nasal edge off
-    Compressor(threshold_db=-20, ratio=2.5, attack_ms=5, release_ms=150),
-    Reverb(room_size=0.15, damping=0.6, wet_level=0.07, dry_level=0.93, width=0.5),
+    PeakFilter(cutoff_frequency_hz=3500, gain_db=1.5, q=0.7),      # a little string definition
+    Compressor(threshold_db=-18, ratio=2.0, attack_ms=10, release_ms=200),
+    Reverb(room_size=0.25, damping=0.5, wet_level=0.10, dry_level=0.90, width=0.6),
 ])
 
 
-def voice(notes: list[Note], seed: int) -> np.ndarray:
-    di = render_di(notes, SR, seed, humanize_notes=False)
-    mono = VOICE(di[np.newaxis, :], SR)
-    return to_lufs(mono, SR, LUFS)
+def play(notes: list[tuple[int, float]], bpm: float) -> np.ndarray:
+    """(midi, beats) pairs -> mono audio of the nylon guitar playing them back to back at `bpm`."""
+    tpb = 480
+    mid = mido.MidiFile(ticks_per_beat=tpb)
+    tr = mido.MidiTrack()
+    mid.tracks.append(tr)
+    tr.append(mido.MetaMessage("set_tempo", tempo=mido.bpm2tempo(bpm), time=0))
+    tr.append(mido.Message("program_change", program=0, time=0))
+    t_prev = 0
+    t = 0
+    for i, (pitch, beats) in enumerate(notes):
+        on = max(round(t), t_prev)
+        off = max(round(t + beats * tpb), on + 1)
+        vel = 92 if i == 0 else 84 + (6 if (i % 4 == 0) else 0)   # gentle, steady accents
+        tr.append(mido.Message("note_on", note=int(pitch), velocity=vel, time=on - t_prev))
+        tr.append(mido.Message("note_off", note=int(pitch), velocity=0, time=off - on))
+        t_prev = off
+        t += beats * tpb
+    tr.append(mido.MetaMessage("end_of_track", time=round(TAIL_S * bpm / 60 * tpb)))
+    with tempfile.TemporaryDirectory() as d:
+        mpath, wpath = Path(d) / "m.mid", Path(d) / "m.wav"
+        mid.save(mpath)
+        subprocess.run(["fluidsynth", "-ni", "-q", "-R", "0", "-C", "0", "-g", "0.8", "-r", str(SR),
+                        "-F", str(wpath), str(SOUND_BANK), str(mpath)], check=True, capture_output=True)
+        with AudioFile(str(wpath)) as f:
+            audio = f.read(f.frames)
+    mono = audio.mean(axis=0, keepdims=True).astype(np.float32)
+    out = ROOM(mono, SR)
+    return to_lufs(out, SR, LUFS)
 
 
 def encode(audio: np.ndarray, path: Path) -> None:
@@ -61,22 +94,19 @@ def encode(audio: np.ndarray, path: Path) -> None:
         )
 
 
-def melody_notes(pairs) -> list[Note]:
-    beat = 60.0 / TEMPO_BPM
-    out, t = [], 0.0
-    for midi, beats in pairs:
-        out.append(Note(start=t, dur=beats * beat, pitch=midi, vel=0.85))
-        t += beats * beat
-    return out
-
-
 def main(library_json: str) -> None:
     tunes = json.loads(Path(library_json).read_text())
+    if not SOUND_BANK.exists():
+        sys.exit(f"Missing sound bank {SOUND_BANK}; see the docstring for how to fetch it.")
+    only = set(sys.argv[2:])
     for tune in tunes:
-        notes = melody_notes(tune["notes"])
-        encode(voice(notes, seed=1), AUDIO / "melodies" / f"{tune['id']}.m4a")
+        if only and tune["id"] not in only:
+            continue
+        encode(play([(m, b) for m, b in tune["notes"]], tune["bpm"]), AUDIO / "melodies" / f"{tune['id']}.m4a")
+    if only:
+        return
     for midi in range(NECK_LOW, NECK_HIGH + 1):
-        encode(voice([Note(start=0.0, dur=NOTE_S, pitch=midi, vel=0.85)], seed=1), AUDIO / "notes" / f"{midi}.m4a")
+        encode(play([(midi, NOTE_S)], 60.0), AUDIO / "notes" / f"{midi}.m4a")
 
     lines = [
         "// GENERATED by assets/guitar-rig/render_library.py — do not edit. Metro needs static require()s.",

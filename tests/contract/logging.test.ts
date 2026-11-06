@@ -9,8 +9,6 @@ import {
 const LEVEL: DifficultyLevel = {
   id: 'L2',
   rank: 2,
-  noteCount: 2,
-  tempoBpm: 90,
 };
 
 const MELODY = { notes: [{}, {}] } as unknown as Melody; // only notes.length is used

@@ -3,7 +3,8 @@
 import React, { useCallback, useState } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { MAX_RANK, notesLabel } from '../src/services/melody/levels';
+import { MAX_RANK } from '../src/services/melody/levels';
+import { levelSummary } from '../src/services/melody/curated';
 import { DEFAULT_DIFFICULTY_SETTINGS, effectiveRank } from '../src/features/difficulty/adapt';
 import { KEY_VALUE_TABLE, defaultRowStore } from '../src/services/storage/db';
 import { keyValueOverRowStore } from '../src/lib/deviceId';
@@ -100,7 +101,7 @@ export default function Home() {
         </Card>
         <Card style={styles.stat}>
           <Text style={styles.statKicker}>Melody</Text>
-          <Text style={styles.statValue}>{notesLabel(rank)} notes</Text>
+          <Text style={styles.statValue}>{levelSummary(rank).notes} notes</Text>
         </Card>
       </View>
 

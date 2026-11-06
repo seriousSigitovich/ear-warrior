@@ -64,8 +64,6 @@ export interface DifficultyLevel {
   id: string;
   /** 1–9, ordering for adaptation. */
   rank: number;
-  noteCount: number;
-  tempoBpm: number;
 }
 
 /** An ordered target sequence the learner must reproduce (FR-001). */
@@ -74,6 +72,8 @@ export interface Melody {
   notes: Note[];
   difficultyId: string;
   scale: string;
+  /** The tune's own tempo: each melody is played at the speed it is known at. */
+  tempoBpm: number;
   createdAt: string;
 }
 

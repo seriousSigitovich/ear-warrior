@@ -27,6 +27,7 @@ function melody(id: string, rank: number, midis: number[]): Melody {
     notes: midis.map((m, i) => note(i, m)),
     difficultyId: `L${rank}`,
     scale: 'C_major',
+    tempoBpm: 90,
     createdAt: new Date(0).toISOString(),
   };
 }

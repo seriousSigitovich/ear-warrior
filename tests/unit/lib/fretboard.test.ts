@@ -27,7 +27,7 @@ function melodyOf(midis: number[]): Melody {
     centsOffset: 0,
     durationBeats: 1,
   }));
-  return { id: 'm', notes, difficultyId: 'L1', scale: 'C', createdAt: '' };
+  return { id: 'm', notes, difficultyId: 'L1', scale: 'C', tempoBpm: 90, createdAt: '' };
 }
 
 const tapAt = (string: number, fret: number, atMs: number): FretTap =>
