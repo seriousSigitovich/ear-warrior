@@ -62,7 +62,6 @@ export const CANDIDATES: readonly Candidate[] = [
   { id: 'brahms13', title: 'Brahms’ Lullaby (first line)', scale: 'C_major', notes: 'E4:1 E4:1 G4:2 E4:1 E4:1 G4:2 E4:1 G4:1 C5:2 B4:1 A4:1 A4:1 G4:2', composer: 'Johannes Brahms', died: 1897, year: 1868 },
   { id: 'minuet8', title: 'Minuet in G (opening)', scale: 'G_major', notes: 'D4:1 G3:0.5 A3:0.5 B3:0.5 C4:0.5 D4:1 G3:1 G3:1', composer: 'Christian Petzold', died: 1733, year: 1725 },
   { id: 'minuet16', title: 'Minuet in G (two phrases)', scale: 'G_major', notes: 'D4:1 G3:0.5 A3:0.5 B3:0.5 C4:0.5 D4:1 G3:1 G3:1 E4:1 C4:0.5 D4:0.5 E4:0.5 F#4:0.5 G4:1 G3:1 G3:1', composer: 'Christian Petzold', died: 1733, year: 1725 },
-  { id: 'canonbass8', title: 'Canon in D (ground bass)', scale: 'D_major', notes: 'D4:2 A3:2 B3:2 F#3:2 G3:2 D3:2 G3:2 A3:2', composer: 'Johann Pachelbel', died: 1706, year: 1919 },
   { id: 'canon8', title: 'Canon in D (first violin)', scale: 'D_major', notes: 'F#4:2 E4:2 D4:2 C#4:2 B3:2 A3:2 B3:2 C#4:2', composer: 'Johann Pachelbel', died: 1706, year: 1919 },
   { id: 'beethoven8', title: 'Beethoven’s Fifth (two bars)', scale: 'C_natural_minor', notes: 'G4:0.5 G4:0.5 G4:0.5 Eb4:3 F4:0.5 F4:0.5 F4:0.5 D4:3', composer: 'Ludwig van Beethoven', died: 1827, year: 1808 },
   { id: 'mountainking7', title: 'In the Hall of the Mountain King', scale: 'B_natural_minor', notes: 'B3:1 C#4:1 D4:1 E4:1 F#4:1 D4:1 F#4:2', composer: 'Edvard Grieg', died: 1907, year: 1888 },

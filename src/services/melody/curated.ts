@@ -65,12 +65,6 @@ export const CURATED: readonly CuratedTune[] = [
     scale: 'C_major',
     notes: 'G4:1 F4:1 E4:1 D4:2',
   },
-  {
-    id: 'joy4b',
-    title: 'Ode to Joy (third bar)',
-    scale: 'C_major',
-    notes: 'C4:1 C4:1 D4:1 E4:2',
-  },
 
   {
     id: 'doe6',

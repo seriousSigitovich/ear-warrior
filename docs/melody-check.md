@@ -53,8 +53,6 @@ Rhythm is played back but not graded, so a wrong duration matters less than a wr
   C4=B1 C4=B1 D4=B3 E4=B5 C4=G5 E4=B5 D4=B3 G3=D5
 - [ ] **Minuet in G (opening)** · level 5 · 8 notes · `minuet8`
   D4=B3 G3=D5 A3=D7 B3=D9 C4=D10 D4=D12 G3=A10 G3=A10
-- [ ] **Canon in D (ground bass)** · level 5 · 8 notes · `canonbass8`
-  D4=B3 A3=G2 B3=B0 F#3=D4 G3=D5 D3=A5 G3=D5 A3=D7
 - [ ] **Canon in D (first violin)** · level 5 · 8 notes · `canon8`
   F#4=e2 E4=e0 D4=B3 C#4=B2 B3=B0 A3=G2 B3=B0 C#4=B2
 - [ ] **Beethoven’s Fifth (two bars)** · level 5 · 8 notes · `beethoven8`
@@ -111,8 +109,6 @@ Rhythm is played back but not graded, so a wrong duration matters less than a wr
   C4=B1 D4=B3 E4=B5 C4=G5
 - [ ] **Ode to Joy (second bar)** · level 2 · 4 notes · `joy4`
   G4=e3 F4=e1 E4=e0 D4=B3
-- [ ] **Ode to Joy (third bar)** · level 2 · 4 notes · `joy4b`
-  C4=B1 C4=B1 D4=B3 E4=B5
 - [ ] **Amazing Grace (opening)** · level 3 · 6 notes · `grace6`
   D4=B3 G4=e3 B4=e7 G4=B8 B4=e7 A4=e5
 - [ ] **Silent Night (opening)** · level 3 · 6 notes · `silent6`
