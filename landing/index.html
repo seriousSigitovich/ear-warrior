@@ -345,6 +345,8 @@
   .beta li::before { content: counter(step); flex: none; width: 24px; height: 24px; border-radius: 50%;
                      display: grid; place-items: center; font-size: 13px; font-weight: 600;
                      color: var(--accent-bright); background: var(--accent-tint); }
+  .beta-play span { flex: 1; font-size: 14px; line-height: 1.4; color: var(--muted); }
+  .beta-play b { color: var(--text); font-weight: 600; }
   .beta .btn-primary { flex: 1; text-decoration: none; padding: 11px 16px; white-space: normal; text-align: center; }
 
 
@@ -439,16 +441,17 @@
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
             <span id="okText">You&rsquo;re on the list. We&rsquo;ll email you at launch.</span>
           </div>
-          <div class="beta" id="beta" hidden>
+          <p class="fineprint" id="fineprint">One email when we launch. No spam. Coming soon on iOS.</p>
+          <div class="beta" id="beta">
             <p class="beta-title">The Android beta is open</p>
-            <p class="beta-sub">Use the Google account that&rsquo;s on your phone. Do the steps in order.</p>
+            <p class="beta-sub">Use the Google account that&rsquo;s on your phone. Do the steps in order, all four.</p>
             <ol>
               <li><a class="btn-primary" id="betaGroup" href="https://groups.google.com/g/earwarrior-beta" target="_blank" rel="noopener">Join the beta group</a></li>
               <li><a class="btn-primary" id="betaOptin" href="https://play.google.com/apps/testing/com.earwarrior.app" target="_blank" rel="noopener">Become a tester</a></li>
               <li><a class="btn-primary" id="betaInstall" href="https://play.google.com/store/apps/details?id=com.earwarrior.app" target="_blank" rel="noopener">Install from Google Play</a></li>
+              <li class="beta-play"><span><b>Open the app and play your first melody.</b> One listen, then find the notes on the fretboard. It takes 30&nbsp;seconds.</span></li>
             </ol>
           </div>
-          <p class="fineprint" id="fineprint">One email when we launch. No spam. Coming soon on iOS and Android.</p>
         </div>
 
 
@@ -716,14 +719,8 @@
     .catch(function () {});
 
   // Android beta: self-serve through a separate closed track whose testers are the Google Group
-  // earwarrior-beta (the Alpha track keeps its own email list). Shown only after the email is in,
-  // so every beta tester is still a lead. ?beta=1 forces it for checking on desktop.
-  function showBeta() {
-    var android = /Android/i.test(navigator.userAgent);
-    if (!android && new URLSearchParams(location.search).get("beta") !== "1") return;
-    document.getElementById("beta").hidden = false;
-    track("beta-shown");
-  }
+  // earwarrior-beta (the Alpha track keeps its own email list). Shown to everyone, no email needed
+  // (owner, 2026-11-05).
   ["betaGroup", "betaOptin", "betaInstall"].forEach(function (id) {
     document.getElementById(id).addEventListener("click", function () {
       track(id.replace("beta", "beta-").toLowerCase());
@@ -769,7 +766,6 @@
         document.getElementById("fineprint").style.display = "none";
         ok.classList.add("show");
         if (!data.duplicate) track("signup-ok");
-        showBeta();
       })
       .catch(function () {
         btn.disabled = false;
