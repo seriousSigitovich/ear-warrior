@@ -11,8 +11,12 @@ export interface AudioPlayback {
   /**
    * Play a melody. With the id of a bundled clip it plays as one file; without one (or when the clip is
    * missing) it falls back to the note samples, one per scheduled note.
+   *
+   * `rate` slows the clip down (1 = the tune's own tempo); the clip keeps its pitch. The schedule must
+   * already be laid out at that rate (`scheduleMelody(m, m.tempoBpm * rate)`): it sets how long the
+   * clip is waited for, and the note fallback plays from it directly.
    */
-  playMelody(m: PlaybackMelody, clipId?: string): Promise<void>;
+  playMelody(m: PlaybackMelody, clipId?: string, rate?: number): Promise<void>;
   playReferenceTone(midi: number): Promise<void>;
   stop(): Promise<void>;
 }
@@ -21,8 +25,11 @@ export interface AudioPlayback {
 export interface NativePlayer {
   /** Play the sample for `midi`, resolving after `durationMs`. */
   playTone(midi: number, durationMs: number): Promise<void>;
-  /** Play the bundled clip `clipId` and resolve after `durationMs`; false (nothing played) if there is none. */
-  playClip(clipId: string, durationMs: number): Promise<boolean>;
+  /**
+   * Play the bundled clip `clipId` at `rate` (pitch kept) and resolve after `durationMs`; false (nothing
+   * played) if there is none.
+   */
+  playClip(clipId: string, durationMs: number, rate: number): Promise<boolean>;
   /** Check the samples for `midis` exist so a melody never starts and then runs out of notes. */
   preloadTones(midis: number[]): Promise<void>;
   stopAll(): Promise<void>;
@@ -93,10 +100,15 @@ export function defaultNativePlayer(): NativePlayer {
     }, FADE_STEP_MS);
   };
 
-  /** Start `source` now; it plays `holdMs`, then fades out over `fadeMs` and is released. */
-  const start = (source: number, holdMs: number, fadeMs: number) => {
+  /** Start `source` now at `rate`; it plays `holdMs`, then fades out over `fadeMs` and is released. */
+  const start = (source: number, holdMs: number, fadeMs: number, rate = 1) => {
     const player = audio().createAudioPlayer(source);
     active.add(player);
+    if (rate !== 1) {
+      // Time-stretch, not tape speed: the notes the learner looks for must not change pitch.
+      player.shouldCorrectPitch = true;
+      player.setPlaybackRate(rate, 'high');
+    }
     player.play();
     setTimeout(() => fadeOut(player, fadeMs), Math.max(0, holdMs - fadeMs));
   };
@@ -116,10 +128,11 @@ export function defaultNativePlayer(): NativePlayer {
       start(source, durationMs + RELEASE_TAIL_MS, FADE_MS);
       await wait(durationMs);
     },
-    async playClip(clipId, durationMs) {
+    async playClip(clipId, durationMs, rate) {
       const source = bundled().MELODY_CLIPS[clipId];
       if (source === undefined) return false;
-      start(source, durationMs + CLIP_RELEASE_MS, FADE_MS);
+      // The clip's ring-out is stretched too.
+      start(source, durationMs + CLIP_RELEASE_MS / rate, FADE_MS, rate);
       await wait(durationMs);
       return true;
     },
@@ -142,11 +155,11 @@ export function createAudioPlayback(native: NativePlayer = defaultNativePlayer()
       sampleManifest(midiNotes); // range guard: throws on any note outside E2–E6
       await native.preloadTones(midiNotes);
     },
-    async playMelody(m, clipId) {
+    async playMelody(m, clipId, rate = 1) {
       // Nothing may still be ringing under the melody (a replay pressed mid-clip, a tapped fret).
       const mine = ++generation;
       await native.stopAll();
-      if (clipId && (await native.playClip(clipId, totalDurationMs(m)))) return;
+      if (clipId && (await native.playClip(clipId, totalDurationMs(m), rate))) return;
       // Schedule each note by startMs; resolve only after the final note completes, or early once
       // something else has taken over the output.
       let cursor = 0;

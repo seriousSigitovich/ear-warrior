@@ -65,6 +65,11 @@ export interface PracticeLoopDeps {
    * repositories.
    */
   onAttemptGraded?: (attempt: Attempt, melody: Melody, level: DifficultyLevel) => void;
+  /**
+   * Playback speed in effect right now (1 = the tune's own tempo; see lib/speed). Read at each play, so
+   * a change applies from the next play or replay. Defaults to full tempo.
+   */
+  speed?: () => number;
   /** Id for the session these attempts belong to. */
   sessionId: string;
   /** Injected for testability; defaults to wall-clock time. */
@@ -76,6 +81,11 @@ export interface RankChange {
   from: number;
   to: number;
   direction: 'up' | 'down';
+}
+
+/** Sound `m` at `speed` × its own tempo: the schedule and the clip both slow down, the pitch stays. */
+function playAt(playback: AudioPlayback, m: Melody, speed: number): Promise<void> {
+  return playback.playMelody(scheduleMelody(m, m.tempoBpm * speed), tuneIdOf(m.id), speed);
 }
 
 export function usePracticeLoop(deps: PracticeLoopDeps) {
@@ -185,7 +195,7 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
     async (m: Melody) => {
       setPhase('playingMelody');
       await deps.session.enterPlayback();
-      await deps.playback.playMelody(scheduleMelody(m, m.tempoBpm), tuneIdOf(m.id));
+      await playAt(deps.playback, m, deps.speed?.() ?? 1);
       setPhase('awaitingInput');
     },
     [deps],
@@ -234,7 +244,7 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
     setReplaying(true);
     try {
       await deps.session.enterPlayback();
-      await deps.playback.playMelody(scheduleMelody(melody, melody.tempoBpm), tuneIdOf(melody.id));
+      await playAt(deps.playback, melody, deps.speed?.() ?? 1);
     } finally {
       if (replayTokenRef.current === token) setReplaying(false);
     }

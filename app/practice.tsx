@@ -34,6 +34,8 @@ import { Kicker } from '../src/components/common/Kicker';
 import { Tag } from '../src/components/common/Tag';
 import { TransportControls } from '../src/components/controls/TransportControls';
 import { FretboardControls } from '../src/components/controls/FretboardControls';
+import { SpeedSlider } from '../src/components/controls/SpeedSlider';
+import { DEFAULT_SPEED, SPEED_KEY, parseSpeed } from '../src/lib/speed';
 import { PracticeStage } from '../src/components/practice/PracticeStage';
 import { FretboardAnswer } from '../src/components/practice/FretboardAnswer';
 import { Fretboard } from '../src/components/fretboard/Fretboard';
@@ -91,6 +93,26 @@ export default function Practice() {
   }, [store, repos.attempts]);
   const difficulty = getDifficultyRepository();
   const [deviceId, setDeviceId] = useState<string | null>(null);
+
+  // Playback speed: remembered between visits, read by the loop at each play through a ref (so moving
+  // the slider never rebuilds the loop), and sent with the play/check events.
+  const kv = useMemo(() => keyValueOverRowStore(store, KEY_VALUE_TABLE), [store]);
+  const [speed, setSpeed] = useState(DEFAULT_SPEED);
+  const speedRef = useRef(speed);
+  speedRef.current = speed;
+  useEffect(() => {
+    void kv
+      .getItem(SPEED_KEY)
+      .then((stored) => setSpeed(parseSpeed(stored)))
+      .catch(() => undefined);
+  }, [kv]);
+  const changeSpeed = useCallback(
+    (next: number) => {
+      setSpeed(next);
+      void kv.setItem(SPEED_KEY, String(next)).catch(() => undefined);
+    },
+    [kv],
+  );
 
   // Create the Session row up front so attempts always have a parent (FR-018).
   useEffect(() => {
@@ -158,6 +180,7 @@ export default function Practice() {
       gradingCfg: GRADING_CFG,
       seed: () => Math.floor(Math.random() * 1e9),
       difficulty,
+      speed: () => speedRef.current,
       sessionId,
       onAttemptGraded: (attempt, melody, level) => {
         // Every attempt is recorded (FR-012), moves the session tally, and goes up to the backend
@@ -176,6 +199,7 @@ export default function Practice() {
           verdict: attempt.verdict,
           rank: level.rank,
           n: attemptCountRef.current + 1,
+          speed: speedRef.current,
         });
       },
     }),
@@ -191,7 +215,7 @@ export default function Practice() {
   const melodyId = loop.melody?.id;
   // Keyed on the melody alone: once per melody, not again when the level changes under it.
   useEffect(() => {
-    if (melodyId) track('melody_play', { rank });
+    if (melodyId) track('melody_play', { rank, speed: speedRef.current });
   }, [melodyId]);
   const tappedMelody = useRef<string | null>(null);
   const tapped = loop.phase === 'awaitingInput' && loop.answer.length > 0;
@@ -207,7 +231,12 @@ export default function Practice() {
     if (!melodyId) return;
     if (replays.current.melodyId !== melodyId) replays.current = { melodyId, n: 0 };
     replays.current.n += 1;
-    track('melody_replay', { rank, n: replays.current.n, where: loop.phase });
+    track('melody_replay', {
+      rank,
+      n: replays.current.n,
+      where: loop.phase,
+      speed: speedRef.current,
+    });
     void loopReplay();
   }, [melodyId, rank, loop.phase, loopReplay]);
 
@@ -246,6 +275,8 @@ export default function Practice() {
       ) : (
         <PracticeStage phase={loop.phase} />
       )}
+
+      <SpeedSlider speed={speed} onChange={changeSpeed} />
 
       {answering ? (
         <FretboardControls

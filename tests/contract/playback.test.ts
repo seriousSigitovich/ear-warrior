@@ -23,15 +23,15 @@ function melody(midis: number[]): Melody {
 
 function fakePlayer(clips: string[] = []) {
   const played: { midi: number; durationMs: number }[] = [];
-  const playedClips: { clipId: string; durationMs: number }[] = [];
+  const playedClips: { clipId: string; durationMs: number; rate: number }[] = [];
   let stops = 0;
   const native: NativePlayer = {
     async playTone(midi, durationMs) {
       played.push({ midi, durationMs });
     },
-    async playClip(clipId, durationMs) {
+    async playClip(clipId, durationMs, rate) {
       if (!clips.includes(clipId)) return false;
-      playedClips.push({ clipId, durationMs });
+      playedClips.push({ clipId, durationMs, rate });
       return true;
     },
     async preloadTones() {},
@@ -54,8 +54,22 @@ describe('audio playback (contracts/audio-playback.md)', () => {
     const f = fakePlayer(['tune']);
     const pb = createAudioPlayback(f.native);
     await pb.playMelody(scheduleMelody(melody([64, 67, 69]), 120), 'tune');
-    expect(f.playedClips).toEqual([{ clipId: 'tune', durationMs: 1500 }]);
+    expect(f.playedClips).toEqual([{ clipId: 'tune', durationMs: 1500, rate: 1 }]);
     expect(f.played).toEqual([]);
+  });
+
+  test('a slowed clip plays at that rate and is waited for as long as its slowed schedule', async () => {
+    const f = fakePlayer(['tune']);
+    const pb = createAudioPlayback(f.native);
+    await pb.playMelody(scheduleMelody(melody([64, 67, 69]), 120 * 0.5), 'tune', 0.5);
+    expect(f.playedClips).toEqual([{ clipId: 'tune', durationMs: 3000, rate: 0.5 }]);
+  });
+
+  test('a slowed melody without a clip spaces its note samples out', async () => {
+    const f = fakePlayer();
+    const pb = createAudioPlayback(f.native);
+    await pb.playMelody(scheduleMelody(melody([64, 67]), 120 * 0.75), undefined, 0.75);
+    expect(f.played.map((p) => Math.round(p.durationMs))).toEqual([667, 667]);
   });
 
   test('a melody without a bundled clip falls back to the note samples', async () => {
