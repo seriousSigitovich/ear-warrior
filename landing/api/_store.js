@@ -53,4 +53,19 @@ async function addSignup(email, source) {
   return { count: n + base(), position: rank + 1 + base(), isNew: added === 1 };
 }
 
-module.exports = { CAP, configured, getCount, addSignup };
+const PHONES_KEY = 'signup_phones';
+
+/**
+ * Saves the phone a signup answered ("android" | "iphone"). Returns false when the email never
+ * signed up (so the endpoint can't be used to mail the owner arbitrary addresses), null when no
+ * store is configured. Read it back with: HGETALL signup_phones
+ */
+async function setPhone(email, phone) {
+  if (!configured()) return null;
+  const [score] = await pipeline([['ZSCORE', KEY, email]]);
+  if (score === null) return false;
+  await pipeline([['HSET', PHONES_KEY, email, phone]]);
+  return true;
+}
+
+module.exports = { CAP, configured, getCount, addSignup, setPhone };
