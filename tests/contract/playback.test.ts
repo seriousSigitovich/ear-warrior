@@ -23,16 +23,20 @@ function melody(midis: number[]): Melody {
 
 function fakePlayer(clips: string[] = []) {
   const played: { midi: number; durationMs: number }[] = [];
-  const playedClips: { clipId: string; durationMs: number; rate: number }[] = [];
+  const playedClips: { clipId: string; rates: number[]; released: boolean }[] = [];
   let stops = 0;
   const native: NativePlayer = {
     async playTone(midi, durationMs) {
       played.push({ midi, durationMs });
     },
-    async playClip(clipId, durationMs, rate) {
-      if (!clips.includes(clipId)) return false;
-      playedClips.push({ clipId, durationMs, rate });
-      return true;
+    startClip(clipId, rate) {
+      if (!clips.includes(clipId)) return null;
+      const clip = { clipId, rates: [rate], released: false };
+      playedClips.push(clip);
+      return {
+        setRate: (r) => clip.rates.push(r),
+        release: () => (clip.released = true),
+      };
     },
     async preloadTones() {},
     async stopAll() {
@@ -50,19 +54,85 @@ describe('audio playback (contracts/audio-playback.md)', () => {
     expect(f.played.map((p) => p.midi)).toEqual([64, 67, 69]);
   });
 
-  test('a bundled clip plays as one file for the whole schedule, with no note samples', async () => {
-    const f = fakePlayer(['tune']);
-    const pb = createAudioPlayback(f.native);
-    await pb.playMelody(scheduleMelody(melody([64, 67, 69]), 120), 'tune');
-    expect(f.playedClips).toEqual([{ clipId: 'tune', durationMs: 1500, rate: 1 }]);
-    expect(f.played).toEqual([]);
+  describe('clip timeline', () => {
+    beforeEach(() => jest.useFakeTimers());
+    afterEach(() => jest.useRealTimers());
+
+    /** Start a melody and report whether it has resolved. */
+    function start(pb: ReturnType<typeof createAudioPlayback>, bpm: number, rate?: number) {
+      let resolved = false;
+      void pb.playMelody(scheduleMelody(melody([64, 67, 69]), bpm), 'tune', rate).then(() => {
+        resolved = true;
+      });
+      return () => resolved;
+    }
+
+    test('a bundled clip plays as one file for the whole schedule, with no note samples', async () => {
+      const f = fakePlayer(['tune']);
+      const done = start(createAudioPlayback(f.native), 120);
+      await jest.advanceTimersByTimeAsync(1499);
+      expect(done()).toBe(false);
+      await jest.advanceTimersByTimeAsync(1);
+      expect(done()).toBe(true);
+      expect(f.playedClips.map((c) => [c.clipId, c.rates])).toEqual([['tune', [1]]]);
+      expect(f.played).toEqual([]);
+      // Its ring-out sounds after the schedule, then the player is freed.
+      expect(f.playedClips[0].released).toBe(false);
+      await jest.advanceTimersByTimeAsync(800);
+      expect(f.playedClips[0].released).toBe(true);
+    });
+
+    test('a slowed clip plays at that rate and lasts as long as its slowed schedule', async () => {
+      const f = fakePlayer(['tune']);
+      const done = start(createAudioPlayback(f.native), 120 * 0.5, 0.5);
+      await jest.advanceTimersByTimeAsync(2999);
+      expect(done()).toBe(false);
+      await jest.advanceTimersByTimeAsync(1);
+      expect(done()).toBe(true);
+      expect(f.playedClips[0].rates).toEqual([0.5]);
+    });
+
+    test('a speed change mid-clip retunes the clip and moves its end', async () => {
+      const f = fakePlayer(['tune']);
+      const pb = createAudioPlayback(f.native);
+      const done = start(pb, 120); // 1500 ms at full speed
+      await jest.advanceTimersByTimeAsync(500);
+      pb.setRate(0.5); // the last 1000 ms of the clip now take 2000
+      expect(f.playedClips[0].rates).toEqual([1, 0.5]);
+      await jest.advanceTimersByTimeAsync(1999);
+      expect(done()).toBe(false);
+      await jest.advanceTimersByTimeAsync(1);
+      expect(done()).toBe(true);
+    });
+
+    test('a stop ends the clip’s wait at once', async () => {
+      const f = fakePlayer(['tune']);
+      const pb = createAudioPlayback(f.native);
+      const done = start(pb, 120);
+      await jest.advanceTimersByTimeAsync(100);
+      await pb.stop();
+      await jest.advanceTimersByTimeAsync(0);
+      expect(done()).toBe(true);
+      pb.setRate(0.5); // nothing sounding: no effect
+      expect(f.playedClips[0].rates).toEqual([1]);
+    });
   });
 
-  test('a slowed clip plays at that rate and is waited for as long as its slowed schedule', async () => {
-    const f = fakePlayer(['tune']);
+  test('a speed change reaches a note-by-note melody from its next note', async () => {
+    const f = fakePlayer();
     const pb = createAudioPlayback(f.native);
-    await pb.playMelody(scheduleMelody(melody([64, 67, 69]), 120 * 0.5), 'tune', 0.5);
-    expect(f.playedClips).toEqual([{ clipId: 'tune', durationMs: 3000, rate: 0.5 }]);
+    let first = () => {};
+    const playTone = f.native.playTone;
+    f.native.playTone = async (midi, durationMs) => {
+      await playTone(midi, durationMs);
+      if (f.played.length === 1) await new Promise<void>((r) => (first = r));
+    };
+    const playing = pb.playMelody(scheduleMelody(melody([64, 67]), 120));
+    await new Promise((r) => setTimeout(r, 0)); // the first note is sounding
+    pb.setRate(0.5);
+    first();
+    await playing;
+    expect(f.played.map((p) => p.durationMs)).toEqual([500, 1000]);
   });
 
   test('a slowed melody without a clip spaces its note samples out', async () => {

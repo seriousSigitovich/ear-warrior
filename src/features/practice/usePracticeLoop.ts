@@ -66,8 +66,8 @@ export interface PracticeLoopDeps {
    */
   onAttemptGraded?: (attempt: Attempt, melody: Melody, level: DifficultyLevel) => void;
   /**
-   * Playback speed in effect right now (1 = the tune's own tempo; see lib/speed). Read at each play, so
-   * a change applies from the next play or replay. Defaults to full tempo.
+   * Playback speed in effect right now (1 = the tune's own tempo; see lib/speed), read as each play
+   * starts. A change while a melody sounds goes straight to the playback service. Defaults to full tempo.
    */
   speed?: () => number;
   /** Id for the session these attempts belong to. */

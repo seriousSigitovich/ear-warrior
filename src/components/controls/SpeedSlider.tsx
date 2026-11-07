@@ -1,7 +1,7 @@
 // Playback-speed slider (50–100% of the tune's own tempo, 5% steps). Plain RN — a PanResponder over a
 // measured track, no native slider module — so it ships over the air. A tap jumps to the spot, a drag
-// follows the finger, and screen readers adjust it as an "adjustable" in steps. The new speed applies
-// from the next play or replay.
+// follows the finger, and screen readers adjust it as an "adjustable" in steps. A melody that is
+// sounding follows it at once.
 import React, { useRef, useState } from 'react';
 import { LayoutChangeEvent, PanResponder, StyleSheet, Text, View } from 'react-native';
 import { SPEED_STEP, snapSpeed, speedAt, speedFraction, speedLabel } from '../../lib/speed';

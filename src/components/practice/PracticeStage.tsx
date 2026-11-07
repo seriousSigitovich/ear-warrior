@@ -5,7 +5,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { LoopPhase } from '../../features/practice/usePracticeLoop';
 import { Waveform, IDLE_BARS, LISTENING_BARS } from '../common/Waveform';
-import { colors, textAlpha } from '../../theme/nocturne';
+import { textAlpha } from '../../theme/nocturne';
 
 export interface PracticeStageProps {
   phase: LoopPhase;
@@ -39,13 +39,6 @@ function Listening() {
     <View style={styles.center}>
       <Waveform bars={LISTENING_BARS} height={52} align="center" animated />
       <Text style={styles.listening}>Listening…</Text>
-      <View style={styles.dots}>
-        <Dot filled />
-        <Dot filled />
-        <Dot />
-        <Dot />
-      </View>
-      <Text style={styles.footNote}>Playing target melody</Text>
     </View>
   );
 }
@@ -59,24 +52,8 @@ function Grading() {
   );
 }
 
-function Dot({ filled }: { filled?: boolean }) {
-  return (
-    <View
-      style={[
-        styles.dot,
-        filled
-          ? { backgroundColor: colors.accent }
-          : { borderWidth: 1.5, borderColor: colors.divider },
-      ]}
-    />
-  );
-}
-
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 20 },
   hint: { color: textAlpha[70], fontSize: 15, lineHeight: 22, textAlign: 'center', maxWidth: 230 },
   listening: { color: textAlpha[60], fontSize: 13, letterSpacing: 0.4 },
-  footNote: { color: textAlpha[45], fontSize: 13 },
-  dots: { flexDirection: 'row', gap: 8 },
-  dot: { width: 7, height: 7, borderRadius: 3.5 },
 });

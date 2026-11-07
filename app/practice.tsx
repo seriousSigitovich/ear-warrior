@@ -95,7 +95,8 @@ export default function Practice() {
   const [deviceId, setDeviceId] = useState<string | null>(null);
 
   // Playback speed: remembered between visits, read by the loop at each play through a ref (so moving
-  // the slider never rebuilds the loop), and sent with the play/check events.
+  // the slider never rebuilds the loop), applied at once to a melody already sounding, and sent with
+  // the play/check events.
   const kv = useMemo(() => keyValueOverRowStore(store, KEY_VALUE_TABLE), [store]);
   const [speed, setSpeed] = useState(DEFAULT_SPEED);
   const speedRef = useRef(speed);
@@ -106,13 +107,6 @@ export default function Practice() {
       .then((stored) => setSpeed(parseSpeed(stored)))
       .catch(() => undefined);
   }, [kv]);
-  const changeSpeed = useCallback(
-    (next: number) => {
-      setSpeed(next);
-      void kv.setItem(SPEED_KEY, String(next)).catch(() => undefined);
-    },
-    [kv],
-  );
 
   // Create the Session row up front so attempts always have a parent (FR-018).
   useEffect(() => {
@@ -161,6 +155,15 @@ export default function Practice() {
   }, []);
 
   const playback = useMemo(() => createAudioPlayback(), []);
+
+  const changeSpeed = useCallback(
+    (next: number) => {
+      setSpeed(next);
+      playback.setRate(next); // the melody sounding now, if any, follows the slider
+      void kv.setItem(SPEED_KEY, String(next)).catch(() => undefined);
+    },
+    [kv, playback],
+  );
 
   // Tap-to-hear must not stutter: materialize the tones once the screen has settled.
   useEffect(() => {
@@ -276,29 +279,35 @@ export default function Practice() {
         <PracticeStage phase={loop.phase} />
       )}
 
-      <SpeedSlider speed={speed} onChange={changeSpeed} />
+      {/* Not on the first play of a melody: that screen is for listening only. A replay still follows
+          the slider live. */}
+      {loop.phase === 'playingMelody' ? null : <SpeedSlider speed={speed} onChange={changeSpeed} />}
 
-      {answering ? (
-        <FretboardControls
-          placed={loop.answer.length}
-          replaying={loop.replaying}
-          onReplay={replay}
-          onStopReplay={loop.stopReplay}
-          onUndo={loop.undoFret}
-          onClear={loop.clearFrets}
-          onCheck={loop.submitAnswer}
-        />
-      ) : (
-        <TransportControls
-          phase={loop.phase}
-          replaying={loop.replaying}
-          onPlay={loop.next}
-          onReplay={replay}
-          onStopReplay={loop.stopReplay}
-          onRetry={loop.retry}
-          onNext={loop.next}
-        />
-      )}
+      {/* Fixed height whatever the controls (the feedback row is lower than the others), so the slider
+          stays put between phases. */}
+      <View style={styles.controls}>
+        {answering ? (
+          <FretboardControls
+            placed={loop.answer.length}
+            replaying={loop.replaying}
+            onReplay={replay}
+            onStopReplay={loop.stopReplay}
+            onUndo={loop.undoFret}
+            onClear={loop.clearFrets}
+            onCheck={loop.submitAnswer}
+          />
+        ) : (
+          <TransportControls
+            phase={loop.phase}
+            replaying={loop.replaying}
+            onPlay={loop.next}
+            onReplay={replay}
+            onStopReplay={loop.stopReplay}
+            onRetry={loop.retry}
+            onNext={loop.next}
+          />
+        )}
+      </View>
     </Screen>
   );
 }
@@ -311,4 +320,5 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   feedback: { gap: 18, paddingVertical: 8 },
+  controls: { minHeight: 52, justifyContent: 'flex-end' },
 });
