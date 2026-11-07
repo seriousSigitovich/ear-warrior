@@ -68,4 +68,22 @@ async function setPhone(email, phone) {
   return true;
 }
 
-module.exports = { CAP, configured, getCount, addSignup, setPhone };
+const RESERVE_KEY = 'course_reservations';
+const RESERVE_SOURCES_KEY = 'course_reservation_sources';
+
+/**
+ * Holds the founding price of the course for an email (idempotent; no payment is taken).
+ * Returns { count, isNew } or null when no store is configured.
+ * Read them back with: ZRANGE course_reservations 0 -1 WITHSCORES  /  HGETALL course_reservation_sources
+ */
+async function addReservation(email, source) {
+  if (!configured()) return null;
+  const [added, n] = await pipeline([
+    ['ZADD', RESERVE_KEY, 'NX', Date.now(), email],
+    ['ZCARD', RESERVE_KEY],
+    ['HSETNX', RESERVE_SOURCES_KEY, email, source || 'course'],
+  ]);
+  return { count: n, isNew: added === 1 };
+}
+
+module.exports = { CAP, configured, getCount, addSignup, setPhone, addReservation };

@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Without Tabs — a play-by-ear course for guitarists · Ear Warrior</title>
+<meta name="description" content="A short video course for guitarists who freeze when the tab runs out. Find the key, work out melodies by ear, practise on real tunes in the Ear Warrior app. Founding price $49 — reserve now, pay at launch." />
+<meta name="theme-color" content="#161826" />
+<link rel="canonical" href="https://earwarrior.app/course/" />
+
+<meta property="og:site_name" content="Ear Warrior" />
+<meta property="og:title" content="Without Tabs — play what you hear" />
+<meta property="og:description" content="A play-by-ear course for guitarists. Founding price $49 — reserve now, pay nothing until launch." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://earwarrior.app/course/" />
+<meta property="og:image" content="https://earwarrior.app/og-image.png" />
+<meta name="twitter:card" content="summary_large_image" />
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23161826'/%3E%3Crect x='10' y='10' width='12' height='12' rx='3' fill='%239184d9'/%3E%3C/svg%3E" />
+
+<style>
+  /* Course pre-order page. Same palette and controls as the main landing (/index.html). */
+  :root {
+    --bg: #161826;
+    --surface: #232532;
+    --text: #e9e9ed;
+    --muted: rgba(233, 233, 237, 0.62);
+    --muted-soft: rgba(233, 233, 237, 0.45);
+    --accent: #9184d9;
+    --accent-bright: #b5abfc;
+    --accent-tint: rgba(145, 132, 217, 0.14);
+    --accent-tint-2: rgba(145, 132, 217, 0.22);
+    --border: rgba(233, 233, 237, 0.10);
+    --border-strong: rgba(233, 233, 237, 0.16);
+    --radius: 14px;
+    --radius-sm: 8px;
+    --maxw: 760px;
+    --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text); font-family: var(--font);
+    font-size: 17px; line-height: 1.6; -webkit-font-smoothing: antialiased;
+  }
+  body::before {
+    content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background:
+      radial-gradient(900px 480px at 78% -6%, rgba(145, 132, 217, 0.16), transparent 60%),
+      radial-gradient(700px 500px at 8% 4%, rgba(145, 132, 217, 0.07), transparent 55%);
+  }
+  .wrap { position: relative; z-index: 1; }
+  .container { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
+  a { color: inherit; }
+
+  .brand-row { display: flex; align-items: center; height: 68px; }
+  .brand { display: inline-flex; align-items: center; gap: 11px; font-weight: 600; font-size: 18px; text-decoration: none; }
+  .brand-mark { width: 14px; height: 14px; border-radius: 4px; background: var(--accent); box-shadow: 0 0 16px rgba(145, 132, 217, 0.6); }
+
+  section.container { padding-top: clamp(36px, 6vw, 64px); padding-bottom: clamp(36px, 6vw, 64px); }
+  section + section { border-top: 1px solid var(--border); }
+  .eyebrow {
+    display: inline-block; font-size: 12px; font-weight: 600; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--accent); margin: 0 0 16px;
+  }
+  h1 { margin: 0; font-weight: 600; font-size: clamp(38px, 6.4vw, 60px); line-height: 1.05; letter-spacing: -0.03em; }
+  h1 em, h2 em { color: var(--accent-bright); font-style: normal; }
+  h2 { margin: 0 0 20px; font-weight: 600; font-size: clamp(26px, 3.6vw, 34px); line-height: 1.15; letter-spacing: -0.02em; }
+  .lead { color: var(--muted); font-size: clamp(16px, 1.6vw, 19px); margin: 20px 0 28px; max-width: 34em; }
+  p { margin: 0 0 14px; }
+  .muted { color: var(--muted); }
+
+  .hero-cta { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 18px; }
+  .hero-cta .note { color: var(--muted-soft); font-size: 14px; }
+
+  .pains { list-style: none; padding: 0; margin: 0 0 22px; display: grid; gap: 10px; }
+  .pains li {
+    padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.02); color: var(--text);
+  }
+
+  .outcomes { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px 22px; }
+  .outcomes li { position: relative; padding-left: 26px; }
+  .outcomes li::before {
+    content: ""; position: absolute; left: 0; top: 0.5em; width: 12px; height: 12px; border-radius: 3px;
+    background: var(--accent-tint-2); border: 1px solid var(--accent);
+  }
+
+  .modules { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+  .module {
+    display: grid; grid-template-columns: 34px 1fr; gap: 0 14px; align-items: start;
+    padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: rgba(255, 255, 255, 0.02);
+  }
+  .module .num {
+    width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center;
+    background: var(--accent-tint); color: var(--accent-bright); font-weight: 600; font-size: 15px;
+  }
+  .module h3 { margin: 4px 0 4px; font-size: 17px; font-weight: 600; }
+  .module p { margin: 0; color: var(--muted); font-size: 15px; }
+  .tag {
+    display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 999px; vertical-align: 2px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  .tag-v1 { color: var(--accent-bright); background: var(--accent-tint-2); }
+  .tag-later { color: var(--muted); border: 1px solid var(--border-strong); }
+  .legend { margin: 14px 0 0; font-size: 14px; color: var(--muted-soft); }
+
+  .how { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .how div { padding: 16px; border-radius: var(--radius-sm); background: var(--surface); }
+  .how b { display: block; margin-bottom: 4px; }
+  .how span { color: var(--muted); font-size: 15px; }
+
+  .offer {
+    padding: clamp(22px, 4vw, 34px); border-radius: var(--radius);
+    background: linear-gradient(180deg, rgba(145, 132, 217, 0.10), rgba(145, 132, 217, 0.03));
+    border: 1px solid var(--accent);
+  }
+  .price { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin: 6px 0 4px; }
+  .price .now { font-size: clamp(44px, 7vw, 58px); font-weight: 600; letter-spacing: -0.03em; }
+  .price .later { color: var(--muted); font-size: 17px; }
+  .includes { list-style: none; padding: 0; margin: 18px 0 24px; display: grid; gap: 8px; }
+  .includes li { position: relative; padding-left: 28px; }
+  .includes li::before {
+    content: ""; position: absolute; left: 2px; top: 0.35em; width: 14px; height: 8px;
+    border-left: 2px solid var(--accent-bright); border-bottom: 2px solid var(--accent-bright); transform: rotate(-45deg);
+  }
+
+  .btn-primary {
+    display: inline-flex; align-items: center; justify-content: center; padding: 13px 22px;
+    font-family: inherit; font-size: 15px; font-weight: 500; white-space: nowrap; text-decoration: none;
+    color: var(--accent-bright); background: var(--accent-tint); border: 1px solid var(--accent);
+    border-radius: var(--radius-sm); cursor: pointer;
+    transition: background 0.18s ease, border-color 0.18s ease, transform 0.05s ease;
+  }
+  .btn-primary:hover { background: var(--accent-tint-2); border-color: var(--accent-bright); }
+  .btn-primary:active { transform: translateY(1px); }
+  .btn-primary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .btn-primary:disabled { opacity: 0.6; cursor: default; }
+  .btn-big { padding: 15px 26px; font-size: 16px; }
+
+  .reserve-form { display: none; gap: 10px; max-width: 480px; margin-top: 4px; }
+  .reserve-form.show { display: flex; }
+  .reserve-form input[type="email"] {
+    flex: 1; min-width: 0; background: rgba(0, 0, 0, 0.22); border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm); padding: 13px 14px; color: var(--text); font-family: inherit; font-size: 16px;
+  }
+  .reserve-form input::placeholder { color: var(--muted-soft); }
+  .reserve-form input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(145, 132, 217, 0.18); }
+  .fine { margin: 12px 0 0; font-size: 14px; color: var(--muted-soft); max-width: 34em; }
+  .form-err { display: none; margin: 12px 0 0; font-size: 14px; color: #ff8f8f; }
+  .form-err.show { display: block; }
+  .form-ok {
+    display: none; gap: 10px; align-items: flex-start; max-width: 480px; padding: 14px 16px;
+    border-radius: var(--radius-sm); background: var(--accent-tint); border: 1px solid var(--accent);
+    color: var(--accent-bright); font-size: 15px;
+  }
+  .form-ok.show { display: flex; }
+  .form-ok svg { flex: none; margin-top: 3px; }
+
+  details { border-bottom: 1px solid var(--border); padding: 14px 0; }
+  details:first-of-type { border-top: 1px solid var(--border); }
+  summary { cursor: pointer; font-weight: 500; list-style: none; display: flex; justify-content: space-between; gap: 16px; }
+  summary::-webkit-details-marker { display: none; }
+  summary::after { content: "+"; color: var(--accent); font-size: 20px; line-height: 1; }
+  details[open] summary::after { content: "–"; }
+  details p { margin: 10px 0 0; color: var(--muted); font-size: 16px; }
+
+  footer { border-top: 1px solid var(--border); padding: 28px 0 40px; color: var(--muted-soft); font-size: 14px; }
+
+  @media (max-width: 640px) {
+    .container { padding: 0 16px; }
+    .outcomes, .how { grid-template-columns: 1fr; }
+    .reserve-form.show { flex-direction: column; }
+    .btn-primary { width: 100%; }
+    .hero-cta .note { width: 100%; text-align: center; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="container brand-row">
+    <a class="brand" href="/" aria-label="Ear Warrior home"><span class="brand-mark" aria-hidden="true"></span>Ear Warrior</a>
+  </header>
+
+  <main>
+    <section class="container" style="border-top:0">
+      <p class="eyebrow">Online course &middot; Without Tabs</p>
+      <h1>Stop reading tabs.<br /><em>Play what you hear.</em></h1>
+      <p class="lead">
+        A short video course for guitarists who freeze the moment the tab runs out.
+        Learn to find the key, work out a melody phrase by phrase, and play it back &mdash;
+        then practise every lesson on real tunes in the Ear Warrior app, which checks each note you play on its fretboard.
+      </p>
+      <div class="hero-cta">
+        <a class="btn-primary btn-big" href="#offer" data-reserve-jump>Reserve the $49 founding price</a>
+        <span class="note">Pay nothing now &middot; launches December 5</span>
+      </div>
+    </section>
+
+    <section class="container">
+      <h2>Sound familiar?</h2>
+      <ul class="pains">
+        <li>You know dozens of songs &mdash; as long as the tab is open.</li>
+        <li>At a jam someone says &ldquo;it&rsquo;s in G, just follow&rdquo; &mdash; and your hands stop.</li>
+        <li>You hear a melody you love and have no idea where it starts on the neck.</li>
+      </ul>
+      <p class="muted">That&rsquo;s not a missing talent. Playing by ear is a skill, and it&rsquo;s trained like one: short lessons, then the same loop over and over &mdash; hear it, find it, check it.</p>
+    </section>
+
+    <section class="container">
+      <h2>After the course you can</h2>
+      <ul class="outcomes">
+        <li>Find the key of a song in under a minute</li>
+        <li>Work out a melody inside one pentatonic box</li>
+        <li>Hear a tune as 1-2-3, not as random frets</li>
+        <li>Play the same melody in 3 positions and other keys</li>
+        <li>Name a chord progression by numbers: 1-5-6-4</li>
+        <li>Take a whole song from first listen to played &mdash; no tab</li>
+      </ul>
+    </section>
+
+    <section class="container">
+      <h2>The program</h2>
+      <ol class="modules">
+        <li class="module"><span class="num">0</span><div><h3>Your ear is a skill <span class="tag tag-v1">Dec 5</span></h3><p>Why tabs keep you stuck, relative vs perfect pitch, and your first melody worked out in 10 minutes.</p></div></li>
+        <li class="module"><span class="num">1</span><div><h3>Sing it and you&rsquo;re halfway there <span class="tag tag-v1">Dec 5</span></h3><p>Hear where a melody goes &mdash; up or down, step or leap &mdash; and hold a phrase in your head instead of replaying it.</p></div></li>
+        <li class="module"><span class="num">2</span><div><h3>One box, the whole melody <span class="tag tag-v1">Dec 5</span></h3><p>Find the home note on one string, then work out melodies inside a single pentatonic box.</p></div></li>
+        <li class="module"><span class="num">3</span><div><h3>Degrees, not frets <span class="tag tag-later">Added free</span></h3><p>Hear melodies as 1-2-3&hellip; and recognise the main intervals through songs you already know.</p></div></li>
+        <li class="module"><span class="num">4</span><div><h3>The melody all over the neck <span class="tag tag-later">Added free</span></h3><p>Play one tune in 3&ndash;4 positions and move it to another key by shifting the shape.</p></div></li>
+        <li class="module"><span class="num">5</span><div><h3>What&rsquo;s under the melody <span class="tag tag-later">Added free</span></h3><p>Major or minor by ear, bass note first, and progressions by numbers instead of the circle of fifths.</p></div></li>
+        <li class="module"><span class="num">6</span><div><h3>A whole song, start to finish <span class="tag tag-v1">Dec 5</span></h3><p>Key &rarr; chords &rarr; melody &rarr; bends and slides. From the first listen to a played song.</p></div></li>
+        <li class="module"><span class="num">7</span><div><h3>The jam <span class="tag tag-later">Added free</span></h3><p>Find the key in 10 seconds and play the vocal line as a solo over a track you&rsquo;ve never heard.</p></div></li>
+      </ol>
+      <p class="legend">Modules marked &ldquo;Dec 5&rdquo; are in the first release. The rest are added as they&rsquo;re recorded, free for everyone who bought.</p>
+    </section>
+
+    <section class="container">
+      <h2>How it works</h2>
+      <div class="how">
+        <div><b>Short lessons</b><span>3&ndash;8 minute videos. One idea each, no theory walls.</span></div>
+        <div><b>5 minutes a day</b><span>Every lesson ends with a daily practice that fits in five minutes.</span></div>
+        <div><b>Practice that checks you</b><span>100 tunes in the Ear Warrior app, played phrase by phrase, every note checked.</span></div>
+      </div>
+    </section>
+
+    <section class="container" id="offer">
+      <div class="offer">
+        <p class="eyebrow" style="margin-bottom:6px">Founding price</p>
+        <div class="price"><span class="now">$49</span><span class="later">$89 after launch</span></div>
+        <ul class="includes">
+          <li>The video course &mdash; first release on <b>December 5, 2026</b>, new modules added free</li>
+          <li>3 months of Ear Warrior Premium</li>
+          <li>Lifetime access to the course and every update</li>
+          <li>30-day money-back guarantee, no questions asked</li>
+        </ul>
+
+        <button class="btn-primary btn-big" type="button" id="reserveBtn">Reserve for $49</button>
+        <form class="reserve-form" id="reserveForm" novalidate>
+          <input id="email" name="email" type="email" required autocomplete="email" inputmode="email"
+                 placeholder="you@example.com" aria-label="Email address" />
+          <input id="company" name="company" type="text" tabindex="-1" autocomplete="off" aria-hidden="true"
+                 style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" />
+          <button class="btn-primary" type="submit" id="holdBtn">Hold my price</button>
+        </form>
+        <p class="form-err" id="formErr" role="alert">Something went wrong. Please try again.</p>
+        <div class="form-ok" id="formOk" role="status">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+          <span id="okText">Your $49 price is held. On December 5 we&rsquo;ll email you the link to pay. Nothing is charged before that &mdash; and if you change your mind, just ignore the email.</span>
+        </div>
+        <p class="fine" id="fine">Pay nothing now. On launch day you get one email with a payment link at $49. No card needed to reserve.</p>
+      </div>
+    </section>
+
+    <section class="container">
+      <h2>Questions</h2>
+      <details><summary>Do I need to know music theory?</summary><p>No. You need a few chords and to be able to play something from a tab. Every bit of theory in the course comes with a shape on the neck and a tune to try it on.</p></details>
+      <details><summary>I think I just don&rsquo;t have an ear.</summary><p>Almost nobody starts with one. Playing by ear uses relative pitch &mdash; hearing the distance between notes &mdash; and that is trained, not born. Module 0 gets you your first melody in ten minutes.</p></details>
+      <details><summary>When do I pay?</summary><p>On December 5, when the course opens. You get one email with a payment link at your $49 price. If you don&rsquo;t want it anymore, ignore the email &mdash; nothing happens.</p></details>
+      <details><summary>Acoustic or electric?</summary><p>Either. The course is about the fretboard and your ear, not the instrument.</p></details>
+      <details><summary>What if it doesn&rsquo;t work for me?</summary><p>Write within 30 days of buying and you get your money back in full.</p></details>
+      <details><summary>Does the app listen to my guitar?</summary><p>Not yet: you answer by tapping the notes on the app&rsquo;s fretboard, and it checks each one. Practising on the real guitar is part of every lesson.</p></details>
+    </section>
+  </main>
+
+  <footer><div class="container">Ear Warrior &copy; 2026 &middot; <a href="/privacy/">Privacy</a></div></footer>
+</div>
+
+<script>
+  // Same tracking as the main landing: Vercel custom events are Pro-only, so each milestone is a
+  // virtual page view on /e/<name> (see /index.html). Funnel: /course -> /e/course-reserve-click -> /e/course-reserve-ok.
+  var fired = {};
+  function track(name) {
+    if (fired[name]) return;
+    fired[name] = true;
+    var tries = 0;
+    (function send() {
+      if (window.vai || ++tries > 20) {
+        try { window.va && window.va("pageview", { route: "/e/" + name, path: "/e/" + name }); } catch (e) {}
+      } else {
+        setTimeout(send, 250);
+      }
+    })();
+  }
+
+  function source() {
+    var q = new URLSearchParams(location.search);
+    var src = q.get("utm_source") || q.get("ref") || "";
+    if (!src && document.referrer) {
+      try { src = new URL(document.referrer).hostname.replace(/^www\./, ""); } catch (e) {}
+    }
+    var s = src ? [src, q.get("utm_campaign"), q.get("utm_content")].filter(Boolean).join(":") : "course";
+    return s.toLowerCase().replace(/[^a-z0-9_.:-]/g, "").slice(0, 60) || "course";
+  }
+
+  var reserveBtn = document.getElementById("reserveBtn");
+  var form = document.getElementById("reserveForm");
+  var email = document.getElementById("email");
+  var holdBtn = document.getElementById("holdBtn");
+  var err = document.getElementById("formErr");
+  var ok = document.getElementById("formOk");
+
+  // The click on a button that shows the price is the signal we measure; the email comes second.
+  function openForm() {
+    track("course-reserve-click");
+    reserveBtn.style.display = "none";
+    form.classList.add("show");
+    email.focus({ preventScroll: true });
+  }
+  reserveBtn.addEventListener("click", openForm);
+  document.querySelector("[data-reserve-jump]").addEventListener("click", function () {
+    track("course-hero-click");
+  });
+
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    if (!email.value || !email.checkValidity()) { email.focus(); email.reportValidity && email.reportValidity(); return; }
+    err.classList.remove("show");
+    holdBtn.disabled = true;
+    holdBtn.textContent = "Holding…";
+    fetch("/api/reserve", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email.value, company: document.getElementById("company").value, source: source() }),
+    })
+      .then(function (r) { return r.json().catch(function () { return { ok: r.ok }; }); })
+      .then(function (data) {
+        if (!data || !data.ok) throw new Error((data && data.error) || "failed");
+        if (data.duplicate) {
+          document.getElementById("okText").textContent = "This email already has the $49 price held. We'll email you on December 5.";
+        } else {
+          track("course-reserve-ok");
+        }
+        form.classList.remove("show");
+        document.getElementById("fine").style.display = "none";
+        ok.classList.add("show");
+      })
+      .catch(function () {
+        holdBtn.disabled = false;
+        holdBtn.textContent = "Hold my price";
+        err.classList.add("show");
+      });
+  });
+</script>
+
+<script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };</script>
+<script defer src="/_vercel/insights/script.js"></script>
+</body>
+</html>

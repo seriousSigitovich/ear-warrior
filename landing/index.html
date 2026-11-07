@@ -347,6 +347,44 @@
   .phone-btns .btn-primary { flex: 1; }
   .phone-done { margin: 0; font-size: 14px; line-height: 1.45; color: var(--muted); }
   .phone-done b { color: var(--text); font-weight: 600; }
+  /* Course nudge: shown only after the phone question is answered, so it never competes with the signup. */
+  .course-nudge { display: none; max-width: 460px; margin: 16px 0 0; padding: 14px 16px; border-radius: var(--radius-sm);
+                  border: 1px solid var(--border-strong); background: rgba(255, 255, 255, 0.02); font-size: 15px; line-height: 1.45; }
+  .course-nudge.show { display: block; }
+  .course-nudge p { margin: 0 0 6px; color: var(--muted); }
+  .course-nudge b { color: var(--text); font-weight: 600; }
+  .course-nudge a { color: var(--accent-bright); font-weight: 500; }
+
+  /* Course modal: opens once, right after the signup flow is finished (phone answered). */
+  .cm-backdrop { position: fixed; inset: 0; z-index: 50; display: none; align-items: center; justify-content: center;
+                 padding: 16px; background: rgba(10, 11, 20, 0.72); backdrop-filter: blur(4px); }
+  .cm-backdrop.show { display: flex; animation: cm-fade 0.2s ease-out; }
+  .cm { position: relative; width: 100%; max-width: 440px; padding: 28px 24px 22px; border-radius: 16px;
+        background: var(--surface); border: 1px solid var(--accent); box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+        animation: cm-rise 0.26s cubic-bezier(0.2, 0.8, 0.2, 1); }
+  .cm-eyebrow { margin: 0 0 10px; font-size: 12px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); }
+  .cm h2 { margin: 0 0 10px; font-size: 28px; font-weight: 600; line-height: 1.1; letter-spacing: -0.02em; }
+  .cm h2 em { color: var(--accent-bright); font-style: normal; }
+  .cm p { margin: 0 0 14px; color: var(--muted); font-size: 15px; line-height: 1.5; }
+  .cm-list { list-style: none; padding: 0; margin: 0 0 18px; display: grid; gap: 6px; font-size: 15px; }
+  .cm-list li { position: relative; padding-left: 24px; }
+  .cm-list li::before { content: ""; position: absolute; left: 2px; top: 0.4em; width: 12px; height: 7px;
+                        border-left: 2px solid var(--accent-bright); border-bottom: 2px solid var(--accent-bright); transform: rotate(-45deg); }
+  .cm-price { display: flex; align-items: baseline; gap: 10px; margin: 0 0 16px; }
+  .cm-price b { font-size: 32px; font-weight: 600; letter-spacing: -0.02em; }
+  .cm-price span { color: var(--muted); font-size: 14px; }
+  .cm-go { display: flex; width: 100%; align-items: center; justify-content: center; padding: 14px 20px; border-radius: var(--radius-sm);
+           background: var(--accent); color: #161826; font-weight: 600; font-size: 16px; }
+  .cm-go:hover { background: var(--accent-bright); }
+  .cm-later { display: block; width: 100%; margin-top: 8px; padding: 10px; background: none; border: 0; cursor: pointer;
+              font-family: inherit; font-size: 14px; color: var(--muted-soft); }
+  .cm-later:hover { color: var(--muted); }
+  .cm-x { position: absolute; top: 10px; right: 10px; width: 34px; height: 34px; border: 0; border-radius: 8px; cursor: pointer;
+          background: none; color: var(--muted); font-size: 22px; line-height: 1; }
+  .cm-x:hover { background: rgba(255, 255, 255, 0.06); color: var(--text); }
+  @keyframes cm-fade { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes cm-rise { from { opacity: 0; transform: translateY(14px) scale(0.98); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .cm-backdrop.show, .cm { animation: none; } }
 
   /* ---------- footer ---------- */
   footer { border-top: 1px solid var(--border); padding: 28px 0 40px; }
@@ -449,6 +487,26 @@
             </div>
             <p class="phone-done" id="phoneDone" role="status" hidden></p>
           </div>
+          <div class="course-nudge" id="courseNudge">
+            <p><b>Want to stop needing tabs faster?</b> Our short course teaches you to find the key and work out melodies by ear &mdash; $49 founding price, pay nothing until December 5.</p>
+            <a href="/course/?ref=landing-signup" id="courseLink">See the course &rarr;</a>
+          </div>
+          <div class="cm-backdrop" id="courseModal" role="dialog" aria-modal="true" aria-labelledby="cmTitle">
+            <div class="cm">
+              <button class="cm-x" type="button" id="cmX" aria-label="Close">&times;</button>
+              <p class="cm-eyebrow">New &middot; Online course</p>
+              <h2 id="cmTitle">Stop needing tabs.<br /><em>Play what you hear.</em></h2>
+              <p>A short video course for guitarists, plus practice in the app that checks every note.</p>
+              <ul class="cm-list">
+                <li>Find the key of a song in under a minute</li>
+                <li>Work out a melody phrase by phrase</li>
+                <li>Play a whole song with no tab</li>
+              </ul>
+              <div class="cm-price"><b>$49</b><span>founding price &middot; $89 after launch</span></div>
+              <a class="cm-go" href="/course/?ref=landing-modal" id="cmGo">See the course</a>
+              <button class="cm-later" type="button" id="cmLater">Pay nothing until December 5 &middot; Not now</button>
+            </div>
+          </div>
         </div>
 
 
@@ -457,7 +515,7 @@
   </main>
 
   <footer>
-    <div class="container footer-inner">Ear Warrior &copy; 2026 &middot; <a href="/privacy/" style="color:inherit">Privacy</a></div>
+    <div class="container footer-inner">Ear Warrior &copy; 2026 &middot; <a href="/course/" style="color:inherit">Course: Without Tabs</a> &middot; <a href="/privacy/" style="color:inherit">Privacy</a></div>
   </footer>
 
 </div>
@@ -744,8 +802,32 @@
       document.getElementById("phoneBtns").style.display = "none";
       document.querySelector("#phone .phone-q").style.display = "none";
       done.hidden = false;
+      setTimeout(openCourseModal, 700);
     });
   });
+  document.getElementById("courseLink").addEventListener("click", function () { track("course-from-signup"); });
+
+  // Course modal: shown once, after the signup flow is done, so it never costs a signup.
+  // Closing it leaves the smaller inline card in place as a reminder.
+  var cm = document.getElementById("courseModal");
+  function openCourseModal() {
+    cm.classList.add("show");
+    document.body.style.overflow = "hidden";
+    track("course-modal-shown");
+    document.getElementById("cmGo").focus({ preventScroll: true });
+  }
+  function closeCourseModal() {
+    if (!cm.classList.contains("show")) return;
+    cm.classList.remove("show");
+    document.body.style.overflow = "";
+    track("course-modal-dismiss");
+    document.getElementById("courseNudge").classList.add("show");
+  }
+  document.getElementById("cmX").addEventListener("click", closeCourseModal);
+  document.getElementById("cmLater").addEventListener("click", closeCourseModal);
+  cm.addEventListener("click", function (e) { if (e.target === cm) closeCourseModal(); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeCourseModal(); });
+  document.getElementById("cmGo").addEventListener("click", function () { track("course-from-modal"); });
 
   var form = document.getElementById("notifyForm");
   var ok = document.getElementById("formOk");
