@@ -23,19 +23,34 @@ function melody(midis: number[]): Melody {
 
 function fakePlayer(clips: string[] = []) {
   const played: { midi: number; durationMs: number }[] = [];
-  const playedClips: { clipId: string; rates: number[]; released: boolean }[] = [];
+  const playedClips: {
+    clipId: string;
+    fromMs: number;
+    rates: number[];
+    released: boolean;
+    fadeMs?: number;
+  }[] = [];
   let stops = 0;
   const native: NativePlayer = {
     async playTone(midi, durationMs) {
       played.push({ midi, durationMs });
     },
-    startClip(clipId, rate) {
+    startClip(clipId, rate, fromMs) {
       if (!clips.includes(clipId)) return null;
-      const clip = { clipId, rates: [rate], released: false };
+      const clip = {
+        clipId,
+        fromMs,
+        rates: [rate],
+        released: false,
+        fadeMs: undefined as number | undefined,
+      };
       playedClips.push(clip);
       return {
         setRate: (r) => clip.rates.push(r),
-        release: () => (clip.released = true),
+        release: (fadeMs) => {
+          clip.released = true;
+          clip.fadeMs = fadeMs;
+        },
       };
     },
     async preloadTones() {},
@@ -103,6 +118,25 @@ describe('audio playback (contracts/audio-playback.md)', () => {
       expect(done()).toBe(false);
       await jest.advanceTimersByTimeAsync(1);
       expect(done()).toBe(true);
+    });
+
+    test('a phrase plays from its place in the clip and fades out before the next phrase', async () => {
+      const f = fakePlayer(['tune']);
+      const pb = createAudioPlayback(f.native);
+      let resolved = false;
+      // Three beats at 120 = 1500 ms of phrase, 2000 ms into the tune's clip, at half speed.
+      void pb
+        .playMelody(scheduleMelody(melody([64, 67, 69]), 120 * 0.5), 'tune', 0.5, 2000)
+        .then(() => (resolved = true));
+      await jest.advanceTimersByTimeAsync(0);
+      expect(f.playedClips[0].fromMs).toBe(2000);
+      // 1500 clip ms, less the 90 ms fade, at half speed: 2820 wall ms.
+      await jest.advanceTimersByTimeAsync(2819);
+      expect(resolved).toBe(false);
+      await jest.advanceTimersByTimeAsync(1);
+      expect(resolved).toBe(true);
+      expect(f.playedClips[0].released).toBe(true);
+      expect(f.playedClips[0].fadeMs).toBe(180);
     });
 
     test('a stop ends the clip’s wait at once', async () => {

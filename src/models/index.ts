@@ -74,6 +74,13 @@ export interface Melody {
   scale: string;
   /** The tune's own tempo: each melody is played at the speed it is known at. */
   tempoBpm: number;
+  /**
+   * Notes per phrase, in order (they add up to `notes.length`). The learner answers the melody phrase
+   * by phrase; absent means the whole melody is one phrase.
+   */
+  phrases?: number[];
+  /** The tune's name, revealed once the melody is done. */
+  title?: string;
   createdAt: string;
 }
 

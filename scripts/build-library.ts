@@ -8,6 +8,8 @@
 //   %%id <id>          stable, hyphen-free id (prefixes the melody id and names the audio clip)
 //   %%level <1-9>      difficulty rank
 //   %%source <text>    where the notes were taken from
+//   %%phrases <n n …>  how many notes each phrase has, in order (they must add up to the tune's notes):
+//                      the learner answers a tune phrase by phrase (draft them with scripts/draft-phrases.ts)
 //   %%notes <tokens>   optional, any number of lines: the melody as "pitch:beats" tokens (e.g. extracted
 //                      from a MIDI file); when present it replaces the ABC music lines
 // Write repeats out in full (a repeat sign only breaks the tune into parts here) and fold rests into
@@ -42,7 +44,8 @@ function beatsText(beats: number): string {
 
 function abcNotes(block: string, id: string): { midi: number; beats: number }[] {
   const { tunes: parsed, skipped } = parseAbc(block);
-  if (skipped.length > 0 || parsed.length !== 1) throw new Error(`${id}: ${skipped[0]?.reason ?? 'not one tune'}`);
+  if (skipped.length > 0 || parsed.length !== 1)
+    throw new Error(`${id}: ${skipped[0]?.reason ?? 'not one tune'}`);
   return parsed[0].segments.flat();
 }
 
@@ -56,15 +59,25 @@ const source = readFileSync(join(DIR, 'library.abc'), 'utf8');
 const blocks = source.split(/^(?=X:)/m).filter((b) => b.startsWith('X:'));
 const tunes = blocks.map((block) => {
   const id = directive(block, 'id');
-  if (!id || !/^[a-z0-9]+$/.test(id)) throw new Error(`Bad or missing %%id in:\n${block.slice(0, 200)}`);
+  if (!id || !/^[a-z0-9]+$/.test(id))
+    throw new Error(`Bad or missing %%id in:\n${block.slice(0, 200)}`);
   const rank = Number(directive(block, 'level'));
-  if (!Number.isInteger(rank) || rank < MIN_RANK || rank > MAX_RANK) throw new Error(`${id}: bad %%level`);
+  if (!Number.isInteger(rank) || rank < MIN_RANK || rank > MAX_RANK)
+    throw new Error(`${id}: bad %%level`);
   const title = field(block, 'T');
   const key = field(block, 'K');
   const q = field(block, 'Q');
   const from = directive(block, 'source') ?? 'from memory, unchecked';
   if (!title || !key || !q) throw new Error(`${id}: T:, Q: and K: are required`);
   const notes = rawNotes(block) ?? abcNotes(block, id);
+  const phrases = (directive(block, 'phrases') ?? String(notes.length)).split(/\s+/).map(Number);
+  if (phrases.some((n) => !Number.isInteger(n) || n < 1))
+    throw new Error(`${id}: %%phrases must be positive note counts`);
+  const phraseTotal = phrases.reduce((a, b) => a + b, 0);
+  if (phraseTotal !== notes.length)
+    throw new Error(
+      `${id}: %%phrases add up to ${phraseTotal} notes, the tune has ${notes.length}`,
+    );
   const midis = fitToNeck(notes.map((n) => n.midi));
   if (!midis) throw new Error(`${id}: wider than the neck`);
   const tonic = key.match(/^([A-G][#b]?)/)![1];
@@ -78,8 +91,13 @@ const tunes = blocks.map((block) => {
     title,
     rank,
     tempoBpm: quarterBpm(q, id),
+    phrases,
     scale,
-    notes: notes.map((n, i) => `${NAMES[midis[i] % 12]}${Math.floor(midis[i] / 12) - 1}:${beatsText(n.beats)}`).join(' '),
+    notes: notes
+      .map(
+        (n, i) => `${NAMES[midis[i] % 12]}${Math.floor(midis[i] / 12) - 1}:${beatsText(n.beats)}`,
+      )
+      .join(' '),
     source: from,
     base: c.base,
     count: midis.length,
@@ -103,6 +121,7 @@ const body = tunes
   .map(
     (t) =>
       `  {\n    id: ${q(t.id)},\n    title: ${q(t.title)},\n    rank: ${t.rank},\n    tempoBpm: ${t.tempoBpm},\n` +
+      `    phrases: [${t.phrases.join(', ')}],\n` +
       `    scale: ${q(t.scale)},\n    source: ${q(t.source)},\n    notes: ${q(t.notes)},\n  },`,
   )
   .join('\n');
@@ -118,6 +137,8 @@ export interface LibraryTune {
   rank: number;
   /** The tune's own tempo, quarter notes per minute. */
   tempoBpm: number;
+  /** Notes per phrase, in order; they add up to the tune's notes. The tune is answered phrase by phrase. */
+  phrases: readonly number[];
   /** "<Root>_<family>" derived from the notes; "<Root>_chromatic" when they need more than one key. */
   scale: string;
   /** Where the notes were taken from. */
@@ -135,7 +156,12 @@ ${body}
 for (let r = MIN_RANK; r <= MAX_RANK; r++) {
   const of = tunes.filter((t) => t.rank === r);
   console.log(
-    `L${r} (${of.length}): ` + of.map((t) => `${t.id} ${t.count}${t.base[0].toUpperCase()} ♩${t.tempoBpm}`).join(' · '),
+    `L${r} (${of.length}): ` +
+      of
+        .map(
+          (t) => `${t.id} ${t.count}${t.base[0].toUpperCase()}/${t.phrases.length} ♩${t.tempoBpm}`,
+        )
+        .join(' · '),
   );
 }
 console.log(`${tunes.length} tunes -> src/services/melody/library.ts`);

@@ -1,9 +1,13 @@
-// Practice-loop state machine (T028, US1). Orchestrates the core loop:
-// idle → playingMelody → awaitingInput → grading → feedback, with replay/retry/next.
-// A replay is not a phase: it sounds the melody over whatever is on screen (the answer being placed,
-// or the graded result), so the learner compares by ear without losing sight of their notes.
-// The learner answers by tapping notes on an on-screen fretboard; pure logic (melody, schedule,
-// grade) is composed with the injected playback service.
+// Practice-loop state machine (T028, US1). A tune is learnt phrase by phrase:
+//   idle → playingMelody (the whole tune, skippable) → for each phrase:
+//     playingMelody (the phrase) → awaitingInput → grading → feedback → (retry | next phrase)
+//   → complete (the tune is named, summed up and played whole once more) → next tune.
+// A phrase fits in the ear's working memory where a 60-note tune does not, and the tune stays whole:
+// each phrase is heard in place, and the tune is played in full at both ends.
+// A replay is not a phase: it sounds the phrase (or, once complete, the tune) over whatever is on
+// screen, so the learner compares by ear without losing sight of their notes.
+// The learner answers by tapping notes on an on-screen fretboard; pure logic (melody, phrases,
+// schedule, grade) is composed with the injected playback service.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Attempt,
@@ -23,7 +27,14 @@ import {
 } from '../difficulty/adapt';
 import { TuneHistory, tuneIdOf } from '../../services/melody/curated';
 import { DifficultySettingsRepository } from '../../services/storage/repositories';
-import { scheduleMelody } from '../../lib/schedule';
+import { beatMs, scheduleMelody } from '../../lib/schedule';
+import {
+  combinePhraseAnswers,
+  combinePhraseGrades,
+  phraseCount,
+  phraseMelody,
+  phraseStartBeats,
+} from '../../lib/phrases';
 import { gradeAttempt } from '../../services/grading/grade';
 import { AudioPlayback } from '../../services/audio/playback';
 import { AudioSession } from '../../services/audio/session';
@@ -36,7 +47,19 @@ import {
   undoTap,
 } from '../../lib/fretboard';
 
-export type LoopPhase = 'idle' | 'playingMelody' | 'awaitingInput' | 'grading' | 'feedback';
+export type LoopPhase =
+  'idle' | 'playingMelody' | 'awaitingInput' | 'grading' | 'feedback' | 'complete';
+
+/** What `playingMelody` is sounding: the whole tune up front, or the phrase to answer. */
+export type Listening = 'tune' | 'phrase';
+
+/** A phrase was checked. `first` is the learner's first try at it — the one the tune is scored on. */
+export interface PhraseCheck {
+  phrase: number;
+  phrases: number;
+  grade: AttemptGrade;
+  first: boolean;
+}
 
 export interface PracticeLoopDeps {
   /**
@@ -61,10 +84,12 @@ export interface PracticeLoopDeps {
   /** Persisted difficulty state (FR-011b). */
   difficulty: DifficultySettingsRepository;
   /**
-   * Record a finished attempt (FR-012). Supplied by the screen, which owns the session and the
-   * repositories.
+   * Record a finished tune (FR-012): one attempt for the whole tune, made of the first try at each of
+   * its phrases. Supplied by the screen, which owns the session and the repositories.
    */
   onAttemptGraded?: (attempt: Attempt, melody: Melody, level: DifficultyLevel) => void;
+  /** A phrase was checked (for analytics). */
+  onPhraseChecked?: (check: PhraseCheck) => void;
   /**
    * Playback speed in effect right now (1 = the tune's own tempo; see lib/speed), read as each play
    * starts. A change while a melody sounds goes straight to the playback service. Defaults to full tempo.
@@ -76,33 +101,59 @@ export interface PracticeLoopDeps {
   now?: () => Date;
 }
 
-/** A rank movement to surface in the feedback step, so difficulty never shifts silently. */
+/** A rank movement to surface when a tune is done, so difficulty never shifts silently. */
 export interface RankChange {
   from: number;
   to: number;
   direction: 'up' | 'down';
 }
 
-/** Sound `m` at `speed` × its own tempo: the schedule and the clip both slow down, the pitch stays. */
-function playAt(playback: AudioPlayback, m: Melody, speed: number): Promise<void> {
+/** Breath between the whole tune and its first phrase. */
+const INTRO_GAP_MS = 600;
+
+const pause = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+/** Sound the whole tune at `speed` × its own tempo: schedule and clip both slow down, pitch stays. */
+function playTuneAt(playback: AudioPlayback, m: Melody, speed: number): Promise<void> {
   return playback.playMelody(scheduleMelody(m, m.tempoBpm * speed), tuneIdOf(m.id), speed);
+}
+
+/** Sound phrase `i` of the tune, out of the tune's own clip. */
+function playPhraseAt(playback: AudioPlayback, m: Melody, i: number, speed: number): Promise<void> {
+  const fromMs = phraseStartBeats(m, i) * beatMs(m.tempoBpm);
+  return playback.playMelody(
+    scheduleMelody(phraseMelody(m, i), m.tempoBpm * speed),
+    tuneIdOf(m.id),
+    speed,
+    fromMs,
+  );
 }
 
 export function usePracticeLoop(deps: PracticeLoopDeps) {
   const [phase, setPhase] = useState<LoopPhase>('idle');
+  const [listening, setListening] = useState<Listening>('tune');
   const [melody, setMelody] = useState<Melody | null>(null);
+  const [phraseIndex, setPhraseIndex] = useState(0);
+  // The grade of the phrase on screen (feedback), and of the whole tune (complete).
   const [grade, setGrade] = useState<AttemptGrade | null>(null);
+  const [tuneGrade, setTuneGrade] = useState<AttemptGrade | null>(null);
+  // First-try grade of each phrase so far, for the progress bar.
+  const [phraseGrades, setPhraseGrades] = useState<AttemptGrade[]>([]);
   const [settings, setSettings] = useState<DifficultySettings>(DEFAULT_DIFFICULTY_SETTINGS);
   const [rankChange, setRankChange] = useState<RankChange | null>(null);
-  // The notes tapped so far for the current melody, in order.
+  // The notes tapped so far for the current phrase, in order.
   const [answer, setAnswer] = useState<FretTap[]>([]);
   // A replay is sounding. Kept apart from `phase` so replaying never swaps the screen.
   const [replaying, setReplaying] = useState(false);
   // Bumped whenever a replay ends early (stop, a tap, check, next): a clip's promise resolves on its
   // own clock, so a replay only clears the flag if nothing has superseded it meanwhile.
   const replayTokenRef = useRef(0);
-  // Adaptation counts only the FIRST graded attempt per melody (FR-011a): a retry does not move it.
-  const gradedThisMelodyRef = useRef(false);
+  // Bumped by each new tune: a tune's intro → first phrase hand-over only runs if it is still current.
+  const tuneTokenRef = useRef(0);
+  const introSkippedRef = useRef(false);
+  // First try at each phrase: what the tune is scored on (a retry is practice, FR-011a).
+  const firstGradesRef = useRef<AttemptGrade[]>([]);
+  const firstAnswersRef = useRef<DetectedNote[][]>([]);
   // Settings are read through a ref inside callbacks so adaptation always folds into the freshest
   // value, without every callback re-creating when the rank moves.
   const settingsRef = useRef(settings);
@@ -114,6 +165,22 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
   // Same reason as settingsRef: callbacks read the level in effect at the moment they run.
   const levelRef = useRef(level);
   levelRef.current = level;
+
+  const phrase = useMemo(
+    () => (melody ? phraseMelody(melody, phraseIndex) : null),
+    [melody, phraseIndex],
+  );
+  const phrases = melody ? phraseCount(melody) : 0;
+
+  // Leaving the screen ends the tune: nothing queued (the first phrase after the intro) may start
+  // playing behind another screen.
+  useEffect(
+    () => () => {
+      tuneTokenRef.current += 1;
+      deps.playback.stop().catch(() => undefined);
+    },
+    [deps.playback],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -148,7 +215,7 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
   // Monotonic within a session; combined with the unique session id this yields a unique attempt id.
   const attemptSeqRef = useRef(0);
 
-  /** Record the attempt (FR-012) and fold it into difficulty state (FR-011/011a). */
+  /** Record the finished tune (FR-012). */
   const completeAttempt = useCallback(
     (m: Melody, result: AttemptGrade, detected: DetectedNote[]) => {
       attemptSeqRef.current += 1;
@@ -171,15 +238,11 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
     [deps],
   );
 
-  /** Fold a finished attempt into difficulty state and persist the result (FR-011/011a). */
+  /** Fold a finished tune into difficulty state (FR-011): once per tune, on its first tries. */
   const adapt = useCallback(
     async (result: AttemptGrade) => {
       const before = settingsRef.current;
-      const outcome = toAttemptOutcome(result, gradedThisMelodyRef.current);
-      const next = applyAttempt(before, outcome);
-      if (outcome.graded) {
-        gradedThisMelodyRef.current = true;
-      }
+      const next = applyAttempt(before, toAttemptOutcome(result, false));
       if (next === before) return;
 
       const from = effectiveRank(before);
@@ -191,27 +254,18 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
     [deps.difficulty],
   );
 
-  const playMelody = useCallback(
-    async (m: Melody) => {
+  const speedNow = useCallback(() => deps.speed?.() ?? 1, [deps]);
+
+  /** Play phrase `i` for the learner to answer, then hand over to them. */
+  const playPhrase = useCallback(
+    async (m: Melody, i: number) => {
+      setListening('phrase');
       setPhase('playingMelody');
       await deps.session.enterPlayback();
-      await playAt(deps.playback, m, deps.speed?.() ?? 1);
+      await playPhraseAt(deps.playback, m, i, speedNow());
       setPhase('awaitingInput');
     },
-    [deps],
-  );
-
-  /** Grade the notes the learner tapped and fold the result into feedback, the record and difficulty. */
-  const finishAttempt = useCallback(
-    async (m: Melody, detected: DetectedNote[]) => {
-      setPhase('grading');
-      const result = gradeAttempt(m, detected, deps.gradingCfg);
-      setGrade(result);
-      setPhase('feedback');
-      completeAttempt(m, result, detected);
-      await adapt(result);
-    },
-    [deps.gradingCfg, adapt, completeAttempt],
+    [deps, speedNow],
   );
 
   /** End a sounding replay at once. With `silence`, also cut the audio (a tap cuts it by itself). */
@@ -224,84 +278,170 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
     [deps.playback],
   );
 
+  /** Serve a new tune: play it whole, then its first phrase. */
   const next = useCallback(async () => {
     endReplay(false); // the new melody's playback cuts the old audio itself
     await historyRef.current; // pick against the full history, not a half-loaded one
     const m = deps.nextMelody(level, deps.seed(), masteredRef.current, recentRef.current);
+    const token = ++tuneTokenRef.current;
     recentRef.current.push(tuneIdOf(m.id));
+    firstGradesRef.current = [];
+    firstAnswersRef.current = [];
     setMelody(m);
+    setPhraseIndex(0);
+    setPhraseGrades([]);
     setGrade(null);
+    setTuneGrade(null);
     setRankChange(null);
     setAnswer([]);
-    gradedThisMelodyRef.current = false; // a new melody restarts first-attempt eligibility
-    await playMelody(m);
-  }, [deps, level, playMelody, endReplay]);
+    setListening('tune');
+    setPhase('playingMelody');
+    await deps.session.enterPlayback();
+    introSkippedRef.current = false;
+    await playTuneAt(deps.playback, m, speedNow());
+    if (tuneTokenRef.current !== token) return;
+    // A skipped intro goes straight on; one heard to the end gets a breath first.
+    if (!introSkippedRef.current) await pause(INTRO_GAP_MS);
+    if (tuneTokenRef.current !== token) return;
+    await playPhrase(m, 0);
+  }, [deps, level, endReplay, playPhrase, speedNow]);
 
-  /** Sound the same melody again (FR-007) over the current screen; the phase does not change. */
+  /** Cut the whole-tune intro short and go to the first phrase. */
+  const skipIntro = useCallback(() => {
+    if (phase !== 'playingMelody' || listening !== 'tune') return;
+    introSkippedRef.current = true;
+    deps.playback.stop().catch(() => undefined);
+  }, [deps.playback, phase, listening]);
+
+  /** Sound the phrase again (FR-007) over the current screen — or the whole tune once it is done. */
   const replay = useCallback(async () => {
-    if (!melody || (phase !== 'awaitingInput' && phase !== 'feedback')) return;
+    if (!melody || (phase !== 'awaitingInput' && phase !== 'feedback' && phase !== 'complete'))
+      return;
     const token = ++replayTokenRef.current;
     setReplaying(true);
     try {
       await deps.session.enterPlayback();
-      await playAt(deps.playback, melody, deps.speed?.() ?? 1);
+      if (phase === 'complete') await playTuneAt(deps.playback, melody, speedNow());
+      else await playPhraseAt(deps.playback, melody, phraseIndex, speedNow());
     } finally {
       if (replayTokenRef.current === token) setReplaying(false);
     }
-  }, [deps, melody, phase]);
+  }, [deps, melody, phase, phraseIndex, speedNow]);
 
   const stopReplay = useCallback(() => endReplay(true), [endReplay]);
 
   const retry = useCallback(() => {
     if (!melody) return;
     if (replaying) endReplay(true);
-    // Clear the board and let the learner answer again, same melody (FR-008).
+    // Clear the board and let the learner answer the same phrase again (FR-008).
     setGrade(null);
-    setRankChange(null);
     setAnswer([]);
     setPhase('awaitingInput');
   }, [melody, replaying, endReplay]);
 
-  /** Sound the tapped fret and add it to the answer (up to the melody's length). */
+  /** Close the tune: score it on the first tries, name it and play it whole. */
+  const finishTune = useCallback(
+    async (m: Melody) => {
+      const result = combinePhraseGrades(m, firstGradesRef.current);
+      setTuneGrade(result);
+      setGrade(null);
+      setAnswer([]);
+      setPhase('complete');
+      completeAttempt(m, result, combinePhraseAnswers(firstAnswersRef.current));
+      await adapt(result);
+      // The payoff: hear the whole tune just answered note by note.
+      const token = ++replayTokenRef.current;
+      setReplaying(true);
+      try {
+        await deps.session.enterPlayback();
+        await playTuneAt(deps.playback, m, speedNow());
+      } finally {
+        if (replayTokenRef.current === token) setReplaying(false);
+      }
+    },
+    [deps, adapt, completeAttempt, speedNow],
+  );
+
+  /** From a phrase's result: on to the next phrase, or close the tune after the last. */
+  const nextPhrase = useCallback(async () => {
+    if (!melody || phase !== 'feedback') return;
+    if (replaying) endReplay(true);
+    // A phrase left unchecked never reaches here: feedback means its first try is recorded.
+    if (phraseIndex + 1 >= phraseCount(melody)) {
+      await finishTune(melody);
+      return;
+    }
+    const i = phraseIndex + 1;
+    setPhraseIndex(i);
+    setGrade(null);
+    setAnswer([]);
+    await playPhrase(melody, i);
+  }, [melody, phase, phraseIndex, replaying, endReplay, finishTune, playPhrase]);
+
+  /** Sound the tapped fret and add it to the answer (up to the phrase's length). */
   const tapFret = useCallback(
     (position: FretPosition) => {
-      if (phase !== 'awaitingInput' || !melody) return;
+      if (phase !== 'awaitingInput' || !phrase) return;
       // Tapping means the learner has heard enough: the tone below cuts the replay's audio.
       if (replaying) endReplay(false);
       const tap = makeTap(position, (deps.now?.() ?? new Date()).getTime());
       // Hearing the note is the point — it is how the learner compares it with the melody. It plays
       // even when the answer is already full, so a slot can be auditioned before undoing.
       deps.playback.playReferenceTone(tap.midi).catch(() => undefined);
-      setAnswer((prev) => addTap(prev, tap, melody.notes.length));
+      setAnswer((prev) => addTap(prev, tap, phrase.notes.length));
     },
-    [deps, phase, melody, replaying, endReplay],
+    [deps, phase, phrase, replaying, endReplay],
   );
 
   const undoFret = useCallback(() => setAnswer((prev) => undoTap(prev)), []);
   const clearFrets = useCallback(() => setAnswer([]), []);
 
-  /** Grade the answer as it stands ("Check"). Needs at least one note. */
+  /** Grade the phrase as answered ("Check"). Needs at least one note. */
   const submitAnswer = useCallback(async () => {
     const taps = answerRef.current;
-    if (phase !== 'awaitingInput' || !melody || taps.length === 0) return;
+    if (phase !== 'awaitingInput' || !melody || !phrase || taps.length === 0) return;
     if (replaying) endReplay(true);
-    await finishAttempt(melody, tapsToDetected(taps));
-  }, [phase, melody, finishAttempt, replaying, endReplay]);
+    setPhase('grading');
+    const detected = tapsToDetected(taps);
+    const result = gradeAttempt(phrase, detected, deps.gradingCfg);
+    const first = firstGradesRef.current[phraseIndex] === undefined;
+    if (first) {
+      firstGradesRef.current[phraseIndex] = result;
+      firstAnswersRef.current[phraseIndex] = detected;
+      setPhraseGrades([...firstGradesRef.current]);
+    }
+    setGrade(result);
+    setPhase('feedback');
+    deps.onPhraseChecked?.({
+      phrase: phraseIndex,
+      phrases: phraseCount(melody),
+      grade: result,
+      first,
+    });
+  }, [deps, phase, melody, phrase, phraseIndex, replaying, endReplay]);
 
   return useMemo(
     () => ({
       phase,
+      listening,
       replaying,
       answer,
       melody,
+      phrase,
+      phraseIndex,
+      phrases,
+      phraseGrades,
       grade,
+      tuneGrade,
       level,
       settings,
       rankChange,
       next,
+      skipIntro,
       replay,
       stopReplay,
       retry,
+      nextPhrase,
       tapFret,
       undoFret,
       clearFrets,
@@ -309,17 +449,25 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
     }),
     [
       phase,
+      listening,
       replaying,
       answer,
       melody,
+      phrase,
+      phraseIndex,
+      phrases,
+      phraseGrades,
       grade,
+      tuneGrade,
       level,
       settings,
       rankChange,
       next,
+      skipIntro,
       replay,
       stopReplay,
       retry,
+      nextPhrase,
       tapFret,
       undoFret,
       clearFrets,

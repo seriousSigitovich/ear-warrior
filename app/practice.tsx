@@ -37,6 +37,8 @@ import { FretboardControls } from '../src/components/controls/FretboardControls'
 import { SpeedSlider } from '../src/components/controls/SpeedSlider';
 import { DEFAULT_SPEED, SPEED_KEY, parseSpeed } from '../src/lib/speed';
 import { PracticeStage } from '../src/components/practice/PracticeStage';
+import { PhraseProgress } from '../src/components/practice/PhraseProgress';
+import { TuneComplete } from '../src/components/feedback/TuneComplete';
 import { FretboardAnswer } from '../src/components/practice/FretboardAnswer';
 import { Fretboard } from '../src/components/fretboard/Fretboard';
 import { VerdictBanner } from '../src/components/feedback/VerdictBanner';
@@ -155,6 +157,8 @@ export default function Practice() {
   }, []);
 
   const playback = useMemo(() => createAudioPlayback(), []);
+  // The level in effect, for events sent from inside the loop's callbacks.
+  const rankRef = useRef(1);
 
   const changeSpeed = useCallback(
     (next: number) => {
@@ -198,18 +202,25 @@ export default function Practice() {
           .then(() => progress?.outbox.enqueue(attempt))
           .catch(() => undefined);
         session.recordAttempt(attempt.verdict === 'correct');
+      },
+      // One check per phrase. `n` is the tune of this visit it belongs to, `first` marks the try the
+      // tune is scored on.
+      onPhraseChecked: ({ phrase, phrases, grade, first }) =>
         track('answer_check', {
-          verdict: attempt.verdict,
-          rank: level.rank,
+          verdict: grade.verdict,
+          rank: rankRef.current,
           n: attemptCountRef.current + 1,
           speed: speedRef.current,
-        });
-      },
+          phrase: phrase + 1,
+          phrases,
+          first,
+        }),
     }),
     [playback, repos, difficulty, loadHistory, progress, sessionId, outbox, deviceId, session],
   );
 
   const loop = usePracticeLoop(deps);
+  rankRef.current = loop.level.rank;
 
   // Funnel analytics inside the loop: heard a melody → started tapping → checked (`answer_check` above).
   // The phase rides along on `app_background`, so a leave mid-answer shows as such.
@@ -245,8 +256,10 @@ export default function Practice() {
 
   const grade = loop.grade;
   const showFeedback = loop.phase === 'feedback' && !!grade;
+  const complete = loop.phase === 'complete';
   const answering = loop.phase === 'awaitingInput';
-  const noteCount = loop.melody?.notes.length ?? 0;
+  const noteCount = loop.phrase?.notes.length ?? 0;
+  const introPlaying = loop.phase === 'playingMelody' && loop.listening === 'tune';
 
   return (
     <Screen edges={['bottom']}>
@@ -257,10 +270,23 @@ export default function Practice() {
         </View>
       )}
 
-      {showFeedback ? (
+      {loop.melody && loop.phase !== 'idle' ? (
+        <PhraseProgress
+          phrases={loop.phrases}
+          index={loop.phraseIndex}
+          grades={loop.phraseGrades}
+          stage={introPlaying ? 'tune' : complete ? 'done' : 'phrase'}
+        />
+      ) : null}
+
+      {complete ? (
+        <ScrollView contentContainerStyle={styles.feedback} showsVerticalScrollIndicator={false}>
+          <TuneComplete title={loop.melody?.title} grades={loop.phraseGrades} />
+          {loop.rankChange ? <RankChangeBanner change={loop.rankChange} /> : null}
+        </ScrollView>
+      ) : showFeedback ? (
         <ScrollView contentContainerStyle={styles.feedback} showsVerticalScrollIndicator={false}>
           <VerdictBanner grade={grade!} />
-          {loop.rankChange ? <RankChangeBanner change={loop.rankChange} /> : null}
           <NoteResultChips results={grade!.noteResults} />
           <Fretboard
             taps={loop.answer}
@@ -299,11 +325,15 @@ export default function Practice() {
         ) : (
           <TransportControls
             phase={loop.phase}
+            listening={loop.listening}
             replaying={loop.replaying}
+            lastPhrase={loop.phraseIndex + 1 >= loop.phrases}
             onPlay={loop.next}
+            onSkip={loop.skipIntro}
             onReplay={replay}
             onStopReplay={loop.stopReplay}
             onRetry={loop.retry}
+            onNextPhrase={loop.nextPhrase}
             onNext={loop.next}
           />
         )}

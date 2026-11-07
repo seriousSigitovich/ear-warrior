@@ -17,8 +17,11 @@ export interface AudioPlayback {
    * must already be laid out at that rate (`scheduleMelody(m, m.tempoBpm * rate)`). Resolves when the
    * melody's schedule has played out, however the speed changed meanwhile, or at once when something
    * else takes over the output.
+   *
+   * With `fromMs`, the schedule is a phrase of the clip's tune starting that far into the clip (in the
+   * tune's own tempo): the clip plays from there and fades out just before the next phrase would begin.
    */
-  playMelody(m: PlaybackMelody, clipId?: string, rate?: number): Promise<void>;
+  playMelody(m: PlaybackMelody, clipId?: string, rate?: number, fromMs?: number): Promise<void>;
   /**
    * Change the speed of the melody sounding now: the rest of it plays at `rate` and its end moves to
    * match. The note fallback picks it up from its next note. No effect when nothing is playing.
@@ -32,8 +35,8 @@ export interface AudioPlayback {
 export interface ClipHandle {
   /** Change its speed in place, pitch kept. */
   setRate(rate: number): void;
-  /** Fade it out and free its player (no-op once released or stopped). */
-  release(): void;
+  /** Fade it out over `fadeMs` (a short default) and free its player (no-op once released or stopped). */
+  release(fadeMs?: number): void;
 }
 
 /** Injectable native player: plays a bundled note sample or melody clip and can stop output. */
@@ -41,10 +44,10 @@ export interface NativePlayer {
   /** Play the sample for `midi`, resolving after `durationMs`. */
   playTone(midi: number, durationMs: number): Promise<void>;
   /**
-   * Start the bundled clip `clipId` now at `rate` (pitch kept); null (nothing played) if there is none.
-   * The caller keeps time and releases it.
+   * Start the bundled clip `clipId` now, `fromMs` into it, at `rate` (pitch kept); null (nothing played)
+   * if there is none. The caller keeps time and releases it.
    */
-  startClip(clipId: string, rate: number): ClipHandle | null;
+  startClip(clipId: string, rate: number, fromMs: number): ClipHandle | null;
   /** Check the samples for `midis` exist so a melody never starts and then runs out of notes. */
   preloadTones(midis: number[]): Promise<void>;
   stopAll(): Promise<void>;
@@ -56,6 +59,12 @@ export interface NativePlayer {
  * tail overlaps the next note's attack, connecting the line instead of cutting each note off.
  */
 const RELEASE_TAIL_MS = 220;
+
+/**
+ * A phrase played out of its tune's clip fades over this much clip time (tempo 1×), ending just as the
+ * next phrase's first note would sound, so none of it leaks in.
+ */
+const PHRASE_FADE_MS = 90;
 
 /** A clip is released this long after its schedule ends, so its own ring-out is never cut. */
 const CLIP_RELEASE_MS = 800;
@@ -149,18 +158,20 @@ export function defaultNativePlayer(): NativePlayer {
       start(source, durationMs + RELEASE_TAIL_MS, FADE_MS);
       await wait(durationMs);
     },
-    startClip(clipId, rate) {
+    startClip(clipId, rate, fromMs) {
       const source = bundled().MELODY_CLIPS[clipId];
       if (source === undefined) return null;
       const player = audio().createAudioPlayer(source);
       active.add(player);
       if (rate !== 1) applyRate(player, rate);
+      // Commands reach the native player in order, so it is at the phrase before it starts playing.
+      if (fromMs > 0) void player.seekTo(fromMs / 1000);
       player.play();
       return {
         setRate: (next) => {
           if (active.has(player)) applyRate(player, next);
         },
-        release: () => fadeOut(player, FADE_MS),
+        release: (fadeMs = FADE_MS) => fadeOut(player, fadeMs),
       };
     },
     async stopAll() {
@@ -176,8 +187,10 @@ const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 interface ClipRun {
   handle: ClipHandle;
   clock: MediaClock;
-  /** End of the melody's schedule, in the clip's own (tempo-1×) milliseconds. */
+  /** End of the melody's schedule, in the clip's own (tempo-1×) milliseconds from where it started. */
   endMs: number;
+  /** A phrase out of a longer clip: it fades out before its end instead of ringing on. */
+  cut: boolean;
   timer?: ReturnType<typeof setTimeout>;
   done: () => void;
 }
@@ -208,6 +221,10 @@ export function createAudioPlayback(native: NativePlayer = defaultNativePlayer()
         if (clip !== run) return;
         clip = null;
         run.done();
+        if (run.cut) {
+          run.handle.release(PHRASE_FADE_MS / run.clock.rate);
+          return;
+        }
         // Its own ring-out is left to sound, stretched like the rest, then the player is freed.
         setTimeout(() => run.handle.release(), CLIP_RELEASE_MS / run.clock.rate);
       },
@@ -220,20 +237,23 @@ export function createAudioPlayback(native: NativePlayer = defaultNativePlayer()
       sampleManifest(midiNotes); // range guard: throws on any note outside E2–E6
       await native.preloadTones(midiNotes);
     },
-    async playMelody(m, clipId, startRate = 1) {
+    async playMelody(m, clipId, startRate = 1, fromMs) {
       // Nothing may still be ringing under the melody (a replay pressed mid-clip, a tapped fret).
       const mine = ++generation;
       settle();
       rate = startRate;
       await native.stopAll();
       if (generation !== mine) return;
-      const handle = clipId ? native.startClip(clipId, startRate) : null;
+      const handle = clipId ? native.startClip(clipId, startRate, fromMs ?? 0) : null;
       if (handle) {
+        const cut = fromMs !== undefined;
         await new Promise<void>((done) => {
           const run: ClipRun = {
             handle,
             clock: createMediaClock(startRate, Date.now()),
-            endMs: totalDurationMs(m) * startRate,
+            // A phrase hands over to its fade just before the next phrase would begin.
+            endMs: Math.max(0, totalDurationMs(m) * startRate - (cut ? PHRASE_FADE_MS : 0)),
+            cut,
             done,
           };
           clip = run;

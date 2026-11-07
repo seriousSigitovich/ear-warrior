@@ -139,6 +139,8 @@ export function curatedMelody(
     difficultyId: level.id,
     scale: tune.scale,
     tempoBpm: tune.tempoBpm,
+    phrases: [...tune.phrases],
+    title: tune.title,
     createdAt: CREATED_AT_PLACEHOLDER,
   };
 }
