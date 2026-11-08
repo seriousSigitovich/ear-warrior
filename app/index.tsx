@@ -42,7 +42,7 @@ export default function Home() {
     }, []),
   );
 
-  // First launch: onboarding, then the sign-in offer (spec 005 FR-003) — each once, never blocking (both
+  // First launch: the first melody, then the sign-in offer (spec 005 FR-003) — each once, never blocking (both
   // have Skip). On focus rather than mount, so the offer follows onboarding when it pops back to Home.
   useFocusEffect(
     useCallback(() => {
@@ -51,7 +51,8 @@ export default function Home() {
       void isOnboarded(kv).then(async (onboarded) => {
         if (cancelled) return;
         if (!onboarded) {
-          router.push('/onboarding');
+          // No screens to read: the first run is the first melody, coached as it is played.
+          router.push('/first-melody');
           return;
         }
         await ensureAuthReady();

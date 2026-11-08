@@ -2,7 +2,16 @@
 // itself — every tune must be answerable on the 12-fret neck, belong to its scale, appear once, carry
 // its own tempo, and every difficulty level must hold a fair share of the tunes.
 import { DifficultyLevel } from '../../../src/models';
-import { LIBRARY, curatedMelody, masteredTuneIds, historyFromAttempts, tuneIdOf } from '../../../src/services/melody/curated';
+import {
+  FIRST_MELODY_CLIP,
+  FIRST_MELODY_TUNE,
+  firstMelody,
+  LIBRARY,
+  curatedMelody,
+  masteredTuneIds,
+  historyFromAttempts,
+  tuneIdOf,
+} from '../../../src/services/melody/curated';
 import { MAX_RANK, MIN_RANK, getLevelByRank } from '../../../src/services/melody/levels';
 import { scalePitchClasses } from '../../../src/services/melody/scales';
 import { MAX_FRET, OPEN_STRING_MIDI, positionsForMidi } from '../../../src/lib/fretboard';
@@ -197,5 +206,25 @@ describe('tunes played at 100%', () => {
     const all = new Set(ofRank(1));
     const m = curatedMelody(level(1), 3, undefined, all);
     expect(all.has(tuneIdOf(m.id))).toBe(true);
+  });
+});
+
+describe('first melody (first run)', () => {
+  test('is the four-note opening of the Fifth, one phrase, slowed, on a clip of its own', () => {
+    const m = firstMelody();
+    const fifth = LIBRARY.find((t) => t.id === FIRST_MELODY_TUNE)!;
+    const opening = curatedMelody(level(fifth.rank), 0, fifth.id).notes.slice(0, 4);
+    expect(m.notes.map((n) => n.midi)).toEqual(opening.map((n) => n.midi));
+    expect(m.tempoBpm).toBeLessThan(fifth.tempoBpm);
+    expect(tuneIdOf(m.id)).toBe(FIRST_MELODY_CLIP);
+    expect(LIBRARY.some((t) => t.id === FIRST_MELODY_CLIP)).toBe(false);
+    expect(m.notes.map((n) => n.noteName)).toEqual(['G3', 'G3', 'G3', 'D#3']);
+    expect(m.phrases).toEqual([4]);
+    expect(m.notes.map((n) => n.index)).toEqual([0, 1, 2, 3]);
+  });
+
+  test('has a stable id, so it can be told apart from a scored tune', () => {
+    expect(firstMelody().id).toBe(firstMelody().id);
+    expect(firstMelody().id).not.toMatch(/-\d+$/);
   });
 });

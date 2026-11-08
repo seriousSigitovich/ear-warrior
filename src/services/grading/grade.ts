@@ -3,6 +3,13 @@
 // extra) without cascading a single insertion/omission, and derive verdict + confidence.
 // Pure and deterministic — no IO. This is the correctness core of the product.
 import { AttemptGrade, DetectedNote, GradingConfig, Melody, Note, NoteResult } from '../../models';
+
+/** Calibratable default (research.md). */
+export const DEFAULT_GRADING_CFG: GradingConfig = {
+  centsTolerance: 50,
+  octaveSensitive: true,
+  lowConfidenceThreshold: 0.6,
+};
 import { pitchClass } from '../../lib/pitchNote';
 
 type Move = 'diag' | 'up' | 'left';

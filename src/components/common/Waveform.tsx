@@ -174,7 +174,7 @@ function BreathingBar({
 }
 
 /** The system "reduce motion" setting, kept current while the screen is up. */
-function useReduceMotion(): boolean {
+export function useReduceMotion(): boolean {
   const [reduce, setReduce] = useState(false);
   useEffect(() => {
     let live = true;

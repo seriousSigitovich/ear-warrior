@@ -7,6 +7,7 @@
 import { Attempt, DifficultyLevel, Melody, Note } from '../../models';
 import { hzFromMidi, noteName } from '../../lib/pitchNote';
 import { LibraryTune, TUNES } from './library';
+import { L1 } from './levels';
 
 export type { LibraryTune } from './library';
 
@@ -140,6 +141,40 @@ export function curatedMelody(
     scale: tune.scale,
     tempoBpm: tune.tempoBpm,
     phrases: [...tune.phrases],
+    title: tune.title,
+    createdAt: CREATED_AT_PLACEHOLDER,
+  };
+}
+
+/** The tune the first melody is cut from, and how many of its notes it keeps. */
+export const FIRST_MELODY_TUNE = 'fifth';
+const FIRST_MELODY_NOTES = 4;
+/**
+ * Its own clip, voiced with just those notes (EXCERPTS in assets/guitar-rig/render_library.py): the
+ * tune's full clip would have to be cut on a JS timer, and a late timer let the next notes through.
+ */
+export const FIRST_MELODY_CLIP = 'fifthfirst';
+/**
+ * Slower than the symphony's 216 so a beginner hears each note; the clip is voiced at this tempo
+ * (keep in sync with EXCERPTS), so nothing is stretched at play time.
+ */
+export const FIRST_MELODY_BPM = 120;
+
+/**
+ * The first melody a new learner plays, in place of an onboarding to read (owner's pick): the four
+ * notes that open Beethoven's Fifth — three repeated, one lower. Short, known to everyone, nearly
+ * impossible to lose. One phrase, slowed down, from a clip of its own. Never recorded or scored.
+ */
+export function firstMelody(): Melody {
+  const tune = LIBRARY.find((t) => t.id === FIRST_MELODY_TUNE);
+  if (!tune) throw new Error(`First melody tune "${FIRST_MELODY_TUNE}" is not in the library.`);
+  return {
+    id: `${FIRST_MELODY_CLIP}-first`,
+    notes: parseNotes(tune).slice(0, FIRST_MELODY_NOTES),
+    difficultyId: L1.id,
+    scale: tune.scale,
+    tempoBpm: FIRST_MELODY_BPM,
+    phrases: [FIRST_MELODY_NOTES],
     title: tune.title,
     createdAt: CREATED_AT_PLACEHOLDER,
   };

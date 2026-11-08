@@ -17,7 +17,8 @@ export interface ButtonProps {
   label: string;
   onPress: () => void;
   disabled?: boolean;
-  variant?: 'primary' | 'secondary' | 'ghost';
+  /** `filled`: the one action a screen is about (a solid accent block, for first-run screens). */
+  variant?: 'primary' | 'secondary' | 'ghost' | 'filled';
   /** Adds the accent glow used on the hero "Start practice" call to action. */
   glow?: boolean;
   style?: StyleProp<ViewStyle>;
@@ -43,14 +44,27 @@ export function Button({
         variant === 'primary' && styles.primary,
         variant === 'secondary' && styles.secondary,
         variant === 'ghost' && styles.ghost,
+        variant === 'filled' && styles.filled,
         glow && styles.glow,
-        pressed && (variant === 'secondary' ? styles.pressedSecondary : styles.pressedAccent),
+        pressed &&
+          (variant === 'secondary'
+            ? styles.pressedSecondary
+            : variant === 'filled'
+              ? styles.pressedFilled
+              : styles.pressedAccent),
         disabled && styles.dim,
         style,
       ]}
     >
       <Text
-        style={[styles.label, variant === 'secondary' ? styles.labelNeutral : styles.labelAccent]}
+        style={[
+          styles.label,
+          variant === 'secondary'
+            ? styles.labelNeutral
+            : variant === 'filled'
+              ? styles.labelFilled
+              : styles.labelAccent,
+        ]}
       >
         {label}
       </Text>
@@ -85,10 +99,13 @@ const styles = StyleSheet.create({
       shadowOffset: { width: 0, height: 0 },
     },
   }),
+  filled: { backgroundColor: colors.accent, borderColor: colors.accent, minHeight: 52 },
+  pressedFilled: { backgroundColor: colors.accentRamp[400] },
   pressedAccent: { backgroundColor: withAlpha(colors.accent, 0.18) },
   pressedSecondary: { backgroundColor: withAlpha(colors.text, 0.1) },
   dim: { opacity: 0.45 },
   label: { fontSize: 15, fontWeight: '500' },
   labelAccent: { color: colors.accent },
+  labelFilled: { color: colors.bg, fontWeight: '700', fontSize: 16 },
   labelNeutral: { color: colors.text } as TextStyle,
 });

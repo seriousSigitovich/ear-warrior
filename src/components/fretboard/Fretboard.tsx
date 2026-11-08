@@ -3,8 +3,17 @@
 // learner's answer is drawn back as numbered markers in the order the notes were placed. When
 // `statuses` is given the markers take their grade colours instead (accent matched, warm wrong).
 // Purely presentational — what a tap *means* lives in lib/fretboard and the practice loop.
-import React, { useState } from 'react';
-import { Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  Animated,
+  Easing,
+  Pressable,
+  StyleProp,
+  StyleSheet,
+  Text,
+  View,
+  ViewStyle,
+} from 'react-native';
 import { NoteStatus } from '../../models';
 import {
   DOUBLE_INLAY_FRET,
@@ -18,6 +27,7 @@ import {
 import { fretCellLabel, resultBoardLabel } from '../../lib/fretboardA11y';
 import { MARKER_MAX, markerSize } from '../../lib/fretboardLayout';
 import { colors, radius, textAlpha, withAlpha } from '../../theme/nocturne';
+import { useReduceMotion } from '../common/Waveform';
 
 export interface FretboardProps {
   /** The answer so far, in placement order. */
@@ -31,6 +41,10 @@ export interface FretboardProps {
    * (the answer view).
    */
   rowHeight?: number;
+  /** A cell to point the learner at (where to tap next): drawn as a pulsing ring. */
+  hint?: FretPosition | null;
+  /** A string to draw in the accent colour: "everything happens on this one" (the first melody). */
+  focusString?: number;
   style?: StyleProp<ViewStyle>;
 }
 
@@ -47,7 +61,15 @@ const GUTTER = 28;
  */
 const MIN_ROW_HEIGHT = 22;
 
-export function Fretboard({ taps, statuses, onTap, rowHeight, style }: FretboardProps) {
+export function Fretboard({
+  taps,
+  statuses,
+  onTap,
+  rowHeight,
+  hint,
+  focusString,
+  style,
+}: FretboardProps) {
   // Last tap wins when the same cell is pressed twice, so its number is the most recent one.
   const markers = new Map<string, number>();
   taps.forEach((t, i) => markers.set(`${t.string}:${t.fret}`, i));
@@ -69,8 +91,8 @@ export function Fretboard({ taps, statuses, onTap, rowHeight, style }: Fretboard
     >
       <View style={styles.labels}>
         <View style={{ width: GUTTER }} />
-        {STRING_LABELS.map((label) => (
-          <Text key={label} style={styles.stringLabel}>
+        {STRING_LABELS.map((label, i) => (
+          <Text key={label} style={[styles.stringLabel, i === focusString && styles.focusLabel]}>
             {label}
           </Text>
         ))}
@@ -107,6 +129,9 @@ export function Fretboard({ taps, statuses, onTap, rowHeight, style }: Fretboard
                           size: marker,
                         }
                   }
+                  hinted={hint?.string === string && hint?.fret === fret}
+                  focused={string === focusString}
+                  ringSize={marker + 14}
                   onTap={onTap}
                 />
               );
@@ -132,11 +157,17 @@ function Cell({
   string,
   fret,
   marker,
+  hinted,
+  focused,
+  ringSize,
   onTap,
 }: {
   string: number;
   fret: number;
   marker?: MarkerInfo;
+  hinted: boolean;
+  focused: boolean;
+  ringSize: number;
   onTap?: (position: FretPosition) => void;
 }) {
   const width = STRING_WIDTH[string];
@@ -145,7 +176,7 @@ function Cell({
   const inlay =
     (SINGLE_INLAY_FRETS.includes(fret) && string === 2) ||
     (fret === DOUBLE_INLAY_FRET && (string === 1 || string === 3));
-  const label = fretCellLabel({ string, fret }, marker?.number);
+  const label = fretCellLabel({ string, fret }, marker?.number, hinted);
 
   const content = (
     <>
@@ -155,12 +186,15 @@ function Cell({
           {
             width,
             marginLeft: -width / 2,
-            backgroundColor: withAlpha(colors.neutral[400], 0.65 - string * 0.07),
+            backgroundColor: focused
+              ? colors.accent
+              : withAlpha(colors.neutral[400], 0.65 - string * 0.07),
           },
         ]}
       />
       <View style={[styles.fretLine, fret === 0 ? styles.nut : styles.fretWire]} />
       {inlay ? <View style={styles.inlay} /> : null}
+      {hinted ? <HintRing size={ringSize} /> : null}
       {marker ? <Marker {...marker} /> : null}
     </>
   );
@@ -202,6 +236,42 @@ function Marker({ number, status, latest, size }: MarkerInfo) {
   );
 }
 
+/** "Tap here": a ring that swells and fades on a loop; held still when motion is reduced. */
+function HintRing({ size }: { size: number }) {
+  const still = useReduceMotion();
+  const t = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (still) {
+      t.setValue(0.5);
+      return;
+    }
+    const loop = Animated.loop(
+      Animated.timing(t, {
+        toValue: 1,
+        duration: 1100,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [still, t]);
+  return (
+    <View style={styles.markerWrap} pointerEvents="none">
+      <Animated.View
+        style={[
+          styles.hintRing,
+          circle(size),
+          {
+            opacity: t.interpolate({ inputRange: [0, 1], outputRange: [1, 0.25] }),
+            transform: [{ scale: t.interpolate({ inputRange: [0, 1], outputRange: [0.7, 1.15] }) }],
+          },
+        ]}
+      />
+    </View>
+  );
+}
+
 function circle(size: number): ViewStyle {
   return { width: size, height: size, borderRadius: size / 2 };
 }
@@ -216,6 +286,7 @@ const styles = StyleSheet.create({
   },
   labels: { flexDirection: 'row', paddingBottom: 4 },
   stringLabel: { flex: 1, textAlign: 'center', fontSize: 11, color: textAlpha[55] },
+  focusLabel: { color: colors.accent, fontWeight: '700' },
   rows: { flex: 1 },
   rowsFlex: { minHeight: FRET_COUNT * MIN_ROW_HEIGHT },
   row: { flexDirection: 'row', alignItems: 'stretch' },
@@ -271,4 +342,10 @@ const styles = StyleSheet.create({
     borderColor: colors.warm,
   },
   markerText: { fontSize: 12, fontWeight: '600' },
+  hintRing: {
+    position: 'absolute',
+    borderWidth: 2.5,
+    borderColor: colors.accent,
+    backgroundColor: withAlpha(colors.accent, 0.12),
+  },
 });

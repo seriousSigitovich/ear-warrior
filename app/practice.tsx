@@ -3,10 +3,12 @@
 // as a verdict card + note chips (with a non-blocking tuning advisory) or a calm retry state.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { InteractionManager, ScrollView, StyleSheet, View } from 'react-native';
-import { GradingConfig, Session } from '../src/models';
+import { Session } from '../src/models';
 import { curatedMelody, historyFromAttempts } from '../src/services/melody/curated';
-import { MAX_RANK } from '../src/services/melody/levels';
+import { DEFAULT_GRADING_CFG } from '../src/services/grading/grade';
+import { MAX_RANK, MIN_RANK } from '../src/services/melody/levels';
 import { tapStatuses } from '../src/lib/fretboard';
+import { shouldOfferHelp } from '../src/lib/hints';
 import { createAudioPlayback } from '../src/services/audio/playback';
 import { createAudioSession } from '../src/services/audio/session';
 import { KEY_VALUE_TABLE, defaultRowStore } from '../src/services/storage/db';
@@ -44,13 +46,8 @@ import { Fretboard } from '../src/components/fretboard/Fretboard';
 import { VerdictBanner } from '../src/components/feedback/VerdictBanner';
 import { NoteResultChips } from '../src/components/feedback/NoteResultChips';
 import { RankChangeBanner } from '../src/components/feedback/RankChangeBanner';
+import { StuckHelp } from '../src/components/feedback/StuckHelp';
 
-// Calibratable default (research.md).
-const GRADING_CFG: GradingConfig = {
-  centsTolerance: 50,
-  octaveSensitive: true,
-  lowConfidenceThreshold: 0.6,
-};
 const APP_VERSION = '0.1.0';
 
 /** Every pitch the fretboard can sound (E2–E5), rendered ahead of time so a tap plays at once. */
@@ -64,6 +61,8 @@ const RESULT_FRET_HEIGHT = 26;
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 export default function Practice() {
+  // Which help, if any, the learner took on the phrase on screen: rides along on its next check.
+  const helpRef = useRef<string>('none');
   // One durable store shared by every repository, and one session per visit to this screen.
   const store = useMemo(() => defaultRowStore(), []);
   const repos = useMemo(
@@ -184,7 +183,7 @@ export default function Practice() {
       loadHistory,
       playback,
       session: createAudioSession(),
-      gradingCfg: GRADING_CFG,
+      gradingCfg: DEFAULT_GRADING_CFG,
       seed: () => Math.floor(Math.random() * 1e9),
       difficulty,
       speed: () => speedRef.current,
@@ -205,7 +204,7 @@ export default function Practice() {
       },
       // One check per phrase. `n` is the tune of this visit it belongs to, `first` marks the try the
       // tune is scored on.
-      onPhraseChecked: ({ phrase, phrases, grade, first }) =>
+      onPhraseChecked: ({ phrase, phrases, grade, first }) => {
         track('answer_check', {
           verdict: grade.verdict,
           rank: rankRef.current,
@@ -214,13 +213,30 @@ export default function Practice() {
           phrase: phrase + 1,
           phrases,
           first,
-        }),
+          help: helpRef.current,
+        });
+      },
     }),
     [playback, repos, difficulty, loadHistory, progress, sessionId, outbox, deviceId, session],
   );
 
   const loop = usePracticeLoop(deps);
   rankRef.current = loop.level.rank;
+
+  const phraseKey = `${loop.melody?.id}:${loop.phraseIndex}`;
+  useEffect(() => {
+    helpRef.current = 'none';
+  }, [phraseKey]);
+  const loopRetryWithHint = loop.retryWithHint;
+  const loopRevealAnswer = loop.revealAnswer;
+  const showFirstNote = useCallback(() => {
+    helpRef.current = 'first_note';
+    loopRetryWithHint();
+  }, [loopRetryWithHint]);
+  const showAnswer = useCallback(() => {
+    helpRef.current = 'answer';
+    loopRevealAnswer();
+  }, [loopRevealAnswer]);
 
   // Funnel analytics inside the loop: heard a melody → started tapping → checked (`answer_check` above).
   // The phase rides along on `app_background`, so a leave mid-answer shows as such.
@@ -260,6 +276,7 @@ export default function Practice() {
   const answering = loop.phase === 'awaitingInput';
   const noteCount = loop.phrase?.notes.length ?? 0;
   const introPlaying = loop.phase === 'playingMelody' && loop.listening === 'tune';
+  const stuck = showFeedback && grade!.verdict !== 'correct' && shouldOfferHelp(loop.fails);
 
   return (
     <Screen edges={['bottom']}>
@@ -287,6 +304,13 @@ export default function Practice() {
       ) : showFeedback ? (
         <ScrollView contentContainerStyle={styles.feedback} showsVerticalScrollIndicator={false}>
           <VerdictBanner grade={grade!} />
+          {stuck ? (
+            <StuckHelp
+              onFirstNote={showFirstNote}
+              onShowAnswer={showAnswer}
+              onEasier={loop.level.rank > MIN_RANK ? loop.easier : undefined}
+            />
+          ) : null}
           <NoteResultChips results={grade!.noteResults} />
           <Fretboard
             taps={loop.answer}
@@ -300,6 +324,7 @@ export default function Practice() {
           taps={loop.answer}
           onTap={loop.tapFret}
           replaying={loop.replaying}
+          hint={loop.hint}
         />
       ) : (
         <PracticeStage phase={loop.phase} />

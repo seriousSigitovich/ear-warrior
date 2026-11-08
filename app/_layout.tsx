@@ -87,7 +87,7 @@ function RootLayout() {
         <Stack.Screen name="settings" />
         <Stack.Screen name="progress" />
         <Stack.Screen name="sign-in" />
-        <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+        <Stack.Screen name="first-melody" options={{ headerShown: false }} />
       </Stack>
     </SafeAreaProvider>
   );

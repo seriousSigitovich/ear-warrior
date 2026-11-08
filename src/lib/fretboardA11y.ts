@@ -12,9 +12,15 @@ function positionText(p: FretPosition): string {
  * Label of one tappable cell. A cell holding a placed note says which note it is, so a screen-reader
  * user can find their answer on the neck (A4b).
  */
-export function fretCellLabel(p: FretPosition, noteNumber?: number): string {
+export function fretCellLabel(p: FretPosition, noteNumber?: number, hinted = false): string {
   const base = positionText(p);
-  return noteNumber === undefined ? base : `${base}, note ${noteNumber}`;
+  const placed = noteNumber === undefined ? base : `${base}, note ${noteNumber}`;
+  return hinted ? `${placed}, hint: first note` : placed;
+}
+
+/** Spoken when a hint marks where a phrase's first note is. */
+export function hintAnnouncement(p: FretPosition): string {
+  return `Hint: the first note is on the ${positionText(p)}`;
 }
 
 /** Spoken after each tap: the pitch it sounded and how far the answer has got (A4c). */
