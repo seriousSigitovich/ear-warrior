@@ -6,8 +6,10 @@ import { FPS, TUNING, noteName, midiAt } from './story.mjs';
 
 /** The scene gaps of the Mountain King cut: the hold after the last note, then each line of "your turn" after the hold, and the tail. */
 const GAPS = { hold: 0.35, cta: 0.45, sub: 0.95, comment: 1.45, sweep: 2.3, end: 1.6 };
+/** Seconds between the strings of the opening chord's downstroke (`hookChord`): king/audio.mjs strums it, src/rising/RisingWood.tsx lands its notes so. */
+export const STRUM_GAP = 0.018;
 /** A story from a melody: the same scene gaps as the Mountain King cut, measured from the melody's last note. */
-function story({ id, title, notes, melody, bpm, hook, chord, maxFret = 4, ring, letRing = false, strum, listenAt = 2.75, gaps = GAPS, hookText = '97', score }) {
+function story({ id, title, notes, melody, bpm, hook, hookChord, chord, maxFret = 4, ring, letRing = false, strum, listenAt = 2.75, gaps = GAPS, hookText = '97', endText = 'next', score }) {
   const MELODY = melody.map(([string, fret, beats]) => ({ string, fret, beats, midi: midiAt(string, fret), name: noteName(midiAt(string, fret)) }));
   const BEAT = 60 / bpm;
   const OFFSETS = MELODY.reduce((acc, n, i) => [...acc, i ? acc[i - 1] + MELODY[i - 1].beats * BEAT : 0], []);
@@ -23,7 +25,11 @@ function story({ id, title, notes, melody, bpm, hook, chord, maxFret = 4, ring, 
     T,
     HEARD: MELODY.map((n, i) => ({ ...n, t: listenAt + OFFSETS[i], order: i })),
     HOOK_NOTE: { string: hook[0], fret: hook[1], midi: midiAt(hook[0], hook[1]) },
-    HOOK_TEXT: hookText,                                            // '97': "97% of guitarists can't play this by ear" · 'tabs': "can you play this without tabs?"
+    // `hookChord`: the opening hit strums the key's chord ([string, fret] each, low to high) in place of one low note, so the ear has the
+    // key before the tune; `hook` is then the chord's root, where the camera sits
+    HOOK_CHORD: hookChord?.map(([string, fret]) => ({ string, fret, midi: midiAt(string, fret) })),
+    HOOK_TEXT: hookText,                                            // '97': "97% of guitarists can't play this by ear" · 'tabs': "can you play this without tabs?" · 'guitarist': 'tabs' under "guitarists only"
+    END_TEXT: endText,                                              // 'next': "which song next?" · 'follow': follow for the next tunes
     CHORD: chord,
     SCORE: score,                                                   // the melody as written music (score() below), drawn as a staff
   };
@@ -58,7 +64,7 @@ const PHRASE_GLADIATORS = [
 ];
 
 /** Durations of `score()` tokens, in quarter beats. */
-const DUR = { 8: 0.5, q: 1, 'q.': 1.5, h: 2, 'h.': 3, w: 4 };
+const DUR = { 16: 0.25, 8: 0.5, '8.': 0.75, q: 1, 'q.': 1.5, h: 2, 'h.': 3, w: 4 };
 /**
  * A melody written as guitar music: bars of `<pitch><octave>:<dur>[~]` tokens (B♭ as Bb, sharps as #; `~` ties into the next token), written
  * an octave above the sound as guitar parts are. Gives story() its `melody` (a tied note is one attack; each on the lowest fret it has) and
@@ -67,7 +73,9 @@ const DUR = { 8: 0.5, q: 1, 'q.': 1.5, h: 2, 'h.': 3, w: 4 };
 function score({ key, time, bars, maxFret = 4 }) {
   const PC = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
   const parsed = bars.map((bar) => bar.split(/\s+/).map((tok) => {
-    const m = tok.match(/^([A-G])(#|b)?(\d):(8|q\.?|h\.?|w)(~)?$/);
+    const r = tok.match(/^r:(16|8\.?|q\.?|h\.?|w)$/);              // a rest: silence that lengthens the note before it in time
+    if (r) return { step: 'r', acc: '', octave: 0, dur: r[1], beats: DUR[r[1]], tie: false, midi: NaN, rest: true };
+    const m = tok.match(/^([A-G])(#|b)?(\d):(16|8\.?|q\.?|h\.?|w)(~)?$/);
     if (!m) throw new Error(`score: bad token ${tok}`);
     const written = 12 * (Number(m[3]) + 1) + PC[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0);
     return { step: m[1], acc: m[2] ?? '', octave: Number(m[3]), dur: m[4], beats: DUR[m[4]], tie: !!m[5], midi: written - 12 };
@@ -75,6 +83,7 @@ function score({ key, time, bars, maxFret = 4 }) {
   const flat = parsed.flat();
   const melody = [];
   flat.forEach((n, i) => {
+    if (n.rest) { if (!melody.length) throw new Error('score: a rest before the first note'); melody.at(-1)[2] += n.beats; n.order = melody.length - 1; return; }
     if (i > 0 && flat[i - 1].tie) { melody.at(-1)[2] += n.beats; n.order = melody.length - 1; return; }
     const [string, fret] = TUNING.map((open, s) => [s, n.midi - open]).filter(([, f]) => f >= 0 && f <= maxFret).sort((a, b) => a[1] - b[1])[0] ?? [];
     if (string === undefined) throw new Error(`score: ${noteName(n.midi)} is off the first ${maxFret} frets`);
@@ -287,6 +296,101 @@ export const TUNES = {
     }),
     strum: [53, 57, 60, 65],                                       // F xx3211
     bpm: 180, hook: [1, 3], chord: [72, 77, 81],                  // hit C3, the fifth · F major
+  }),
+  // Hava Nagila (the 1918 Idelsohn setting of a Hasidic nigun; Idelsohn d. 1938, public domain), the first phrase everyone knows: "Ha-va
+  // na-gi-la, ha-va na-gi-la, ha-va na-gi-la ve-nis-me-cha". From the LilyPond score in en.wikipedia's article (D freygish, written with a G
+  // minor key signature): d4 d4. fis8 es d | fis4 fis4. a8 g fis | g4 g4. bes8 a g | fis4 es16 d es8 d2. Commons' `File:Hava nagila.mid`
+  // (a piano arrangement in E) has the same degrees and the same 16-16-8 turn on "ve-nis-me-". Written an octave above the sound: D3–B♭3 on
+  // the D and G strings, frets 0–4, 19 notes. Home on a D major strum (the freygish tonic).
+  hava: story({
+    id: 'hava', title: 'Hava Nagila', hookText: 'tabs', ring: 0.75,
+    ...score({
+      key: 'Gm', time: [4, 4],
+      bars: [
+        'D4:q D4:q. F#4:8 Eb4:8 D4:8',             // Ha-va na-gi-la,
+        'F#4:q F#4:q. A4:8 G4:8 F#4:8',            // ha-va na-gi-la,
+        'G4:q G4:q. Bb4:8 A4:8 G4:8',              // ha-va na-gi-la
+        'F#4:q Eb4:16 D4:16 Eb4:8 D4:h',           // ve-nis-me-cha: the last D sounds as the strum
+      ],
+    }),
+    strum: [50, 57, 62, 66],                                       // D xx0232
+    bpm: 126, hook: [1, 0], chord: [74, 78, 81],                  // hit A2, the fifth · D major
+  }),
+  // Ievan polkka (Finnish folk polka, traditional; the melody is public domain, Kettunen's 1930s lyrics are not and are not used), the
+  // first strain once through. From thesession.org tune 418, where its settings agree on this strain;
+  // the A minor ones (13274, 48817: Am G Am · Am Dm C Am) read E | A>A AB | cA Ac | BG GB | c/B/A/G/ AE | A>A AB | cA Ac | de/d/ cB | A2 A2.
+  // 2/4, written an octave above the sound: E3–E4 on the D, G, B and high E strings, frets 0–3, 34 notes. Opens on an A minor strum (the
+  // key's chord, not one low note), home on the same strum.
+  polkka: story({
+    id: 'polkka', title: 'Ievan Polkka', hookText: 'guitarist', endText: 'follow',
+    ...score({
+      key: 'Am', time: [2, 4],
+      bars: [
+        'E4:8',                                     // pickup
+        'A4:8. A4:16 A4:8 B4:8',                   // bar 1
+        'C5:8 A4:8 A4:8 C5:8',                     // 2
+        'B4:8 G4:8 G4:8 B4:8',                     // 3 (G major)
+        'C5:16 B4:16 A4:16 G4:16 A4:8 E4:8',       // 4
+        'A4:8. A4:16 A4:8 B4:8',                   // 5
+        'C5:8 A4:8 A4:8 C5:8',                     // 6
+        'D5:8 E5:16 D5:16 C5:8 B4:8',              // 7 (Dm, C)
+        'A4:q A4:q',                                // 8: the last A sounds as the strum
+      ],
+    }),
+    hookChord: [[1, 0], [2, 2], [3, 2], [4, 1], [5, 0]],           // Am x02210, the opening hit
+    strum: [45, 52, 57, 60, 64],                                   // Am x02210, home
+    bpm: 132, hook: [1, 0], chord: [69, 72, 76],                  // the chord's root A2 · A minor
+  }),
+  // Brahms, Wiegenlied op. 49 no. 4 ("Guten Abend, gut' Nacht", 1868, public domain), the first strophe's opening half: "Lullaby and good
+  // night … lay thee down now and rest" up to the C. From the LilyPond score in de.wikipedia's article (sourced to the Brahms-Institut
+  // Lübeck), E♭ major there, here a minor third down in C: g g | b♭. g g | b♭ r g b♭ | e♭ d. c | c b♭ f g | a♭ f f g | a♭ r f a♭ | d c b♭ d | e♭.
+  // The two quarter rests are folded into the note before them (a half), so the guitar rings through the breath. 3/4 with an eighth pickup,
+  // written an octave above the sound: D3–C4, frets 0–3, 27 notes. Drawn as a melody contour (src/contour/ContourLine.tsx), not a tab.
+  brahms: story({
+    id: 'brahms', title: 'Brahms — Lullaby', hookText: 'tabs', ring: 0.95,
+    ...score({
+      key: 'C', time: [3, 4],
+      bars: [
+        'E4:8 E4:8',                                // lul-la-
+        'G4:q. E4:8 E4:q',                          // -by and good
+        'G4:h E4:8 G4:8',                           // night, with
+        'C5:q B4:q. A4:8',                          // ro-ses be-
+        'A4:q G4:q D4:8 E4:8',                      // -dight, with
+        'F4:q D4:q D4:8 E4:8',                      // lil-ies o'er-
+        'F4:h D4:8 F4:8',                           // -spread is ba-
+        'B4:8 A4:8 G4:q B4:q',                      // -by's wee
+        'C5:h.',                                    // bed: the C sounds as the strum
+      ],
+    }),
+    strum: [48, 52, 55, 60, 64],                                   // C x32010
+    bpm: 138, hook: [0, 3], chord: [72, 76, 79],                  // hit G2, the fifth · C major
+  }),
+  // Mozart, Symphony No. 40 in G minor K. 550 (1788, public domain), I. Molto allegro: the first violins' theme, both four-bar phrases —
+  // "da-da-DUM" three times, the leap to B♭, the fall to C; the same a step down, the leap to A, the fall to B♭. Bars 1–5 from the LilyPond
+  // score in en.wikipedia's article: es8 d | d4 es8 d d4 es8 d | d4 bes' r bes8 a | g4 g8 f es4 es8 d | c4 c; the answer (r d8 c | c4 d8 c
+  // c4 d8 c | c4 a' r a8 g | fis4 fis8 es d4 d8 c | bes4 bes) is the same sequence a step down, from memory. Alla breve, 𝅗𝅥 = 105 → ♩ = 210.
+  // Written an octave above the sound: B♭3–B♭4, 40 notes. Drawn as note silhouettes (src/notes/NoteSilhouettes.tsx), no staff, no frets.
+  // Opens on a G minor strum (the key's chord), home on the same chord.
+  mozart40: story({
+    id: 'mozart40', title: 'Mozart — Symphony No. 40', hookText: 'guitarist', endText: 'follow', ring: 0.32,
+    ...score({
+      key: 'Gm', time: [2, 2], maxFret: 6,
+      bars: [
+        'Eb5:8 D5:8',                                           // pickup
+        'D5:q Eb5:8 D5:8 D5:q Eb5:8 D5:8',                      // da-da-DUM, da-da-DUM
+        'D5:q Bb5:q r:q Bb5:8 A5:8',                            // DUM, the leap
+        'G5:q G5:8 F5:8 Eb5:q Eb5:8 D5:8',                      // the fall
+        'C5:q C5:q r:q D5:8 C5:8',                              // to C · the answer's pickup
+        'C5:q D5:8 C5:8 C5:q D5:8 C5:8',
+        'C5:q A5:q r:q A5:8 G5:8',
+        'F#5:q F#5:8 Eb5:8 D5:q D5:8 C5:8',
+        'Bb4:q Bb4:q',                                          // home: the last B♭ sounds as the strum
+      ],
+    }),
+    hookChord: [[0, 3], [1, 5], [2, 5], [3, 3], [4, 3], [5, 3]],   // G minor 355333, the opening hit
+    strum: [43, 50, 55, 58, 62, 67],                               // G minor, home
+    bpm: 210, hook: [0, 3], chord: [67, 70, 74],                  // the chord's root G2 · G minor
+    gaps: { hold: 0.32, cta: 0.25, sub: 0.45, comment: 0.5, sweep: 0.9, end: 1.65 },  // the author: the ending dragged — 1.5 s shorter tail, follow line still 2 s
   }),
   // Paco Cepero, the bulería falseta behind El Turronero's "Olivares del campo" (NOT public domain: Cepero, b. 1942, is alive), the thumb
   // line of its repeated section. Notes and rhythm from the free canteytoque.es transcription (`canteytoque.es/ceperoturroneroolivares.htm`,

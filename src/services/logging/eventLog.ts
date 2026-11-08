@@ -101,7 +101,7 @@ export function createAppEventOutbox(
   client: AppEventClient,
   queue: AppEventPayload[] = [],
 ): AppEventOutbox {
-  async function flush(): Promise<void> {
+  async function drain(): Promise<void> {
     while (queue.length > 0) {
       try {
         await client.insert(queue[0]);
@@ -110,6 +110,16 @@ export function createAppEventOutbox(
         break; // still unreachable; retry on the next log
       }
     }
+  }
+  // One drain at a time. Two concurrent drains both sent queue[0] (a duplicate row) and then both
+  // shifted, dropping an event nobody had sent — seen as app_open ×4 in prod. A log made mid-drain
+  // joins the running one, whose loop picks the new payload up.
+  let running: Promise<void> | null = null;
+  function flush(): Promise<void> {
+    running ??= drain().finally(() => {
+      running = null;
+    });
+    return running;
   }
   return {
     async log(payload) {

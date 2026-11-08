@@ -21,6 +21,8 @@ import { ToccataMinimal } from './toccata/ToccataMinimal';
 import { RisingWood, WOOD_TUNES, BOARDLESS } from './rising/RisingWood';
 import { RisingBand } from './rising/RisingBand';
 import { RisingEmbers } from './rising/RisingEmbers';
+import { ContourLine, CONTOUR_TUNES } from './contour/ContourLine';
+import { NoteSilhouettes, NOTE_TUNES } from './notes/NoteSilhouettes';
 import { DURATION as TOCCATA_DURATION, FPS as TOCCATA_FPS } from '../toccata/story.mjs';
 import { SwanMinimal } from './swan/SwanMinimal';
 import { BeeMinimal } from './bee/BeeMinimal';
@@ -82,6 +84,18 @@ export const Root: React.FC = () => (
   <Composition id="RisingEmbers" component={RisingEmbers} durationInFrames={Math.round(KING_TUNES.rising.DURATION * KING_TUNES.rising.FPS)} fps={KING_TUNES.rising.FPS} width={1080} height={1920} />
   {WOOD_TUNES.filter((id) => id !== 'rising').map((id) => (
     <Composition key={id} id={`Wood-${id}`} component={RisingWood} durationInFrames={Math.round(KING_TUNES[id].DURATION * KING_TUNES[id].FPS)} fps={KING_TUNES[id].FPS} width={1080} height={1920} defaultProps={{ tune: id, board: !BOARDLESS.includes(id) }} />
+  ))}
+  {CONTOUR_TUNES.map((id) => (
+    <React.Fragment key={id}>
+      <Composition id={`Contour-${id}`} component={ContourLine} durationInFrames={Math.round(KING_TUNES[id].DURATION * KING_TUNES[id].FPS)} fps={KING_TUNES[id].FPS} width={1080} height={1920} defaultProps={{ tune: id }} />
+      <Composition id={`Contour-${id}-cover`} component={ContourLine} durationInFrames={1} fps={KING_TUNES[id].FPS} width={1080} height={1920} defaultProps={{ tune: id, cover: true }} />
+    </React.Fragment>
+  ))}
+  {NOTE_TUNES.map((id) => (
+    <React.Fragment key={id}>
+      <Composition id={`Notes-${id}`} component={NoteSilhouettes} durationInFrames={Math.round(KING_TUNES[id].DURATION * KING_TUNES[id].FPS)} fps={KING_TUNES[id].FPS} width={1080} height={1920} defaultProps={{ tune: id }} />
+      <Composition id={`Notes-${id}-cover`} component={NoteSilhouettes} durationInFrames={1} fps={KING_TUNES[id].FPS} width={1080} height={1920} defaultProps={{ tune: id, cover: true }} />
+    </React.Fragment>
   ))}
       <Composition id="RisingBand" component={RisingBand} durationInFrames={Math.round(KING_TUNES.risingBand.DURATION * KING_TUNES.risingBand.FPS)} fps={KING_TUNES.risingBand.FPS} width={1080} height={1920} />
   <Composition id="ToccataMinimal" component={ToccataMinimal} durationInFrames={Math.round(TOCCATA_DURATION * TOCCATA_FPS)} fps={TOCCATA_FPS} width={1080} height={1920} />

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // House of the Rising Sun on #60's cut in the warm-wood look:  node render-rising.mjs  →  public/rising-wood.wav + out/rising-wood.mp4 (1080×1920, 60 fps)
 // Timeline = king/tunes.mjs `rising`, picture in src/rising/RisingWood.tsx, soundtrack king/audio.mjs on that timeline.
-//   --tune=<id>  another tune in the same look (WOOD_TUNES in RisingWood.tsx: canon, scarborough, greensleeves, birthday, gladiators (no wood, BOARDLESS), darkeyes, bulerias, cucaracha)
+//   --tune=<id>  another tune in the same look (WOOD_TUNES in RisingWood.tsx: canon, scarborough, greensleeves, birthday, gladiators (no wood, BOARDLESS), darkeyes, bulerias, cucaracha, hava, polkka)
 //                → public/wood-<id>.wav + out/wood-<id>.mp4, composition Wood-<id>; check it with  node king/check.mjs --tune=<id> --wav=wood-<id>.wav
 //   --look=<noneck|ghost|embers>  #71 without the neck, same soundtrack → out/rising-<look>.mp4: noneck = the notes still fall, nothing under
 //                them (RisingWood-noneck) · ghost = a string shows only while it rings (RisingWood-ghost) · embers = campfire embers hang

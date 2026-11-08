@@ -21,7 +21,7 @@ const CALM: SpringCfg = { damping: 18, stiffness: 140, mass: 0.9 };
 type Head = { order: number; x: number; y: number; left: number };
 type Layout = { dim: string; lit: string; width: number; heads: Head[] };
 
-const DURATION: Record<ScoreNote['dur'], string> = { 8: '8', q: 'q', 'q.': 'qd', h: 'h', 'h.': 'hd', w: 'w' };
+const DURATION: Record<ScoreNote['dur'], string> = { 16: '16', 8: '8', '8.': '8d', q: 'q', 'q.': 'qd', h: 'h', 'h.': 'hd', w: 'w' };
 
 /** Lays the score out once. `notesOnly`: the amber layer, with no staff lines, clef or bar lines. */
 function draw(S: NonNullable<TuneStory['SCORE']>, ink: string, notesOnly: boolean) {
@@ -56,7 +56,7 @@ function draw(S: NonNullable<TuneStory['SCORE']>, ink: string, notesOnly: boolea
       all.push({ note, n });
       return note;
     });
-    // eighths that share a beat are beamed in pairs, as a guitar part is written (a lone eighth keeps its flag); a pickup bar counts its
+    // eighths (and sixteenths) that share a beat are beamed together, as a guitar part is written (a lone eighth keeps its flag); a pickup bar counts its
     // beats from where it starts inside the bar, so three pickup eighths read ♪ ♫, not ♫ ♪
     const barBeats = bar.reduce((a, n) => a + n.beats, 0);
     let pos = i === 0 ? beatsPerBar - barBeats : 0;
@@ -64,7 +64,7 @@ function draw(S: NonNullable<TuneStory['SCORE']>, ink: string, notesOnly: boolea
     bar.forEach((n, j) => {
       const beat = Math.floor(pos + 1e-6);
       pos += n.beats;
-      if (n.dur !== '8') return;
+      if (n.dur !== '8' && n.dur !== '8.' && n.dur !== '16') return;
       const last = groups.at(-1);
       if (last && last.beat === beat && last.end === j) { last.notes.push(notes[j]); last.end = j + 1; }
       else groups.push({ beat, end: j + 1, notes: [notes[j]] });

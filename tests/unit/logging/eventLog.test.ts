@@ -61,6 +61,26 @@ describe('app event outbox', () => {
     expect(client.sent.map((e) => e.name)).toEqual(['app_open', 'session_start']);
     expect(box.pending()).toBe(0);
   });
+
+  test('events logged while a send is in flight go out once each, in order', async () => {
+    // A slow network: every insert waits, so the next logs arrive mid-send (app start fires several).
+    const sent: string[] = [];
+    const client: AppEventClient = {
+      async insert(row) {
+        await new Promise((r) => setTimeout(r, 5));
+        sent.push(row.name);
+      },
+    };
+    const box = createAppEventOutbox(client);
+    await Promise.all([
+      box.log(payload('app_open')),
+      box.log(payload('screen_view')),
+      box.log(payload('session_start')),
+      box.log(payload('melody_play')),
+    ]);
+    expect(sent).toEqual(['app_open', 'screen_view', 'session_start', 'melody_play']);
+    expect(box.pending()).toBe(0);
+  });
 });
 
 describe('screen names', () => {

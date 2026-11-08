@@ -11,7 +11,7 @@ import { type Cam, type Pose, type V3, type P2, makeCam, aim, lerpPose, v3, proj
 import { NUT_X, fretX, noteX, stringZ } from '../neon/Stage';
 import { SOFT, kick, ramp, springAt, type SpringCfg } from '../ten/motion';
 import { clamp, easeOut, rng } from '../util';
-import { TUNES } from '../../king/tunes.mjs';
+import { TUNES, STRUM_GAP } from '../../king/tunes.mjs';
 import type { TuneStory } from '../../king/tunes.d.mts';
 import { Staff } from './Staff';
 
@@ -57,7 +57,8 @@ const GRAIN = (() => {
   return Array.from({ length: 110 }, () => ({ z: -HALF + 0.05 + r() * (2 * HALF - 0.1), a: 0.03 + r() * 0.08, f: 0.25 + r() * 0.5, ph: r() * 6.28, dark: r() < 0.6, w: 0.01 + r() * 0.045, o: 0.3 + r() * 0.5 }));
 })();
 
-type Hit = { id: string; string: number; fret: number; land: number; gone?: number; big?: boolean };
+/** `chord`: a note of the opening chord above its root — drawn big, but the camera kicks only on the root. */
+type Hit = { id: string; string: number; fret: number; land: number; gone?: number; big?: boolean; chord?: boolean };
 /** What the neck draws for one story: its notes and its camera. */
 export type Wood = { S: TuneStory; HITS: Hit[]; cameraAt: (t: number) => Pose };
 const landPoint = (h: Hit): V3 => [noteX(h.fret), 0, stringZ(h.string)];
@@ -77,9 +78,12 @@ const P_TOP: Pose = { pos: [2.05, 14.6, 1.2], yaw: -Math.PI / 2, pitch: -Math.PI
  * hook note for the road down the neck (#60: 0.22 s; the band cut: when it arrives from the stage).
  */
 export function woodOf(S: TuneStory, { hook = true, enter = 0.22 }: { hook?: boolean; enter?: number } = {}): Wood {
-  const { T, HEARD, HOOK_NOTE } = S;
+  const { T, HEARD, HOOK_NOTE, HOOK_CHORD } = S;
+  const opening: Hit[] = HOOK_CHORD
+    ? HOOK_CHORD.map((n, k) => ({ id: k ? `hook${k}` : 'hook', string: n.string, fret: n.fret, land: k * STRUM_GAP, gone: 1.55, big: true, chord: k > 0 }))
+    : [{ id: 'hook', string: HOOK_NOTE.string, fret: HOOK_NOTE.fret, land: 0, gone: 1.55, big: true }];
   const HITS: Hit[] = [
-    ...(hook ? [{ id: 'hook', string: HOOK_NOTE.string, fret: HOOK_NOTE.fret, land: 0, gone: 1.55, big: true }] : []),
+    ...(hook ? opening : []),
     ...HEARD.map((n, i): Hit => {
       const next = HEARD.slice(i + 1).find((m) => m.string === n.string && m.fret === n.fret);
       return { id: `h${i}`, string: n.string, fret: n.fret, land: n.t, gone: next ? next.t - 0.06 : undefined };
@@ -100,7 +104,7 @@ function cameraAt(t: number, T: TuneStory['T'], HITS: Hit[], P_HOOK: Pose, P_ROA
   p = { ...p, yaw: p.yaw + road * 0.025 * Math.sin(t * 0.7), pos: v3.add(p.pos, [0, road * 0.12 * Math.sin(t * 0.9), road * 0.28 * Math.sin(t * 0.45)]) };
   const c = makeCam(p);
   let push = 0;
-  for (const h of HITS) { const a = t - h.land; if (a >= 0 && a < 0.5) push += (h.big ? 0.4 : 0.14) * kick(a, 10); }
+  for (const h of HITS) { const a = t - h.land; if (!h.chord && a >= 0 && a < 0.5) push += (h.big ? 0.4 : 0.14) * kick(a, 10); }
   return { ...p, pos: v3.add(p.pos, v3.mul(c.fw, push)) };
 }
 
@@ -341,7 +345,7 @@ export const Beads: React.FC<{ t: number; y: number; S: TuneStory; from?: number
 
 // --- the film ---------------------------------------------------------------------------------------------------------------------------
 /** The tunes cut in this look: #71's Rising Sun, then the next ones from king/tunes.mjs. */
-export const WOOD_TUNES = ['rising', 'canon', 'scarborough', 'greensleeves', 'birthday', 'gladiators', 'darkeyes', 'bulerias', 'cucaracha'] as const;
+export const WOOD_TUNES = ['rising', 'canon', 'scarborough', 'greensleeves', 'birthday', 'gladiators', 'darkeyes', 'bulerias', 'cucaracha', 'hava', 'polkka'] as const;
 export type WoodTune = (typeof WOOD_TUNES)[number];
 /** The soundtrack render-rising.mjs lays for a tune (#71 keeps its old name). */
 export const woodWav = (tune: WoodTune) => (tune === 'rising' ? 'rising-wood.wav' : `wood-${tune}.wav`);
@@ -366,13 +370,22 @@ export const Lens: React.FC<{ frame: number }> = ({ frame }) => (
     </svg>
   </>
 );
-/** Scene 3's type: your turn, and which song next. */
-export const YourTurn: React.FC<{ t: number; T: TuneStory['T'] }> = ({ t, T }) => (
+/** Scene 3's type: your turn, then which song next (`end: 'next'`) or a call to follow for the next tunes (`'follow'`). */
+export const YourTurn: React.FC<{ t: number; T: TuneStory['T']; end?: TuneStory['END_TEXT'] }> = ({ t, T, end = 'next' }) => (
   <>
     <Line t={t} at={T.cta} y={300} size={150}>Your turn.</Line>
     <Caps t={t} at={T.sub} y={440} text="NO TABS · JUST YOUR EARS" />
-    <Line t={t} at={T.comment} y={1560} size={66}>{'Which song should\nwe play '}<span style={{ fontStyle: 'italic', color: WOOD.lilac }}>next?</span></Line>
-    <Caps t={t} at={T.comment + 0.35} y={1720} text="TELL US BELOW ↓" color={WOOD.lilac} />
+    {end === 'follow' ? (
+      <>
+        <Line t={t} at={T.comment} y={1560} size={66}>{'Follow for '}<span style={{ fontStyle: 'italic', color: WOOD.lilac }}>the next tune</span>{'\nto play by ear'}</Line>
+        <Caps t={t} at={T.comment + 0.35} y={1720} text="NEW CHALLENGES · NO TABS" color={WOOD.lilac} />
+      </>
+    ) : (
+      <>
+        <Line t={t} at={T.comment} y={1560} size={66}>{'Which song should\nwe play '}<span style={{ fontStyle: 'italic', color: WOOD.lilac }}>next?</span></Line>
+        <Caps t={t} at={T.comment + 0.35} y={1720} text="TELL US BELOW ↓" color={WOOD.lilac} />
+      </>
+    )}
   </>
 );
 /** Scrims so the type reads over the wood. */
@@ -393,16 +406,27 @@ export const RisingWood: React.FC<{ silent?: boolean; tune?: WoodTune; neck?: bo
       <AbsoluteFill style={{ background: SCRIM }} />
 
       {/* scene 1 · the hook */}
-      <Caps t={t} at={-0.2} outAt={2.2} y={260} text="ONE LISTEN" />
-      <Line t={t} at={-0.2} outAt={2.2} y={430} size={124}>Can you play it</Line>
-      <Line t={t} at={0.15} outAt={2.2} y={575} size={124}><span style={{ fontStyle: 'italic', color: WOOD.lilac }}>without tabs?</span></Line>
+      {W.S.HOOK_TEXT === 'guitarist' ? (
+        <>
+          <Caps t={t} at={-0.2} outAt={2.2} y={230} text="GUITARISTS ONLY" color={WOOD.lilac} />
+          <Line t={t} at={-0.2} outAt={2.2} y={360} size={92}>One listen.</Line>
+          <Line t={t} at={0.05} outAt={2.2} y={490} size={124}>Can you play it</Line>
+          <Line t={t} at={0.2} outAt={2.2} y={635} size={124}><span style={{ fontStyle: 'italic', color: WOOD.lilac }}>without tabs?</span></Line>
+        </>
+      ) : (
+        <>
+          <Caps t={t} at={-0.2} outAt={2.2} y={260} text="ONE LISTEN" />
+          <Line t={t} at={-0.2} outAt={2.2} y={430} size={124}>Can you play it</Line>
+          <Line t={t} at={0.15} outAt={2.2} y={575} size={124}><span style={{ fontStyle: 'italic', color: WOOD.lilac }}>without tabs?</span></Line>
+        </>
+      )}
 
       {/* scene 2 · hear the melody, once */}
       <Line t={t} at={T.listen + 0.05} outAt={T.hold} y={290} size={96} italic>Listen once.</Line>
       {W.S.SCORE ? <Staff t={t} y={350} S={W.S} show={presence(t, T.listen + 0.15, T.hold)} /> : <Beads t={t} y={400} S={W.S} />}
 
       {/* scene 3 · your turn, and which song next */}
-      <YourTurn t={t} T={T} />
+      <YourTurn t={t} T={T} end={W.S.END_TEXT} />
       <Lens frame={frame} />
       {!silent && <Audio src={staticFile(woodWav(tune))} />}
     </AbsoluteFill>
