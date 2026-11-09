@@ -40,7 +40,30 @@ export function keyValueOverRowStore(
   };
 }
 
-/** Return the stored device id, generating and persisting one on first use. */
+/**
+ * A getter that resolves the device id once and hands every caller the same promise. On first launch
+ * several events fire within the same second; calling `getOrCreateDeviceId` from each of them lets every
+ * caller read an empty store and mint its own id (prod 2026-11-08: one install, three device ids). A
+ * failed read is not cached, so the next call tries again.
+ */
+export function createDeviceIdSource(
+  store: KeyValueStore,
+  rand: () => number = Math.random,
+): () => Promise<string> {
+  let pending: Promise<string> | null = null;
+  return () => {
+    if (!pending) {
+      pending = getOrCreateDeviceId(store, rand).catch((err) => {
+        pending = null;
+        throw err;
+      });
+    }
+    return pending;
+  };
+}
+
+/** Return the stored device id, generating and persisting one on first use. Not safe to call
+ * concurrently before an id exists — app code goes through `createDeviceIdSource`. */
 export async function getOrCreateDeviceId(
   store: KeyValueStore,
   rand: () => number = Math.random,

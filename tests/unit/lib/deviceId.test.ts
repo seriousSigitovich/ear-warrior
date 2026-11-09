@@ -1,4 +1,9 @@
-import { KeyValueStore, generateDeviceId, getOrCreateDeviceId } from '../../../src/lib/deviceId';
+import {
+  KeyValueStore,
+  createDeviceIdSource,
+  generateDeviceId,
+  getOrCreateDeviceId,
+} from '../../../src/lib/deviceId';
 
 /** Deterministic RNG cycling through a fixed sequence. */
 function seededRand(seq: number[]): () => number {
@@ -43,5 +48,30 @@ describe('anonymous device id (R9)', () => {
     expect(store.data['ew.deviceId']).toBe(id);
     // second call reuses the persisted id
     expect(await getOrCreateDeviceId(store, () => 0.1)).toBe(id);
+  });
+
+  test('a shared source gives concurrent first-launch callers one id', async () => {
+    const store = fakeStore();
+    let n = 0;
+    const get = createDeviceIdSource(store, () => (n++ % 16) / 16);
+    const ids = await Promise.all([get(), get(), get()]);
+    expect(new Set(ids).size).toBe(1);
+    expect(store.data['ew.deviceId']).toBe(ids[0]);
+  });
+
+  test('a failed first read is retried, not cached', async () => {
+    const store = fakeStore();
+    let fail = true;
+    const flaky: KeyValueStore = {
+      async getItem(key) {
+        if (fail) throw new Error('db not ready');
+        return store.getItem(key);
+      },
+      setItem: (key, value) => store.setItem(key, value),
+    };
+    const get = createDeviceIdSource(flaky, () => 0.5);
+    await expect(get()).rejects.toThrow('db not ready');
+    fail = false;
+    expect(await get()).toMatch(/^dev_[0-9a-f]{32}$/);
   });
 });

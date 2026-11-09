@@ -1,6 +1,7 @@
 // The one AuthService of the running app, wired to the real device pieces: HTTP client, OS secure store,
 // and the SQLite key-value table that already holds the anonymous device id.
-import { getOrCreateDeviceId, keyValueOverRowStore } from '../../lib/deviceId';
+import { keyValueOverRowStore } from '../../lib/deviceId';
+import { appDeviceId } from '../device/appDeviceId';
 import { createAuthClient } from '../../services/auth/client';
 import { createAuthService, AuthService, AuthState } from '../../services/auth/service';
 import { createSecureSessionStore } from '../../services/auth/session';
@@ -19,7 +20,7 @@ export function getAuthService(): AuthService {
       client: createAuthClient(API_URL),
       session: createSecureSessionStore(),
       kv,
-      getDeviceId: () => getOrCreateDeviceId(kv),
+      getDeviceId: appDeviceId,
       now: Date.now,
     });
   }

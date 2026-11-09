@@ -1,7 +1,6 @@
 // The one product-event tracker of the running app: resolves the device id lazily and sends through the
 // outbox. `track` is fire-and-forget — analytics must never delay or fail the app.
-import { getOrCreateDeviceId, keyValueOverRowStore } from '../../lib/deviceId';
-import { KEY_VALUE_TABLE, defaultRowStore } from '../../services/storage/db';
+import { appDeviceId } from '../device/appDeviceId';
 import {
   AppEventName,
   AppEventOutbox,
@@ -44,7 +43,7 @@ export function track(name: AppEventName, props: Record<string, number | string 
   const box = getOutbox();
   if (!box) return;
   const at = new Date(); // the moment it happened, not the moment it is flushed
-  void getOrCreateDeviceId(keyValueOverRowStore(defaultRowStore(), KEY_VALUE_TABLE))
+  void appDeviceId()
     .then((deviceId) => box.log(buildEventPayload(name, deviceId, APP_VERSION, at, props)))
     .catch(() => undefined);
 }
