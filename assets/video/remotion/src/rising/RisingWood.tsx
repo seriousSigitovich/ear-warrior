@@ -345,7 +345,7 @@ export const Beads: React.FC<{ t: number; y: number; S: TuneStory; from?: number
 
 // --- the film ---------------------------------------------------------------------------------------------------------------------------
 /** The tunes cut in this look: #71's Rising Sun, then the next ones from king/tunes.mjs. */
-export const WOOD_TUNES = ['rising', 'canon', 'scarborough', 'greensleeves', 'birthday', 'gladiators', 'darkeyes', 'bulerias', 'cucaracha', 'hava', 'polkka'] as const;
+export const WOOD_TUNES = ['rising', 'canon', 'scarborough', 'greensleeves', 'birthday', 'gladiators', 'darkeyes', 'bulerias', 'cucaracha', 'hava', 'polkka', 'habanera'] as const;
 export type WoodTune = (typeof WOOD_TUNES)[number];
 /** The soundtrack render-rising.mjs lays for a tune (#71 keeps its old name). */
 export const woodWav = (tune: WoodTune) => (tune === 'rising' ? 'rising-wood.wav' : `wood-${tune}.wav`);
@@ -398,6 +398,9 @@ export const RisingWood: React.FC<{ silent?: boolean; tune?: WoodTune; neck?: bo
   const t = frame / fps;
   const W = WOODS[tune], { T } = W.S;
   const cam = makeCam(W.cameraAt(t));
+  // a short intro (listenAt < 2 s): the hook stays until the melody and the staff takes its place, with no "Listen once." between
+  const shortIntro = T.listenAt < 2;
+  const hookOut = shortIntro ? T.listenAt - 0.15 : 2.2;
 
   return (
     <AbsoluteFill style={{ background: WOOD.bg, overflow: 'hidden' }}>
@@ -406,24 +409,31 @@ export const RisingWood: React.FC<{ silent?: boolean; tune?: WoodTune; neck?: bo
       <AbsoluteFill style={{ background: SCRIM }} />
 
       {/* scene 1 · the hook */}
-      {W.S.HOOK_TEXT === 'guitarist' ? (
+      {W.S.HOOK_TEXT === 'byear' ? (
         <>
-          <Caps t={t} at={-0.2} outAt={2.2} y={230} text="GUITARISTS ONLY" color={WOOD.lilac} />
-          <Line t={t} at={-0.2} outAt={2.2} y={360} size={92}>One listen.</Line>
-          <Line t={t} at={0.05} outAt={2.2} y={490} size={124}>Can you play it</Line>
-          <Line t={t} at={0.2} outAt={2.2} y={635} size={124}><span style={{ fontStyle: 'italic', color: WOOD.lilac }}>without tabs?</span></Line>
+          <Caps t={t} at={-0.2} outAt={hookOut} y={230} text="GUITARISTS ONLY" color={WOOD.lilac} />
+          <Line t={t} at={-0.2} outAt={hookOut} y={360} size={92}>One listen.</Line>
+          <Line t={t} at={0.05} outAt={hookOut} y={490} size={124}>Can you play this</Line>
+          <Line t={t} at={0.2} outAt={hookOut} y={635} size={124}><span style={{ fontStyle: 'italic', color: WOOD.lilac }}>by ear?</span></Line>
+        </>
+      ) : W.S.HOOK_TEXT === 'guitarist' ? (
+        <>
+          <Caps t={t} at={-0.2} outAt={hookOut} y={230} text="GUITARISTS ONLY" color={WOOD.lilac} />
+          <Line t={t} at={-0.2} outAt={hookOut} y={360} size={92}>One listen.</Line>
+          <Line t={t} at={0.05} outAt={hookOut} y={490} size={124}>Can you play it</Line>
+          <Line t={t} at={0.2} outAt={hookOut} y={635} size={124}><span style={{ fontStyle: 'italic', color: WOOD.lilac }}>without tabs?</span></Line>
         </>
       ) : (
         <>
-          <Caps t={t} at={-0.2} outAt={2.2} y={260} text="ONE LISTEN" />
-          <Line t={t} at={-0.2} outAt={2.2} y={430} size={124}>Can you play it</Line>
-          <Line t={t} at={0.15} outAt={2.2} y={575} size={124}><span style={{ fontStyle: 'italic', color: WOOD.lilac }}>without tabs?</span></Line>
+          <Caps t={t} at={-0.2} outAt={hookOut} y={260} text="ONE LISTEN" />
+          <Line t={t} at={-0.2} outAt={hookOut} y={430} size={124}>Can you play it</Line>
+          <Line t={t} at={0.15} outAt={hookOut} y={575} size={124}><span style={{ fontStyle: 'italic', color: WOOD.lilac }}>without tabs?</span></Line>
         </>
       )}
 
       {/* scene 2 · hear the melody, once */}
-      <Line t={t} at={T.listen + 0.05} outAt={T.hold} y={290} size={96} italic>Listen once.</Line>
-      {W.S.SCORE ? <Staff t={t} y={350} S={W.S} show={presence(t, T.listen + 0.15, T.hold)} /> : <Beads t={t} y={400} S={W.S} />}
+      {!shortIntro && <Line t={t} at={T.listen + 0.05} outAt={T.hold} y={290} size={96} italic>Listen once.</Line>}
+      {W.S.SCORE ? <Staff t={t} y={350} S={W.S} show={presence(t, shortIntro ? T.listenAt - 0.1 : T.listen + 0.15, T.hold)} /> : <Beads t={t} y={400} S={W.S} />}
 
       {/* scene 3 · your turn, and which song next */}
       <YourTurn t={t} T={T} end={W.S.END_TEXT} />

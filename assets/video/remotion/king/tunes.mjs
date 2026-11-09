@@ -28,7 +28,7 @@ function story({ id, title, notes, melody, bpm, hook, hookChord, chord, maxFret 
     // `hookChord`: the opening hit strums the key's chord ([string, fret] each, low to high) in place of one low note, so the ear has the
     // key before the tune; `hook` is then the chord's root, where the camera sits
     HOOK_CHORD: hookChord?.map(([string, fret]) => ({ string, fret, midi: midiAt(string, fret) })),
-    HOOK_TEXT: hookText,                                            // '97': "97% of guitarists can't play this by ear" · 'tabs': "can you play this without tabs?" · 'guitarist': 'tabs' under "guitarists only"
+    HOOK_TEXT: hookText,                                            // '97': "97% of guitarists can't play this by ear" · 'tabs': "can you play this without tabs?" · 'guitarist': 'tabs' under "guitarists only" · 'byear': "can you play this by ear?" under "guitarists only"
     END_TEXT: endText,                                              // 'next': "which song next?" · 'follow': follow for the next tunes
     CHORD: chord,
     SCORE: score,                                                   // the melody as written music (score() below), drawn as a staff
@@ -64,7 +64,7 @@ const PHRASE_GLADIATORS = [
 ];
 
 /** Durations of `score()` tokens, in quarter beats. */
-const DUR = { 16: 0.25, 8: 0.5, '8.': 0.75, q: 1, 'q.': 1.5, h: 2, 'h.': 3, w: 4 };
+const DUR = { 16: 0.25, 8: 0.5, '8.': 0.75, q: 1, 'q.': 1.5, h: 2, 'h.': 3, w: 4, '8t': 1 / 3, '16t': 1 / 6 };   // 8t/16t: triplets, three in the time of two
 /**
  * A melody written as guitar music: bars of `<pitch><octave>:<dur>[~]` tokens (B♭ as Bb, sharps as #; `~` ties into the next token), written
  * an octave above the sound as guitar parts are. Gives story() its `melody` (a tied note is one attack; each on the lowest fret it has) and
@@ -75,7 +75,7 @@ function score({ key, time, bars, maxFret = 4 }) {
   const parsed = bars.map((bar) => bar.split(/\s+/).map((tok) => {
     const r = tok.match(/^r:(16|8\.?|q\.?|h\.?|w)$/);              // a rest: silence that lengthens the note before it in time
     if (r) return { step: 'r', acc: '', octave: 0, dur: r[1], beats: DUR[r[1]], tie: false, midi: NaN, rest: true };
-    const m = tok.match(/^([A-G])(#|b)?(\d):(16|8\.?|q\.?|h\.?|w)(~)?$/);
+    const m = tok.match(/^([A-G])(#|b)?(\d):(16t?|8t|8\.?|q\.?|h\.?|w)(~)?$/);
     if (!m) throw new Error(`score: bad token ${tok}`);
     const written = 12 * (Number(m[3]) + 1) + PC[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0);
     return { step: m[1], acc: m[2] ?? '', octave: Number(m[3]), dur: m[4], beats: DUR[m[4]], tie: !!m[5], midi: written - 12 };
@@ -412,6 +412,29 @@ export const TUNES = {
     ],
     strum: [45, 52, 57, 61, 64],                                   // A major x02220
     bpm: 200, hook: [0, 0], chord: [69, 73, 76],                  // hit E2, the fifth · A major (phrygian home)
+  }),
+  // Bizet, Carmen (1875, public domain), the Habanera "L'amour est un oiseau rebelle": its first line, the chromatic fall everyone knows —
+  // "L'a-mour est un oi-seau re-bel-le, que nul ne peut ap-pri-voi-ser". From the LilyPond score in en.wikipedia's "Habanera (aria)" (D minor,
+  // 2/4, Carmen's line): r4 d8 cis | \times 2/3 { c c c } b bes | a8 a16 a gis8 g | \times 2/3 { f16 g f } e f g8 f | e8. Written an octave
+  // above the sound: E3–D4 on the D, G and B strings, frets 0–3, 17 notes. ♩ = 76 (Allegretto quasi andantino). Opens on a D minor strum
+  // (the key's chord); the line stops on E over the dominant, so home is an A7 strum, the question the habanera keeps asking.
+  habanera: story({
+    id: 'habanera', title: 'Habanera (Carmen)', hookText: 'byear', endText: 'follow', ring: 0.55,
+    listenAt: 1.4,                                                 // the author: the intro halved (2.75 → 1.4 s); the hook gives way to the staff, no "Listen once."
+    gaps: { hold: 0.32, cta: 0.1, sub: 0.25, comment: 0.2, sweep: 0.6, end: 1.7 },  // the author: 2 s off the tail; the follow line still 2 s
+    ...score({
+      key: 'Dm', time: [2, 4],
+      bars: [
+        'D5:8 C#5:8',                               // L'a-mour
+        'C5:8t C5:8t C5:8t B4:8 Bb4:8',             // est un oi-seau re-
+        'A4:8 A4:16 A4:16 G#4:8 G4:8',              // -bel-le, que nul ne
+        'F4:16t G4:16t F4:16t E4:16 F4:16 G4:8 F4:8', // peut ap-pri-voi-
+        'E4:h',                                     // -ser: the E sounds as the strum
+      ],
+    }),
+    hookChord: [[2, 0], [3, 2], [4, 3], [5, 1]],                   // D minor xx0231, the opening hit
+    strum: [45, 52, 55, 61, 64],                                   // A7 x02020, home
+    bpm: 76, hook: [2, 0], chord: [69, 73, 76],                   // the chord's root D3 · A major (the dominant the line ends on)
   }),
   // The same arpeggio as a 10 s looping band cut (src/rising/RisingBand.tsx): the melody from frame 0, ♩ = 144 so the film is exactly eight bars
   // (seven of melody, one bar of E back into the top), the "your turn" gaps tightened.

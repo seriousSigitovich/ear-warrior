@@ -42,6 +42,7 @@ import {
   FretPosition,
   FretTap,
   addTap,
+  fretMidi,
   makeTap,
   tapsToDetected,
   undoTap,
@@ -483,6 +484,19 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
     [deps, phase, phrase, replaying, endReplay],
   );
 
+  /**
+   * Draft mode (spec 008): sound the tapped fret and nothing else — the answer, grade and progress
+   * never see it. Like an answer tap, it cuts a replay so the note can be compared with the melody.
+   */
+  const playFret = useCallback(
+    (position: FretPosition) => {
+      if (phase !== 'awaitingInput') return;
+      if (replaying) endReplay(false);
+      deps.playback.playReferenceTone(fretMidi(position)).catch(() => undefined);
+    },
+    [deps, phase, replaying, endReplay],
+  );
+
   const undoFret = useCallback(() => setAnswer((prev) => undoTap(prev)), []);
   const clearFrets = useCallback(() => setAnswer([]), []);
 
@@ -540,6 +554,7 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
       revealAnswer,
       nextPhrase,
       tapFret,
+      playFret,
       undoFret,
       clearFrets,
       submitAnswer,
@@ -572,6 +587,7 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
       revealAnswer,
       nextPhrase,
       tapFret,
+      playFret,
       undoFret,
       clearFrets,
       submitAnswer,

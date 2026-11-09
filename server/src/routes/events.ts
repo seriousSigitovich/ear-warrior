@@ -22,6 +22,7 @@ export const EVENT_NAMES = [
   'melody_replay',
   'answer_start',
   'answer_check',
+  'draft_on',
   'session_end',
 ] as const;
 

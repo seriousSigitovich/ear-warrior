@@ -30,6 +30,16 @@ export function placementAnnouncement(taps: FretTap[], noteCount: number): strin
   return `${noteName(last.midi)}, ${taps.length} of ${noteCount} placed`;
 }
 
+/** Spoken after a tap in draft mode (spec 008): the pitch it sounded, and that it was not placed. */
+export function draftTapAnnouncement(midi: number): string {
+  return `${noteName(midi)}, draft`;
+}
+
+/** Spoken when draft mode is switched, saying what a tap now does. */
+export function draftToggleAnnouncement(on: boolean): string {
+  return on ? 'Draft on. Taps are not answers.' : 'Draft off. Taps place notes.';
+}
+
 /** Spoken when the verdict appears (A4c); same facts as the verdict card. */
 export function verdictAnnouncement(grade: AttemptGrade): string {
   const total = grade.noteResults.filter((r) => r.targetIndex !== null).length;

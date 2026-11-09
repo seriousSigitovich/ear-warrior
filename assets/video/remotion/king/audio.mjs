@@ -27,7 +27,7 @@ export function renderKingAudio(path, S) {
   const gtr = track(DURATION);                                    // everything that goes through the reverb
 
   // scene 1 — the hook, on frame 0: a hard pluck of a low string (or a downstroke of the key's chord), a pick snap, the board "thock"
-  if (S.HOOK_CHORD) S.HOOK_CHORD.forEach((n, k) => gtr.mix(guitarNote(n.midi, 2.3, 0.6), k * STRUM_GAP, 0.8));
+  if (S.HOOK_CHORD) S.HOOK_CHORD.forEach((n, k) => gtr.mix(guitarNote(n.midi, Math.min(2.3, S.T.listenAt - 0.05), 0.6), k * STRUM_GAP, 0.8));   // a short intro: damped before the melody
   else {
     gtr.mix(pluck(HOOK_NOTE.midi, 1.5), 0, 1.1);
     gtr.mix(pluck(HOOK_NOTE.midi + 12, 0.8, 0x1234abcd), 0, 0.4);

@@ -20,6 +20,12 @@ test('accepts the funnel events with their props', () => {
   assert.equal(EventBody.safeParse({ ...base, name: 'signin_error', props: { step: 'requesting', error: 'mail_failed' } }).success, true);
 });
 
+test('accepts draft mode events (spec 008)', () => {
+  assert.equal(EventBody.safeParse({ ...base, name: 'draft_on', props: { rank: 3, phrase: 2, phrases: 4 } }).success, true);
+  const check = { verdict: 'correct', rank: 3, n: 1, speed: 1, phrase: 2, phrases: 4, first: true, help: 'none', draft: true };
+  assert.equal(EventBody.safeParse({ ...base, name: 'answer_check', props: check }).success, true);
+});
+
 test('rejects an unknown event name', () => {
   assert.equal(EventBody.safeParse({ ...base, name: 'purchase' }).success, false);
 });

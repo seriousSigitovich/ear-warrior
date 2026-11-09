@@ -7,7 +7,14 @@ import { Session } from '../src/models';
 import { curatedMelody, historyFromAttempts } from '../src/services/melody/curated';
 import { DEFAULT_GRADING_CFG } from '../src/services/grading/grade';
 import { MAX_RANK, MIN_RANK } from '../src/services/melody/levels';
-import { tapStatuses } from '../src/lib/fretboard';
+import { FretPosition, fretMidi, tapStatuses } from '../src/lib/fretboard';
+import {
+  DraftState,
+  draftPhraseChecked,
+  draftPhraseStarted,
+  initialDraft,
+  toggleDraft,
+} from '../src/lib/draft';
 import { shouldOfferHelp } from '../src/lib/hints';
 import { createAudioPlayback } from '../src/services/audio/playback';
 import { createAudioSession } from '../src/services/audio/session';
@@ -63,6 +70,18 @@ const API_URL = process.env.EXPO_PUBLIC_API_URL;
 export default function Practice() {
   // Which help, if any, the learner took on the phrase on screen: rides along on its next check.
   const helpRef = useRef<string>('none');
+  // Draft mode (spec 008): on/off for this visit, and whether it was used on the phrase on screen. The
+  // ref is what the loop's callbacks read; the state is what renders.
+  const [draft, setDraftState] = useState<DraftState>(initialDraft);
+  const draftRef = useRef(draft);
+  const setDraft = useCallback((next: DraftState) => {
+    draftRef.current = next;
+    setDraftState(next);
+  }, []);
+  // The last draft tap, flashed on the board.
+  const [flash, setFlash] = useState<{ position: FretPosition; id: number; midi: number } | null>(
+    null,
+  );
   // One durable store shared by every repository, and one session per visit to this screen.
   const store = useMemo(() => defaultRowStore(), []);
   const repos = useMemo(
@@ -205,6 +224,8 @@ export default function Practice() {
       // One check per phrase. `n` is the tune of this visit it belongs to, `first` marks the try the
       // tune is scored on.
       onPhraseChecked: ({ phrase, phrases, grade, first }) => {
+        const checked = draftPhraseChecked(draftRef.current);
+        setDraft(checked.state);
         track('answer_check', {
           verdict: grade.verdict,
           rank: rankRef.current,
@@ -214,10 +235,22 @@ export default function Practice() {
           phrases,
           first,
           help: helpRef.current,
+          draft: checked.draft,
         });
       },
     }),
-    [playback, repos, difficulty, loadHistory, progress, sessionId, outbox, deviceId, session],
+    [
+      playback,
+      repos,
+      difficulty,
+      loadHistory,
+      progress,
+      sessionId,
+      outbox,
+      deviceId,
+      session,
+      setDraft,
+    ],
   );
 
   const loop = usePracticeLoop(deps);
@@ -226,7 +259,8 @@ export default function Practice() {
   const phraseKey = `${loop.melody?.id}:${loop.phraseIndex}`;
   useEffect(() => {
     helpRef.current = 'none';
-  }, [phraseKey]);
+    setDraft(draftPhraseStarted(draftRef.current));
+  }, [phraseKey, setDraft]);
   const loopRetryWithHint = loop.retryWithHint;
   const loopRevealAnswer = loop.revealAnswer;
   const showFirstNote = useCallback(() => {
@@ -278,6 +312,33 @@ export default function Practice() {
   const introPlaying = loop.phase === 'playingMelody' && loop.listening === 'tune';
   const stuck = showFeedback && grade!.verdict !== 'correct' && shouldOfferHelp(loop.fails);
 
+  // A flash belongs to the board it was tapped on: gone once the answer view closes.
+  useEffect(() => {
+    if (!answering) setFlash(null);
+  }, [answering]);
+  const phraseNo = loop.phraseIndex + 1;
+  const phraseTotal = loop.phrases;
+  const switchDraft = useCallback(() => {
+    const toggled = toggleDraft(draftRef.current);
+    setDraft(toggled.state);
+    if (!toggled.state.on) setFlash(null);
+    if (toggled.track) track('draft_on', { rank, phrase: phraseNo, phrases: phraseTotal });
+  }, [setDraft, rank, phraseNo, phraseTotal]);
+  // Draft taps only sound (and flash); everything else goes to the answer as before.
+  const loopTapFret = loop.tapFret;
+  const loopPlayFret = loop.playFret;
+  const tapFret = useCallback(
+    (position: FretPosition) => {
+      if (!draftRef.current.on) {
+        loopTapFret(position);
+        return;
+      }
+      loopPlayFret(position);
+      setFlash((prev) => ({ position, id: (prev?.id ?? 0) + 1, midi: fretMidi(position) }));
+    },
+    [loopTapFret, loopPlayFret],
+  );
+
   return (
     <Screen edges={['bottom']}>
       {answering ? null : (
@@ -322,9 +383,12 @@ export default function Practice() {
         <FretboardAnswer
           noteCount={noteCount}
           taps={loop.answer}
-          onTap={loop.tapFret}
+          onTap={tapFret}
           replaying={loop.replaying}
           hint={loop.hint}
+          draft={draft.on}
+          onToggleDraft={switchDraft}
+          flash={flash}
         />
       ) : (
         <PracticeStage phase={loop.phase} />

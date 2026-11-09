@@ -45,6 +45,13 @@ export interface FretboardProps {
   hint?: FretPosition | null;
   /** A string to draw in the accent colour: "everything happens on this one" (the first melody). */
   focusString?: number;
+  /**
+   * A draft tap (spec 008): a ring on that cell that fades out on its own. A new `id` restarts it, so
+   * the same cell can flash again. Purely visual: no marker, the cell's label does not change.
+   */
+  flash?: { position: FretPosition; id: number } | null;
+  /** Draft mode: the neck is drawn as a blueprint (strings, frets, nut, inlays, frame). */
+  draft?: boolean;
   style?: StyleProp<ViewStyle>;
 }
 
@@ -68,6 +75,8 @@ export function Fretboard({
   rowHeight,
   hint,
   focusString,
+  flash,
+  draft = false,
   style,
 }: FretboardProps) {
   // Last tap wins when the same cell is pressed twice, so its number is the most recent one.
@@ -85,7 +94,7 @@ export function Fretboard({
 
   return (
     <View
-      style={[styles.board, style]}
+      style={[styles.board, draft && styles.boardDraft, style]}
       accessible={summary !== undefined}
       accessibilityLabel={summary}
     >
@@ -131,6 +140,12 @@ export function Fretboard({
                   }
                   hinted={hint?.string === string && hint?.fret === fret}
                   focused={string === focusString}
+                  draft={draft}
+                  flashId={
+                    flash?.position.string === string && flash.position.fret === fret
+                      ? flash.id
+                      : undefined
+                  }
                   ringSize={marker + 14}
                   onTap={onTap}
                 />
@@ -159,6 +174,8 @@ function Cell({
   marker,
   hinted,
   focused,
+  draft,
+  flashId,
   ringSize,
   onTap,
 }: {
@@ -167,6 +184,8 @@ function Cell({
   marker?: MarkerInfo;
   hinted: boolean;
   focused: boolean;
+  draft: boolean;
+  flashId?: number;
   ringSize: number;
   onTap?: (position: FretPosition) => void;
 }) {
@@ -188,13 +207,20 @@ function Cell({
             marginLeft: -width / 2,
             backgroundColor: focused
               ? colors.accent
-              : withAlpha(colors.neutral[400], 0.65 - string * 0.07),
+              : withAlpha(draft ? colors.draft : colors.neutral[400], 0.65 - string * 0.07),
           },
         ]}
       />
-      <View style={[styles.fretLine, fret === 0 ? styles.nut : styles.fretWire]} />
-      {inlay ? <View style={styles.inlay} /> : null}
+      <View
+        style={[
+          styles.fretLine,
+          fret === 0 ? styles.nut : styles.fretWire,
+          draft && (fret === 0 ? styles.nutDraft : styles.fretWireDraft),
+        ]}
+      />
+      {inlay ? <View style={[styles.inlay, draft && styles.inlayDraft]} /> : null}
       {hinted ? <HintRing size={ringSize} /> : null}
+      {flashId !== undefined ? <FlashRing key={flashId} size={ringSize} tinted={draft} /> : null}
       {marker ? <Marker {...marker} /> : null}
     </>
   );
@@ -272,6 +298,41 @@ function HintRing({ size }: { size: number }) {
   );
 }
 
+/** How long a draft tap stays visible on the board. */
+const FLASH_MS = 700;
+
+/**
+ * "This one sounded": a ring that fades out once (draft tap). Keyed by tap, so each tap restarts it.
+ * With reduced motion it holds still for the same time, then goes.
+ */
+function FlashRing({ size, tinted }: { size: number; tinted: boolean }) {
+  const still = useReduceMotion();
+  const fade = useRef(new Animated.Value(1)).current;
+  const [gone, setGone] = useState(false);
+  useEffect(() => {
+    if (still) {
+      const timer = setTimeout(() => setGone(true), FLASH_MS);
+      return () => clearTimeout(timer);
+    }
+    const anim = Animated.timing(fade, {
+      toValue: 0,
+      duration: FLASH_MS,
+      easing: Easing.in(Easing.quad),
+      useNativeDriver: true,
+    });
+    anim.start(({ finished }) => finished && setGone(true));
+    return () => anim.stop();
+  }, [still, fade]);
+  if (gone) return null;
+  return (
+    <View style={styles.markerWrap} pointerEvents="none">
+      <Animated.View
+        style={[styles.flashRing, tinted && styles.flashRingDraft, circle(size), { opacity: fade }]}
+      />
+    </View>
+  );
+}
+
 function circle(size: number): ViewStyle {
   return { width: size, height: size, borderRadius: size / 2 };
 }
@@ -284,6 +345,7 @@ const styles = StyleSheet.create({
     borderColor: colors.divider,
     padding: 8,
   },
+  boardDraft: { backgroundColor: colors.draftSurface, borderColor: withAlpha(colors.draft, 0.6) },
   labels: { flexDirection: 'row', paddingBottom: 4 },
   stringLabel: { flex: 1, textAlign: 'center', fontSize: 11, color: textAlpha[55] },
   focusLabel: { color: colors.accent, fontWeight: '700' },
@@ -303,6 +365,8 @@ const styles = StyleSheet.create({
   fretLine: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   nut: { height: 4, backgroundColor: withAlpha(colors.neutral[300], 0.85) },
   fretWire: { height: 1, backgroundColor: withAlpha(colors.neutral[500], 0.3) },
+  nutDraft: { backgroundColor: withAlpha(colors.draft, 0.9) },
+  fretWireDraft: { backgroundColor: withAlpha(colors.draft, 0.35) },
   inlay: {
     position: 'absolute',
     right: -4,
@@ -313,6 +377,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: withAlpha(colors.text, 0.14),
   },
+  inlayDraft: { backgroundColor: withAlpha(colors.draft, 0.35) },
   markerWrap: {
     position: 'absolute',
     left: 0,
@@ -342,6 +407,13 @@ const styles = StyleSheet.create({
     borderColor: colors.warm,
   },
   markerText: { fontSize: 12, fontWeight: '600' },
+  flashRing: {
+    position: 'absolute',
+    borderWidth: 2,
+    borderColor: colors.accentRamp[300],
+    backgroundColor: withAlpha(colors.accent, 0.3),
+  },
+  flashRingDraft: { borderColor: colors.draft, backgroundColor: withAlpha(colors.draft, 0.3) },
   hintRing: {
     position: 'absolute',
     borderWidth: 2.5,

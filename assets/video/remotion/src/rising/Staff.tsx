@@ -3,7 +3,7 @@
 // sounding note left of centre. VexFlow lays the music out once into two SVG layers: the whole score in dim cream, and the notes alone in
 // amber, shown only up to the last note heard (a clip that moves note by note), so a note, its accidental, dot, flag and tie light together.
 import React, { useMemo } from 'react';
-import { Accidental, Beam, Dot, Formatter, Renderer, Stave, StaveNote, StaveTie, Voice } from 'vexflow';
+import { Accidental, Beam, Dot, Formatter, Renderer, Stave, StaveNote, StaveTie, Tuplet, Voice } from 'vexflow';
 import { kick, springAt, type SpringCfg } from '../ten/motion';
 import { clamp, easeOut } from '../util';
 import type { TuneStory, ScoreNote } from '../../king/tunes.d.mts';
@@ -21,7 +21,7 @@ const CALM: SpringCfg = { damping: 18, stiffness: 140, mass: 0.9 };
 type Head = { order: number; x: number; y: number; left: number };
 type Layout = { dim: string; lit: string; width: number; heads: Head[] };
 
-const DURATION: Record<ScoreNote['dur'], string> = { 16: '16', 8: '8', '8.': '8d', q: 'q', 'q.': 'qd', h: 'h', 'h.': 'hd', w: 'w' };
+const DURATION: Record<ScoreNote['dur'], string> = { 16: '16', 8: '8', '8.': '8d', q: 'q', 'q.': 'qd', h: 'h', 'h.': 'hd', w: 'w', '8t': '8', '16t': '16' };
 
 /** Lays the score out once. `notesOnly`: the amber layer, with no staff lines, clef or bar lines. */
 function draw(S: NonNullable<TuneStory['SCORE']>, ink: string, notesOnly: boolean) {
@@ -31,7 +31,7 @@ function draw(S: NonNullable<TuneStory['SCORE']>, ink: string, notesOnly: boolea
   const beatsPerBar = S.time[0] * (4 / S.time[1]);
   const widths = S.bars.map((bar, i) => {
     const beats = bar.reduce((a, n) => a + n.beats, 0);
-    return (i === 0 ? 120 : 0) + BEAT_W * beats;
+    return (i === 0 ? 120 : 0) + Math.max(BEAT_W * beats, 34 * bar.length + 16);   // a dense bar (triplets, sixteenths) widens so its notes don't crowd
   });
   const width = PAD * 2 + widths.reduce((a, w) => a + w, 0);
   const renderer = new Renderer(host, Renderer.Backends.SVG);
@@ -50,12 +50,20 @@ function draw(S: NonNullable<TuneStory['SCORE']>, ink: string, notesOnly: boolea
     if (!notesOnly) stave.draw();
     const notes = bar.map((n) => {
       const note = new StaveNote({ keys: [`${n.step.toLowerCase()}${n.acc}/${n.octave}`], duration: DURATION[n.dur], auto_stem: true });
-      if (n.dur.endsWith('.')) Dot.buildAndAttach([note], { all: true });
+      if (n.dur.endsWith('.') && !n.dur.endsWith('t')) Dot.buildAndAttach([note], { all: true });
       note.setStyle({ fillStyle: ink, strokeStyle: ink });
       note.setLedgerLineStyle({ fillStyle: ink, strokeStyle: ink });
       all.push({ note, n });
       return note;
     });
+    // triplets (8t, 16t): each run of three under a "3", which also gives VexFlow their 2/3 time
+    const tuplets: Tuplet[] = [];
+    for (let j = 0; j < bar.length; j++) {
+      if (!bar[j].dur.endsWith('t')) continue;
+      tuplets.push(new Tuplet(notes.slice(j, j + 3), { num_notes: 3, notes_occupied: 2, bracketed: false }));
+      j += 2;
+    }
+    tuplets.forEach((tp) => tp.setStyle({ fillStyle: ink, strokeStyle: ink }));
     // eighths (and sixteenths) that share a beat are beamed together, as a guitar part is written (a lone eighth keeps its flag); a pickup bar counts its
     // beats from where it starts inside the bar, so three pickup eighths read ♪ ♫, not ♫ ♪
     const barBeats = bar.reduce((a, n) => a + n.beats, 0);
@@ -64,7 +72,7 @@ function draw(S: NonNullable<TuneStory['SCORE']>, ink: string, notesOnly: boolea
     bar.forEach((n, j) => {
       const beat = Math.floor(pos + 1e-6);
       pos += n.beats;
-      if (n.dur !== '8' && n.dur !== '8.' && n.dur !== '16') return;
+      if (!['8', '8.', '16', '8t', '16t'].includes(n.dur)) return;
       const last = groups.at(-1);
       if (last && last.beat === beat && last.end === j) { last.notes.push(notes[j]); last.end = j + 1; }
       else groups.push({ beat, end: j + 1, notes: [notes[j]] });
@@ -77,6 +85,7 @@ function draw(S: NonNullable<TuneStory['SCORE']>, ink: string, notesOnly: boolea
     new Formatter().joinVoices([voice]).format([voice], stave.getNoteEndX() - stave.getNoteStartX() - 14);
     voice.draw(ctx, stave);
     beams.forEach((b) => b.setContext(ctx).draw());
+    tuplets.forEach((tp) => tp.setContext(ctx).draw());
     x += widths[i];
   });
   all.forEach(({ note, n }, i) => {

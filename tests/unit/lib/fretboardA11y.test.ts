@@ -1,6 +1,8 @@
 import { AttemptGrade, NoteResult } from '../../../src/models';
 import { makeTap } from '../../../src/lib/fretboard';
 import {
+  draftTapAnnouncement,
+  draftToggleAnnouncement,
   fretCellLabel,
   placementAnnouncement,
   resultBoardLabel,
@@ -23,6 +25,17 @@ describe('fretCellLabel', () => {
 
   it('adds the note number when a placed note sits on the cell', () => {
     expect(fretCellLabel({ string: 5, fret: 0 }, 2)).toBe('e string, open, note 2');
+  });
+});
+
+describe('draft announcements', () => {
+  it('speaks a draft tap as a played note, not a placed one', () => {
+    expect(draftTapAnnouncement(62)).toBe('D4, draft');
+  });
+
+  it('says what switching draft does', () => {
+    expect(draftToggleAnnouncement(true)).toBe('Draft on. Taps are not answers.');
+    expect(draftToggleAnnouncement(false)).toBe('Draft off. Taps place notes.');
   });
 });
 

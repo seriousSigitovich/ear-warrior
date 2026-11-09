@@ -24,6 +24,7 @@ export type AppEventName =
   | 'melody_replay'
   | 'answer_start'
   | 'answer_check'
+  | 'draft_on'
   | 'session_end';
 
 /** A route as the funnel names it: `/` → `home`, `/sign-in` → `sign_in`. Pure. */

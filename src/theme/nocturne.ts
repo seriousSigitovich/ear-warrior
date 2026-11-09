@@ -60,6 +60,11 @@ export const colors = {
   // "wrong" takes a warm derived hue and "missed" a quiet neutral — four legible roles.
   warm: '#c2a190',
   warmBorder: '#6e5a4d',
+
+  // Draft mode (spec 008): the neck takes the palette's own lavender — accent-2 lines on the accent
+  // ramp's 900 — so it reads as "a different mode" without leaving the Nocturne gamut.
+  draft: '#a7a1db', // = accent2
+  draftSurface: '#2b2741', // = accentRamp[900]
 } as const;
 
 /** Translucent text tints used throughout (color-mix text N% over transparent). */
