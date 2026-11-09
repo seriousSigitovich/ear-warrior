@@ -70,7 +70,7 @@ test('each anonymous device gets its own row under the total, with a short id an
   );
   assert.match(html, /f3a9c21e/);
   assert.doesNotMatch(html, /f3a9c21e-7b4d/, 'only a short prefix of the id is shown');
-  assert.match(html, /с 2026-10-25/);
+  assert.match(html, />2026-10-25</);
   assert.match(html, /70\s?%/, 'per-device share = 7/10');
   assert.ok(html.indexOf('Без входа') < html.indexOf('f3a9c21e'), 'devices sit under the total row');
   assert.ok(html.indexOf('f3a9c21e') < html.indexOf('0b1c2d3e'), 'devices keep the order they come in');
@@ -82,4 +82,15 @@ test('anonymous device ids are escaped (they come from the client)', () => {
     NOW,
   );
   assert.doesNotMatch(html, /<b>x/);
+});
+
+test('sorts accounts by the asked column and marks that header', () => {
+  const acc = (email: string, attempts: number, lastAt: string) => ({ email, createdAt: NOW, devices: 1, attempts, attempts7d: attempts, correct: attempts, lastAt: new Date(lastAt) });
+  const r = report({ accounts: [acc('recent@x.co', 2, '2026-10-25T11:00:00Z'), acc('busy@x.co', 50, '2026-10-20T11:00:00Z')] });
+  const byLast = renderUsersPage(r, NOW);
+  assert.ok(byLast.indexOf('recent@x.co') < byLast.indexOf('busy@x.co'), 'default keeps the loader order');
+  const byAttempts = renderUsersPage(r, NOW, 'attempts');
+  assert.ok(byAttempts.indexOf('busy@x.co') < byAttempts.indexOf('recent@x.co'));
+  assert.match(byAttempts, /<span class="on">Попыток ↓<\/span>/);
+  assert.match(byAttempts, /href="\?sort=last"/);
 });

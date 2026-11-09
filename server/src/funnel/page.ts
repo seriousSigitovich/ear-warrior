@@ -1,7 +1,7 @@
 // Server-rendered first-run funnel for the owner: how far each device got (onboarding → optional
 // sign-in → first melody → first answers → a second day) and where it was when it left the app.
 // Built from app_events only; pure, so the steps and the page are tested without a database.
-import { CSS, ago, esc } from '../social/page.js';
+import { CSS, ago, esc, sortTh } from '../social/page.js';
 
 /** One device's first run, folded out of its app_events (see report.ts). */
 export interface DeviceRun {
@@ -108,20 +108,34 @@ export function leaveSpots(devices: DeviceRun[]): { place: string; count: number
 }
 
 const EXTRA_CSS = `
-table.f{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
-.f th,.f td{padding:8px 12px;text-align:right;border-bottom:1px solid var(--line);font-size:14px}
-.f th{font-size:12px;color:var(--muted);font-weight:600}
-.f th:first-child,.f td:first-child{text-align:left;word-break:break-all}
-.f tr:last-child td{border-bottom:0}.f tr.branch td{color:var(--muted)}.f tr.branch td:first-child{padding-left:28px}
 .bar{display:inline-block;height:8px;border-radius:4px;background:var(--accent);vertical-align:middle;margin-right:8px}
-.f td.err{color:var(--bad)}
-.wrap{overflow-x:auto}
 `;
+
+/** Columns the device table can be sorted by; 'first' (newest first run on top) is the loader's order. */
+export type FunnelSort = 'first' | 'last' | 'days' | 'step' | 'answers';
+export const FUNNEL_SORTS: FunnelSort[] = ['first', 'last', 'days', 'step', 'answers'];
+
+const stepIndex = (d: DeviceRun): number => MAIN.findIndex((s) => s.label === furthestStep(d));
+const BY: Record<FunnelSort, (a: DeviceRun, b: DeviceRun) => number> = {
+  first: (a, b) => b.firstAt.getTime() - a.firstAt.getTime(),
+  last: (a, b) => b.lastAt.getTime() - a.lastAt.getTime(),
+  days: (a, b) => b.days - a.days,
+  step: (a, b) => stepIndex(b) - stepIndex(a),
+  answers: (a, b) => b.answers - a.answers,
+};
+
+/** How far the optional sign-in went, in one word. */
+export function signinLabel(d: DeviceRun): string {
+  if (d.signedIn) return 'вошёл';
+  if (d.codeRequested) return 'запросил код';
+  if (d.signinSeen) return 'видел';
+  return '—';
+}
 
 const pct = (n: number, of: number): string => (of ? `${Math.round((n / of) * 100)} %` : '—');
 const day = (d: Date): string => d.toISOString().slice(0, 10);
 
-export function renderFunnelPage(devices: DeviceRun[], now: Date): string {
+export function renderFunnelPage(devices: DeviceRun[], now: Date, sort: FunnelSort = 'first'): string {
   const steps = buildFunnel(devices);
   const total = devices.length;
   let prevMain = total;
@@ -130,19 +144,20 @@ export function renderFunnelPage(devices: DeviceRun[], now: Date): string {
       const drop = s.branch ? '' : prevMain ? `−${prevMain - s.count}` : '—';
       if (!s.branch) prevMain = s.count;
       const width = total ? Math.round((s.count / total) * 160) : 0;
-      return `<tr${s.branch ? ' class="branch"' : ''}><td>${esc(s.label)}</td><td><span class="bar" style="width:${width}px"></span>${s.count}</td><td>${pct(s.count, total)}</td><td>${s.branch ? '' : esc(drop)}</td></tr>`;
+      return `<tr${s.branch ? ' class="sub"' : ''}><td class="pt">${esc(s.label)}</td><td class="l"><span class="bar" style="width:${width}px"></span>${s.count}</td><td>${pct(s.count, total)}</td><td>${s.branch ? '' : esc(drop)}</td></tr>`;
     })
     .join('');
   const spotRows = leaveSpots(devices)
-    .map((s) => `<tr><td>${esc(s.place)}</td><td>${s.count}</td><td>${pct(s.count, total)}</td></tr>`)
+    .map((s) => `<tr><td class="pt">${esc(s.place)}</td><td>${s.count}</td><td>${pct(s.count, total)}</td></tr>`)
     .join('');
-  const deviceRows = devices
+  const sorted = sort === 'first' ? devices : [...devices].sort(BY[sort]);
+  const deviceRows = sorted
     .map((d) => {
       const who = d.email ? esc(d.email) : `Устройство ${esc(d.deviceId.slice(0, 8))}`;
-      const errors = d.signinErrors.length ? `<div class="small">ошибки входа: ${esc(d.signinErrors.join(', '))}</div>` : '';
-      return `<tr><td>${who}<div class="muted small">с ${esc(day(d.firstAt))}</div>${errors}</td><td>${esc(furthestStep(d))}</td><td>${d.answers ? `${d.answers} (${d.correct} верно)` : '—'}</td><td>${esc(placeLabel(d.leftScreen, d.leftPhase))}</td><td>${d.days}</td><td>${esc(ago(d.lastAt, now))}</td></tr>`;
+      return `<tr><td class="pt">${who}</td><td class="d">${esc(day(d.firstAt))}</td><td>${esc(ago(d.lastAt, now))}</td><td>${d.days}</td><td class="l">${esc(furthestStep(d))}</td><td class="l">${esc(signinLabel(d))}</td><td>${d.answers || '—'}</td><td>${pct(d.correct, d.answers)}</td><td class="l">${esc(placeLabel(d.leftScreen, d.leftPhase))}</td><td class="l err">${d.signinErrors.length ? esc(d.signinErrors.join(', ')) : ''}</td></tr>`;
     })
     .join('');
+  const th = (label: string, key: FunnelSort, cls = '') => sortTh(label, key === sort, `?sort=${key}`, cls);
   const body = `
 <header>
   <h1>Воронка первого запуска · Ear Warrior</h1>
@@ -150,18 +165,18 @@ export function renderFunnelPage(devices: DeviceRun[], now: Date): string {
 </header>
 ${total ? '' : '<div class="empty">Пока нет устройств с новой аналитикой.</div>'}
 <h3>Докуда доходят · ${total} устр.</h3>
-<div class="wrap"><table class="f">
-<thead><tr><th>Шаг</th><th>Устройств</th><th>От открывших</th><th>Отвалилось</th></tr></thead>
+<div class="wrap"><table class="dt">
+<thead><tr><th class="pt">Шаг</th><th class="l">Устройств</th><th>От открывших</th><th>Отвалилось</th></tr></thead>
 <tbody>${stepRows}</tbody>
 </table></div>
 <h3>Где были, когда ушли из приложения</h3>
-<div class="wrap"><table class="f">
-<thead><tr><th>Экран · момент</th><th>Устройств</th><th>Доля</th></tr></thead>
+<div class="wrap"><table class="dt">
+<thead><tr><th class="pt">Экран · момент</th><th>Устройств</th><th>Доля</th></tr></thead>
 <tbody>${spotRows}</tbody>
 </table></div>
-<h3>По устройствам</h3>
-<div class="wrap"><table class="f">
-<thead><tr><th>Кто</th><th>Дошёл до</th><th>Ответов</th><th>Последний уход</th><th>Дней</th><th>Последнее событие</th></tr></thead>
+<h3>По устройствам · ${total}</h3>
+<div class="wrap"><table class="dt">
+<thead><tr><th class="pt">Кто</th>${th('Первый запуск', 'first', 'd')}${th('Последнее событие', 'last')}${th('Дней', 'days')}${th('Дошёл до', 'step', 'l')}<th class="l">Вход</th>${th('Ответов', 'answers')}<th>Верно</th><th class="l">Последний уход</th><th class="l">Ошибки входа</th></tr></thead>
 <tbody>${deviceRows}</tbody>
 </table></div>
 <p class="muted small" style="margin-top:20px">Только устройства со сборкой, которая шлёт <code>screen_view</code>. Вход необязателен, поэтому он показан отдельной веткой и в «Отвалилось» не считается. «Последний уход» — экран последнего <code>app_background</code>.</p>`;

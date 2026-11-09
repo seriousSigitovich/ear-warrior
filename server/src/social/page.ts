@@ -145,6 +145,11 @@ const COLS: { key: keyof PostMetrics; head: string; fmt: (n: number) => string }
   { key: 'follows', head: 'Подписки', fmt: (n) => fmt(n) },
 ];
 
+/** A column header of a `table.dt` that sorts the table by its column: plain text plus ↓ when active. */
+export function sortTh(label: string, active: boolean, href: string, cls = ''): string {
+  return `<th${cls ? ` class="${cls}"` : ''}>${active ? `<span class="on">${esc(label)} ↓</span>` : `<a href="${esc(href)}">${esc(label)}</a>`}</th>`;
+}
+
 function postRow(v: PostView, days: number): string {
   const l = v.latest;
   const published = v.post.publishedAt.toISOString().slice(0, 10);
@@ -166,9 +171,8 @@ function postRow(v: PostView, days: number): string {
 function postTable(m: PageModel, ranked: PostView[]): string {
   const days = m.dashboard.days;
   const q = (s: SortKey) => `?days=${days}${m.platformFilter ? `&platform=${m.platformFilter}` : ''}&sort=${s}`;
-  const sortHead = (label: string, s: SortKey, cls = '') =>
-    `<th${cls ? ` class="${cls}"` : ''}>${s === m.sort ? `<span class="on">${label} ↓</span>` : `<a href="${q(s)}">${label}</a>`}</th>`;
-  return `<div class="wrap"><table class="posts">
+  const sortHead = (label: string, s: SortKey, cls = '') => sortTh(label, s === m.sort, q(s), cls);
+  return `<div class="wrap"><table class="dt">
 <thead><tr><th class="pt">Публикация</th>${sortHead('Дата', 'date', 'd')}${sortHead('Просмотры', 'views')}${sortHead(`Прирост за ${days} дн`, 'gain')}${COLS.map((c) => `<th>${c.head}</th>`).join('')}<th class="sp">Динамика</th></tr></thead>
 <tbody>${ranked.map((v) => postRow(v, days)).join('')}</tbody>
 </table></div>`;
@@ -178,7 +182,7 @@ export const CSS = `
 :root{color-scheme:light dark;--bg:#f6f5f1;--surface:#fcfbf8;--text:#26312e;--muted:#66726e;--line:#d9ddd6;--tint:#e3ece8;--accent:#3f6b60;--on-accent:#fff;--warm-bg:#efe6d4;--warm-text:#7a5c25;--ok:#3f6b60;--warn:#b08a4e;--bad:#a24a3d}
 @media(prefers-color-scheme:dark){:root{--bg:#161d1b;--surface:#1d2624;--text:#dfe6e2;--muted:#9aa8a2;--line:#2e3a37;--tint:#24332f;--accent:#8fc0b0;--on-accent:#10201b;--warm-bg:#3a3123;--warm-text:#d1ac6b;--ok:#8fc0b0;--warn:#d1ac6b;--bad:#e09a8b}}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Inter","Segoe UI",sans-serif}
-a{color:var(--accent);text-underline-offset:2px}main{max-width:1040px;margin:0 auto;padding:24px 16px 64px}
+a{color:var(--accent);text-underline-offset:2px}main{max-width:1320px;margin:0 auto;padding:24px 16px 64px}
 a:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .muted{color:var(--muted)}.small{font-size:12.5px}
 header{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;justify-content:space-between;margin-bottom:16px}
@@ -208,21 +212,21 @@ button:hover{background:var(--tint)}
 .badge.instagram{background:var(--warm-bg);color:var(--warm-text)}
 .spark{color:var(--accent)}
 .wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
-table.posts{width:100%;border-collapse:collapse;font-size:13.5px;font-variant-numeric:tabular-nums}
-.posts th,.posts td{padding:7px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
-.posts th{position:sticky;top:0;background:var(--surface);font-size:12px;color:var(--muted);font-weight:600}
-.posts th a{color:var(--muted);text-decoration:none}.posts th a:hover{color:var(--accent)}.posts th .on{color:var(--text)}
-.posts tbody tr:last-child td{border-bottom:0}.posts tbody tr:hover td{background:var(--tint)}
-.posts .pt{text-align:left;position:sticky;left:0;background:var(--surface);max-width:300px;overflow:hidden;text-overflow:ellipsis;border-right:1px solid var(--line)}
-.posts .pt a{color:var(--text);text-decoration:none}.posts .pt a:hover{color:var(--accent);text-decoration:underline}
-.posts .pt .badge{min-width:0;margin-right:4px}.posts td small{color:var(--muted);font-size:11px}
-.posts .d{color:var(--muted)}.posts .sp{width:100px}
+table.dt{width:100%;border-collapse:collapse;font-size:13.5px;font-variant-numeric:tabular-nums}
+.dt th,.dt td{padding:7px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+.dt th{position:sticky;top:0;background:var(--surface);font-size:12px;color:var(--muted);font-weight:600}
+.dt th a{color:var(--muted);text-decoration:none}.dt th a:hover{color:var(--accent)}.dt th .on{color:var(--text)}
+.dt tbody tr:last-child td{border-bottom:0}.dt tbody tr:hover td{background:var(--tint)}
+.dt .pt{text-align:left;position:sticky;left:0;background:var(--surface);max-width:300px;overflow:hidden;text-overflow:ellipsis;border-right:1px solid var(--line)}
+.dt .pt a{color:var(--text);text-decoration:none}.dt .pt a:hover{color:var(--accent);text-decoration:underline}
+.dt .pt .badge{min-width:0;margin-right:4px}.dt td small{color:var(--muted);font-size:11px}
+.dt .d{color:var(--muted)}.dt .sp{width:100px}.dt .l{text-align:left}.dt tr.sub td{color:var(--muted)}.dt tr.sub td.pt{padding-left:24px}.dt td.err{color:var(--bad)}
 .top{list-style:none;margin:0;padding:0;display:grid;gap:6px}
 .top li{display:grid;grid-template-columns:auto 1fr auto 100px;gap:12px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:9px 14px}
 .tag{display:inline-block;font-size:11px;padding:0 7px;margin-left:6px;border-radius:999px;background:var(--tint);color:var(--accent);font-weight:600;vertical-align:1px}.tag.lead{background:var(--warm-bg);color:var(--warm-text)}
 .leads{margin-top:12px}.leads table{border-collapse:collapse;font-size:13px}.leads td{padding:2px 14px 2px 0}.leads td:last-child{text-align:right;font-weight:600}
 .empty{padding:20px;border:1px dashed var(--line);border-radius:12px;color:var(--muted)}
-@media(max-width:720px){.big{font-size:28px}.posts .pt{max-width:200px}}
+@media(max-width:720px){.big{font-size:28px}.dt .pt{max-width:200px}}
 `;
 
 function periodLinks(m: PageModel): string {
@@ -257,5 +261,5 @@ ${top.length ? `<h3>Что сработало за ${d.days} дн</h3><ol class=
 ${ranked.length ? postTable(m, ranked) : `<div class="empty">Публикаций пока нет.</div>`}
 <p class="muted small" style="margin-top:28px">Просмотры по дням считаются как разница суточных снимков (UTC), поэтому прирост виден только там, где есть снимок на начало периода; «N дн*» — снимка ровно на начало периода нет, прирост посчитан за реальный срок. Номер и гипотеза ролика — из ручной таблицы post-labels.ts. «Продолжили смотреть» (viewed vs swiped) из Studio через API недоступно — оно остаётся в docs/experiments.md.</p>`;
 
-  return `<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Соцсети — Ear Warrior</title><style>${CSS}main{max-width:1320px}</style></head><body><main>${body}</main></body></html>`;
+  return `<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Соцсети — Ear Warrior</title><style>${CSS}</style></head><body><main>${body}</main></body></html>`;
 }

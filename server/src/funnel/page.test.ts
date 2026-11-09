@@ -1,7 +1,7 @@
 // Funnel steps, leave spots and the rendered page, from hand-built device runs (no database).
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { buildFunnel, furthestStep, leaveSpots, placeLabel, renderFunnelPage, type DeviceRun } from './page.js';
+import { buildFunnel, furthestStep, leaveSpots, placeLabel, renderFunnelPage, signinLabel, type DeviceRun } from './page.js';
 
 const run = (over: Partial<DeviceRun> = {}): DeviceRun => ({
   deviceId: 'dev_aaaaaaaaaa',
@@ -74,4 +74,21 @@ test('the page escapes emails and renders an empty state', () => {
   assert.ok(html.includes('&lt;b&gt;x@y.co&lt;/b&gt;'));
   assert.ok(!html.includes('<b>x@y.co</b>'));
   assert.ok(renderFunnelPage([], new Date()).includes('Пока нет устройств'));
+});
+
+test('sign-in column names how far the optional sign-in went', () => {
+  assert.equal(signinLabel(signedInNoPlay), 'вошёл');
+  assert.equal(signinLabel(run({ signinSeen: true, codeRequested: true })), 'запросил код');
+  assert.equal(signinLabel(player), '—');
+});
+
+test('the device table sorts by the asked column and keeps the loader order by default', () => {
+  const a = run({ deviceId: 'dev_first111', answers: 1 });
+  const b = run({ deviceId: 'dev_second22', answers: 9 });
+  const now = new Date('2026-11-03T12:00:00Z');
+  const byDefault = renderFunnelPage([a, b], now);
+  assert.ok(byDefault.indexOf('dev_firs') < byDefault.indexOf('dev_seco'));
+  const byAnswers = renderFunnelPage([a, b], now, 'answers');
+  assert.ok(byAnswers.indexOf('dev_seco') < byAnswers.indexOf('dev_firs'));
+  assert.match(byAnswers, /<span class="on">Ответов ↓<\/span>/);
 });
