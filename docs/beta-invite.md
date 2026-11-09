@@ -95,3 +95,5 @@
 - Google Группа и трек «Site self-serve» остались в Play, ссылок на них с сайта больше нет.
 
 **Повтор волн 5–8 через Resend (2026-11-08, 21:40):** владелец: приглашения всегда только от `Ear Warrior <noreply@earwarrior.app>` через Resend, никогда с личного Gmail. Сегмент «Beta invite wave 2» удалён (рассылка по нему ушла 03.11, контакты остались), создан «Beta invite wave 5-8» с mati.cossio.escobedo, feecenter72, jorik.mathieu и sofia.cmartinez98. Копия того же приглашения ушла на этот сегмент: 4 получателя, все в статусе Delivered. Следующая волна: удалить сегмент уже разосланной волны и завести новый.
+
+**Волна 9 (2026-11-09):** два письма «Android beta:» подряд, 11:39 ipsitabiswas1017@gmail.com и 11:48 ipsitabiswas1710@gmail.com — похоже, один человек исправил опечатку. Play принял оба адреса без ошибки: Beta waitlist 35 → 37. В Resend удалён сегмент «Beta invite wave 3» (рассылка ушла 05.11, контакты остались), создан «Beta invite wave 9» с обоими адресами. Копия приглашения отправлена от Ear Warrior <noreply@earwarrior.app>, 2 получателя, оба Delivered (значит, оба Gmail существуют). Сегменты сейчас: wave 5-8, wave 9, General (3/3).
