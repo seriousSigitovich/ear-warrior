@@ -1,8 +1,11 @@
 // The library as a list to choose from: every tune by name, with what it asks of the learner (level,
 // notes, phrases, tempo) and how they did on it. Pure.
 import { Attempt } from '../../models';
+import { IntervalKind, intervalKind } from '../../lib/insights';
+import { phraseRange, phraseCount } from '../../lib/phrases';
 import { scoreOf } from '../../lib/review';
-import { LIBRARY, tuneIdOf } from './curated';
+import { LIBRARY, curatedMelody, tuneIdOf } from './curated';
+import { MIN_RANK, getLevelByRank } from './levels';
 
 export interface CatalogTune {
   id: string;
@@ -23,6 +26,8 @@ export interface CatalogLevel {
   tunes: CatalogTune[];
   /** Tunes of the level finished at least once. */
   played: number;
+  /** Tunes of the level played at 100% at least once. */
+  perfect: number;
 }
 
 /** The whole library, level by level, against the learner's finished tunes. */
@@ -50,7 +55,12 @@ export function libraryCatalog(
   });
   return [...levels.entries()]
     .sort(([a], [b]) => a - b)
-    .map(([rank, tunes]) => ({ rank, tunes, played: tunes.filter((t) => t.played).length }));
+    .map(([rank, tunes]) => ({
+      rank,
+      tunes,
+      played: tunes.filter((t) => t.played).length,
+      perfect: tunes.filter((t) => t.bestPct === 100).length,
+    }));
 }
 
 /** One tune of the library by id, or null. */
@@ -68,4 +78,65 @@ export function catalogTune(
 /** What a tune asks, in a line: "24 notes · 4 phrases · 96 BPM". */
 export function tuneAsk(t: Pick<CatalogTune, 'notes' | 'phrases' | 'tempoBpm'>): string {
   return `${t.notes} notes · ${t.phrases} ${t.phrases === 1 ? 'phrase' : 'phrases'} · ${t.tempoBpm} BPM`;
+}
+
+/** The melodic moves of a library tune, counted inside its phrases (a phrase's first note has none). */
+export interface TuneIntervals {
+  counts: Partial<Record<IntervalKind, number>>;
+  total: number;
+}
+
+export function tuneIntervals(id: string): TuneIntervals | null {
+  const tune = LIBRARY.find((t) => t.id === id);
+  if (!tune) return null;
+  const melody = curatedMelody(getLevelByRank(tune.rank), 0, tune.id);
+  const counts: Partial<Record<IntervalKind, number>> = {};
+  let total = 0;
+  for (let p = 0; p < phraseCount(melody); p++) {
+    const { start, end } = phraseRange(melody, p);
+    for (let i = start + 1; i < end; i++) {
+      const kind = intervalKind(melody.notes[i].midi - melody.notes[i - 1].midi);
+      counts[kind] = (counts[kind] ?? 0) + 1;
+      total += 1;
+    }
+  }
+  return { counts, total };
+}
+
+/** A tune needs this many moves of a kind to be practice for it. */
+const MIN_MOVES = 3;
+
+export interface IntervalPick {
+  tune: CatalogTune;
+  /** How many of the tune's moves are of the kind asked for. */
+  count: number;
+}
+
+/**
+ * Tunes to practise a kind of move on: those fullest of it (by share of their moves), no more than
+ * one level above the highest the learner has played, with tunes not yet played at 100% first.
+ */
+export function tunesForInterval(
+  kind: IntervalKind,
+  attempts: readonly Pick<Attempt, 'melodyId' | 'noteResults'>[],
+  limit = 3,
+): IntervalPick[] {
+  const tunes = libraryCatalog(attempts).flatMap((l) => l.tunes);
+  const reached = Math.max(MIN_RANK, ...tunes.filter((t) => t.played).map((t) => t.rank));
+  return tunes
+    .filter((t) => t.rank <= reached + 1)
+    .map((tune) => {
+      const moves = tuneIntervals(tune.id)!;
+      const count = moves.counts[kind] ?? 0;
+      return { tune, count, share: moves.total === 0 ? 0 : count / moves.total };
+    })
+    .filter((p) => p.count >= MIN_MOVES)
+    .sort(
+      (a, b) =>
+        Number(a.tune.bestPct === 100) - Number(b.tune.bestPct === 100) ||
+        b.share - a.share ||
+        a.tune.rank - b.tune.rank,
+    )
+    .slice(0, limit)
+    .map(({ tune, count }) => ({ tune, count }));
 }

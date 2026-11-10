@@ -1,5 +1,14 @@
 import { Attempt, NoteResult } from '../../../src/models';
-import { mistakeLine, mistakesOf, praise, recentReviews, scoreOf } from '../../../src/lib/review';
+import {
+  missSummary,
+  mistakeChip,
+  mistakesOf,
+  noteStrip,
+  phraseScores,
+  praise,
+  recentReviews,
+  scoreOf,
+} from '../../../src/lib/review';
 
 const matched = (i: number, midi: number): NoteResult => ({
   targetIndex: i,
@@ -71,13 +80,21 @@ describe('answer review', () => {
     expect(mistakesOf([matched(0, 60)])).toEqual([]);
   });
 
-  test('a mistake reads as a sentence', () => {
-    expect(mistakesOf(results).map(mistakeLine)).toEqual([
-      'Note 2: you played E4, it was D4',
-      'Note 3: not played, it was E4',
-      'Note 4: you played G3, it was G4 (right note, wrong octave)',
-      'Extra note: C5',
-    ]);
+  test('the strip is the tune note by note, in tune order, extras aside', () => {
+    expect(noteStrip(results)).toEqual(['matched', 'wrong', 'missed', 'wrong']);
+    expect(noteStrip([missed(1, 62), matched(0, 60)])).toEqual(['matched', 'missed']);
+  });
+
+  test('a wrong note is a short chip: where, played → right note', () => {
+    const [wrongNote, , octave] = mistakesOf(results);
+    expect(mistakeChip(wrongNote)).toBe('2 · E4 → D4');
+    expect(mistakeChip(octave)).toBe('4 · G3 → G4');
+  });
+
+  test('the misses are summed up in one line, only the kinds that happened', () => {
+    expect(missSummary(mistakesOf(results))).toBe('2 wrong · 1 not played · 1 extra');
+    expect(missSummary(mistakesOf([missed(0, 60), missed(1, 62)]))).toBe('2 not played');
+    expect(missSummary([])).toBe('Every note right');
   });
 
   test('praise follows the score', () => {
@@ -97,10 +114,23 @@ describe('answer review', () => {
       attempt('c', '2026-11-10T10:00:00.000Z', [wrong(0, 60, 62)]),
       attempt('b', '2026-11-09T10:00:00.000Z', [matched(0, 60)]),
     ];
-    const reviews = recentReviews(attempts, [{ id: 'm-c', title: 'Ode to Joy' }], 2);
-    expect(reviews.map((r) => [r.attemptId, r.title, r.score.pct, r.mistakes.length])).toEqual([
-      ['c', 'Ode to Joy', 0, 1],
-      ['b', 'Melody', 100, 0],
+    const reviews = recentReviews(attempts, [{ id: 'm-c', title: 'Ode to Joy', phrases: [1] }], 2);
+    expect(reviews.map((r) => [r.attemptId, r.title, r.score.pct])).toEqual([
+      ['c', 'Ode to Joy', 0],
+      ['b', 'Melody', 100],
     ]);
+    expect(reviews.map((r) => r.phrases.map((p) => p.pct))).toEqual([[0], [100]]);
+  });
+
+  test('a tune is scored phrase by phrase', () => {
+    const tune = [matched(0, 60), matched(1, 62), wrong(2, 64, 65), missed(3, 65), matched(4, 67)];
+    expect(phraseScores(tune, [2, 3])).toEqual([
+      { matched: 2, notes: 2, pct: 100 },
+      { matched: 1, notes: 3, pct: 33 },
+    ]);
+    // Extras belong to no phrase; marks that do not add up to the tune make it one phrase.
+    expect(phraseScores([...tune, extra(72)], [2, 3]).map((p) => p.notes)).toEqual([2, 3]);
+    expect(phraseScores(tune, [2, 2])).toEqual([{ matched: 3, notes: 5, pct: 60 }]);
+    expect(phraseScores(tune)).toEqual([{ matched: 3, notes: 5, pct: 60 }]);
   });
 });

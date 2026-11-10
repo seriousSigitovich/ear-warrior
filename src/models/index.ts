@@ -151,14 +151,6 @@ export interface Session {
   accuracyPct: number;
 }
 
-/** Aggregated cross-session view for the single local learner (FR-013, US3). Derived, not stored. */
-export interface ProgressProfile {
-  accuracyTrend: { date: string; accuracyPct: number }[];
-  practiceVolume: { totalAttempts: number; totalSessions: number; totalMinutes: number };
-  difficultyReached: number;
-  weakAreas: { descriptor: string; missRate: number }[];
-}
-
 // ---- Calibratable configuration ----
 
 export interface GradingConfig {

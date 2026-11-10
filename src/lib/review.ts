@@ -46,13 +46,32 @@ export function scoreOf(results: readonly NoteResult[]): Score {
   return { matched, notes, pct: notes === 0 ? 0 : Math.round((matched / notes) * 100) };
 }
 
-/** One mistake as a sentence: "Note 5: you played G3, it was A3". */
-export function mistakeLine(m: Mistake): string {
-  if (m.kind === 'extra') return `Extra note: ${m.played ?? '?'}`;
-  const where = `Note ${m.position}`;
-  if (m.kind === 'missed') return `${where}: not played, it was ${m.expected ?? '?'}`;
-  const octave = m.octave ? ' (right note, wrong octave)' : '';
-  return `${where}: you played ${m.played ?? '?'}, it was ${m.expected ?? '?'}${octave}`;
+/** How a note of the tune went: the three states the note strip draws. */
+export type StripNote = 'matched' | 'wrong' | 'missed';
+
+/** The tune note by note in its own order — one state per note; extras have no place in it. */
+export function noteStrip(results: readonly NoteResult[]): StripNote[] {
+  return results
+    .filter((r): r is NoteResult & { targetIndex: number } => r.targetIndex !== null)
+    .sort((a, b) => a.targetIndex - b.targetIndex)
+    .map((r) => r.status as StripNote);
+}
+
+/** A wrong note, short enough for a chip: "5 · G3 → A3" (place · played → right note). */
+export function mistakeChip(m: Mistake): string {
+  return `${m.position ?? '+'} · ${m.played ?? '–'} → ${m.expected ?? '–'}`;
+}
+
+/** The misses in one line, naming only the kinds that happened: "2 wrong · 5 not played". */
+export function missSummary(mistakes: readonly Mistake[]): string {
+  const count = (kind: Mistake['kind']) => mistakes.filter((m) => m.kind === kind).length;
+  const parts = [
+    [count('wrong'), 'wrong'],
+    [count('missed'), 'not played'],
+    [count('extra'), 'extra'],
+  ] as const;
+  const said = parts.filter(([n]) => n > 0).map(([n, word]) => `${n} ${word}`);
+  return said.length === 0 ? 'Every note right' : said.join(' · ');
 }
 
 /** The word a finished tune earns. Honest: a rough run is named for what it was, not as a triumph. */
@@ -63,30 +82,48 @@ export function praise(pct: number): string {
   return 'You played it through';
 }
 
+/**
+ * The score of each phrase of a tune, from its note results and the notes per phrase. Marks that are
+ * absent or do not add up to the tune make it one phrase. Extra notes belong to no phrase.
+ */
+export function phraseScores(results: readonly NoteResult[], phrases?: readonly number[]): Score[] {
+  const targets = results
+    .filter((r): r is NoteResult & { targetIndex: number } => r.targetIndex !== null)
+    .sort((a, b) => a.targetIndex - b.targetIndex);
+  const marked = phrases && phrases.reduce((a, b) => a + b, 0) === targets.length;
+  let from = 0;
+  return (marked ? phrases : [targets.length]).map((len) => {
+    const score = scoreOf(targets.slice(from, from + len));
+    from += len;
+    return score;
+  });
+}
+
 export interface AttemptReview {
   attemptId: string;
   title: string;
   /** ISO time the tune was finished. */
   at: string;
   score: Score;
-  mistakes: Mistake[];
+  /** The score of each phrase, in order. */
+  phrases: Score[];
 }
 
-/** The latest finished tunes, newest first, each with its score and mistakes. */
+/** The latest finished tunes, newest first, each with its score overall and phrase by phrase. */
 export function recentReviews(
   attempts: readonly Attempt[],
-  melodies: readonly Pick<Melody, 'id' | 'title'>[],
+  melodies: readonly Pick<Melody, 'id' | 'title' | 'phrases'>[],
   limit = 10,
 ): AttemptReview[] {
-  const titles = new Map(melodies.map((m) => [m.id, m.title]));
+  const byId = new Map(melodies.map((m) => [m.id, m]));
   return [...attempts]
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .slice(0, limit)
     .map((a) => ({
       attemptId: a.id,
-      title: titles.get(a.melodyId) ?? 'Melody',
+      title: byId.get(a.melodyId)?.title ?? 'Melody',
       at: a.createdAt,
       score: scoreOf(a.noteResults),
-      mistakes: mistakesOf(a.noteResults),
+      phrases: phraseScores(a.noteResults, byId.get(a.melodyId)?.phrases),
     }));
 }

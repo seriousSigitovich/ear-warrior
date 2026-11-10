@@ -1,18 +1,19 @@
 // Closing card of a tune: a word of praise, the tune named (the reveal is part of the payoff), the
-// score — notes matched, phrases right first time — the day's habit (streak and daily goal), and every
-// note that went wrong with the note it should have been. All of it while the tune plays whole once
-// more. The right notes are named only here, once the tune is over: before that, finding them by ear
-// is the exercise.
+// score — notes matched, phrases right first time — the day's habit (streak and daily goal), and the
+// tune note by note with the wrong notes and what they should have been. All of it while the tune
+// plays whole once more. The right notes are named only here, once the tune is over: before that,
+// finding them by ear is the exercise.
 import React, { useEffect } from 'react';
 import { AccessibilityInfo, StyleSheet, Text, View } from 'react-native';
 import { tuneSummary } from '../../lib/phrases';
-import { mistakeLine, mistakesOf, praise, scoreOf } from '../../lib/review';
+import { mistakesOf, noteStrip, praise, scoreOf } from '../../lib/review';
 import { Streak, streakLine } from '../../lib/streak';
 import { AttemptGrade, NoteResult } from '../../models';
 import { Card } from '../common/Card';
+import { TuneReview } from './TuneReview';
 import { colors, font, textAlpha } from '../../theme/nocturne';
 
-/** Mistakes listed before the rest fold into "+N more": the card must not bury the Next button. */
+/** Wrong notes shown before the rest fold into "+N more": the card must not bury the Next button. */
 const MISTAKES_SHOWN = 6;
 
 export interface TuneCompleteProps {
@@ -70,17 +71,8 @@ export function TuneComplete({ title, grades, results, streak }: TuneCompletePro
 
       {mistakes.length > 0 ? (
         <Card style={styles.mistakes}>
-          <Text style={styles.mistakesTitle}>Where it went wrong</Text>
-          {mistakes.slice(0, MISTAKES_SHOWN).map((m, i) => (
-            <Text key={i} style={styles.mistake}>
-              {mistakeLine(m)}
-            </Text>
-          ))}
-          {mistakes.length > MISTAKES_SHOWN ? (
-            <Text style={styles.more}>
-              +{mistakes.length - MISTAKES_SHOWN} more — all of them are in Progress
-            </Text>
-          ) : null}
+          <Text style={styles.mistakesTitle}>Note by note</Text>
+          <TuneReview strip={noteStrip(all)} mistakes={mistakes} shown={MISTAKES_SHOWN} />
         </Card>
       ) : null}
     </>
@@ -111,13 +103,11 @@ const styles = StyleSheet.create({
   pip: { width: 18, height: 5, borderRadius: 3, backgroundColor: colors.divider },
   pipDone: { backgroundColor: colors.accent },
 
-  mistakes: { padding: 16, gap: 6 },
+  mistakes: { padding: 16, gap: 8 },
   mistakesTitle: {
     color: colors.text,
     fontSize: 15,
     fontWeight: font.weightHeading,
     marginBottom: 2,
   },
-  mistake: { color: textAlpha[70], fontSize: 13, lineHeight: 19 },
-  more: { color: textAlpha[50], fontSize: 12, marginTop: 2 },
 });

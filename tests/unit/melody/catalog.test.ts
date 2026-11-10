@@ -1,6 +1,12 @@
 import { NoteResult } from '../../../src/models';
 import { LIBRARY } from '../../../src/services/melody/curated';
-import { catalogTune, libraryCatalog, tuneAsk } from '../../../src/services/melody/catalog';
+import {
+  catalogTune,
+  libraryCatalog,
+  tuneAsk,
+  tuneIntervals,
+  tunesForInterval,
+} from '../../../src/services/melody/catalog';
 import { MAX_RANK, MIN_RANK } from '../../../src/services/melody/levels';
 
 const note = (i: number, ok: boolean): NoteResult => ({
@@ -55,6 +61,49 @@ describe('library catalog', () => {
     });
     const level = libraryCatalog(attempts).find((l) => l.rank === t.rank)!;
     expect(level.played).toBe(1);
+  });
+
+  test('a level counts its tunes played at 100%', () => {
+    const t = LIBRARY[0];
+    const other = LIBRARY.find((x) => x.rank === t.rank && x.id !== t.id)!;
+    const attempts = [
+      { melodyId: `${t.id}-1`, noteResults: [note(0, true)] },
+      { melodyId: `${other.id}-1`, noteResults: [note(0, false)] },
+    ];
+    const level = libraryCatalog(attempts).find((l) => l.rank === t.rank)!;
+    expect(level).toMatchObject({ played: 2, perfect: 1 });
+  });
+
+  test('a tune’s moves are counted inside its phrases only', () => {
+    // Hot Cross Buns: E D C | E D C | C C C C D D D D | E D C, in two phrases of 6 and 11 notes.
+    const moves = tuneIntervals('hotcrossbuns')!;
+    expect(moves.total).toBe(15); // 17 notes less the first of each phrase
+    expect(moves.counts['step:down']).toBe(6);
+    expect(moves.counts['repeat']).toBe(6);
+    expect(moves.counts['step:up']).toBe(2);
+    expect(moves.counts['third:up']).toBe(1); // C up to E inside phrase 1; the next E opens phrase 2
+    expect(tuneIntervals('nosuchtune')).toBeNull();
+  });
+
+  test('practice for a kind of move: the tunes fullest of it, near the levels played', () => {
+    const picks = tunesForInterval('step:down', []);
+    expect(picks).toHaveLength(3);
+    // Nothing played yet: levels 1–2 only.
+    expect(picks.every((p) => p.tune.rank <= 2)).toBe(true);
+    for (const p of picks) {
+      const moves = tuneIntervals(p.tune.id)!;
+      expect(p.count).toBe(moves.counts['step:down']);
+      expect(p.count).toBeGreaterThanOrEqual(3);
+    }
+    const shares = picks.map((p) => p.count / tuneIntervals(p.tune.id)!.total);
+    expect([...shares].sort((a, b) => b - a)).toEqual(shares);
+  });
+
+  test('a tune already played at 100% comes after the others', () => {
+    const first = tunesForInterval('step:down', [])[0].tune;
+    const perfect = [{ melodyId: `${first.id}-1`, noteResults: [note(0, true)] }];
+    const picks = tunesForInterval('step:down', perfect, 100);
+    expect(picks[picks.length - 1].tune.id).toBe(first.id);
   });
 
   test('an unknown id is not in the catalog', () => {
