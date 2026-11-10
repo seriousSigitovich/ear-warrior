@@ -1,7 +1,7 @@
 // Transport controls (T032, FR-003/FR-007/FR-008/FR-009): the bottom action bar for the phases that
-// are not the fretboard answer — Play melody on idle; Skip while the whole tune plays before its
-// first phrase; Replay · Retry · Next phrase on a phrase's result; Replay · Next melody once the tune
-// is done. Replay turns into Stop while it plays.
+// are not the fretboard answer — Play melody on idle; Pause · Restart · Skip while the tune or a
+// phrase plays before the answer; Replay · Retry · Next phrase on a phrase's result; Replay · Next
+// melody once the tune is done. Replay turns into Stop while it plays.
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Listening, LoopPhase } from '../../features/practice/usePracticeLoop';
@@ -11,9 +11,14 @@ export interface TransportControlsProps {
   phase: LoopPhase;
   listening: Listening;
   replaying: boolean;
+  /** The melody being listened to is held. */
+  paused: boolean;
   /** The phrase on screen is the tune's last. */
   lastPhrase: boolean;
   onPlay: () => void;
+  onPause: () => void;
+  onResume: () => void;
+  onRestart: () => void;
   onSkip: () => void;
   onReplay: () => void;
   onStopReplay: () => void;
@@ -26,8 +31,12 @@ export function TransportControls({
   phase,
   listening,
   replaying,
+  paused,
   lastPhrase,
   onPlay,
+  onPause,
+  onResume,
+  onRestart,
   onSkip,
   onReplay,
   onStopReplay,
@@ -52,10 +61,18 @@ export function TransportControls({
     );
   }
 
-  if (phase === 'playingMelody' && listening === 'tune') {
+  if (phase === 'playingMelody') {
+    const whole = listening === 'tune';
     return (
-      <View style={styles.wrap}>
-        <Button label="Skip to phrase 1" variant="ghost" onPress={onSkip} />
+      <View style={styles.row} accessibilityLabel={whole ? 'Melody controls' : 'Phrase controls'}>
+        <Button
+          label={paused ? 'Resume' : 'Pause'}
+          variant="secondary"
+          onPress={paused ? onResume : onPause}
+          style={styles.grow}
+        />
+        <Button label="Restart" variant="secondary" onPress={onRestart} style={styles.grow} />
+        <Button label="Skip" onPress={onSkip} style={styles.grow} />
       </View>
     );
   }
@@ -88,7 +105,7 @@ export function TransportControls({
 
 const styles = StyleSheet.create({
   wrap: { gap: 12 },
-  row: { flexDirection: 'row', gap: 8 },
+  row: { flexDirection: 'row', gap: 8, minHeight: 52 },
   grow: { flex: 1 },
   wide: { flex: 1.6 },
   tall: { minHeight: 52 },

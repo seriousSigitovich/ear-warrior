@@ -9,36 +9,44 @@ import { textAlpha } from '../../theme/nocturne';
 
 export interface PracticeStageProps {
   phase: LoopPhase;
+  /** The melody being listened to is held. */
+  paused?: boolean;
+  /** Replaces the idle hint: what the melody about to play is (a tune picked from the library). */
+  idleHint?: string;
 }
 
-export function PracticeStage({ phase }: PracticeStageProps) {
+export function PracticeStage({ phase, paused = false, idleHint }: PracticeStageProps) {
   switch (phase) {
     case 'playingMelody':
-      return <Listening />;
+      return <Listening paused={paused} />;
     case 'grading':
       return <Grading />;
     case 'idle':
     case 'awaitingInput':
     case 'feedback':
     default:
-      return <Idle />;
+      return <Idle hint={idleHint} />;
   }
 }
 
-function Idle() {
+function Idle({ hint }: { hint?: string }) {
   return (
     <View style={styles.center}>
       <Waveform bars={IDLE_BARS} height={34} barWidth={4} align="center" />
-      <Text style={styles.hint}>Press play, listen, then find the notes on the fretboard.</Text>
+      <Text style={styles.hint}>
+        {hint ?? 'Press play, listen, then find the notes on the fretboard.'}
+      </Text>
     </View>
   );
 }
 
-function Listening() {
+function Listening({ paused }: { paused: boolean }) {
   return (
     <View style={styles.center}>
-      <Waveform bars={LISTENING_BARS} height={52} align="center" animated />
-      <Text style={styles.listening}>Listening…</Text>
+      <Waveform bars={LISTENING_BARS} height={52} align="center" animated={!paused} />
+      <Text style={styles.listening} accessibilityLiveRegion="polite">
+        {paused ? 'Paused' : 'Listening…'}
+      </Text>
     </View>
   );
 }

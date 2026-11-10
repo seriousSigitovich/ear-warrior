@@ -1,9 +1,10 @@
 // Practice-loop state machine (T028, US1). A tune is learnt phrase by phrase:
-//   idle → playingMelody (the whole tune, skippable) → for each phrase:
+//   idle → playingMelody (the whole tune) → for each phrase:
 //     playingMelody (the phrase) → awaitingInput → grading → feedback → (retry | next phrase)
 //   → complete (the tune is named, summed up and played whole once more) → next tune.
 // A phrase fits in the ear's working memory where a 60-note tune does not, and the tune stays whole:
 // each phrase is heard in place, and the tune is played in full at both ends.
+// While listening (`playingMelody`, tune or phrase) the learner can pause, start over or skip ahead.
 // A replay is not a phase: it sounds the phrase (or, once complete, the tune) over whatever is on
 // screen, so the learner compares by ear without losing sight of their notes.
 // The learner answers by tapping notes on an on-screen fretboard; pure logic (melody, phrases,
@@ -18,7 +19,7 @@ import {
   GradingConfig,
   Melody,
 } from '../../models';
-import { MIN_RANK, getLevelByRank } from '../../services/melody/levels';
+import { MIN_RANK, getLevel, getLevelByRank } from '../../services/melody/levels';
 import {
   DEFAULT_DIFFICULTY_SETTINGS,
   applyAttempt,
@@ -109,6 +110,12 @@ export interface PracticeLoopDeps {
    * searches for the last note by ear without undoing first (the first melody). Default off.
    */
   tapReplacesLast?: boolean;
+  /**
+   * Whether a finished tune moves the difficulty rank. False for a tune the learner picked from the
+   * library: it is recorded, but an old favourite replayed (or a hard one tried early) is not evidence
+   * of the level they should be served at. Defaults to every scored tune adapting.
+   */
+  adapts?: (m: Melody) => boolean;
   /** Injected for testability; defaults to wall-clock time. */
   now?: () => Date;
 }
@@ -166,7 +173,11 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
   const replayTokenRef = useRef(0);
   // Bumped by each new tune: a tune's intro → first phrase hand-over only runs if it is still current.
   const tuneTokenRef = useRef(0);
-  const introSkippedRef = useRef(false);
+  // What the learner asked of the melody being listened to (`playingMelody`): its play-through reads
+  // this when the audio ends, to tell "heard out" from "start over" and "enough, move on".
+  const listenAskRef = useRef<'none' | 'restart' | 'skip'>('none');
+  // The melody being listened to is held (pause).
+  const [paused, setPaused] = useState(false);
   // First try at each phrase: what the tune is scored on (a retry is practice, FR-011a).
   const firstGradesRef = useRef<AttemptGrade[]>([]);
   const firstAnswersRef = useRef<DetectedNote[][]>([]);
@@ -250,7 +261,8 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
         createdAt: (deps.now?.() ?? new Date()).toISOString(),
       };
       if (result.verdict === 'correct') masteredRef.current.add(tuneIdOf(m.id));
-      deps.onAttemptGraded?.(attempt, m, levelRef.current);
+      // The tune's own level: a tune picked from the library need not be on the rank in effect.
+      deps.onAttemptGraded?.(attempt, m, getLevel(m.difficultyId));
     },
     [deps],
   );
@@ -273,16 +285,38 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
 
   const speedNow = useCallback(() => deps.speed?.() ?? 1, [deps]);
 
+  /**
+   * Sound what the learner listens to before answering, again for as long as they ask to hear it from
+   * the start. Resolves with how it ended: heard out, or cut short by Skip.
+   */
+  const listenThrough = useCallback(async (play: () => Promise<void>, current: () => boolean) => {
+    // Read through a function: the ask is set from a button while `play` is awaited.
+    const asked = (): 'none' | 'restart' | 'skip' => listenAskRef.current;
+    for (;;) {
+      listenAskRef.current = 'none';
+      setPaused(false);
+      await play();
+      if (!current() || asked() !== 'restart') break;
+    }
+    setPaused(false);
+    return asked() === 'skip' ? 'skipped' : 'heard';
+  }, []);
+
   /** Play phrase `i` for the learner to answer, then hand over to them. */
   const playPhrase = useCallback(
     async (m: Melody, i: number) => {
+      const token = tuneTokenRef.current;
       setListening('phrase');
       setPhase('playingMelody');
       await deps.session.enterPlayback();
-      await playPhraseAt(deps.playback, m, i, speedNow());
+      await listenThrough(
+        () => playPhraseAt(deps.playback, m, i, speedNow()),
+        () => tuneTokenRef.current === token,
+      );
+      if (tuneTokenRef.current !== token) return;
       setPhase('awaitingInput');
     },
-    [deps, speedNow],
+    [deps, speedNow, listenThrough],
   );
 
   /** End a sounding replay at once. With `silence`, also cut the audio (a tap cuts it by itself). */
@@ -322,15 +356,17 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
       setListening('tune');
       setPhase('playingMelody');
       await deps.session.enterPlayback();
-      introSkippedRef.current = false;
-      await playTuneAt(deps.playback, m, speedNow());
+      const ended = await listenThrough(
+        () => playTuneAt(deps.playback, m, speedNow()),
+        () => tuneTokenRef.current === token,
+      );
       if (tuneTokenRef.current !== token) return;
       // A skipped intro goes straight on; one heard to the end gets a breath first.
-      if (!introSkippedRef.current) await pause(INTRO_GAP_MS);
+      if (ended === 'heard') await pause(INTRO_GAP_MS);
       if (tuneTokenRef.current !== token) return;
       await playPhrase(m, 0);
     },
-    [deps, endReplay, playPhrase, scored, speedNow],
+    [deps, endReplay, playPhrase, scored, speedNow, listenThrough],
   );
 
   const next = useCallback(() => serve(level), [serve, level]);
@@ -353,12 +389,35 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
     await serve(getLevelByRank(Math.max(MIN_RANK, rank - 1)));
   }, [deps.difficulty, serve]);
 
-  /** Cut the whole-tune intro short and go to the first phrase. */
-  const skipIntro = useCallback(() => {
-    if (phase !== 'playingMelody' || listening !== 'tune') return;
-    introSkippedRef.current = true;
+  /**
+   * Enough listening: cut short what is playing before the answer and move on — from the whole tune to
+   * its first phrase, from a phrase straight to answering it.
+   */
+  const skipListening = useCallback(() => {
+    if (phase !== 'playingMelody') return;
+    listenAskRef.current = 'skip';
     deps.playback.stop().catch(() => undefined);
-  }, [deps.playback, phase, listening]);
+  }, [deps.playback, phase]);
+
+  /** Hear what is playing before the answer again from its start. */
+  const restartListening = useCallback(() => {
+    if (phase !== 'playingMelody') return;
+    listenAskRef.current = 'restart';
+    deps.playback.stop().catch(() => undefined);
+  }, [deps.playback, phase]);
+
+  /** Hold what is playing before the answer where it is. */
+  const pauseListening = useCallback(() => {
+    if (phase !== 'playingMelody') return;
+    deps.playback.pause();
+    setPaused(true);
+  }, [deps.playback, phase]);
+
+  const resumeListening = useCallback(() => {
+    if (phase !== 'playingMelody') return;
+    deps.playback.resume();
+    setPaused(false);
+  }, [deps.playback, phase]);
 
   /** Sound the phrase again (FR-007) over the current screen — or the whole tune once it is done. */
   const replay = useCallback(async () => {
@@ -431,7 +490,7 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
       setPhase('complete');
       if (scored(m)) {
         completeAttempt(m, result, combinePhraseAnswers(firstAnswersRef.current));
-        await adapt(result);
+        if (deps.adapts?.(m) ?? true) await adapt(result);
       }
       // The payoff: hear the whole tune just answered note by note.
       const token = ++replayTokenRef.current;
@@ -529,6 +588,7 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
     () => ({
       phase,
       listening,
+      paused,
       replaying,
       answer,
       melody,
@@ -545,7 +605,10 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
       hint,
       next,
       easier,
-      skipIntro,
+      skipListening,
+      restartListening,
+      pauseListening,
+      resumeListening,
       replay,
       stopReplay,
       retry,
@@ -562,6 +625,7 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
     [
       phase,
       listening,
+      paused,
       replaying,
       answer,
       melody,
@@ -578,7 +642,10 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
       hint,
       next,
       easier,
-      skipIntro,
+      skipListening,
+      restartListening,
+      pauseListening,
+      resumeListening,
       replay,
       stopReplay,
       retry,

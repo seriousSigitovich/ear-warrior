@@ -1,16 +1,17 @@
 // Home screen (T035): start a practice session and navigate into the core loop.
 // Redesigned onto Nocturne — hero heading, waveform motif, quick stats, outlined actions.
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { MAX_RANK } from '../src/services/melody/levels';
-import { levelSummary } from '../src/services/melody/curated';
 import { DEFAULT_DIFFICULTY_SETTINGS, effectiveRank } from '../src/features/difficulty/adapt';
 import { KEY_VALUE_TABLE, defaultRowStore } from '../src/services/storage/db';
 import { keyValueOverRowStore } from '../src/lib/deviceId';
 import { isOnboarded } from '../src/lib/onboarding';
 import { getDifficultyRepository } from '../src/features/difficulty/difficultyRepository';
 import { heroScale, scaled } from '../src/lib/heroScale';
+import { daysLabel, practiceStreak } from '../src/lib/streak';
+import { useHistory } from '../src/features/progress/useHistory';
 import { Screen } from '../src/components/common/Screen';
 import { Button } from '../src/components/common/Button';
 import { Card } from '../src/components/common/Card';
@@ -24,6 +25,16 @@ export default function Home() {
   const [rank, setRank] = useState(effectiveRank(DEFAULT_DIFFICULTY_SETTINGS));
   // The hero block grows on tall phones instead of leaving most of the screen empty.
   const s = heroScale(useWindowDimensions().height);
+  // The habit, from the tunes finished on this device: re-read on focus, so it is fresh after practice.
+  const { attempts } = useHistory();
+  const streak = useMemo(
+    () =>
+      practiceStreak(
+        attempts.map((a) => a.createdAt),
+        new Date(),
+      ),
+    [attempts],
+  );
 
   // Re-read on every focus, not just first mount: expo-router keeps this screen mounted while the
   // Difficulty screen is pushed on top, so a mount-only effect would show a stale level after the
@@ -91,8 +102,8 @@ export default function Home() {
 
       <View style={styles.spacer} />
 
-      {/* Both stats read from persisted difficulty state. A practice streak would need the US3
-          aggregation (T043) — showing an invented one alongside a real level reads as genuine. */}
+      {/* All three are read from what is stored: the level from the difficulty state, the streak and
+          today's count from the finished tunes on record. Nothing here is invented. */}
       <View style={styles.statRow}>
         <Card style={styles.stat}>
           <Text style={styles.statKicker}>Level</Text>
@@ -100,9 +111,18 @@ export default function Home() {
             {rank} of {MAX_RANK}
           </Text>
         </Card>
-        <Card style={styles.stat}>
-          <Text style={styles.statKicker}>Melody</Text>
-          <Text style={styles.statValue}>{levelSummary(rank).notes} notes</Text>
+        <Card style={styles.stat} accessibilityLabel={`Streak: ${daysLabel(streak.days)} in a row`}>
+          <Text style={styles.statKicker}>Streak</Text>
+          <Text style={styles.statValue}>{daysLabel(streak.days)}</Text>
+        </Card>
+        <Card
+          style={styles.stat}
+          accessibilityLabel={`Today: ${streak.today} of ${streak.goal} melodies`}
+        >
+          <Text style={styles.statKicker}>Today</Text>
+          <Text style={[styles.statValue, streak.goalMet && styles.statDone]}>
+            {streak.today} of {streak.goal}
+          </Text>
         </Card>
       </View>
 
@@ -114,15 +134,21 @@ export default function Home() {
       />
       <View style={styles.secondaryRow}>
         <Button
-          label="Settings"
+          label="Melodies"
           variant="secondary"
-          onPress={() => router.push('/settings')}
+          onPress={() => router.push('/melodies')}
           style={styles.grow}
         />
         <Button
           label="Progress"
           variant="secondary"
           onPress={() => router.push('/progress')}
+          style={styles.grow}
+        />
+        <Button
+          label="Settings"
+          variant="secondary"
+          onPress={() => router.push('/settings')}
           style={styles.grow}
         />
       </View>
@@ -142,15 +168,16 @@ const styles = StyleSheet.create({
   wave: { marginTop: 28 },
   spacer: { flex: 1 },
   statRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
-  stat: { flex: 1, padding: 14 },
+  stat: { flex: 1, paddingVertical: 14, paddingHorizontal: 12 },
   statKicker: {
     color: colors.accent,
     fontSize: 10,
     letterSpacing: 1,
     textTransform: 'uppercase',
   },
-  statValue: { color: colors.text, fontSize: 21, fontWeight: font.weightHeading },
+  statValue: { color: colors.text, fontSize: 19, fontWeight: font.weightHeading },
+  statDone: { color: colors.accentRamp[300] },
   cta: { minHeight: 52 },
-  secondaryRow: { flexDirection: 'row', gap: 10, marginTop: 10 },
-  grow: { flex: 1 },
+  secondaryRow: { flexDirection: 'row', gap: 8, marginTop: 10 },
+  grow: { flex: 1, paddingHorizontal: 6 },
 });

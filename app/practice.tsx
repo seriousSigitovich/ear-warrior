@@ -3,10 +3,13 @@
 // as a verdict card + note chips (with a non-blocking tuning advisory) or a calm retry state.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { InteractionManager, ScrollView, StyleSheet, View } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
 import { Session } from '../src/models';
 import { curatedMelody, historyFromAttempts } from '../src/services/melody/curated';
+import { catalogTune, tuneAsk } from '../src/services/melody/catalog';
 import { DEFAULT_GRADING_CFG } from '../src/services/grading/grade';
-import { MAX_RANK, MIN_RANK } from '../src/services/melody/levels';
+import { MAX_RANK, MIN_RANK, getLevel, getLevelByRank } from '../src/services/melody/levels';
+import { practiceStreak } from '../src/lib/streak';
 import { FretPosition, fretMidi, tapStatuses } from '../src/lib/fretboard';
 import {
   DraftState,
@@ -68,6 +71,16 @@ const RESULT_FRET_HEIGHT = 26;
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 export default function Practice() {
+  // A tune picked from the library (`/practice?tune=<id>`): it is served first, whatever the level in
+  // effect; after it practice carries on as usual. An unknown id is ignored.
+  const { tune: tuneParam } = useLocalSearchParams<{ tune?: string }>();
+  const picked = useMemo(() => (tuneParam ? catalogTune(tuneParam) : null), [tuneParam]);
+  const pickedPending = useRef(picked !== null);
+  // Melody ids served as picks: recorded like any tune, but they do not move the difficulty rank.
+  const pickedMelodies = useRef(new Set<string>());
+  // When each tune on record was finished, for the streak on the closing card: read once, then grown
+  // as tunes are finished here (the write to the store may still be on its way when the card shows).
+  const [finishedAt, setFinishedAt] = useState<string[]>([]);
   // Which help, if any, the learner took on the phrase on screen: rides along on its next check.
   const helpRef = useRef<string>('none');
   // Draft mode (spec 008): on/off for this visit, and whether it was used on the phrase on screen. The
@@ -141,7 +154,11 @@ export default function Practice() {
     };
     void repos.sessions.create(session);
     void getOrCreateDeviceId(keyValueOverRowStore(store, KEY_VALUE_TABLE)).then(setDeviceId);
-  }, [repos.sessions, sessionId, store]);
+    void repos.attempts
+      .all()
+      .then((all) => setFinishedAt((seen) => [...all.map((a) => a.createdAt), ...seen]))
+      .catch(() => undefined);
+  }, [repos.sessions, repos.attempts, sessionId, store]);
 
   // Send what an earlier visit could not (offline, app killed before the post finished).
   useEffect(() => {
@@ -197,8 +214,16 @@ export default function Practice() {
 
   const deps = useMemo<PracticeLoopDeps>(
     () => ({
-      nextMelody: (level, seed, mastered, recent) =>
-        curatedMelody(level, seed, undefined, mastered, recent),
+      nextMelody: (level, seed, mastered, recent) => {
+        if (picked && pickedPending.current) {
+          pickedPending.current = false;
+          const m = curatedMelody(getLevelByRank(picked.rank), seed, picked.id);
+          pickedMelodies.current.add(m.id);
+          return m;
+        }
+        return curatedMelody(level, seed, undefined, mastered, recent);
+      },
+      adapts: (m) => !pickedMelodies.current.has(m.id),
       loadHistory,
       playback,
       session: createAudioSession(),
@@ -208,6 +233,7 @@ export default function Practice() {
       speed: () => speedRef.current,
       sessionId,
       onAttemptGraded: (attempt, melody, level) => {
+        setFinishedAt((seen) => [...seen, attempt.createdAt]);
         // Every attempt is recorded (FR-012), moves the session tally, and goes up to the backend
         // on its own: the outbox keeps it until the server has it.
         void persistGradedAttempt(attempt, melody, level, {
@@ -250,6 +276,7 @@ export default function Practice() {
       deviceId,
       session,
       setDraft,
+      picked,
     ],
   );
 
@@ -304,6 +331,29 @@ export default function Practice() {
     void loopReplay();
   }, [melodyId, rank, loop.phase, loopReplay]);
 
+  // Hearing it from the start while still listening counts as a replay too (`where` tells them apart).
+  const loopRestart = loop.restartListening;
+  const restart = useCallback(() => {
+    if (!melodyId) return;
+    if (replays.current.melodyId !== melodyId) replays.current = { melodyId, n: 0 };
+    replays.current.n += 1;
+    track('melody_replay', {
+      rank,
+      n: replays.current.n,
+      where: 'playingMelody',
+      speed: speedRef.current,
+    });
+    loopRestart();
+  }, [melodyId, rank, loopRestart]);
+
+  // The level of the tune on screen: a picked tune need not be on the rank in effect.
+  const shownRank = loop.melody
+    ? getLevel(loop.melody.difficultyId).rank
+    : picked && pickedPending.current
+      ? picked.rank
+      : loop.level.rank;
+  const streak = useMemo(() => practiceStreak(finishedAt, new Date()), [finishedAt]);
+
   const grade = loop.grade;
   const showFeedback = loop.phase === 'feedback' && !!grade;
   const complete = loop.phase === 'complete';
@@ -344,7 +394,7 @@ export default function Practice() {
       {answering ? null : (
         <View style={styles.header}>
           <Kicker>Practice</Kicker>
-          <Tag label={`Level ${loop.level.rank} of ${MAX_RANK}`} />
+          <Tag label={`Level ${shownRank} of ${MAX_RANK}`} />
         </View>
       )}
 
@@ -359,7 +409,12 @@ export default function Practice() {
 
       {complete ? (
         <ScrollView contentContainerStyle={styles.feedback} showsVerticalScrollIndicator={false}>
-          <TuneComplete title={loop.melody?.title} grades={loop.phraseGrades} />
+          <TuneComplete
+            title={loop.melody?.title}
+            grades={loop.phraseGrades}
+            results={loop.tuneGrade?.noteResults}
+            streak={streak}
+          />
           {loop.rankChange ? <RankChangeBanner change={loop.rankChange} /> : null}
         </ScrollView>
       ) : showFeedback ? (
@@ -391,7 +446,15 @@ export default function Practice() {
           flash={flash}
         />
       ) : (
-        <PracticeStage phase={loop.phase} />
+        <PracticeStage
+          phase={loop.phase}
+          paused={loop.paused}
+          idleHint={
+            picked && pickedPending.current
+              ? `${picked.name}: ${tuneAsk(picked)}. Press play, listen, then find the notes.`
+              : undefined
+          }
+        />
       )}
 
       {/* Not on the first play of a melody: that screen is for listening only. A replay still follows
@@ -416,9 +479,13 @@ export default function Practice() {
             phase={loop.phase}
             listening={loop.listening}
             replaying={loop.replaying}
+            paused={loop.paused}
             lastPhrase={loop.phraseIndex + 1 >= loop.phrases}
             onPlay={loop.next}
-            onSkip={loop.skipIntro}
+            onPause={loop.pauseListening}
+            onResume={loop.resumeListening}
+            onRestart={restart}
+            onSkip={loop.skipListening}
             onReplay={replay}
             onStopReplay={loop.stopReplay}
             onRetry={loop.retry}
