@@ -48,6 +48,14 @@ import {
   undoTap,
 } from '../../lib/fretboard';
 import { fingering } from '../../lib/hints';
+import {
+  PhraseSave,
+  detectedFromSave,
+  gradeFromSave,
+  resumePhrase,
+  savesFrom,
+  skipTarget,
+} from '../../lib/melodyProgress';
 
 export type LoopPhase =
   'idle' | 'playingMelody' | 'awaitingInput' | 'grading' | 'feedback' | 'complete';
@@ -92,6 +100,13 @@ export interface PracticeLoopDeps {
   onAttemptGraded?: (attempt: Attempt, melody: Melody, level: DifficultyLevel) => void;
   /** A phrase was checked (for analytics). */
   onPhraseChecked?: (check: PhraseCheck) => void;
+  /**
+   * Where an earlier visit stopped in the tune just picked (spec 017): the first tries already made, and the
+   * phrase to open at. They are restored as this visit's first tries, so the melody is scored on all of them.
+   */
+  resumeOf?: (m: Melody) => { saves: PhraseSave[]; startPhrase: number } | null;
+  /** The first try at a phrase was made: the answered phrases so far, to save as the place to continue at. */
+  onProgress?: (m: Melody, saves: PhraseSave[]) => void;
   /**
    * Playback speed in effect right now (1 = the tune's own tempo; see lib/speed), read as each play
    * starts. A change while a melody sounds goes straight to the playback service. Defaults to full tempo.
@@ -150,6 +165,8 @@ function playPhraseAt(playback: AudioPlayback, m: Melody, i: number, speed: numb
 export function usePracticeLoop(deps: PracticeLoopDeps) {
   const [phase, setPhase] = useState<LoopPhase>('idle');
   const [melody, setMelody] = useState<Melody | null>(null);
+  // The phrase an earlier visit stopped at, while this visit has not got there: "Skip to phrase N" goes to it.
+  const [savedPhrase, setSavedPhrase] = useState<number | null>(null);
   const [phraseIndex, setPhraseIndex] = useState(0);
   // The grade of the phrase on screen (feedback), and of the whole tune (complete).
   const [grade, setGrade] = useState<AttemptGrade | null>(null);
@@ -342,16 +359,20 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
       if (scored(m)) recentRef.current.push(tuneIdOf(m.id));
       setFails(0);
       setHint(null);
-      firstGradesRef.current = [];
-      firstAnswersRef.current = [];
+      const resume = deps.resumeOf?.(m);
+      const saves = resume?.saves ?? [];
+      firstGradesRef.current = saves.map(gradeFromSave);
+      firstAnswersRef.current = saves.map(detectedFromSave);
+      const first = resume ? Math.min(Math.max(0, resume.startPhrase), phraseCount(m) - 1) : 0;
       setMelody(m);
-      setPhraseIndex(0);
-      setPhraseGrades([]);
+      setSavedPhrase(saves.length > 0 ? resumePhrase(saves.length, phraseCount(m)) : null);
+      setPhraseIndex(first);
+      setPhraseGrades([...firstGradesRef.current]);
       setGrade(null);
       setTuneGrade(null);
       setRankChange(null);
       setAnswer([]);
-      await playPhrase(m, 0);
+      await playPhrase(m, first);
     },
     [deps, endReplay, playPhrase, scored, speedNow],
   );
@@ -392,6 +413,19 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
     if (!melody || phase !== 'awaitingInput') return;
     await sound(() => playTuneAt(deps.playback, melody, speedNow()));
   }, [deps.playback, sound, melody, phase, speedNow]);
+
+  /** Jump ahead to the phrase an earlier visit stopped at, from an earlier phrase before a note is placed. */
+  const skipToSaved = useCallback(async () => {
+    if (!melody || savedPhrase === null || phase !== 'awaitingInput') return;
+    const target = skipTarget(phraseIndex, savedPhrase);
+    if (target === null) return;
+    setPhraseIndex(target);
+    setGrade(null);
+    setAnswer([]);
+    setFails(0);
+    setHint(null);
+    await playPhrase(melody, target);
+  }, [melody, savedPhrase, phase, phraseIndex, playPhrase]);
 
   const stopReplay = useCallback(() => endReplay(true), [endReplay]);
 
@@ -524,6 +558,7 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
       firstGradesRef.current[phraseIndex] = result;
       firstAnswersRef.current[phraseIndex] = detected;
       setPhraseGrades([...firstGradesRef.current]);
+      deps.onProgress?.(melody, savesFrom(firstGradesRef.current, firstAnswersRef.current));
     }
     if (result.verdict !== 'correct') setFails((n) => n + 1);
     setGrade(result);
@@ -560,6 +595,8 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
       easier,
       replay,
       hearWhole,
+      skipToSaved,
+      savedPhrase,
       stopReplay,
       retry,
       retryKeeping,
@@ -593,6 +630,8 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
       easier,
       replay,
       hearWhole,
+      skipToSaved,
+      savedPhrase,
       stopReplay,
       retry,
       retryKeeping,

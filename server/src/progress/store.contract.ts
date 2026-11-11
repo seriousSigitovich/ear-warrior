@@ -1,7 +1,7 @@
 // Behaviour every ProgressStore must have. Run against memory (always) and Postgres (when reachable).
 import assert from 'node:assert/strict';
 import { beforeEach, describe, test } from 'node:test';
-import { RECENT_LIMIT, type ProgressAttempt, type ProgressDifficulty, type ProgressStore } from './store.js';
+import { RECENT_LIMIT, type MelodyPlace, type ProgressAttempt, type ProgressDifficulty, type ProgressStore } from './store.js';
 
 const T0 = new Date('2026-10-30T10:00:00Z');
 const at = (sec: number) => new Date(T0.getTime() + sec * 1000);
@@ -18,6 +18,14 @@ const attempt = (tuneId: string, verdict: 'correct' | 'incorrect', sec: number, 
   inputMode: 'fretboard',
   noteResults: [{ status: 'matched' }],
   createdAt: at(sec),
+});
+const place = (tuneId: string, phrase: number, sec: number, over: Partial<MelodyPlace> = {}): MelodyPlace => ({
+  tuneId,
+  phrase,
+  phrases: 5,
+  grades: [{ note_results: [{ status: 'matched' }], answer: [64, 62] }],
+  updatedAt: at(sec),
+  ...over,
 });
 const difficulty: ProgressDifficulty = { mode: 'adaptive', adaptiveRank: 3, fixedRank: 1, streakKind: 'correct', streakCount: 2 };
 
@@ -64,6 +72,52 @@ export function runProgressContract(
       await s.addAttempt(b, attempt('b', 'incorrect', 10, 'shared'));
       assert.deepEqual(await s.history(a), { mastered: ['a'], recent: ['a'] });
       assert.deepEqual(await s.history(b), { mastered: [], recent: ['b'] });
+    });
+
+    test('melody places: none until put, then the latest write wins', async () => {
+      const u = await user();
+      assert.deepEqual(await s.listMelodies(u), []);
+      assert.equal(await s.putMelody(u, place('hotcrossbuns', 1, 10)), true);
+      assert.equal(await s.putMelody(u, place('hotcrossbuns', 3, 20)), true);
+      assert.deepEqual(await s.listMelodies(u), [place('hotcrossbuns', 3, 20)]);
+    });
+
+    test('a stale write (older than what is stored) is ignored, an equal one is accepted', async () => {
+      const u = await user();
+      await s.putMelody(u, place('a', 3, 30));
+      assert.equal(await s.putMelody(u, place('a', 1, 10)), false);
+      assert.equal((await s.listMelodies(u))[0].phrase, 3);
+      assert.equal(await s.putMelody(u, place('a', 4, 30)), true);
+      assert.equal((await s.listMelodies(u))[0].phrase, 4);
+    });
+
+    test('deleting a place removes it; the delete is remembered so an older write cannot bring it back', async () => {
+      const u = await user();
+      await s.putMelody(u, place('a', 2, 10));
+      await s.putMelody(u, place('b', 2, 10));
+      await s.deleteMelody(u, 'a', at(20));
+      assert.deepEqual((await s.listMelodies(u)).map((p) => p.tuneId), ['b']);
+      assert.equal(await s.putMelody(u, place('a', 1, 15)), false);
+      assert.deepEqual((await s.listMelodies(u)).map((p) => p.tuneId), ['b']);
+      // a newer start of the melody is a new place
+      assert.equal(await s.putMelody(u, place('a', 1, 40)), true);
+      assert.deepEqual((await s.listMelodies(u)).map((p) => p.tuneId).sort(), ['a', 'b']);
+    });
+
+    test('a delete older than the stored place is ignored', async () => {
+      const u = await user();
+      await s.putMelody(u, place('a', 2, 30));
+      await s.deleteMelody(u, 'a', at(10));
+      assert.equal((await s.listMelodies(u)).length, 1);
+    });
+
+    test('melody places belong to one account', async () => {
+      const a = await user();
+      const b = await user();
+      await s.putMelody(a, place('x', 2, 10));
+      assert.deepEqual(await s.listMelodies(b), []);
+      await s.deleteMelody(b, 'x', at(50));
+      assert.equal((await s.listMelodies(a)).length, 1);
     });
 
     test('difficulty: none until put, then replaced by each put', async () => {

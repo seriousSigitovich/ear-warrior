@@ -64,6 +64,9 @@ test('every progress route needs a live session', async () => {
     ['GET', '/api/progress/history'],
     ['GET', '/api/progress/difficulty'],
     ['PUT', '/api/progress/difficulty'],
+    ['GET', '/api/progress/melodies'],
+    ['PUT', '/api/progress/melodies/hotcrossbuns'],
+    ['DELETE', '/api/progress/melodies/hotcrossbuns?updated_at=2026-10-30T10:00:00.000Z'],
   ] as const) {
     const none = await app.inject({ method, url, payload: {} });
     assert.equal(none.statusCode, 401, `${method} ${url}`);
@@ -136,4 +139,76 @@ test('difficulty: a rank outside the ladder is a 400', async () => {
   const me = await signIn('a@x.co');
   const res = await app.inject({ method: 'PUT', url: '/api/progress/difficulty', headers: me, payload: { ...difficulty, adaptive_rank: 12 } });
   assert.equal(res.statusCode, 400);
+});
+
+const placeBody = (over: object = {}) => ({
+  phrase: 2,
+  phrases: 5,
+  grades: [
+    { note_results: [{ status: 'matched' }, { status: 'wrong' }], answer: [64, 62] },
+    { note_results: [{ status: 'matched' }], answer: [60] },
+  ],
+  updated_at: '2026-10-30T10:00:00.000Z',
+  ...over,
+});
+const putPlace = (headers: object, tune: string, body: object) =>
+  app.inject({ method: 'PUT', url: `/api/progress/melodies/${tune}`, headers, payload: body });
+const places = (headers: object) => app.inject({ method: 'GET', url: '/api/progress/melodies', headers });
+const dropPlace = (headers: object, tune: string, at: string) =>
+  app.inject({ method: 'DELETE', url: `/api/progress/melodies/${tune}?updated_at=${encodeURIComponent(at)}`, headers });
+
+test('a saved place comes back in the list, with its first tries', async () => {
+  const me = await signIn('a@x.co');
+  const put = await putPlace(me, 'hotcrossbuns', placeBody());
+  assert.equal(put.statusCode, 200, put.body);
+  assert.deepEqual(put.json(), { ok: true, stored: true });
+  const list = (await places(me)).json();
+  assert.equal(list.ok, true);
+  assert.deepEqual(list.melodies, [{ tune_id: 'hotcrossbuns', ...placeBody() }]);
+});
+
+test('the latest write wins: a stale one is acknowledged but not stored', async () => {
+  const me = await signIn('a@x.co');
+  await putPlace(me, 'hotcrossbuns', placeBody({ phrase: 3, updated_at: '2026-10-30T10:05:00.000Z' }));
+  const stale = await putPlace(me, 'hotcrossbuns', placeBody({ phrase: 1, updated_at: '2026-10-30T10:00:00.000Z' }));
+  assert.deepEqual(stale.json(), { ok: true, stored: false });
+  assert.equal((await places(me)).json().melodies[0].phrase, 3);
+});
+
+test('a finished melody’s place is deleted, and an older write cannot bring it back', async () => {
+  const me = await signIn('a@x.co');
+  await putPlace(me, 'hotcrossbuns', placeBody());
+  assert.equal((await dropPlace(me, 'hotcrossbuns', '2026-10-30T10:10:00.000Z')).statusCode, 200);
+  assert.deepEqual((await places(me)).json().melodies, []);
+  await putPlace(me, 'hotcrossbuns', placeBody({ updated_at: '2026-10-30T10:05:00.000Z' }));
+  assert.deepEqual((await places(me)).json().melodies, []);
+});
+
+test('one account never sees another account’s places', async () => {
+  const a = await signIn('a@x.co');
+  const b = await signIn('b@x.co');
+  await putPlace(a, 'hotcrossbuns', placeBody());
+  assert.deepEqual((await places(b)).json().melodies, []);
+});
+
+test('malformed places and delete requests are a 400', async () => {
+  const me = await signIn('a@x.co');
+  const bad: [string, object][] = [
+    ['hotcrossbuns', placeBody({ phrase: -1 })],
+    ['hotcrossbuns', placeBody({ phrase: 5 })], // the phrase to continue at must exist
+    ['hotcrossbuns', placeBody({ phrases: 0 })],
+    ['hotcrossbuns', placeBody({ updated_at: 'yesterday' })],
+    ['hotcrossbuns', placeBody({ grades: 'none' })],
+    ['hotcrossbuns', placeBody({ grades: [{ note_results: 'x', answer: [] }] })],
+    ['hotcrossbuns', placeBody({ grades: [{ note_results: [], answer: ['C4'] }] })],
+    ['hotcrossbuns', placeBody({ grades: Array.from({ length: 101 }, () => ({ note_results: [], answer: [] })) })],
+    ['Hot-Cross', placeBody()],
+    ['x'.repeat(61), placeBody()],
+  ];
+  for (const [tune, body] of bad) {
+    const res = await putPlace(me, tune, body);
+    assert.equal(res.statusCode, 400, `${tune} ${JSON.stringify(body).slice(0, 60)}`);
+  }
+  assert.equal((await app.inject({ method: 'DELETE', url: '/api/progress/melodies/hotcrossbuns', headers: me })).statusCode, 400);
+  assert.equal((await dropPlace(me, 'hotcrossbuns', 'soon')).statusCode, 400);
 });

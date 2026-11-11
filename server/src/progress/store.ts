@@ -25,6 +25,21 @@ export interface ProgressDifficulty {
   streakCount: number;
 }
 
+/**
+ * Where a learner stopped in a melody (spec 017): the phrase to continue at and how each answered phrase went on
+ * its first try. One per account and tune; the latest write wins by `updatedAt`.
+ */
+export interface MelodyPlace {
+  /** The library tune (hyphen-free id). */
+  tuneId: string;
+  /** 0-based phrase to continue at. */
+  phrase: number;
+  phrases: number;
+  /** First-try results of the answered phrases, as the app sent them (opaque to the server). */
+  grades: unknown[];
+  updatedAt: Date;
+}
+
 /** What the next melody is picked against. */
 export interface TuneHistory {
   /** Tunes ever played at 100%. */
@@ -43,4 +58,10 @@ export interface ProgressStore {
   getDifficulty(userId: string): Promise<ProgressDifficulty | null>;
   /** Replaces the account's difficulty state. */
   putDifficulty(userId: string, difficulty: ProgressDifficulty, now: Date): Promise<void>;
+  /** Saves a place unless the account already has a newer write (or delete) for the tune. True when stored. */
+  putMelody(userId: string, place: MelodyPlace): Promise<boolean>;
+  /** The account's places, tunes in any order. Deleted ones are not listed. */
+  listMelodies(userId: string): Promise<MelodyPlace[]>;
+  /** Removes a place (the melody was finished) unless a newer write exists. The delete is remembered. */
+  deleteMelody(userId: string, tuneId: string, updatedAt: Date): Promise<void>;
 }

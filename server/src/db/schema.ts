@@ -224,6 +224,23 @@ export const progressAttempts = pgTable(
   (t) => ({ pk: primaryKey({ columns: [t.userId, t.id] }) }),
 );
 
+/** Where a signed-in learner stopped in a melody (spec 017): one row per account and tune; a delete is kept as a mark. */
+export const progressMelodies = pgTable(
+  'progress_melodies',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    tuneId: text('tune_id').notNull(),
+    phrase: integer('phrase').notNull(),
+    phrases: integer('phrases').notNull(),
+    grades: jsonb('grades').notNull(),
+    deleted: boolean('deleted').notNull().default(false),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.userId, t.tuneId] }) }),
+);
+
 /** A signed-in learner's difficulty state: one row per account. */
 export const progressDifficulty = pgTable('progress_difficulty', {
   userId: uuid('user_id')

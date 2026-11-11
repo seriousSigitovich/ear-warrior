@@ -5,12 +5,15 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { InteractionManager, ScrollView, StyleSheet, View } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { Session } from '../src/models';
-import { curatedMelody, historyFromAttempts } from '../src/services/melody/curated';
+import { curatedMelody, historyFromAttempts, tuneIdOf } from '../src/services/melody/curated';
 import { catalogTune } from '../src/services/melody/catalog';
 import { DEFAULT_GRADING_CFG } from '../src/services/grading/grade';
 import { MAX_RANK, MIN_RANK, getLevel, getLevelByRank } from '../src/services/melody/levels';
 import { scoreOf } from '../src/lib/review';
 import { getGamification } from '../src/services/gamification/instance';
+import { getMelodyProgress } from '../src/services/progress/instance';
+import { MelodyPlaceRow, skipTarget } from '../src/lib/melodyProgress';
+import { phraseCount } from '../src/lib/phrases';
 import { CompletionResult, Snapshot } from '../src/services/gamification/service';
 import { completionEvents, GameEvent, phraseEvents } from '../src/services/gamification/events';
 import { gameSummary } from '../src/services/gamification/summary';
@@ -79,11 +82,30 @@ const API_URL = process.env.EXPO_PUBLIC_API_URL;
 export default function Practice() {
   // A tune picked from the library (`/practice?tune=<id>`): it is served first, whatever the level in
   // effect; after it practice carries on as usual. An unknown id is ignored.
-  const { tune: tuneParam } = useLocalSearchParams<{ tune?: string }>();
+  const { tune: tuneParam, resume: resumeParam } = useLocalSearchParams<{
+    tune?: string;
+    resume?: string;
+  }>();
   const picked = useMemo(() => (tuneParam ? catalogTune(tuneParam) : null), [tuneParam]);
   const pickedPending = useRef(picked !== null);
   // Melody ids served as picks: recorded like any tune, but they do not move the difficulty rank.
   const pickedMelodies = useRef(new Set<string>());
+  // Where an earlier visit stopped in the picked tune (spec 017): read before practice starts (undefined while
+  // loading, null when there is none). The row's Continue opens at that phrase (`resume=1`); tapping the row
+  // opens at phrase 1 with "Skip to phrase N". The place applies to the picked melody only.
+  const melodyProgress = useMemo(() => getMelodyProgress(), []);
+  const [bookmark, setBookmark] = useState<MelodyPlaceRow | null | undefined>(undefined);
+  const resumeServed = useRef<string | null>(null);
+  useEffect(() => {
+    if (!picked) {
+      setBookmark(null);
+      return;
+    }
+    melodyProgress.repo
+      .get(picked.id)
+      .then(setBookmark)
+      .catch(() => setBookmark(null));
+  }, [picked, melodyProgress]);
   // Rewards (spec 013): the service decides every one; this screen reports a phrase checked and a melody
   // completed, shows what comes back, and sends the events that came with it.
   const game = useMemo(() => getGamification(), []);
@@ -235,11 +257,23 @@ export default function Practice() {
           pickedPending.current = false;
           const m = curatedMelody(getLevelByRank(picked.rank), seed, picked.id);
           pickedMelodies.current.add(m.id);
+          resumeServed.current = m.id;
           return m;
         }
         return curatedMelody(level, seed, undefined, mastered, recent);
       },
       adapts: (m) => !pickedMelodies.current.has(m.id),
+      resumeOf: (m) =>
+        bookmark && m.id === resumeServed.current && bookmark.grades.length > 0
+          ? { saves: bookmark.grades, startPhrase: resumeParam === '1' ? bookmark.phrase : 0 }
+          : null,
+      // Each first try saves the place; the server gets it when it can (spec 017).
+      onProgress: (m, saves) => {
+        void melodyProgress.repo
+          .save(tuneIdOf(m.id), phraseCount(m), saves)
+          .then(() => melodyProgress.sync?.flush())
+          .catch(() => undefined);
+      },
       loadHistory,
       playback,
       session: createAudioSession(),
@@ -261,6 +295,11 @@ export default function Practice() {
           .then(() => progress?.outbox.enqueue(attempt))
           .catch(() => undefined);
         session.recordAttempt(attempt.verdict === 'correct');
+        // Finished: there is no place to continue at any more.
+        void melodyProgress.repo
+          .clear(tuneIdOf(melody.id))
+          .then(() => melodyProgress.sync?.flush())
+          .catch(() => undefined);
         // The melody is done: it counts as an exercise when enough of it was landed.
         void game
           .exerciseCompleted({
@@ -327,6 +366,9 @@ export default function Practice() {
       picked,
       game,
       emit,
+      bookmark,
+      resumeParam,
+      melodyProgress,
     ],
   );
 
@@ -408,10 +450,10 @@ export default function Practice() {
   const [startFailed, setStartFailed] = useState(false);
   const loopNext = loop.next;
   useEffect(() => {
-    if (!loop.ready || autoStarted.current) return;
+    if (!loop.ready || bookmark === undefined || autoStarted.current) return;
     autoStarted.current = true;
     loopNext().catch(() => setStartFailed(true));
-  }, [loop.ready, loopNext]);
+  }, [loop.ready, bookmark, loopNext]);
 
   // The level of the tune on screen: a picked tune need not be on the rank in effect.
   const shownRank = loop.melody
@@ -527,6 +569,11 @@ export default function Practice() {
           draft={draft.on}
           flash={flash}
           onHearWhole={loop.phraseIndex === 0 && loop.phrases > 1 ? hearWhole : undefined}
+          skipToSaved={
+            loop.savedPhrase !== null && skipTarget(loop.phraseIndex, loop.savedPhrase) !== null
+              ? { label: `Skip to phrase ${loop.savedPhrase + 1}`, onPress: loop.skipToSaved }
+              : undefined
+          }
         />
       ) : (
         <PracticeStage phase={loop.phase} />

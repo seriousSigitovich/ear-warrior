@@ -201,6 +201,18 @@ export async function applyDdl(sql: Sql): Promise<void> {
       updated_at     timestamptz not null
     );
 
+    -- Where a learner stopped in a melody (spec 017): last write wins by updated_at; a delete is kept as a mark.
+    create table if not exists progress_melodies (
+      user_id     uuid        not null references users (id) on delete cascade,
+      tune_id     text        not null,
+      phrase      int         not null,
+      phrases     int         not null,
+      grades      jsonb       not null,
+      deleted     boolean     not null default false,
+      updated_at  timestamptz not null,
+      primary key (user_id, tune_id)
+    );
+
     -- Owner's view: attempt_log with the account each row belongs to (data-model.md "Attribution rule").
     -- A row before a device's first link belongs to whoever linked first; otherwise to the link that was
     -- open at its time; a gap after sign-out is anonymous (user_id / email are null).

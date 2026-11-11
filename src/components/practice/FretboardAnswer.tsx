@@ -47,6 +47,8 @@ export interface FretboardAnswerProps {
   flash?: { position: FretPosition; id: number; midi: number } | null;
   /** Offer "Hear whole melody" until the first note is placed (the first phrase of a longer tune). */
   onHearWhole?: () => void;
+  /** Offer to jump to the phrase an earlier visit stopped at (spec 017), until the first note is placed. */
+  skipToSaved?: { label: string; onPress: () => void };
 }
 
 export function FretboardAnswer({
@@ -61,6 +63,7 @@ export function FretboardAnswer({
   draft = false,
   flash,
   onHearWhole,
+  skipToSaved,
 }: FretboardAnswerProps) {
   // Each tap, undo or clear is spoken to screen-reader users; the board itself does not change label.
   const announced = useRef(taps.length);
@@ -124,16 +127,31 @@ export function FretboardAnswer({
             {taps.length} of {noteCount} placed. Tap a fret to hear it, then check.
           </Text>
         )}
-        {onHearWhole && untouched && !draft ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Hear whole melody"
-            onPress={onHearWhole}
-            hitSlop={8}
-            style={styles.whole}
-          >
-            <Text style={styles.wholeText}>Hear whole melody</Text>
-          </Pressable>
+        {untouched && !draft && (onHearWhole || skipToSaved) ? (
+          <View style={styles.links}>
+            {skipToSaved ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={skipToSaved.label}
+                onPress={skipToSaved.onPress}
+                hitSlop={8}
+                style={styles.whole}
+              >
+                <Text style={styles.wholeText}>{skipToSaved.label}</Text>
+              </Pressable>
+            ) : null}
+            {onHearWhole ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Hear whole melody"
+                onPress={onHearWhole}
+                hitSlop={8}
+                style={styles.whole}
+              >
+                <Text style={styles.wholeText}>Hear whole melody</Text>
+              </Pressable>
+            ) : null}
+          </View>
         ) : null}
       </View>
 
@@ -245,7 +263,8 @@ const styles = StyleSheet.create({
   slotsDimmed: { opacity: 0.4 },
   title: { color: colors.accent, fontSize: 22, fontWeight: font.weightHeading },
   sub: { color: textAlpha[65], fontSize: 13 },
-  whole: { alignSelf: 'flex-start', minHeight: 32, justifyContent: 'center' },
+  links: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 18 },
+  whole: { minHeight: 32, justifyContent: 'center' },
   wholeText: { color: colors.accentRamp[300], fontSize: 13 },
   coach: { color: colors.text, fontSize: 14, lineHeight: 20 },
   nudge: {

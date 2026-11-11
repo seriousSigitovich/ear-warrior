@@ -20,6 +20,9 @@ export const MASTERY_TABLE = 'mastery';
 /** Small flags of the reward system (the one-time conversion of past attempts, challenges started). */
 export const GAMIFICATION_META_TABLE = 'gamification_meta';
 
+/** Where the learner stopped in each melody (spec 017), one row per tune, with an unsent flag. */
+export const MELODY_PROGRESS_TABLE = 'melody_progress';
+
 /** Every table the app creates on open. */
 export const ALL_TABLES = [
   SESSIONS_TABLE,
@@ -31,6 +34,7 @@ export const ALL_TABLES = [
   XP_AWARDS_TABLE,
   MASTERY_TABLE,
   GAMIFICATION_META_TABLE,
+  MELODY_PROGRESS_TABLE,
 ];
 
 /** Minimal document store keyed by string id. The SQLite adapter serializes rows as JSON docs. */

@@ -4,6 +4,9 @@
 //   GET  /api/progress/history     tunes played at 100% + the latest tunes played (what the next pick reads)
 //   GET  /api/progress/difficulty  the saved difficulty state, 404 when none
 //   PUT  /api/progress/difficulty  replace the difficulty state
+//   GET  /api/progress/melodies            where the learner stopped in each melody (spec 017)
+//   PUT  /api/progress/melodies/:tuneId    save a place; the latest write wins
+//   DELETE /api/progress/melodies/:tuneId?updated_at=…   the melody was finished
 //
 // Without a valid session every route answers 401 and the app simply stays on its local cache.
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
@@ -41,6 +44,19 @@ export const DifficultyBody = z.object({
   streak_kind: z.enum(['correct', 'incorrect', 'none']),
   streak_count: z.number().int().nonnegative(),
 });
+
+const TUNE_ID = /^[a-z0-9]{1,60}$/;
+
+export const MelodyPlaceBody = z
+  .object({
+    phrase: z.number().int().min(0).max(99),
+    phrases: z.number().int().min(1).max(100),
+    grades: z
+      .array(z.object({ note_results: z.array(z.unknown()).max(64), answer: z.array(z.number().int()).max(64) }))
+      .max(100),
+    updated_at: z.string().datetime(),
+  })
+  .refine((b) => b.phrase < b.phrases, 'the phrase to continue at must exist');
 
 export function registerProgress(app: FastifyInstance, { auth, progress, now = () => new Date() }: ProgressDeps): void {
   /** The account behind the bearer token, or null after answering 401. */
@@ -131,5 +147,64 @@ export function registerProgress(app: FastifyInstance, { auth, progress, now = (
       return failed(req, reply, err, 'progress difficulty write failed');
     }
     return { ok: true };
+  });
+
+  app.get('/api/progress/melodies', async (req, reply) => {
+    const userId = await userOf(req, reply);
+    if (!userId) return reply;
+    try {
+      const melodies = await progress.listMelodies(userId);
+      return {
+        ok: true,
+        melodies: melodies.map((m) => ({
+          tune_id: m.tuneId,
+          phrase: m.phrase,
+          phrases: m.phrases,
+          grades: m.grades,
+          updated_at: m.updatedAt.toISOString(),
+        })),
+      };
+    } catch (err) {
+      return failed(req, reply, err, 'progress melodies read failed');
+    }
+  });
+
+  app.put('/api/progress/melodies/:tuneId', async (req, reply) => {
+    const userId = await userOf(req, reply);
+    if (!userId) return reply;
+    const { tuneId } = req.params as { tuneId: string };
+    const parsed = MelodyPlaceBody.safeParse(req.body ?? {});
+    if (!TUNE_ID.test(tuneId) || !parsed.success) {
+      return reply.status(400).send({ ok: false, error: 'invalid_payload' });
+    }
+    const b = parsed.data;
+    try {
+      const stored = await progress.putMelody(userId, {
+        tuneId,
+        phrase: b.phrase,
+        phrases: b.phrases,
+        grades: b.grades,
+        updatedAt: new Date(b.updated_at),
+      });
+      return { ok: true, stored };
+    } catch (err) {
+      return failed(req, reply, err, 'progress melody write failed');
+    }
+  });
+
+  app.delete('/api/progress/melodies/:tuneId', async (req, reply) => {
+    const userId = await userOf(req, reply);
+    if (!userId) return reply;
+    const { tuneId } = req.params as { tuneId: string };
+    const at = z.string().datetime().safeParse((req.query as { updated_at?: unknown }).updated_at);
+    if (!TUNE_ID.test(tuneId) || !at.success) {
+      return reply.status(400).send({ ok: false, error: 'invalid_payload' });
+    }
+    try {
+      await progress.deleteMelody(userId, tuneId, new Date(at.data));
+      return { ok: true };
+    } catch (err) {
+      return failed(req, reply, err, 'progress melody delete failed');
+    }
   });
 }
