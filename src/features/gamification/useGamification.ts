@@ -1,5 +1,7 @@
 // The reward standing (rank, XP, mastery, challenges, streak), re-read whenever a screen regains focus so
-// it is fresh after practice. A thin shell: everything is computed by the service.
+// it is fresh after practice. A thin shell: everything is computed by the service. The first read never waits
+// for the network; the day's challenges are asked for after it (once a day) and the standing is read again
+// if new ones arrived.
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { getGamification } from '../../services/gamification/instance';
@@ -11,10 +13,15 @@ export function useGamification(): Snapshot | null {
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
-      getGamification()
+      const game = getGamification();
+      game
         .snapshot()
         .then((s) => {
           if (!cancelled) setSnapshot(s);
+        })
+        .then(() => game.refreshChallenges())
+        .then(async (changed) => {
+          if (changed && !cancelled) setSnapshot(await game.snapshot());
         })
         .catch(() => undefined);
       return () => {

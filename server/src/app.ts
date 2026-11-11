@@ -5,6 +5,7 @@ import { registerSubscribe } from './routes/subscribe.js';
 import { registerTelemetry } from './routes/telemetry.js';
 import { registerEvents } from './routes/events.js';
 import { registerProgress } from './routes/progress.js';
+import { registerChallenges, type ChallengesDeps } from './routes/challenges.js';
 import { registerSocial } from './routes/social.js';
 import { registerAuth, type AuthDeps } from './routes/auth.js';
 import { registerUsers } from './routes/users.js';
@@ -24,6 +25,8 @@ export interface BuildOptions {
   auth?: AuthDeps;
   /** Replaces the Postgres store behind /api/progress/* (tests pass an in-memory one). */
   progress?: ProgressStore;
+  /** Overrides for /api/challenges/today (tests pass a fixed clock). */
+  challenges?: ChallengesDeps;
   /** Replaces the Postgres read behind /admin/users (tests). */
   usage?: (now: Date) => Promise<UsageReport>;
   /** Replaces the Postgres read behind /admin/funnel (tests). */
@@ -55,6 +58,7 @@ export function buildApp(opts: BuildOptions = {}): FastifyInstance {
   const auth = opts.auth ?? defaultAuthDeps();
   registerAuth(app, auth);
   registerProgress(app, { auth: auth.store, progress: opts.progress ?? createPgProgressStore(db) });
+  registerChallenges(app, opts.challenges);
   registerUsers(app, opts.usage ?? loadUsageReport);
   registerFunnel(app, opts.funnel ?? loadFunnel);
 

@@ -33,6 +33,7 @@ import {
   XP_AWARDS_TABLE,
 } from '../storage/db';
 import { allLevels } from '../melody/levels';
+import type { DailyChallenges } from '../challenges/client';
 
 interface AwardRow {
   id: string;
@@ -112,6 +113,8 @@ export interface LevelStatus extends LevelMastery {
 
 export interface Snapshot {
   totalXp: number;
+  /** The extra XP for finishing all of the day's challenges (the day's own, from the server when it gave them). */
+  allChallengesBonus: number;
   rank: RankProgress;
   /** One per level of the ladder, easiest first. */
   mastery: LevelStatus[];
@@ -134,12 +137,26 @@ export interface GamificationService {
   snapshot(): Promise<Snapshot>;
   /** The day's challenges were shown. True the first time on a local day. */
   markChallengesStarted(): Promise<boolean>;
+  /**
+   * Fetch the day's challenges from the server once and keep them for the day (spec 018). True when new ones
+   * were stored, so the screen should read the snapshot again. Never needed for a screen to render: until then
+   * (or offline, or after something was paid on the built-in ones) the built-in challenges stand.
+   */
+  refreshChallenges(): Promise<boolean>;
 }
 
 export interface GamificationDeps {
   store: RowStore;
   now?: () => Date;
   cfg?: GamificationConfig;
+  /** The server's challenges for a local day, or null when it cannot give them. Absent: built-in only. */
+  fetchChallenges?: (day: string) => Promise<DailyChallenges | null>;
+}
+
+/** The day's challenges as stored: fixed once the app has them, so a payment can never change meaning. */
+interface DayChallengesRow extends DailyChallenges {
+  id: string;
+  source: 'server' | 'built-in';
 }
 
 const BACKFILL_KEY = 'backfill_v1';
@@ -281,8 +298,11 @@ export function createGamificationService(deps: GamificationDeps): GamificationS
       masteryUnlocked.push(input.level);
     }
 
-    // Challenges: each reward and the all-done bonus are rows too, so each is paid once.
-    const states = challengeStates(day, completions, cfg);
+    // Challenges: each reward and the all-done bonus are rows too, so each is paid once. They are the day's
+    // own (the server's when it gave them); built-in ones are fixed for the day before the first payment.
+    const today = await challengesOf(day);
+    const states = challengeStates(day, completions, today.defs);
+    if (states.some((s) => s.completed) && !today.stored) await freeze(day, today);
     const challengesCompleted: { id: string; rewardXp: number }[] = [];
     for (const state of states) {
       const id = `challenge:${day}:${state.id}`;
@@ -303,12 +323,12 @@ export function createGamificationService(deps: GamificationDeps): GamificationS
       const row: AwardRow = {
         id: allId,
         kind: 'daily-all',
-        xp: cfg.allChallengesBonus,
+        xp: today.allBonusXp,
         day,
         at: completion.completedAt,
       };
       await store.insert(XP_AWARDS_TABLE, allId, row as unknown as Record<string, unknown>);
-      allChallengesBonus = cfg.allChallengesBonus;
+      allChallengesBonus = today.allBonusXp;
     }
 
     const after = await load();
@@ -405,6 +425,42 @@ export function createGamificationService(deps: GamificationDeps): GamificationS
     });
   }
 
+  const builtIn = (): DailyChallenges => ({
+    defs: [...cfg.challenges],
+    allBonusXp: cfg.allChallengesBonus,
+  });
+
+  /** The day's challenges: the stored ones, else the built-in ones (not stored until something depends on them). */
+  async function challengesOf(day: string): Promise<DailyChallenges & { stored: boolean }> {
+    const row = await store.getById<DayChallengesRow>(GAMIFICATION_META_TABLE, `challenges:${day}`);
+    return row
+      ? { defs: row.defs, allBonusXp: row.allBonusXp, stored: true }
+      : { ...builtIn(), stored: false };
+  }
+
+  async function freeze(day: string, c: DailyChallenges): Promise<void> {
+    const row: DayChallengesRow = {
+      id: `challenges:${day}`,
+      defs: c.defs,
+      allBonusXp: c.allBonusXp,
+      source: 'built-in',
+    };
+    await store.insert(GAMIFICATION_META_TABLE, row.id, row as unknown as Record<string, unknown>);
+  }
+
+  /**
+   * The day already has its challenges: stored, or something was paid on them (also by a version before the
+   * server's challenges existed). In the second case the built-in ones are fixed now, so ids stay as paid.
+   */
+  async function dayIsFixed(day: string): Promise<boolean> {
+    if (await store.getById(GAMIFICATION_META_TABLE, `challenges:${day}`)) return true;
+    const awards = await store.all<AwardRow>(XP_AWARDS_TABLE);
+    if (!awards.some((a) => a.id.startsWith(`challenge:${day}:`) || a.id === `daily-all:${day}`))
+      return false;
+    await freeze(day, builtIn());
+    return true;
+  }
+
   return {
     init: () => serial(convertPastAttempts),
     phraseChecked: (input) => serial(() => awardPhrase(input)),
@@ -415,13 +471,15 @@ export function createGamificationService(deps: GamificationDeps): GamificationS
         const s = await load();
         const today = dayKey(now());
         const claimed = new Set(s.awards.map((a) => a.id));
-        const challenges = challengeStates(today, s.completions, cfg).map((c) => ({
+        const day = await challengesOf(today);
+        const challenges = challengeStates(today, s.completions, day.defs).map((c) => ({
           ...c,
           claimed: claimed.has(`challenge:${today}:${c.id}`),
         }));
         const achieved = new Map(s.mastery.map((m) => [m.level, m.achievedAt]));
         return {
           totalXp: s.totalXp,
+          allChallengesBonus: day.allBonusXp,
           rank: s.rank,
           mastery: ladder.map((level) => ({
             ...levelMastery(s.completions, level, cfg),
@@ -439,6 +497,25 @@ export function createGamificationService(deps: GamificationDeps): GamificationS
           activeDays: s.activeDays,
         };
       }),
+
+    refreshChallenges: async () => {
+      if (!deps.fetchChallenges) return false;
+      const day = dayKey(now());
+      // Ask only when the day has nothing fixed yet; the slow part happens outside the queue.
+      if (await serial(() => dayIsFixed(day))) return false;
+      const fetched = await deps.fetchChallenges(day).catch(() => null);
+      if (!fetched) return false;
+      return serial(async () => {
+        if (await dayIsFixed(day)) return false;
+        const row: DayChallengesRow = { id: `challenges:${day}`, ...fetched, source: 'server' };
+        await store.insert(
+          GAMIFICATION_META_TABLE,
+          row.id,
+          row as unknown as Record<string, unknown>,
+        );
+        return true;
+      });
+    },
 
     markChallengesStarted: () =>
       serial(async () => {

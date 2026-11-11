@@ -3,7 +3,6 @@
 // melodies completed that day. Opening the screen is the "started" analytics event, once per day.
 import React, { useEffect } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { GAMIFICATION } from '../src/config/gamification';
 import { ChallengeCard } from '../src/components/gamification/ChallengeCard';
 import { Card } from '../src/components/common/Card';
 import { Kicker } from '../src/components/common/Kicker';
@@ -20,19 +19,20 @@ export default function Challenges() {
   const router = useRouter();
   const snap = useGamification();
 
+  // The "started" event names the challenges the learner is actually shown: ask the server first (once a day).
   useEffect(() => {
-    void getGamification()
-      .markChallengesStarted()
-      .then((first) => {
-        if (first) {
-          for (const e of challengeStartedEvents(GAMIFICATION.challenges)) track(e.name, e.props);
-        }
-      })
-      .catch(() => undefined);
+    const game = getGamification();
+    void (async () => {
+      await game.refreshChallenges().catch(() => false);
+      const shown = await game.snapshot();
+      if (await game.markChallengesStarted()) {
+        for (const e of challengeStartedEvents(shown.challenges)) track(e.name, e.props);
+      }
+    })().catch(() => undefined);
   }, []);
 
   const done = snap?.challenges.filter((c) => c.completed).length ?? 0;
-  const bonus = GAMIFICATION.allChallengesBonus;
+  const bonus = snap?.allChallengesBonus ?? 0;
 
   return (
     <Screen edges={['bottom']}>

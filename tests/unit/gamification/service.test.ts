@@ -11,6 +11,7 @@ import {
   GamificationService,
   createGamificationService,
 } from '../../../src/services/gamification/service';
+import { DailyChallenges } from '../../../src/services/challenges/client';
 import { allLevels } from '../../../src/services/melody/levels';
 
 const LEVELS = allLevels().map((l) => l.id);
@@ -448,5 +449,159 @@ describe('conversion of past attempts', () => {
     await service.init();
     const awards = (await store.all<{ kind: string }>(XP_AWARDS_TABLE)).map((a) => a.kind);
     expect(awards.every((k) => k === 'phrase')).toBe(true);
+  });
+});
+
+describe('daily challenges from the server', () => {
+  const serverDay = (over: Partial<DailyChallenges> = {}): DailyChallenges => ({
+    defs: [
+      {
+        id: 'melodies-2',
+        type: 'melodies',
+        target: 2,
+        rewardXp: 15,
+        title: 'Complete 2 melodies',
+        description: 'Play 2 melodies through',
+      },
+      {
+        id: 'accuracy-85',
+        type: 'accuracy',
+        target: 85,
+        rewardXp: 18,
+        title: 'Reach 85% accuracy',
+        description: 'Land 85% of the notes in one melody',
+      },
+      {
+        id: 'melodies-4',
+        type: 'melodies',
+        target: 4,
+        rewardXp: 25,
+        title: 'Complete 4 melodies',
+        description: 'Keep going: 4 melodies today',
+      },
+    ],
+    allBonusXp: 30,
+    ...over,
+  });
+
+  /** A service whose server answers from `answers` (null = unreachable), counting the questions. */
+  function withServer(
+    answers: (DailyChallenges | null)[],
+    store: RowStore = createInMemoryRowStore(),
+    c = clock(nov(10)),
+  ) {
+    const asked: string[] = [];
+    const service = createGamificationService({
+      store,
+      now: c.now,
+      fetchChallenges: async (day) => {
+        asked.push(day);
+        return answers.shift() ?? null;
+      },
+    });
+    return { service, store, c, asked };
+  }
+
+  test('without a server the built-in challenges and bonus are used', async () => {
+    const { service } = make();
+    const snap = await service.snapshot();
+    expect(snap.challenges.map((x) => x.id)).toEqual(['practice', 'accuracy', 'consistency']);
+    expect(snap.allChallengesBonus).toBe(25);
+    expect(await service.refreshChallenges()).toBe(false);
+  });
+
+  test('the server’s challenges replace the built-in ones for the day and are asked for once', async () => {
+    const { service, asked } = withServer([serverDay()]);
+    expect(await service.refreshChallenges()).toBe(true);
+    const snap = await service.snapshot();
+    expect(snap.challenges.map((x) => [x.id, x.target, x.rewardXp])).toEqual([
+      ['melodies-2', 2, 15],
+      ['accuracy-85', 1, 18],
+      ['melodies-4', 4, 25],
+    ]);
+    expect(snap.allChallengesBonus).toBe(30);
+    expect(await service.refreshChallenges()).toBe(false);
+    expect(asked).toEqual(['2026-11-10']);
+  });
+
+  test('they survive a restart, with no new question', async () => {
+    const first = withServer([serverDay()]);
+    await first.service.refreshChallenges();
+    const second = withServer([], first.store, first.c);
+    expect((await second.service.snapshot()).challenges[0].id).toBe('melodies-2');
+    expect(await second.service.refreshChallenges()).toBe(false);
+    expect(second.asked).toEqual([]);
+  });
+
+  test('an unreachable server leaves the built-in ones, and the next try can still succeed', async () => {
+    const { service, asked } = withServer([null, serverDay()]);
+    expect(await service.refreshChallenges()).toBe(false);
+    expect((await service.snapshot()).challenges[0].id).toBe('practice');
+    expect(await service.refreshChallenges()).toBe(true);
+    expect((await service.snapshot()).challenges[0].id).toBe('melodies-2');
+    expect(asked).toHaveLength(2);
+  });
+
+  test('rewards and the bonus are the server’s, each paid once', async () => {
+    const { service } = withServer([serverDay()]);
+    await service.refreshChallenges();
+    const r1 = await finish(service, L1, 90);
+    expect(r1?.challengesCompleted).toEqual([{ id: 'accuracy-85', rewardXp: 18 }]);
+    const r2 = await finish(service, L1, 90);
+    expect(r2?.challengesCompleted).toEqual([{ id: 'melodies-2', rewardXp: 15 }]);
+    await finish(service, L1, 90);
+    const r4 = await finish(service, L1, 90);
+    expect(r4?.challengesCompleted).toEqual([{ id: 'melodies-4', rewardXp: 25 }]);
+    expect(r4?.allChallengesBonus).toBe(30);
+    expect((await service.snapshot()).totalXp).toBe(18 + 15 + 25 + 30);
+  });
+
+  test('once something was paid on the built-in challenges, the day stays on them', async () => {
+    const { service, asked } = withServer([null, serverDay()]);
+    await service.refreshChallenges(); // offline
+    for (let i = 0; i < 3; i++) await finish(service, L1, 85); // pays "practice" (10)
+    expect(await service.refreshChallenges()).toBe(false); // the server is back, but the day is fixed
+    const snap = await service.snapshot();
+    expect(snap.challenges.map((x) => x.id)).toEqual(['practice', 'accuracy', 'consistency']);
+    expect(snap.totalXp).toBe(10);
+    expect(asked).toHaveLength(1); // it did not even ask
+  });
+
+  test('a day paid before this existed (no stored challenges) is fixed to the built-in ones', async () => {
+    const { service, store, c } = withServer([serverDay()]);
+    await store.insert(XP_AWARDS_TABLE, 'challenge:2026-11-10:practice', {
+      id: 'challenge:2026-11-10:practice',
+      kind: 'challenge',
+      xp: 10,
+      day: '2026-11-10',
+      at: c.now().toISOString(),
+    });
+    expect(await service.refreshChallenges()).toBe(false);
+    expect((await service.snapshot()).challenges[0].id).toBe('practice');
+  });
+
+  test('a new day asks again', async () => {
+    const { service, c, asked } = withServer([serverDay(), serverDay({ allBonusXp: 40 })]);
+    await service.refreshChallenges();
+    c.set(nov(11));
+    expect(await service.refreshChallenges()).toBe(true);
+    expect((await service.snapshot()).allChallengesBonus).toBe(40);
+    expect(asked).toEqual(['2026-11-10', '2026-11-11']);
+  });
+
+  test('a slow server does not hold up the other calls', async () => {
+    let release: (d: DailyChallenges) => void = () => undefined;
+    const store = createInMemoryRowStore();
+    const service = createGamificationService({
+      store,
+      now: clock(nov(10)).now,
+      fetchChallenges: () => new Promise<DailyChallenges>((resolve) => (release = resolve)),
+    });
+    const refreshing = service.refreshChallenges();
+    expect(
+      (await service.phraseChecked({ melodyId: 'a-1', phrase: 0, accuracy: 100, level: L1 }))?.xp,
+    ).toBe(20);
+    release(serverDay());
+    expect(await refreshing).toBe(true);
   });
 });

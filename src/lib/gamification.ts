@@ -201,10 +201,10 @@ const progressOf = (
 export function challengeStates(
   day: string,
   completions: readonly Completion[],
-  cfg: GamificationConfig = GAMIFICATION,
+  defs: readonly ChallengeDef[] = GAMIFICATION.challenges,
 ): ChallengeState[] {
   const today = unique(completions).filter((c) => c.day === day);
-  return cfg.challenges.map((def) => {
+  return defs.map((def) => {
     const { progress, target } = progressOf(def, today);
     return {
       id: def.id,

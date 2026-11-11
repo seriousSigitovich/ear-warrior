@@ -8,6 +8,7 @@ const LEVELS = allLevels().map((l) => l.id);
 
 const snap = (over: Partial<Snapshot> = {}): Snapshot => ({
   totalXp: 120,
+  allChallengesBonus: 25,
   rank: rankProgress(120, [LEVELS[0]]),
   mastery: [],
   today: '2026-11-10',
