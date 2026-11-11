@@ -26,8 +26,6 @@ export interface CatalogLevel {
   tunes: CatalogTune[];
   /** Tunes of the level finished at least once. */
   played: number;
-  /** Tunes of the level played at 100% at least once. */
-  perfect: number;
 }
 
 /** The whole library, level by level, against the learner's finished tunes. */
@@ -59,7 +57,6 @@ export function libraryCatalog(
       rank,
       tunes,
       played: tunes.filter((t) => t.played).length,
-      perfect: tunes.filter((t) => t.bestPct === 100).length,
     }));
 }
 

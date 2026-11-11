@@ -4,11 +4,12 @@ import {
   NoteEvent,
   intervalKind,
   intervalLabel,
+  intervalRise,
   intervalStats,
-  missPatterns,
   noteAccuracy,
   noteEvents,
   scoredAttempts,
+  weakSpotTitle,
   weakestInterval,
 } from '../../../src/lib/insights';
 
@@ -74,12 +75,24 @@ describe('interval kinds', () => {
     ]);
   });
 
-  test('each kind has a plain name', () => {
-    expect(intervalLabel('repeat')).toBe('Repeated notes');
-    expect(intervalLabel('step:up')).toBe('Steps up');
-    expect(intervalLabel('third:down')).toBe('Thirds down');
-    expect(intervalLabel('fourthFifth:up')).toBe('Fourths & fifths up');
-    expect(intervalLabel('wide:down')).toBe('Wide leaps down');
+  test('each kind is named in everyday words, not music theory', () => {
+    expect(intervalLabel('repeat')).toBe('The same note again');
+    expect(intervalLabel('step:up')).toBe('Small steps up');
+    expect(intervalLabel('third:down')).toBe('Skips down');
+    expect(intervalLabel('fourthFifth:up')).toBe('Jumps up');
+    expect(intervalLabel('wide:down')).toBe('Big jumps down');
+  });
+
+  test('the rise of a kind grows with its size and follows its direction', () => {
+    expect(
+      (['repeat', 'step:up', 'third:up', 'fourthFifth:up', 'wide:up'] as const).map(intervalRise),
+    ).toEqual([0, 1, 2, 3, 4]);
+    expect((['step:down', 'wide:down'] as const).map(intervalRise)).toEqual([-1, -4]);
+  });
+
+  test('the weak spot is said as a sentence', () => {
+    expect(weakSpotTitle('wide:up')).toBe('Big jumps up trip you');
+    expect(weakSpotTitle('repeat')).toBe('The same note again trips you');
   });
 });
 
@@ -140,21 +153,6 @@ describe('note accuracy', () => {
     expect(acc.delta).toBe(50);
   });
 
-  test('gives one point per practice day, oldest first', () => {
-    const acc = noteAccuracy(
-      [
-        attempt(results([60, 62], [60, 62]), { createdAt: at(10) }),
-        attempt(results([60, 62], [61, 61]), { createdAt: at(8) }),
-        attempt(results([60, 62], [60, 61]), { createdAt: at(8) }),
-      ],
-      now,
-    );
-    expect(acc.byDay).toEqual([
-      { day: '2026-11-08', pct: 25, notes: 4 },
-      { day: '2026-11-10', pct: 100, notes: 2 },
-    ]);
-  });
-
   test('nothing lately: only the all-time figure', () => {
     const acc = noteAccuracy([attempt(results([60], [60]), { createdAt: at(1) })], now);
     expect(acc.week).toBeNull();
@@ -164,7 +162,6 @@ describe('note accuracy', () => {
       before: null,
       all: null,
       delta: null,
-      byDay: [],
     });
   });
 });
@@ -186,8 +183,8 @@ describe('interval map', () => {
       ...many(2, ev(60, 69, 69)), // wide up: right
     ]);
     expect(stats).toEqual([
-      { kind: 'wide:up', label: 'Wide leaps up', tries: 6, hits: 2, pct: 33 },
-      { kind: 'step:up', label: 'Steps up', tries: 6, hits: 6, pct: 100 },
+      { kind: 'wide:up', label: 'Big jumps up', tries: 6, hits: 2, pct: 33 },
+      { kind: 'step:up', label: 'Small steps up', tries: 6, hits: 6, pct: 100 },
     ]);
     expect(thin).toBe(0);
   });
@@ -199,7 +196,7 @@ describe('interval map', () => {
       ...many(10, ev(null, 62, 61)),
     ]);
     expect(stats).toEqual([
-      { kind: 'step:up', label: 'Steps up', tries: MIN_TRIES, hits: MIN_TRIES, pct: 100 },
+      { kind: 'step:up', label: 'Small steps up', tries: MIN_TRIES, hits: MIN_TRIES, pct: 100 },
     ]);
   });
 
@@ -213,60 +210,10 @@ describe('interval map', () => {
   });
 
   test('the weakest kind is the first one below "nothing to fix"', () => {
-    const weak = { kind: 'third:down', label: 'Thirds down', tries: 9, hits: 3, pct: 33 } as const;
-    const fine = { kind: 'step:up', label: 'Steps up', tries: 9, hits: 8, pct: 89 } as const;
+    const weak = { kind: 'third:down', label: 'Skips down', tries: 9, hits: 3, pct: 33 } as const;
+    const fine = { kind: 'step:up', label: 'Small steps up', tries: 9, hits: 8, pct: 89 } as const;
     expect(weakestInterval([weak, fine])).toEqual(weak);
     expect(weakestInterval([fine])).toBeNull();
     expect(weakestInterval([])).toBeNull();
-  });
-});
-
-describe('how the misses go', () => {
-  const wrong = (
-    prev: number | null,
-    expected: number,
-    played: number,
-    octave = false,
-  ): NoteEvent => ({
-    expected,
-    played,
-    hit: false,
-    prev,
-    octave,
-  });
-  const many = (n: number, e: NoteEvent) => Array.from({ length: n }, () => e);
-
-  test('too few wrong notes: nothing to say', () => {
-    expect(missPatterns(many(7, wrong(60, 64, 65)))).toEqual([]);
-    expect(missPatterns([])).toEqual([]);
-  });
-
-  test('a lean upwards, close misses and the right direction are each named', () => {
-    // Expected a third up (60→64), played a fourth up (65): above, within a tone, right direction.
-    expect(missPatterns(many(10, wrong(60, 64, 65)))).toEqual([
-      'You tend to land too high: 100% of your wrong notes are above the right one.',
-      'Your misses are close: 100% are within a tone of the right note.',
-      'You hear which way the melody moves: 100% of your wrong notes go the right way and stop on the wrong note.',
-    ]);
-  });
-
-  test('a lean downwards, the wrong direction and octave slips', () => {
-    const events = [
-      ...many(6, wrong(60, 64, 57)), // below, far, moved down instead of up
-      ...many(4, wrong(60, 64, 52, true)), // an octave below
-    ];
-    expect(missPatterns(events)).toEqual([
-      'You tend to land too low: 100% of your wrong notes are below the right one.',
-      '40% of your wrong notes are the right note in the wrong octave.',
-      'Listen for the direction first: 100% of your wrong notes move the wrong way.',
-    ]);
-  });
-
-  test('no pattern, no sentence', () => {
-    const events = [
-      ...many(5, wrong(null, 64, 70)), // above, far, no note before
-      ...many(5, wrong(null, 64, 58)), // below, far
-    ];
-    expect(missPatterns(events)).toEqual([]);
   });
 });

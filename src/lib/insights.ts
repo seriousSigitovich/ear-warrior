@@ -1,15 +1,12 @@
-// What the finished tunes say about the learner's ear, for the Progress screen (spec 010): how many
-// notes they land (by week and by practice day), which kinds of melodic move they land least, and how
-// their wrong notes tend to go. Everything is counted per note — a tune with one wrong note in fifty is
-// a good tune, not a failed one. Pure: attempts in, numbers and sentences out.
+// What the finished tunes say about the learner's ear, for the Progress screen (specs 010, 011): how
+// many notes they land (this week against the last), and which kind of melodic move they land least.
+// Everything is counted per note — a tune with one wrong note in fifty is a good tune, not a failed
+// one. Pure: attempts in, numbers and words out.
 import { Attempt, Melody, NoteResult } from '../models';
 import { Score, scoreOf } from './review';
-import { dayKey } from './streak';
 
 /** Tries a kind of move needs before its percentage is shown: fewer says nothing. */
 export const MIN_TRIES = 5;
-/** Wrong notes needed before anything is said about how the misses go. */
-export const MIN_MISSES = 8;
 /** At or above this a kind of move needs no fixing. */
 export const STRONG_PCT = 85;
 
@@ -28,17 +25,34 @@ export function intervalKind(semitones: number): IntervalKind {
   return `${cls}:${semitones > 0 ? 'up' : 'down'}`;
 }
 
+// Everyday words, not music theory: a beginner does not know a fourth from a fifth, but hears a jump.
 const SIZE_LABEL: Record<IntervalSize, string> = {
-  step: 'Steps',
-  third: 'Thirds',
-  fourthFifth: 'Fourths & fifths',
-  wide: 'Wide leaps',
+  step: 'Small steps',
+  third: 'Skips',
+  fourthFifth: 'Jumps',
+  wide: 'Big jumps',
 };
+const SIZE_RISE: Record<IntervalSize, number> = { step: 1, third: 2, fourthFifth: 3, wide: 4 };
+
+const parts = (kind: Exclude<IntervalKind, 'repeat'>) =>
+  kind.split(':') as [IntervalSize, 'up' | 'down'];
 
 export function intervalLabel(kind: IntervalKind): string {
-  if (kind === 'repeat') return 'Repeated notes';
-  const [size, direction] = kind.split(':') as [IntervalSize, 'up' | 'down'];
+  if (kind === 'repeat') return 'The same note again';
+  const [size, direction] = parts(kind);
   return `${SIZE_LABEL[size]} ${direction}`;
+}
+
+/** How far a kind of move goes, for drawing it: 0 (same note) to ±4 (big jump), up positive. */
+export function intervalRise(kind: IntervalKind): number {
+  if (kind === 'repeat') return 0;
+  const [size, direction] = parts(kind);
+  return direction === 'up' ? SIZE_RISE[size] : -SIZE_RISE[size];
+}
+
+/** The weak spot as a sentence: "Big jumps up trip you". */
+export function weakSpotTitle(kind: IntervalKind): string {
+  return `${intervalLabel(kind)} ${kind === 'repeat' ? 'trips' : 'trip'} you`;
 }
 
 /** One note of a finished tune as the learner met it. */
@@ -97,12 +111,9 @@ export interface NoteAccuracy {
   all: Score | null;
   /** `week` minus `before`, in percentage points; null unless both have data. */
   delta: number | null;
-  /** One point per practice day, oldest first (the latest 14). */
-  byDay: { day: string; pct: number; notes: number }[];
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const TREND_DAYS = 14;
 
 /** Whole local days from `t`'s day to `now`'s day. */
 function daysAgo(t: Date, now: Date): number {
@@ -110,7 +121,7 @@ function daysAgo(t: Date, now: Date): number {
   return Math.round((noon(now) - noon(t)) / DAY_MS);
 }
 
-/** Share of notes matched: lately, the week before, ever, and per practice day. */
+/** Share of notes matched: lately, the week before, and ever. */
 export function noteAccuracy(attempts: readonly Attempt[], now: Date): NoteAccuracy {
   const scored = scoredAttempts(attempts);
   const score = (of: readonly Attempt[]) =>
@@ -124,25 +135,11 @@ export function noteAccuracy(attempts: readonly Attempt[], now: Date): NoteAccur
   const week = score(within(0, 6));
   const before = score(within(7, 13));
 
-  const days = new Map<string, Attempt[]>();
-  for (const a of scored) {
-    const key = dayKey(new Date(a.createdAt));
-    days.set(key, [...(days.get(key) ?? []), a]);
-  }
-  const byDay = [...days.entries()]
-    .sort(([x], [y]) => x.localeCompare(y))
-    .slice(-TREND_DAYS)
-    .map(([day, of]) => {
-      const s = score(of)!;
-      return { day, pct: s.pct, notes: s.notes };
-    });
-
   return {
     week,
     before,
     all: score(scored),
     delta: week && before ? week.pct - before.pct : null,
-    byDay,
   };
 }
 
@@ -192,63 +189,4 @@ export function intervalStats(
 export function weakestInterval(stats: readonly IntervalStat[]): IntervalStat | null {
   const weakest = stats[0];
   return weakest && weakest.pct < STRONG_PCT ? weakest : null;
-}
-
-const share = (part: number, whole: number) => Math.round((part / whole) * 100);
-
-/**
- * Plain sentences about how the wrong notes go — a lean above or below, misses that are close, octave
- * slips, and whether the direction of the move is heard. Only patterns that are clearly there are
- * stated, and none until there are enough wrong notes to see one.
- */
-export function missPatterns(events: readonly NoteEvent[], minMisses = MIN_MISSES): string[] {
-  const wrong = events.filter(
-    (e): e is NoteEvent & { played: number } => e.played !== null && !e.hit,
-  );
-  if (wrong.length < minMisses) return [];
-  const out: string[] = [];
-
-  const high = share(wrong.filter((e) => e.played > e.expected).length, wrong.length);
-  if (high >= 65) {
-    out.push(`You tend to land too high: ${high}% of your wrong notes are above the right one.`);
-  } else if (100 - high >= 65) {
-    out.push(
-      `You tend to land too low: ${100 - high}% of your wrong notes are below the right one.`,
-    );
-  }
-
-  const close = share(
-    wrong.filter((e) => Math.abs(e.played - e.expected) <= 2).length,
-    wrong.length,
-  );
-  if (close >= 50) {
-    out.push(`Your misses are close: ${close}% are within a tone of the right note.`);
-  }
-
-  const octave = share(wrong.filter((e) => e.octave).length, wrong.length);
-  if (octave >= 15) {
-    out.push(`${octave}% of your wrong notes are the right note in the wrong octave.`);
-  }
-
-  // Direction: only where the tune moves, and there is a note to move from.
-  const moved = wrong.filter(
-    (e): e is NoteEvent & { played: number; prev: number } =>
-      e.prev !== null && e.expected !== e.prev,
-  );
-  if (moved.length >= Math.ceil(minMisses / 2)) {
-    const rightWay = share(
-      moved.filter((e) => Math.sign(e.played - e.prev) === Math.sign(e.expected - e.prev)).length,
-      moved.length,
-    );
-    if (rightWay >= 60) {
-      out.push(
-        `You hear which way the melody moves: ${rightWay}% of your wrong notes go the right way and stop on the wrong note.`,
-      );
-    } else if (rightWay <= 40) {
-      out.push(
-        `Listen for the direction first: ${100 - rightWay}% of your wrong notes move the wrong way.`,
-      );
-    }
-  }
-  return out;
 }

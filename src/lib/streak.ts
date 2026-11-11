@@ -12,8 +12,6 @@ export interface Streak {
   today: number;
   goal: number;
   goalMet: boolean;
-  /** Longest run of days so far. */
-  best: number;
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -45,17 +43,7 @@ export function practiceStreak(finishedAt: readonly string[], now: Date): Streak
   let days = 0;
   for (let back = today > 0 ? 0 : 1; perDay.has(dayKey(daysBefore(now, back))); back++) days++;
 
-  let best = 0;
-  for (const key of perDay.keys()) {
-    const [y, m, d] = key.split('-').map(Number);
-    const day = new Date(y, m - 1, d, 12);
-    if (perDay.has(dayKey(daysBefore(day, 1)))) continue; // not the first day of its run
-    let run = 1;
-    while (perDay.has(dayKey(daysBefore(day, -run)))) run++;
-    best = Math.max(best, run);
-  }
-
-  return { days, today, goal: DAILY_GOAL, goalMet: today >= DAILY_GOAL, best };
+  return { days, today, goal: DAILY_GOAL, goalMet: today >= DAILY_GOAL };
 }
 
 /** "3 days", "1 day", "0 days". */
@@ -67,4 +55,35 @@ export function daysLabel(days: number): string {
 export function streakLine(s: Streak): string {
   const today = s.goalMet ? "Today's goal done" : `${s.today} of ${s.goal} today`;
   return s.days > 1 ? `${s.days}-day streak · ${today}` : today;
+}
+
+/** One day of the current week as the week strip draws it. */
+export interface WeekDay {
+  /** "M", "T", … */
+  letter: string;
+  /** Practised on (past), not practised on (past), today, or still to come. */
+  state: 'done' | 'empty' | 'today' | 'ahead';
+  /** Tunes finished that day. */
+  count: number;
+  goalMet: boolean;
+}
+
+const LETTERS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+
+/** The current week, Monday to Sunday, from the times (ISO) tunes were finished. */
+export function weekDays(finishedAt: readonly string[], now: Date): WeekDay[] {
+  const perDay = new Map<string, number>();
+  for (const iso of finishedAt) {
+    const t = new Date(iso);
+    if (Number.isNaN(t.getTime())) continue;
+    const key = dayKey(t);
+    perDay.set(key, (perDay.get(key) ?? 0) + 1);
+  }
+  const sinceMonday = (now.getDay() + 6) % 7; // getDay: 0 = Sunday
+  return LETTERS.map((letter, i) => {
+    const count = perDay.get(dayKey(daysBefore(now, sinceMonday - i))) ?? 0;
+    const state: WeekDay['state'] =
+      i === sinceMonday ? 'today' : i > sinceMonday ? 'ahead' : count > 0 ? 'done' : 'empty';
+    return { letter, state, count, goalMet: count >= DAILY_GOAL };
+  });
 }

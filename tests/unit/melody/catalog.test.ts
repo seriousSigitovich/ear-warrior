@@ -63,17 +63,6 @@ describe('library catalog', () => {
     expect(level.played).toBe(1);
   });
 
-  test('a level counts its tunes played at 100%', () => {
-    const t = LIBRARY[0];
-    const other = LIBRARY.find((x) => x.rank === t.rank && x.id !== t.id)!;
-    const attempts = [
-      { melodyId: `${t.id}-1`, noteResults: [note(0, true)] },
-      { melodyId: `${other.id}-1`, noteResults: [note(0, false)] },
-    ];
-    const level = libraryCatalog(attempts).find((l) => l.rank === t.rank)!;
-    expect(level).toMatchObject({ played: 2, perfect: 1 });
-  });
-
   test('a tune’s moves are counted inside its phrases only', () => {
     // Hot Cross Buns: E D C | E D C | C C C C D D D D | E D C, in two phrases of 6 and 11 notes.
     const moves = tuneIntervals('hotcrossbuns')!;

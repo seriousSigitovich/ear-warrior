@@ -1,12 +1,10 @@
-import { Attempt, NoteResult } from '../../../src/models';
+import { NoteResult } from '../../../src/models';
 import {
   missSummary,
   mistakeChip,
   mistakesOf,
   noteStrip,
-  phraseScores,
   praise,
-  recentReviews,
   scoreOf,
 } from '../../../src/lib/review';
 
@@ -38,22 +36,6 @@ const extra = (played: number): NoteResult => ({
   detectedMidi: played,
   octaveMismatch: false,
 });
-
-function attempt(id: string, createdAt: string, noteResults: NoteResult[]): Attempt {
-  return {
-    id,
-    sessionId: 's',
-    melodyId: `m-${id}`,
-    detectedNotes: [],
-    noteResults,
-    verdict: noteResults.every((r) => r.status === 'matched') ? 'correct' : 'incorrect',
-    confidence: 1,
-    lowConfidence: false,
-    timedOut: false,
-    inputMode: 'fretboard',
-    createdAt,
-  };
-}
 
 describe('answer review', () => {
   const results = [
@@ -106,31 +88,5 @@ describe('answer review', () => {
       'You played it through',
       'You played it through',
     ]);
-  });
-
-  test('recent reviews are the latest tunes first, named from their melodies', () => {
-    const attempts = [
-      attempt('a', '2026-11-08T10:00:00.000Z', [matched(0, 60)]),
-      attempt('c', '2026-11-10T10:00:00.000Z', [wrong(0, 60, 62)]),
-      attempt('b', '2026-11-09T10:00:00.000Z', [matched(0, 60)]),
-    ];
-    const reviews = recentReviews(attempts, [{ id: 'm-c', title: 'Ode to Joy', phrases: [1] }], 2);
-    expect(reviews.map((r) => [r.attemptId, r.title, r.score.pct])).toEqual([
-      ['c', 'Ode to Joy', 0],
-      ['b', 'Melody', 100],
-    ]);
-    expect(reviews.map((r) => r.phrases.map((p) => p.pct))).toEqual([[0], [100]]);
-  });
-
-  test('a tune is scored phrase by phrase', () => {
-    const tune = [matched(0, 60), matched(1, 62), wrong(2, 64, 65), missed(3, 65), matched(4, 67)];
-    expect(phraseScores(tune, [2, 3])).toEqual([
-      { matched: 2, notes: 2, pct: 100 },
-      { matched: 1, notes: 3, pct: 33 },
-    ]);
-    // Extras belong to no phrase; marks that do not add up to the tune make it one phrase.
-    expect(phraseScores([...tune, extra(72)], [2, 3]).map((p) => p.notes)).toEqual([2, 3]);
-    expect(phraseScores(tune, [2, 2])).toEqual([{ matched: 3, notes: 5, pct: 60 }]);
-    expect(phraseScores(tune)).toEqual([{ matched: 3, notes: 5, pct: 60 }]);
   });
 });
