@@ -1,9 +1,7 @@
-// What the finished tunes say about the learner's ear, for the Progress screen (specs 010, 011): how
-// many notes they land (this week against the last), and which kind of melodic move they land least.
-// Everything is counted per note — a tune with one wrong note in fifty is a good tune, not a failed
-// one. Pure: attempts in, numbers and words out.
+// What the finished tunes say about the learner's ear, for the Progress screen (specs 010, 011): which
+// kind of melodic move they land least. Everything is counted per note — a tune with one wrong note in
+// fifty is a good tune, not a failed one. Pure: attempts in, numbers and words out.
 import { Attempt, Melody, NoteResult } from '../models';
-import { Score, scoreOf } from './review';
 
 /** Tries a kind of move needs before its percentage is shown: fewer says nothing. */
 export const MIN_TRIES = 5;
@@ -101,46 +99,6 @@ export function noteEvents(
       octave: r.status === 'wrong' && r.octaveMismatch,
     }));
   });
-}
-
-export interface NoteAccuracy {
-  /** The last 7 days, today included; null when nothing was finished in them. */
-  week: Score | null;
-  /** The 7 days before those. */
-  before: Score | null;
-  all: Score | null;
-  /** `week` minus `before`, in percentage points; null unless both have data. */
-  delta: number | null;
-}
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-/** Whole local days from `t`'s day to `now`'s day. */
-function daysAgo(t: Date, now: Date): number {
-  const noon = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12).getTime();
-  return Math.round((noon(now) - noon(t)) / DAY_MS);
-}
-
-/** Share of notes matched: lately, the week before, and ever. */
-export function noteAccuracy(attempts: readonly Attempt[], now: Date): NoteAccuracy {
-  const scored = scoredAttempts(attempts);
-  const score = (of: readonly Attempt[]) =>
-    of.length === 0 ? null : scoreOf(of.flatMap((a) => a.noteResults));
-  const within = (from: number, to: number) =>
-    scored.filter((a) => {
-      const ago = daysAgo(new Date(a.createdAt), now);
-      return ago >= from && ago <= to;
-    });
-
-  const week = score(within(0, 6));
-  const before = score(within(7, 13));
-
-  return {
-    week,
-    before,
-    all: score(scored),
-    delta: week && before ? week.pct - before.pct : null,
-  };
 }
 
 export interface IntervalStat {

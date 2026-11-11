@@ -6,7 +6,6 @@ import {
   intervalLabel,
   intervalRise,
   intervalStats,
-  noteAccuracy,
   noteEvents,
   scoredAttempts,
   weakSpotTitle,
@@ -50,8 +49,6 @@ const phrased = (id: string, phrases: number[]): Pick<Melody, 'id' | 'phrases'> 
   id,
   phrases,
 });
-const at = (day: number) => new Date(2026, 10, day, 12).toISOString();
-const now = new Date(2026, 10, 10, 18);
 
 describe('interval kinds', () => {
   test('a move is classed by size and direction', () => {
@@ -126,43 +123,6 @@ describe('note events', () => {
     const old = attempt(results([60], [61]), { inputMode: undefined });
     const timedOut = attempt(results([60], [null]), { timedOut: true });
     expect(scoredAttempts([ok, mic, old, timedOut])).toEqual([ok]);
-  });
-});
-
-describe('note accuracy', () => {
-  test('counts notes, not tunes: one wrong note in four is 75%', () => {
-    const acc = noteAccuracy([attempt(results([60, 62, 64, 65], [60, 62, 64, 66]))], now);
-    expect(acc.week).toEqual({ matched: 3, notes: 4, pct: 75 });
-    expect(acc.all).toEqual({ matched: 3, notes: 4, pct: 75 });
-    expect(acc.before).toBeNull();
-    expect(acc.delta).toBeNull();
-  });
-
-  test('compares the last 7 days with the 7 before', () => {
-    const acc = noteAccuracy(
-      [
-        attempt(results([60, 62], [60, 62]), { createdAt: at(10) }),
-        attempt(results([60, 62], [60, 61]), { createdAt: at(4) }), // 6 days ago: this week
-        attempt(results([60, 62], [61, 61]), { createdAt: at(3) }), // 7 days ago: the week before
-        attempt(results([60, 62], [60, 61]), { createdAt: at(1) }),
-      ],
-      now,
-    );
-    expect(acc.week).toMatchObject({ matched: 3, notes: 4, pct: 75 });
-    expect(acc.before).toMatchObject({ matched: 1, notes: 4, pct: 25 });
-    expect(acc.delta).toBe(50);
-  });
-
-  test('nothing lately: only the all-time figure', () => {
-    const acc = noteAccuracy([attempt(results([60], [60]), { createdAt: at(1) })], now);
-    expect(acc.week).toBeNull();
-    expect(acc.all).toMatchObject({ pct: 100 });
-    expect(noteAccuracy([], now)).toEqual({
-      week: null,
-      before: null,
-      all: null,
-      delta: null,
-    });
   });
 });
 

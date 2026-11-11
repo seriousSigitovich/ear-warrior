@@ -14,7 +14,6 @@ import { Screen } from '../src/components/common/Screen';
 import { Kicker } from '../src/components/common/Kicker';
 import { Card } from '../src/components/common/Card';
 import { Button } from '../src/components/common/Button';
-import { Ring } from '../src/components/common/Ring';
 import { WeekStrip } from '../src/components/progress/WeekStrip';
 import { RankCard } from '../src/components/progress/RankCard';
 import { MoveShape } from '../src/components/progress/MoveShape';
@@ -22,7 +21,6 @@ import { useHistory } from '../src/features/progress/useHistory';
 import {
   intervalRise,
   intervalStats,
-  noteAccuracy,
   noteEvents,
   weakSpotTitle,
   weakestInterval,
@@ -38,31 +36,28 @@ export default function Progress() {
   const game = useGamification();
 
   const insight = useMemo(() => {
-    const now = new Date();
     const map = intervalStats(noteEvents(attempts, melodies));
     const weakest = weakestInterval(map.stats);
     return {
-      accuracy: noteAccuracy(attempts, now),
       mapped: map.stats.length > 0,
       weakest,
       picks: weakest ? tunesForInterval(weakest.kind, attempts) : [],
     };
   }, [attempts, melodies]);
 
-  const { accuracy, mapped, weakest, picks } = insight;
+  const { mapped, weakest, picks } = insight;
   const challengesDone = game?.challenges.filter((c) => c.completed).length ?? 0;
   const challengesTotal = game?.challenges.length ?? 0;
   const week = game ? weekDays(game.activeDays, game.today, challengesDone, challengesTotal) : [];
   const streakDays = game?.streak.days ?? 0;
-  const headline = accuracy.week ?? accuracy.all;
+  const hasHistory = attempts.length > 0 || (game?.totalXp ?? 0) > 0;
   const [pick, ...others] = picks;
   const practise = (tune: string) => router.push({ pathname: '/practice', params: { tune } });
-  const delta = accuracy.delta;
 
   return (
     <Screen edges={['bottom']}>
       <Kicker>Insights</Kicker>
-      <Text style={styles.title}>{accuracy.week ? 'Your ear this week' : 'Your ear so far'}</Text>
+      <Text style={styles.title}>Your progress</Text>
 
       <ScrollView
         style={styles.scroll}
@@ -73,43 +68,17 @@ export default function Progress() {
           <Text style={styles.muted} accessibilityLabel="Loading your progress">
             Loading…
           </Text>
-        ) : !headline ? (
+        ) : !hasHistory ? (
           <Card style={styles.emptyCard}>
             <Text style={styles.emptyTitle}>No melodies yet</Text>
             <Text style={styles.muted}>
-              Finish a melody and this page will show how many notes you land, how your week is
-              going, and what to play next.
+              Finish a melody and this page will show your rank, how your week is going, and what to
+              play next.
             </Text>
           </Card>
         ) : (
           <>
             {game ? <RankCard rank={game.rank} onPress={() => router.push('/journey')} /> : null}
-
-            <View style={styles.hero}>
-              <Ring
-                size={112}
-                stroke={9}
-                progress={headline.pct / 100}
-                accessibilityLabel={`${headline.pct} percent of notes landed`}
-              >
-                <Text style={styles.heroPct}>{headline.pct}%</Text>
-              </Ring>
-              <View style={styles.heroText}>
-                <Text style={styles.heroLabel}>Notes you land</Text>
-                {delta !== null && delta !== 0 ? (
-                  <View style={styles.pill}>
-                    <Text style={styles.pillText}>
-                      {delta > 0 ? '↑' : '↓'} {Math.abs(delta)}% {delta > 0 ? 'up' : 'down'} on last
-                      week
-                    </Text>
-                  </View>
-                ) : null}
-                <Text style={styles.heroCount}>
-                  {headline.matched} of {headline.notes} notes
-                  {accuracy.week ? '' : ' · all time'}
-                </Text>
-              </View>
-            </View>
 
             <Card style={styles.card}>
               <View style={styles.weekHead}>
@@ -219,19 +188,6 @@ const styles = StyleSheet.create({
 
   emptyCard: { padding: 20, gap: 8 },
   emptyTitle: { color: colors.text, fontSize: 18, fontWeight: font.weightHeading },
-
-  hero: { flexDirection: 'row', alignItems: 'center', gap: 20, marginBottom: 4 },
-  heroPct: { color: colors.text, fontSize: 28, fontWeight: font.weightHeading },
-  heroText: { flex: 1, gap: 8, alignItems: 'flex-start' },
-  heroLabel: { color: colors.text, fontSize: 16, fontWeight: font.weightHeading },
-  pill: {
-    backgroundColor: colors.accentRamp[900],
-    borderRadius: radius.pill,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-  },
-  pillText: { color: colors.accentRamp[300], fontSize: 12 },
-  heroCount: { color: textAlpha[55], fontSize: 12 },
 
   card: { padding: 16, gap: 14 },
   cardTitle: { color: colors.text, fontSize: 15, fontWeight: font.weightHeading },
