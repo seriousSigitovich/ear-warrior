@@ -9,7 +9,9 @@ import { isOnboarded } from '../src/lib/onboarding';
 import { heroScale, scaled } from '../src/lib/heroScale';
 import { daysLabel } from '../src/lib/streak';
 import { useGamification } from '../src/features/gamification/useGamification';
+import { AttentionDot } from '../src/components/gamification/AttentionDot';
 import { Flame } from '../src/components/gamification/Flame';
+import { challengesLeft } from '../src/lib/gamification';
 import { RankCard } from '../src/components/progress/RankCard';
 import { Screen } from '../src/components/common/Screen';
 import { Button } from '../src/components/common/Button';
@@ -26,6 +28,8 @@ export default function Home() {
   const game = useGamification();
   const challengesDone = game?.challenges.filter((c) => c.completed).length ?? 0;
   const challengesTotal = game?.challenges.length ?? 3;
+  // Nothing is marked until the standing has loaded: never a dot that then disappears.
+  const left = game ? challengesLeft(game.challenges) : 0;
 
   // First launch: the first melody, then the sign-in offer (spec 005 FR-003) — each once, never blocking (both
   // have Skip). On focus rather than mount, so the offer follows onboarding when it pops back to Home.
@@ -95,10 +99,13 @@ export default function Home() {
             </View>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={`Daily challenges: ${challengesDone} of ${challengesTotal} done`}
+              accessibilityLabel={`Daily challenges: ${challengesDone} of ${challengesTotal} done${
+                left > 0 ? `, ${left} left` : ''
+              }`}
               onPress={() => router.push('/challenges')}
               style={({ pressed }) => [styles.stat, pressed && styles.statPressed]}
             >
+              {left > 0 ? <AttentionDot /> : null}
               <Text style={styles.statKicker}>Daily challenges</Text>
               <Text
                 style={[styles.statValue, challengesDone === challengesTotal && styles.statDone]}

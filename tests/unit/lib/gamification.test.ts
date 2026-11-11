@@ -2,6 +2,7 @@ import { GAMIFICATION } from '../../../src/config/gamification';
 import {
   Completion,
   challengeStates,
+  challengesLeft,
   levelMastery,
   masteredAt,
   phraseReward,
@@ -206,5 +207,13 @@ describe('daily challenges', () => {
   test('a completion counted twice is one', () => {
     const one = done(L1, 100);
     expect(challengeStates(day, [one, one])[0].progress).toBe(1);
+  });
+
+  test('how many challenges are still to do', () => {
+    expect(challengesLeft(challengeStates(day, []))).toBe(3);
+    expect(challengesLeft(challengeStates(day, many(3, L1, 85)))).toBe(2);
+    expect(challengesLeft(challengeStates(day, many(3, L1, 95)))).toBe(1);
+    expect(challengesLeft(challengeStates(day, many(5, L1, 95)))).toBe(0);
+    expect(challengesLeft([])).toBe(0);
   });
 });

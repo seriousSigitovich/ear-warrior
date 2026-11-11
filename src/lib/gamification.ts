@@ -217,3 +217,8 @@ export function challengeStates(
     };
   });
 }
+
+/** How many of the day's challenges are not yet completed. */
+export function challengesLeft(states: readonly ChallengeState[]): number {
+  return states.filter((c) => !c.completed).length;
+}
