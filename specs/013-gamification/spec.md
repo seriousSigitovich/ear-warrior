@@ -135,6 +135,10 @@ does not.
   event pipeline, once per award, with no personal data. (The app has no Firebase; its own pipeline is the
   analytics integration.)
 
+- **FR-012**: Every rank MUST have its own 2D icon, in the app's palette, shown beside the rank's name on the rank card
+  (Home, Progress, Journey), on each row of the ranks list (dimmed until reached) and in the rank-up modal. Icons
+  are bundled images (no new native dependency), drawn as SVG and rendered by `scripts/build-rank-icons.sh`.
+
 ### Key Entities
 
 - **Exercise completion**: attempt id, melody id, level id, accuracy, hints used, completion time, local day.

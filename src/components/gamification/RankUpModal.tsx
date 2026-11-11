@@ -3,7 +3,9 @@
 // received it from the service.
 import React, { useEffect, useRef } from 'react';
 import { Animated, Modal, StyleSheet, Text, View } from 'react-native';
+import { GAMIFICATION } from '../../config/gamification';
 import { Button } from '../common/Button';
+import { RankIcon } from './RankIcon';
 import { useReduceMotion } from '../common/Waveform';
 import { colors, font, radius, textAlpha, withAlpha } from '../../theme/nocturne';
 
@@ -38,9 +40,7 @@ export function RankUpModal({ rank, onClose }: { rank: string | null; onClose: (
           accessibilityViewIsModal
           accessibilityLabel={`New rank: ${rank}`}
         >
-          <Text style={styles.star} accessibilityElementsHidden importantForAccessibility="no">
-            ✦
-          </Text>
+          <RankIcon rankId={GAMIFICATION.ranks.find((r) => r.name === rank)?.id ?? ''} size={112} />
           <Text style={styles.kicker}>New rank</Text>
           <Text style={styles.name}>{rank}</Text>
           <Text style={styles.line}>Your ear is getting sharper.</Text>
@@ -69,7 +69,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  star: { color: colors.accent, fontSize: 40, lineHeight: 48 },
   kicker: { color: colors.accent, fontSize: 12, letterSpacing: 1.4, textTransform: 'uppercase' },
   name: { color: colors.text, fontSize: 32, fontWeight: font.weightHeading },
   line: { color: textAlpha[65], fontSize: 14, marginBottom: 12 },

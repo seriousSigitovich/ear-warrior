@@ -9,6 +9,7 @@ import { Card } from '../src/components/common/Card';
 import { Kicker } from '../src/components/common/Kicker';
 import { Screen } from '../src/components/common/Screen';
 import { RankCard } from '../src/components/progress/RankCard';
+import { RankIcon } from '../src/components/gamification/RankIcon';
 import { useGamification } from '../src/features/gamification/useGamification';
 import { levelLabel, masteryRequirement } from '../src/lib/levelLabels';
 import { LevelStatus } from '../src/services/gamification/service';
@@ -80,28 +81,26 @@ export default function Journey() {
               return (
                 <Card
                   key={r.id}
-                  style={[
-                    styles.rank,
-                    current ? styles.current : {},
-                    !reached ? styles.locked : {},
-                  ]}
+                  style={[styles.rank, current ? styles.current : {}]}
                   accessible
                   accessibilityLabel={`${r.name}. ${reached ? (current ? 'Current rank' : 'Unlocked') : 'Locked'}. ${r.requiredXp} XP. ${masteryRequirement(r.requiredMastery)}`}
                 >
-                  <View style={styles.rankHead}>
-                    <Text style={[styles.rankName, !reached && styles.lockedText]}>
-                      {reached ? (current ? '● ' : '✓ ') : '🔒 '}
-                      {r.name}
+                  <RankIcon rankId={r.id} size={48} locked={!reached} />
+                  <View style={styles.rankText}>
+                    <View style={styles.rankHead}>
+                      <Text style={[styles.rankName, !reached && styles.lockedText]}>{r.name}</Text>
+                      <Text style={styles.here}>
+                        {current ? 'You are here' : reached ? '✓ Unlocked' : 'Locked'}
+                      </Text>
+                    </View>
+                    <Text style={styles.req}>
+                      <Text style={xpMet ? styles.met : undefined}>{r.requiredXp} XP</Text>
+                      {' · '}
+                      <Text style={missing.length === 0 ? styles.met : undefined}>
+                        {masteryRequirement(r.requiredMastery)}
+                      </Text>
                     </Text>
-                    {current ? <Text style={styles.here}>You are here</Text> : null}
                   </View>
-                  <Text style={styles.req}>
-                    <Text style={xpMet ? styles.met : undefined}>{r.requiredXp} XP</Text>
-                    {' · '}
-                    <Text style={missing.length === 0 ? styles.met : undefined}>
-                      {masteryRequirement(r.requiredMastery)}
-                    </Text>
-                  </Text>
                 </Card>
               );
             })}
@@ -145,13 +144,20 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     marginTop: 14,
   },
-  rank: { padding: 14, gap: 4, borderWidth: 1, borderColor: 'transparent' },
+  rank: {
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  rankText: { flex: 1, gap: 4 },
   current: { borderColor: colors.accent },
-  locked: { opacity: 0.7 },
   rankHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
   rankName: { color: colors.text, fontSize: 16, fontWeight: font.weightHeading },
   lockedText: { color: textAlpha[65] },
-  here: { color: colors.accentRamp[300], fontSize: 12 },
+  here: { color: textAlpha[55], fontSize: 12 },
   req: { color: textAlpha[55], fontSize: 12 },
   met: { color: colors.accentRamp[300] },
   levels: { padding: 14, gap: 14 },

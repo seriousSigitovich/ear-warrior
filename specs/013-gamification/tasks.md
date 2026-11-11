@@ -13,3 +13,4 @@
 - [X] T009 UI: useGamification, RankCard, Flame, ChallengeCard, RankUpModal; app/challenges.tsx, app/journey.tsx; Home, Progress, closing card, phrase result
 - [X] T010 Run `npm test`, `npm run lint`, `npm run typecheck`, `cd server && npm test`; check the flow on the Android emulator
 - [ ] T011 Release (owner's go-ahead): deploy the server first, then the OTA with EXPO_PUBLIC_* inline
+- [X] T012 [FR-012] Seven rank icons: assets/ranks/*.svg and *.png, scripts/build-rank-icons.sh, RankIcon and rankIcons.ts, shown on the rank card, the ranks list and the rank-up modal; tests/unit/gamification/rankIcons.test.ts

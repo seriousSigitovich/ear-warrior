@@ -5,6 +5,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { RankProgress } from '../../lib/gamification';
 import { masteryRequirement } from '../../lib/levelLabels';
+import { RankIcon } from '../gamification/RankIcon';
 import { colors, font, radius, textAlpha, withAlpha } from '../../theme/nocturne';
 
 /** What the next rank still needs, in words. */
@@ -25,7 +26,8 @@ export function RankCard({ rank, onPress }: { rank: RankProgress; onPress?: () =
   const body = (
     <>
       <View style={styles.head}>
-        <View>
+        <RankIcon rankId={rank.id} size={56} />
+        <View style={styles.title}>
           <Text style={styles.kicker}>Rank</Text>
           <Text style={styles.name}>{rank.name}</Text>
         </View>
@@ -57,7 +59,8 @@ export function RankCard({ rank, onPress }: { rank: RankProgress; onPress?: () =
 const styles = StyleSheet.create({
   card: { backgroundColor: colors.surface, borderRadius: radius.md, padding: 16, gap: 10 },
   pressed: { backgroundColor: withAlpha(colors.accent, 0.14) },
-  head: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
+  head: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  title: { flex: 1 },
   kicker: { color: colors.accent, fontSize: 11, letterSpacing: 1.2, textTransform: 'uppercase' },
   name: { color: colors.text, fontSize: 22, fontWeight: font.weightHeading, marginTop: 2 },
   xp: { color: colors.accentRamp[300], fontSize: 15, fontWeight: font.weightHeading },
