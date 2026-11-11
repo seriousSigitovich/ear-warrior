@@ -11,6 +11,7 @@ import { initSentry, setSentryUser, wrapWithSentry } from '../src/services/obser
 import { getAuthService } from '../src/features/auth/authService';
 import { currentPlace, setScreen, track } from '../src/features/analytics/tracker';
 import { screenFromPath } from '../src/services/logging/eventLog';
+import { requestSync } from '../src/services/sync/instance';
 import { getOrCreateDeviceId, keyValueOverRowStore } from '../src/lib/deviceId';
 import { KEY_VALUE_TABLE, defaultRowStore } from '../src/services/storage/db';
 
@@ -64,12 +65,26 @@ function useScreenTracking(): void {
   }, []);
 }
 
+// Sync (spec 019): at launch and when the app comes back, take what other devices earned; when it goes to the
+// background, send what was earned here (a melody left half-way, phrases not yet sent).
+function useSync(): void {
+  useEffect(() => {
+    void requestSync();
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void requestSync();
+      else if (state === 'background') void requestSync({ force: true });
+    });
+    return () => sub.remove();
+  }, []);
+}
+
 function RootLayout() {
   useAuthLifecycle();
   useSentryUser();
   // One launch of the app = one `app_open`; day-2 return is read off these server-side.
   useEffect(() => track('app_open'), []);
   useScreenTracking();
+  useSync();
   return (
     <SafeAreaProvider>
       <StatusBar style="light" />

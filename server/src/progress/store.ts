@@ -40,6 +40,34 @@ export interface MelodyPlace {
   updatedAt: Date;
 }
 
+/** The three kinds of rows the reward system keeps (spec 013), stored as the app made them (spec 019). */
+export type GameKind = 'award' | 'completion' | 'mastery';
+
+export interface GameRowInput {
+  kind: GameKind;
+  /** Stable and unique per kind: a row is the same wherever it is made, so storing it twice changes nothing. */
+  id: string;
+  data: Record<string, unknown>;
+}
+
+/** A game row as read back: `seq` is the server's order of arrival, the cursor a device pulls by. */
+export interface GameRowOut extends GameRowInput {
+  seq: number;
+}
+
+export interface GamePage {
+  rows: GameRowOut[];
+  /** Where to continue: the last `seq` returned (the cursor asked with when there were none). */
+  next: number;
+  more: boolean;
+}
+
+export interface AttemptsPage {
+  attempts: (ProgressAttempt & { seq: number })[];
+  next: number;
+  more: boolean;
+}
+
 /** What the next melody is picked against. */
 export interface TuneHistory {
   /** Tunes ever played at 100%. */
@@ -62,6 +90,15 @@ export interface ProgressStore {
   putMelody(userId: string, place: MelodyPlace): Promise<boolean>;
   /** The account's places, tunes in any order. Deleted ones are not listed. */
   listMelodies(userId: string): Promise<MelodyPlace[]>;
+  /**
+   * Stores rows an account earned; a row already there (same kind and id) is left as it is, except mastery, where the
+   * earlier `achievedAt` wins (and the row is then pulled again by devices that had the later one).
+   */
+  putGameRows(userId: string, rows: GameRowInput[]): Promise<void>;
+  /** Up to `limit` rows after the cursor, in the order they arrived. */
+  gameRowsAfter(userId: string, after: number, limit: number): Promise<GamePage>;
+  /** Up to `limit` of the account's attempts after the cursor, in the order they arrived, with their note results. */
+  attemptsAfter(userId: string, after: number, limit: number): Promise<AttemptsPage>;
   /** Removes a place (the melody was finished) unless a newer write exists. The delete is remembered. */
   deleteMelody(userId: string, tuneId: string, updatedAt: Date): Promise<void>;
 }

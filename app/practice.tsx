@@ -12,6 +12,7 @@ import { MAX_RANK, MIN_RANK, getLevel, getLevelByRank } from '../src/services/me
 import { scoreOf } from '../src/lib/review';
 import { getGamification } from '../src/services/gamification/instance';
 import { getMelodyProgress } from '../src/services/progress/instance';
+import { requestSync } from '../src/services/sync/instance';
 import { MelodyPlaceRow, skipTarget } from '../src/lib/melodyProgress';
 import { phraseCount } from '../src/lib/phrases';
 import { CompletionResult, Snapshot } from '../src/services/gamification/service';
@@ -315,6 +316,7 @@ export default function Practice() {
               if (result.rankUp) setRankUpName(result.rankUp);
             }
             setFinished({ melodyId: melody.id, result, snap: await game.snapshot() });
+            void requestSync({ force: true }); // a finished melody goes up to the account at once
           })
           .catch(() => undefined);
       },

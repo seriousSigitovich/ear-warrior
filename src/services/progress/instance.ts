@@ -1,7 +1,7 @@
 // The shared melody places of the running app (spec 017): the device's copy over the local store, and the
 // sync with the server when the build has one (its address) — the sync asks the signed-in session for its
 // token each time, so an anonymous learner's places simply wait on the device.
-import { getAuthService } from '../../features/auth/authService';
+import { ensureAuthReady, getAuthService } from '../../features/auth/authService';
 import { defaultRowStore } from '../storage/db';
 import { createProgressClient } from './client';
 import { MelodyProgressRepository, createMelodyProgressRepository } from './melodyProgress';
@@ -24,7 +24,15 @@ export function getMelodyProgress(): MelodyProgress {
     shared = {
       repo,
       sync: client
-        ? createMelodySync({ repo, client, getToken: () => getAuthService().getToken() })
+        ? createMelodySync({
+            repo,
+            client,
+            // The session may still be loading at launch: wait for it, or a first run finds nobody signed in.
+            getToken: async () => {
+              await ensureAuthReady();
+              return getAuthService().getToken();
+            },
+          })
         : null,
     };
   }

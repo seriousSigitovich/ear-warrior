@@ -7,13 +7,16 @@
 //   GET  /api/progress/melodies            where the learner stopped in each melody (spec 017)
 //   PUT  /api/progress/melodies/:tuneId    save a place; the latest write wins
 //   DELETE /api/progress/melodies/:tuneId?updated_at=…   the melody was finished
+//   POST /api/progress/gamification        awards, completions and mastery the learner earned (spec 019)
+//   GET  /api/progress/gamification?after=&limit=   those rows, after a cursor, in order of arrival
+//   GET  /api/progress/attempts?after=&limit=       the account's attempts, after a cursor (a device that lacks them)
 //
 // Without a valid session every route answers 401 and the app simply stays on its local cache.
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import type { AuthStore } from '../auth/store.js';
 import { hashToken, parseBearer } from '../auth/tokens.js';
-import type { ProgressStore } from '../progress/store.js';
+import type { GameRowInput, ProgressStore } from '../progress/store.js';
 
 export interface ProgressDeps {
   auth: AuthStore;
@@ -46,6 +49,50 @@ export const DifficultyBody = z.object({
 });
 
 const TUNE_ID = /^[a-z0-9]{1,60}$/;
+
+const DAY = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const ROW_ID = z.string().min(1).max(200);
+
+/** The data of each kind of game row (spec 013), as the app writes it. The row's own `id` must match its key. */
+const GameData = {
+  award: z.object({
+    id: ROW_ID,
+    kind: z.enum(['phrase', 'challenge', 'daily-all']),
+    xp: z.number().int().min(0).max(1000),
+    day: DAY,
+    at: z.string().datetime(),
+    level: z.string().max(20).optional(),
+    accuracy: z.number().min(0).max(100).optional(),
+  }),
+  completion: z.object({
+    id: ROW_ID,
+    melodyId: z.string().min(1).max(200),
+    level: z.string().min(1).max(20),
+    accuracy: z.number().min(0).max(100),
+    hintsUsed: z.number().int().min(0).max(100),
+    completedAt: z.string().datetime(),
+    day: DAY,
+  }),
+  mastery: z.object({ id: ROW_ID, level: z.string().min(1).max(20), achievedAt: z.string().datetime() }),
+};
+
+export const GameRowsBody = z.object({
+  rows: z
+    .array(
+      z
+        .object({ kind: z.enum(['award', 'completion', 'mastery']), id: ROW_ID, data: z.record(z.unknown()) })
+        .superRefine((r, ctx) => {
+          const parsed = GameData[r.kind].safeParse(r.data);
+          if (!parsed.success || parsed.data.id !== r.id) ctx.addIssue({ code: 'custom', message: 'bad row data' });
+        }),
+    )
+    .max(500),
+});
+
+const CursorQuery = z.object({
+  after: z.coerce.number().int().min(0).default(0),
+  limit: z.coerce.number().int().min(1).max(1000).optional(),
+});
 
 export const MelodyPlaceBody = z
   .object({
@@ -205,6 +252,62 @@ export function registerProgress(app: FastifyInstance, { auth, progress, now = (
       return { ok: true };
     } catch (err) {
       return failed(req, reply, err, 'progress melody delete failed');
+    }
+  });
+
+  app.post('/api/progress/gamification', async (req, reply) => {
+    const userId = await userOf(req, reply);
+    if (!userId) return reply;
+    const parsed = GameRowsBody.safeParse(req.body ?? {});
+    if (!parsed.success) return reply.status(400).send({ ok: false, error: 'invalid_payload' });
+    try {
+      await progress.putGameRows(userId, parsed.data.rows as GameRowInput[]);
+      return { ok: true };
+    } catch (err) {
+      return failed(req, reply, err, 'progress game rows write failed');
+    }
+  });
+
+  app.get('/api/progress/gamification', async (req, reply) => {
+    const userId = await userOf(req, reply);
+    if (!userId) return reply;
+    const q = CursorQuery.safeParse(req.query ?? {});
+    if (!q.success) return reply.status(400).send({ ok: false, error: 'invalid_query' });
+    try {
+      const page = await progress.gameRowsAfter(userId, q.data.after, q.data.limit ?? 500);
+      return { ok: true, ...page };
+    } catch (err) {
+      return failed(req, reply, err, 'progress game rows read failed');
+    }
+  });
+
+  app.get('/api/progress/attempts', async (req, reply) => {
+    const userId = await userOf(req, reply);
+    if (!userId) return reply;
+    const q = CursorQuery.safeParse(req.query ?? {});
+    if (!q.success) return reply.status(400).send({ ok: false, error: 'invalid_query' });
+    try {
+      const page = await progress.attemptsAfter(userId, q.data.after, Math.min(q.data.limit ?? 100, 200));
+      return {
+        ok: true,
+        next: page.next,
+        more: page.more,
+        attempts: page.attempts.map((a) => ({
+          seq: a.seq,
+          id: a.id,
+          session_id: a.sessionId,
+          melody_id: a.melodyId,
+          verdict: a.verdict,
+          confidence: a.confidence,
+          low_confidence: a.lowConfidence,
+          timed_out: a.timedOut,
+          input_mode: a.inputMode,
+          note_results: a.noteResults,
+          created_at: a.createdAt.toISOString(),
+        })),
+      };
+    } catch (err) {
+      return failed(req, reply, err, 'progress attempts read failed');
     }
   });
 }

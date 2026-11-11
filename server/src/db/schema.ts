@@ -220,6 +220,8 @@ export const progressAttempts = pgTable(
     inputMode: text('input_mode').notNull(),
     noteResults: jsonb('note_results').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+    /** Order of arrival: the cursor a device pulls its attempts by (spec 019). */
+    seq: bigserial('seq', { mode: 'number' }).notNull(),
   },
   (t) => ({ pk: primaryKey({ columns: [t.userId, t.id] }) }),
 );
@@ -239,6 +241,24 @@ export const progressMelodies = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
   },
   (t) => ({ pk: primaryKey({ columns: [t.userId, t.tuneId] }) }),
+);
+
+/**
+ * The reward system's rows (spec 019): awards, completions and mastery as the app made them. `seq` is the order of
+ * arrival, the cursor a device pulls by; a row is identical wherever it is made, so storing one twice is harmless.
+ */
+export const progressGameRows = pgTable(
+  'progress_game_rows',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    kind: text('kind').notNull(),
+    id: text('id').notNull(),
+    data: jsonb('data').notNull(),
+    seq: bigserial('seq', { mode: 'number' }).notNull(),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.userId, t.kind, t.id] }) }),
 );
 
 /** A signed-in learner's difficulty state: one row per account. */

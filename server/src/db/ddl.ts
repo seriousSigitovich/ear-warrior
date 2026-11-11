@@ -190,6 +190,20 @@ export async function applyDdl(sql: Sql): Promise<void> {
       primary key (user_id, id)
     );
     create index if not exists progress_attempts_user_idx on progress_attempts (user_id, created_at desc);
+    -- Order of arrival, for pulling attempts after a cursor (spec 019); existing rows are numbered when it is added.
+    alter table progress_attempts add column if not exists seq bigserial;
+    create index if not exists progress_attempts_seq_idx on progress_attempts (user_id, seq);
+
+    -- The reward system's rows (spec 019): awards, completions, mastery; one row per kind and id, pulled by seq.
+    create table if not exists progress_game_rows (
+      user_id  uuid   not null references users (id) on delete cascade,
+      kind     text   not null check (kind in ('award','completion','mastery')),
+      id       text   not null,
+      data     jsonb  not null,
+      seq      bigserial,
+      primary key (user_id, kind, id)
+    );
+    create index if not exists progress_game_rows_seq_idx on progress_game_rows (user_id, seq);
 
     create table if not exists progress_difficulty (
       user_id        uuid        primary key references users (id) on delete cascade,

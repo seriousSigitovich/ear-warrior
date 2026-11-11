@@ -21,7 +21,7 @@ let seq = 0;
 runProgressContract(
   'postgres',
   async () => {
-    await sql.unsafe('truncate users, progress_attempts, progress_difficulty, progress_melodies restart identity cascade');
+    await sql.unsafe('truncate users, progress_attempts, progress_difficulty, progress_melodies, progress_game_rows restart identity cascade');
     return {
       store: createPgProgressStore(db),
       newUser: async () => {

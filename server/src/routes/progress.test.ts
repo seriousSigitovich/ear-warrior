@@ -65,6 +65,9 @@ test('every progress route needs a live session', async () => {
     ['GET', '/api/progress/difficulty'],
     ['PUT', '/api/progress/difficulty'],
     ['GET', '/api/progress/melodies'],
+    ['POST', '/api/progress/gamification'],
+    ['GET', '/api/progress/gamification'],
+    ['GET', '/api/progress/attempts'],
     ['PUT', '/api/progress/melodies/hotcrossbuns'],
     ['DELETE', '/api/progress/melodies/hotcrossbuns?updated_at=2026-10-30T10:00:00.000Z'],
   ] as const) {
@@ -211,4 +214,79 @@ test('malformed places and delete requests are a 400', async () => {
   }
   assert.equal((await app.inject({ method: 'DELETE', url: '/api/progress/melodies/hotcrossbuns', headers: me })).statusCode, 400);
   assert.equal((await dropPlace(me, 'hotcrossbuns', 'soon')).statusCode, 400);
+});
+
+const gameRows = {
+  award: { kind: 'award', id: 'phrase:hotcrossbuns-7:0', data: { id: 'phrase:hotcrossbuns-7:0', kind: 'phrase', xp: 20, day: '2026-11-12', at: '2026-11-12T10:00:00.000Z', level: 'L1', accuracy: 100 } },
+  completion: { kind: 'completion', id: 'att-1', data: { id: 'att-1', melodyId: 'hotcrossbuns-7', level: 'L1', accuracy: 90, hintsUsed: 0, completedAt: '2026-11-12T10:05:00.000Z', day: '2026-11-12' } },
+  mastery: { kind: 'mastery', id: 'L1', data: { id: 'L1', level: 'L1', achievedAt: '2026-11-12T10:05:00.000Z' } },
+};
+const pushGame = (headers: object, rows: object[]) =>
+  app.inject({ method: 'POST', url: '/api/progress/gamification', headers, payload: { rows } });
+const pullGame = (headers: object, query = '') => app.inject({ method: 'GET', url: `/api/progress/gamification${query}`, headers });
+
+test('pushed game rows come back, with their order number, and pushing them again changes nothing', async () => {
+  const me = await signIn('a@x.co');
+  const rows = [gameRows.award, gameRows.completion, gameRows.mastery];
+  assert.equal((await pushGame(me, rows)).statusCode, 200);
+  assert.equal((await pushGame(me, rows)).statusCode, 200);
+  const body = (await pullGame(me)).json();
+  assert.equal(body.ok, true);
+  assert.deepEqual(body.rows.map((r: { kind: string; id: string }) => [r.kind, r.id]), [['award', 'phrase:hotcrossbuns-7:0'], ['completion', 'att-1'], ['mastery', 'L1']]);
+  assert.deepEqual(body.rows[0].data, gameRows.award.data);
+  assert.equal(body.more, false);
+  assert.equal(body.next, body.rows[2].seq);
+});
+
+test('game rows are read in pages after a cursor', async () => {
+  const me = await signIn('a@x.co');
+  const many = Array.from({ length: 5 }, (_, i) => ({ ...gameRows.award, id: `p${i}`, data: { ...gameRows.award.data, id: `p${i}` } }));
+  await pushGame(me, many);
+  const first = (await pullGame(me, '?limit=2')).json();
+  assert.deepEqual([first.rows.length, first.more], [2, true]);
+  const second = (await pullGame(me, `?after=${first.next}&limit=10`)).json();
+  assert.deepEqual([second.rows.map((r: { id: string }) => r.id), second.more], [['p2', 'p3', 'p4'], false]);
+});
+
+test('one account never sees another account’s game rows', async () => {
+  const a = await signIn('a@x.co');
+  const b = await signIn('b@x.co');
+  await pushGame(a, [gameRows.award]);
+  assert.deepEqual((await pullGame(b)).json().rows, []);
+});
+
+test('malformed game rows are a 400 and none of the batch is stored', async () => {
+  const me = await signIn('a@x.co');
+  const bad: object[][] = [
+    [{ ...gameRows.award, kind: 'trophy' }],
+    [{ ...gameRows.award, id: 'other-id' }], // the row's own id must match
+    [{ ...gameRows.award, data: { ...gameRows.award.data, xp: -5 } }],
+    [{ ...gameRows.award, data: { ...gameRows.award.data, day: 'today' } }],
+    [{ ...gameRows.completion, data: { ...gameRows.completion.data, accuracy: 140 } }],
+    [{ ...gameRows.mastery, data: { ...gameRows.mastery.data, achievedAt: 'soon' } }],
+    [gameRows.award, { kind: 'award' }],
+    Array.from({ length: 501 }, (_, i) => ({ ...gameRows.award, id: `p${i}`, data: { ...gameRows.award.data, id: `p${i}` } })),
+  ];
+  for (const rows of bad) assert.equal((await pushGame(me, rows)).statusCode, 400, JSON.stringify(rows).slice(0, 80));
+  assert.deepEqual((await pullGame(me)).json().rows, []);
+  assert.equal((await pullGame(me, '?after=-1')).statusCode, 400);
+  assert.equal((await pullGame(me, '?limit=0')).statusCode, 400);
+});
+
+test('attempts are pulled in pages after a cursor, with their note results', async () => {
+  const me = await signIn('a@x.co');
+  await postAttempt(me, attempt('hotcrossbuns-1', 'correct', '2026-10-30T10:00:00.000Z'));
+  await postAttempt(me, attempt('frere3-2', 'incorrect', '2026-10-30T10:05:00.000Z'));
+  await postAttempt(me, attempt('hotcrossbuns-3', 'incorrect', '2026-10-30T10:10:00.000Z'));
+  const pull = (query: string) => app.inject({ method: 'GET', url: `/api/progress/attempts${query}`, headers: me });
+  const first = (await pull('?limit=2')).json();
+  assert.equal(first.ok, true);
+  assert.deepEqual(first.attempts.map((a: { melody_id: string }) => a.melody_id), ['hotcrossbuns-1', 'frere3-2']);
+  assert.equal(first.more, true);
+  assert.deepEqual(first.attempts[0].note_results, [{ expected: 'E4', status: 'matched' }]);
+  assert.deepEqual(Object.keys(first.attempts[0]).sort(), [
+    'confidence', 'created_at', 'id', 'input_mode', 'low_confidence', 'melody_id', 'note_results', 'seq', 'session_id', 'timed_out', 'verdict',
+  ]);
+  const rest = (await pull(`?after=${first.next}`)).json();
+  assert.deepEqual([rest.attempts.map((a: { melody_id: string }) => a.melody_id), rest.more], [['hotcrossbuns-3'], false]);
 });

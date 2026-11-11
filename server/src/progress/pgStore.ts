@@ -1,8 +1,8 @@
 // Postgres ProgressStore (Drizzle). Tables: db/ddl.ts. Rows hang off `users` with ON DELETE CASCADE, so
 // deleting an account removes its progress with it.
-import { and, desc, eq, lte } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, lte, sql } from 'drizzle-orm';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
-import { progressAttempts, progressDifficulty, progressMelodies } from '../db/schema.js';
+import { progressAttempts, progressDifficulty, progressGameRows, progressMelodies } from '../db/schema.js';
 import { RECENT_LIMIT, type ProgressStore } from './store.js';
 
 export function createPgProgressStore(db: PostgresJsDatabase<Record<string, unknown>>): ProgressStore {
@@ -53,6 +53,65 @@ export function createPgProgressStore(db: PostgresJsDatabase<Record<string, unkn
         streakKind: row.streakKind as 'correct' | 'incorrect' | 'none',
         streakCount: row.streakCount,
       };
+    },
+
+    async putGameRows(userId, rows) {
+      if (rows.length === 0) return;
+      const values = rows.map((r) => ({ userId, kind: r.kind, id: r.id, data: r.data }));
+      // Awards and completions are the same wherever they are made: a row already there stays as it is.
+      const others = values.filter((v) => v.kind !== 'mastery');
+      if (others.length > 0) await db.insert(progressGameRows).values(others).onConflictDoNothing();
+      const masteries = values.filter((v) => v.kind === 'mastery');
+      if (masteries.length === 0) return;
+      // Mastery: the earlier date wins, and the row moves to the end of the order so devices pull it again.
+      await db
+        .insert(progressGameRows)
+        .values(masteries)
+        .onConflictDoUpdate({
+          target: [progressGameRows.userId, progressGameRows.kind, progressGameRows.id],
+          set: { data: sql`excluded.data`, seq: sql`nextval(pg_get_serial_sequence('progress_game_rows', 'seq'))` },
+          setWhere: sql`excluded.data->>'achievedAt' < ${progressGameRows.data}->>'achievedAt'`,
+        });
+    },
+
+    async gameRowsAfter(userId, after, limit) {
+      const rows = await db
+        .select()
+        .from(progressGameRows)
+        .where(and(eq(progressGameRows.userId, userId), gt(progressGameRows.seq, after)))
+        .orderBy(asc(progressGameRows.seq))
+        .limit(limit + 1);
+      const page = rows.slice(0, limit).map((r) => ({
+        kind: r.kind as 'award' | 'completion' | 'mastery',
+        id: r.id,
+        data: r.data as Record<string, unknown>,
+        seq: Number(r.seq),
+      }));
+      return { rows: page, next: page.length ? page[page.length - 1].seq : after, more: rows.length > limit };
+    },
+
+    async attemptsAfter(userId, after, limit) {
+      const rows = await db
+        .select()
+        .from(progressAttempts)
+        .where(and(eq(progressAttempts.userId, userId), gt(progressAttempts.seq, after)))
+        .orderBy(asc(progressAttempts.seq))
+        .limit(limit + 1);
+      const page = rows.slice(0, limit).map((r) => ({
+        id: r.id,
+        sessionId: r.sessionId,
+        melodyId: r.melodyId,
+        tuneId: r.tuneId,
+        verdict: r.verdict as 'correct' | 'incorrect',
+        confidence: r.confidence,
+        lowConfidence: r.lowConfidence,
+        timedOut: r.timedOut,
+        inputMode: r.inputMode as 'mic' | 'fretboard',
+        noteResults: r.noteResults as unknown[],
+        createdAt: r.createdAt,
+        seq: Number(r.seq),
+      }));
+      return { attempts: page, next: page.length ? page[page.length - 1].seq : after, more: rows.length > limit };
     },
 
     async putMelody(userId, p) {

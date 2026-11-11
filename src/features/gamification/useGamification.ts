@@ -5,6 +5,7 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { getGamification } from '../../services/gamification/instance';
+import { requestSync } from '../../services/sync/instance';
 import { Snapshot } from '../../services/gamification/service';
 
 /** The current standing, or null until it has loaded (or if the store could not be read). */
@@ -20,6 +21,8 @@ export function useGamification(): Snapshot | null {
           if (!cancelled) setSnapshot(s);
         })
         .then(() => game.refreshChallenges())
+        // Rewards earned on another device arrive here (once a minute at most), then the standing is read again.
+        .then(async (fresh) => (await requestSync()) || fresh)
         .then(async (changed) => {
           if (changed && !cancelled) setSnapshot(await game.snapshot());
         })

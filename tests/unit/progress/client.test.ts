@@ -170,4 +170,105 @@ describe('progress client', () => {
       expect(await refused.listMelodies('tok')).toBeNull();
     });
   });
+
+  describe('game rows and attempts (spec 019)', () => {
+    const row = {
+      kind: 'award' as const,
+      id: 'phrase:a-1:0',
+      data: {
+        id: 'phrase:a-1:0',
+        kind: 'phrase',
+        xp: 20,
+        day: '2026-11-12',
+        at: '2026-11-12T10:00:00.000Z',
+      },
+    };
+
+    test('pushGame sends the rows to the gamification endpoint', async () => {
+      const { impl, calls } = fakeFetch({ ok: true });
+      expect(await createProgressClient('https://api.test', impl)!.pushGame('tok', [row])).toBe(
+        true,
+      );
+      expect(calls[0].url).toBe('https://api.test/api/progress/gamification');
+      expect(calls[0].init.method).toBe('POST');
+      expect(JSON.parse(calls[0].init.body as string)).toEqual({ rows: [row] });
+    });
+
+    test('pullGame asks after a cursor and reads the page, dropping rows it cannot trust', async () => {
+      const { impl, calls } = fakeFetch({
+        ok: true,
+        next: 9,
+        more: true,
+        rows: [
+          { ...row, seq: 8 },
+          { kind: 'trophy', id: 'x', data: {}, seq: 9 },
+          { ...row, id: 'y', seq: 'no' },
+          'junk',
+          {
+            kind: 'mastery',
+            id: 'L1',
+            data: { id: 'L1', level: 'L1', achievedAt: '2026-11-12T10:00:00.000Z' },
+            seq: 9,
+          },
+        ],
+      });
+      const page = await createProgressClient('https://api.test', impl)!.pullGame('tok', 7);
+      expect(calls[0].url).toBe('https://api.test/api/progress/gamification?after=7');
+      expect(page?.next).toBe(9);
+      expect(page?.more).toBe(true);
+      expect(page?.rows.map((r) => [r.kind, r.id, r.seq])).toEqual([
+        ['award', 'phrase:a-1:0', 8],
+        ['mastery', 'L1', 9],
+      ]);
+    });
+
+    test('pullAttempts reads attempts in the app’s shape', async () => {
+      const { impl, calls } = fakeFetch({
+        ok: true,
+        next: 3,
+        more: false,
+        attempts: [
+          {
+            seq: 3,
+            id: 'a1',
+            session_id: 's',
+            melody_id: 'hotcrossbuns-1',
+            verdict: 'correct',
+            confidence: 0.9,
+            low_confidence: false,
+            timed_out: false,
+            input_mode: 'fretboard',
+            note_results: [],
+            created_at: '2026-11-10T10:00:00.000Z',
+          },
+          { seq: 4, id: 7 },
+        ],
+      });
+      const page = await createProgressClient('https://api.test', impl)!.pullAttempts('tok', 2);
+      expect(calls[0].url).toBe('https://api.test/api/progress/attempts?after=2');
+      expect(page?.attempts).toEqual([
+        {
+          id: 'a1',
+          sessionId: 's',
+          melodyId: 'hotcrossbuns-1',
+          detectedNotes: [],
+          noteResults: [],
+          verdict: 'correct',
+          confidence: 0.9,
+          lowConfidence: false,
+          timedOut: false,
+          inputMode: 'fretboard',
+          createdAt: '2026-11-10T10:00:00.000Z',
+        },
+      ]);
+      expect([page?.next, page?.more]).toEqual([3, false]);
+    });
+
+    test('a refusal or no network is false / null', async () => {
+      const refused = createProgressClient('https://api.test', fakeFetch({ ok: false }).impl)!;
+      expect(await refused.pushGame('tok', [row])).toBe(false);
+      expect(await refused.pullGame('tok', 0)).toBeNull();
+      expect(await refused.pullAttempts('tok', 0)).toBeNull();
+    });
+  });
 });
