@@ -290,3 +290,11 @@ test('attempts are pulled in pages after a cursor, with their note results', asy
   const rest = (await pull(`?after=${first.next}`)).json();
   assert.deepEqual([rest.attempts.map((a: { melody_id: string }) => a.melody_id), rest.more], [['hotcrossbuns-3'], false]);
 });
+
+test('only the known fields of a game row are stored: extra keys are dropped', async () => {
+  const me = await signIn('a@x.co');
+  const padded = { ...gameRows.award, data: { ...gameRows.award.data, junk: 'x'.repeat(5000), nested: { a: 1 } } };
+  assert.equal((await pushGame(me, [padded])).statusCode, 200);
+  const stored = (await pullGame(me)).json().rows[0].data;
+  assert.deepEqual(stored, gameRows.award.data);
+});

@@ -10,6 +10,7 @@ import {
   resumePhrase,
   savesFrom,
   skipTarget,
+  usablePlace,
 } from '../../../src/lib/melodyProgress';
 
 const save = (...midis: number[]): PhraseSave => ({
@@ -158,5 +159,35 @@ describe('first tries as saved and restored', () => {
     const grades = saves.map(gradeFromSave);
     const answers = saves.map(detectedFromSave);
     expect(savesFrom(grades, answers)).toEqual(saves);
+  });
+});
+
+describe('a saved place against the melody it is restored onto', () => {
+  const place = (over: Partial<Pick<MelodyPlaceRow, 'phrase' | 'phrases' | 'grades'>> = {}) => ({
+    phrase: 2,
+    phrases: 5,
+    grades: [save(60), save(62)],
+    ...over,
+  });
+
+  test('a place that fits the melody is usable', () => {
+    expect(usablePlace(place(), 5)).toBe(true);
+    expect(
+      usablePlace(place({ phrase: 4, grades: [save(1), save(2), save(3), save(4), save(5)] }), 5),
+    ).toBe(true);
+  });
+
+  test('a place saved for a different number of phrases is not (the tune has changed since)', () => {
+    expect(usablePlace(place(), 6)).toBe(false);
+    expect(usablePlace(place(), 3)).toBe(false);
+  });
+
+  test('a place with no first tries, more than the melody has, or a phrase beyond it is not usable', () => {
+    expect(usablePlace(place({ grades: [] }), 5)).toBe(false);
+    expect(usablePlace(place({ grades: Array.from({ length: 6 }, () => save(60)) }), 5)).toBe(
+      false,
+    );
+    expect(usablePlace(place({ phrase: 5 }), 5)).toBe(false);
+    expect(usablePlace(place({ phrase: -1 }), 5)).toBe(false);
   });
 });

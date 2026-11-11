@@ -46,6 +46,7 @@ Melodies list shows nothing played, Progress shows nothing, rank is Beginner.
   except by adding what the other device has.
 - Syncing does not run more often than once a minute unless something was just earned.
 - Another account's data is never mixed in: every row belongs to the signed-in account.
+- Signing in (and the saved session returning at launch) syncs at once; the server keeps only the known fields of a row.
 - What is not synced: challenge definitions (the server derives them from the date), "started" flags, the one-time
   conversion flag, the first-melody flag, playback speed.
 

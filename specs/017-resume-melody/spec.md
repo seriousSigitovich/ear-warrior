@@ -58,7 +58,8 @@ on another device, and carry on.
 - An older write never overwrites a newer one (last write wins by its time), including a stale offline device.
 - Starting a different melody leaves other melodies' places alone.
 - The first (onboarding) melody and a draft tap are never saved.
-- A saved place for a tune no longer in the library is ignored.
+- A saved place for a tune no longer in the library is ignored, and so is one made for a different number of phrases
+  (the tune's phrase marks changed since): the list shows no Continue and practice does not restore it.
 
 ## Requirements *(mandatory)*
 

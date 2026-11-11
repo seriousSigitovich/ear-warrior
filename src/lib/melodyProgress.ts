@@ -56,6 +56,24 @@ export function placeOf(
   };
 }
 
+/**
+ * Whether a saved place can be restored onto a melody with `phrases` phrases. A place made for another number of
+ * phrases (the tune's marks were edited since, or it came from another app version) would misalign the first tries
+ * and could not be finished, so it is ignored.
+ */
+export function usablePlace(
+  place: { phrase: number; phrases: number; grades: readonly unknown[] },
+  phrases: number,
+): boolean {
+  return (
+    place.phrases === phrases &&
+    place.grades.length > 0 &&
+    place.grades.length <= phrases &&
+    place.phrase >= 0 &&
+    place.phrase < phrases
+  );
+}
+
 /** Where "Skip to phrase N" goes from phrase `current`: the saved phrase, and only when it is ahead. */
 export function skipTarget(current: number, saved: number): number | null {
   return saved > current ? saved : null;

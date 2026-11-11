@@ -10,7 +10,7 @@ import { Screen } from '../src/components/common/Screen';
 import { Kicker } from '../src/components/common/Kicker';
 import { useHistory } from '../src/features/progress/useHistory';
 import { useMelodyProgress } from '../src/features/progress/useMelodyProgress';
-import type { MelodyPlaceRow } from '../src/lib/melodyProgress';
+import { usablePlace, type MelodyPlaceRow } from '../src/lib/melodyProgress';
 import { CatalogTune, libraryCatalog, tuneAsk } from '../src/services/melody/catalog';
 import { colors, font, radius, textAlpha, withAlpha } from '../src/theme/nocturne';
 
@@ -69,6 +69,10 @@ function TuneRow({
   );
 }
 
+/** A saved place, only while it still fits the tune (the Continue button must lead somewhere that works). */
+const usableFor = (place: MelodyPlaceRow | undefined, phrases: number) =>
+  place && usablePlace(place, phrases) ? place : undefined;
+
 export default function Melodies() {
   const router = useRouter();
   const { attempts } = useHistory();
@@ -111,7 +115,7 @@ export default function Melodies() {
         renderItem={({ item }) => (
           <TuneRow
             tune={item}
-            place={places.get(item.id)}
+            place={usableFor(places.get(item.id), item.phrases)}
             onPress={() => router.push({ pathname: '/practice', params: { tune: item.id } })}
             onContinue={() =>
               router.push({ pathname: '/practice', params: { tune: item.id, resume: '1' } })

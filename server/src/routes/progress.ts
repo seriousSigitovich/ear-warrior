@@ -81,9 +81,14 @@ export const GameRowsBody = z.object({
     .array(
       z
         .object({ kind: z.enum(['award', 'completion', 'mastery']), id: ROW_ID, data: z.record(z.unknown()) })
-        .superRefine((r, ctx) => {
+        // What is kept is the validated object, not the one the client sent: unknown keys never reach the database.
+        .transform((r, ctx) => {
           const parsed = GameData[r.kind].safeParse(r.data);
-          if (!parsed.success || parsed.data.id !== r.id) ctx.addIssue({ code: 'custom', message: 'bad row data' });
+          if (!parsed.success || parsed.data.id !== r.id) {
+            ctx.addIssue({ code: 'custom', message: 'bad row data' });
+            return z.NEVER;
+          }
+          return { kind: r.kind, id: r.id, data: parsed.data as Record<string, unknown> };
         }),
     )
     .max(500),

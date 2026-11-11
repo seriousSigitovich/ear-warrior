@@ -74,7 +74,13 @@ function useSync(): void {
       if (state === 'active') void requestSync();
       else if (state === 'background') void requestSync({ force: true });
     });
-    return () => sub.remove();
+    // Signing in (or the saved session coming back at launch) changes who the data belongs to: sync at once, not
+    // when the one-minute throttle of a run that found nobody signed in has run out.
+    const unsubscribe = getAuthService().onAuthChange(() => void requestSync({ force: true }));
+    return () => {
+      sub.remove();
+      unsubscribe();
+    };
   }, []);
 }
 

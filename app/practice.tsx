@@ -13,7 +13,7 @@ import { scoreOf } from '../src/lib/review';
 import { getGamification } from '../src/services/gamification/instance';
 import { getMelodyProgress } from '../src/services/progress/instance';
 import { requestSync } from '../src/services/sync/instance';
-import { MelodyPlaceRow, skipTarget } from '../src/lib/melodyProgress';
+import { MelodyPlaceRow, skipTarget, usablePlace } from '../src/lib/melodyProgress';
 import { phraseCount } from '../src/lib/phrases';
 import { CompletionResult, Snapshot } from '../src/services/gamification/service';
 import { completionEvents, GameEvent, phraseEvents } from '../src/services/gamification/events';
@@ -265,7 +265,7 @@ export default function Practice() {
       },
       adapts: (m) => !pickedMelodies.current.has(m.id),
       resumeOf: (m) =>
-        bookmark && m.id === resumeServed.current && bookmark.grades.length > 0
+        bookmark && m.id === resumeServed.current && usablePlace(bookmark, phraseCount(m))
           ? { saves: bookmark.grades, startPhrase: resumeParam === '1' ? bookmark.phrase : 0 }
           : null,
       // Each first try saves the place; the server gets it when it can (spec 017).
