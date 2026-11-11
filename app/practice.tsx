@@ -3,7 +3,7 @@
 // as a verdict card + note chips (with a non-blocking tuning advisory) or a calm retry state.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { InteractionManager, ScrollView, StyleSheet, View } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { Session } from '../src/models';
 import { curatedMelody, historyFromAttempts } from '../src/services/melody/curated';
 import { catalogTune } from '../src/services/melody/catalog';
@@ -15,6 +15,7 @@ import { CompletionResult, Snapshot } from '../src/services/gamification/service
 import { completionEvents, GameEvent, phraseEvents } from '../src/services/gamification/events';
 import { gameSummary } from '../src/services/gamification/summary';
 import { RankUpModal } from '../src/components/gamification/RankUpModal';
+import { DraftSwitch } from '../src/components/practice/DraftSwitch';
 import { FretPosition, fretMidi, tapStatuses } from '../src/lib/fretboard';
 import {
   DraftState,
@@ -464,6 +465,15 @@ export default function Practice() {
 
   return (
     <Screen edges={['bottom']}>
+      {/* Draft is a mode of the answer screen, so its switch sits in the navigation bar, level with the
+          back button, only while answering (spec 016). */}
+      <Stack.Screen
+        options={{
+          headerRight: answering
+            ? () => <DraftSwitch on={draft.on} onToggle={switchDraft} />
+            : undefined,
+        }}
+      />
       {answering ? null : (
         <View style={styles.header}>
           <Kicker>Practice</Kicker>
@@ -515,7 +525,6 @@ export default function Practice() {
           replaying={loop.replaying}
           hint={loop.hint}
           draft={draft.on}
-          onToggleDraft={switchDraft}
           flash={flash}
           onHearWhole={loop.phraseIndex === 0 && loop.phrases > 1 ? hearWhole : undefined}
         />

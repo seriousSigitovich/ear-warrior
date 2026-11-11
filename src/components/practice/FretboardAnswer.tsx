@@ -2,7 +2,7 @@
 // as it is placed), a progress caption and the fretboard to tap. Controls live in FretboardControls.
 // Until the first tap the prompt says outright what to do next and the board's frame pulses: half of
 // the learners who heard a melody never started answering it (funnel, 2026-11-08).
-// Draft (spec 008): a switch in the header; while on, taps only sound, the title and caption say so and
+// Draft (spec 008, switch in the navigation bar since spec 016): while on, taps only sound, the title and caption say so and
 // the slots dim. What a draft tap does is the screen's business (it passes a different onTap).
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -17,7 +17,6 @@ import {
 import { FretPosition, FretTap } from '../../lib/fretboard';
 import {
   draftTapAnnouncement,
-  draftToggleAnnouncement,
   hintAnnouncement,
   placementAnnouncement,
 } from '../../lib/fretboardA11y';
@@ -42,9 +41,8 @@ export interface FretboardAnswerProps {
   title?: string;
   /** String drawn in the accent colour (see Fretboard). */
   focusString?: number;
-  /** Draft mode is on: taps only sound. Absent → no Draft switch (the first melody). */
+  /** Draft mode is on: taps only sound. The switch itself is in the navigation bar (see DraftSwitch). */
   draft?: boolean;
-  onToggleDraft?: () => void;
   /** The last draft tap: flashed on the board and spoken. A new `id` per tap. */
   flash?: { position: FretPosition; id: number; midi: number } | null;
   /** Offer "Hear whole melody" until the first note is placed (the first phrase of a longer tune). */
@@ -61,7 +59,6 @@ export function FretboardAnswer({
   title,
   focusString,
   draft = false,
-  onToggleDraft,
   flash,
   onHearWhole,
 }: FretboardAnswerProps) {
@@ -78,13 +75,6 @@ export function FretboardAnswer({
   useEffect(() => {
     if (flash) AccessibilityInfo.announceForAccessibility(draftTapAnnouncement(flash.midi));
   }, [flash]);
-  const toggleDraft = onToggleDraft
-    ? () => {
-        AccessibilityInfo.announceForAccessibility(draftToggleAnnouncement(!draft));
-        onToggleDraft();
-      }
-    : undefined;
-
   const untouched = taps.length === 0;
 
   // The slots stay on one row however long the melody, so the board keeps its height on every level.
@@ -105,7 +95,6 @@ export function FretboardAnswer({
           <Text style={styles.title}>
             {draft ? 'Draft' : (title ?? (untouched ? 'Now play it back' : 'Your turn'))}
           </Text>
-          {toggleDraft ? <DraftSwitch on={draft} onPress={toggleDraft} /> : null}
         </View>
         {replaying ? (
           <View style={styles.listening}>
@@ -215,24 +204,6 @@ function NudgeFrame() {
   return <Animated.View pointerEvents="none" style={[styles.nudge, { opacity: glow }]} />;
 }
 
-/** The Draft on/off pill. The state is in its text too ("Draft · On"), not only its colour. */
-function DraftSwitch({ on, onPress }: { on: boolean; onPress: () => void }) {
-  return (
-    <Pressable
-      accessibilityRole="switch"
-      accessibilityLabel="Draft mode"
-      accessibilityState={{ checked: on }}
-      onPress={onPress}
-      hitSlop={8}
-      style={({ pressed }) => [styles.draft, on && styles.draftOn, pressed && styles.draftPressed]}
-    >
-      <Text style={[styles.draftText, on && styles.draftTextOn]}>
-        {on ? 'Draft · On' : 'Draft'}
-      </Text>
-    </Pressable>
-  );
-}
-
 function Slot({
   state,
   size,
@@ -271,20 +242,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 12,
   },
-  draft: {
-    minHeight: 36,
-    minWidth: 64,
-    paddingHorizontal: 14,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    borderColor: colors.divider,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  draftOn: { backgroundColor: colors.accent, borderColor: colors.accent },
-  draftPressed: { opacity: 0.7 },
-  draftText: { color: colors.text, fontSize: 13, fontWeight: '600' },
-  draftTextOn: { color: colors.bg },
   slotsDimmed: { opacity: 0.4 },
   title: { color: colors.accent, fontSize: 22, fontWeight: font.weightHeading },
   sub: { color: textAlpha[65], fontSize: 13 },
@@ -305,10 +262,10 @@ const styles = StyleSheet.create({
   slotRow: { flexGrow: 0 },
   slots: { gap: SLOT_GAP },
   slot: {
-    borderWidth: 1.5,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  slotText: { color: colors.accentRamp[300], fontSize: 12, fontWeight: '600' },
+  slotText: { color: colors.accentRamp[300], fontSize: 9, fontWeight: '600' },
   board: { flex: 1 },
 });

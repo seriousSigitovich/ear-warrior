@@ -6,8 +6,8 @@
 // fret markers shrink with the rows when the board is squeezed.
 
 /** Note slot diameter: full size when the row has room, never below the minimum. */
-export const SLOT_MAX = 40;
-export const SLOT_MIN = 32;
+export const SLOT_MAX = 20;
+export const SLOT_MIN = 16;
 export const SLOT_GAP = 8;
 
 export interface SlotLayout {

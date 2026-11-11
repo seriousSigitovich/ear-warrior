@@ -20,14 +20,23 @@ describe('slotLayout', () => {
   });
 
   it('shrinks slots to fit one row before scrolling', () => {
-    const { size, scrolls } = slotLayout(8, NARROW);
+    const { size, scrolls } = slotLayout(12, NARROW);
     expect(scrolls).toBe(false);
     expect(size).toBeLessThan(SLOT_MAX);
-    expect(8 * size + 7 * SLOT_GAP).toBeLessThanOrEqual(NARROW);
+    expect(size).toBeGreaterThanOrEqual(SLOT_MIN);
+    expect(12 * size + 11 * SLOT_GAP).toBeLessThanOrEqual(NARROW);
   });
 
   it('scrolls when even the minimum size overflows', () => {
-    expect(slotLayout(16, NARROW)).toEqual({ size: SLOT_MIN, scrolls: true, visible: 8 });
+    const { size, scrolls, visible } = slotLayout(20, NARROW);
+    expect(scrolls).toBe(true);
+    expect(size).toBeGreaterThanOrEqual(SLOT_MIN);
+    expect(visible).toBe(Math.floor((NARROW + SLOT_GAP) / (SLOT_MIN + SLOT_GAP)));
+  });
+
+  it('keeps the circles small: half what they were', () => {
+    expect(SLOT_MAX).toBe(20);
+    expect(SLOT_MIN).toBe(16);
   });
 
   it('fills the row with whole slots exactly when it scrolls, so none is cut at the edge', () => {
