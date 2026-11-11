@@ -87,6 +87,8 @@ function RootLayout() {
         <Stack.Screen name="settings" />
         <Stack.Screen name="progress" />
         <Stack.Screen name="melodies" />
+        <Stack.Screen name="challenges" />
+        <Stack.Screen name="journey" />
         <Stack.Screen name="sign-in" />
         <Stack.Screen name="first-melody" options={{ headerShown: false }} />
       </Stack>

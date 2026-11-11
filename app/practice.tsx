@@ -9,7 +9,12 @@ import { curatedMelody, historyFromAttempts } from '../src/services/melody/curat
 import { catalogTune, tuneAsk } from '../src/services/melody/catalog';
 import { DEFAULT_GRADING_CFG } from '../src/services/grading/grade';
 import { MAX_RANK, MIN_RANK, getLevel, getLevelByRank } from '../src/services/melody/levels';
-import { practiceStreak } from '../src/lib/streak';
+import { scoreOf } from '../src/lib/review';
+import { getGamification } from '../src/services/gamification/instance';
+import { CompletionResult, Snapshot } from '../src/services/gamification/service';
+import { completionEvents, GameEvent, phraseEvents } from '../src/services/gamification/events';
+import { gameSummary } from '../src/services/gamification/summary';
+import { RankUpModal } from '../src/components/gamification/RankUpModal';
 import { FretPosition, fretMidi, tapStatuses } from '../src/lib/fretboard';
 import {
   DraftState,
@@ -78,9 +83,23 @@ export default function Practice() {
   const pickedPending = useRef(picked !== null);
   // Melody ids served as picks: recorded like any tune, but they do not move the difficulty rank.
   const pickedMelodies = useRef(new Set<string>());
-  // When each tune on record was finished, for the streak on the closing card: read once, then grown
-  // as tunes are finished here (the write to the store may still be on its way when the card shows).
-  const [finishedAt, setFinishedAt] = useState<string[]>([]);
+  // Rewards (spec 013): the service decides every one; this screen reports a phrase checked and a melody
+  // completed, shows what comes back, and sends the events that came with it.
+  const game = useMemo(() => getGamification(), []);
+  // XP each phrase paid during this visit, keyed `<melody id>:<phrase>`, for the result and the closing card.
+  const [phraseXp, setPhraseXp] = useState<Record<string, number>>({});
+  // The melody finished last: its completion (null when below the pass mark) and the standing after it.
+  const [finished, setFinished] = useState<{
+    melodyId: string;
+    result: CompletionResult | null;
+    snap: Snapshot | null;
+  } | null>(null);
+  const [rankUpName, setRankUpName] = useState<string | null>(null);
+  // Helps (first note, show answer) taken during the melody on screen: mastery counts melodies without any.
+  const melodyHelps = useRef(0);
+  const emit = useCallback((events: GameEvent[]) => {
+    for (const e of events) track(e.name, e.props);
+  }, []);
   // Which help, if any, the learner took on the phrase on screen: rides along on its next check.
   const helpRef = useRef<string>('none');
   // Draft mode (spec 008): on/off for this visit, and whether it was used on the phrase on screen. The
@@ -154,11 +173,7 @@ export default function Practice() {
     };
     void repos.sessions.create(session);
     void getOrCreateDeviceId(keyValueOverRowStore(store, KEY_VALUE_TABLE)).then(setDeviceId);
-    void repos.attempts
-      .all()
-      .then((all) => setFinishedAt((seen) => [...all.map((a) => a.createdAt), ...seen]))
-      .catch(() => undefined);
-  }, [repos.sessions, repos.attempts, sessionId, store]);
+  }, [repos.sessions, sessionId, store]);
 
   // Send what an earlier visit could not (offline, app killed before the post finished).
   useEffect(() => {
@@ -233,7 +248,6 @@ export default function Practice() {
       speed: () => speedRef.current,
       sessionId,
       onAttemptGraded: (attempt, melody, level) => {
-        setFinishedAt((seen) => [...seen, attempt.createdAt]);
         // Every attempt is recorded (FR-012), moves the session tally, and goes up to the backend
         // on its own: the outbox keeps it until the server has it.
         void persistGradedAttempt(attempt, melody, level, {
@@ -246,10 +260,27 @@ export default function Practice() {
           .then(() => progress?.outbox.enqueue(attempt))
           .catch(() => undefined);
         session.recordAttempt(attempt.verdict === 'correct');
+        // The melody is done: it counts as an exercise when enough of it was landed.
+        void game
+          .exerciseCompleted({
+            id: attempt.id,
+            melodyId: melody.id,
+            level: melody.difficultyId,
+            accuracy: scoreOf(attempt.noteResults).pct,
+            hintsUsed: melodyHelps.current,
+          })
+          .then(async (result) => {
+            if (result) {
+              emit(completionEvents(result));
+              if (result.rankUp) setRankUpName(result.rankUp);
+            }
+            setFinished({ melodyId: melody.id, result, snap: await game.snapshot() });
+          })
+          .catch(() => undefined);
       },
       // One check per phrase. `n` is the tune of this visit it belongs to, `first` marks the try the
       // tune is scored on.
-      onPhraseChecked: ({ phrase, phrases, grade, first }) => {
+      onPhraseChecked: ({ phrase, phrases, grade, first, melodyId: playId, level: levelId }) => {
         const checked = draftPhraseChecked(draftRef.current);
         setDraft(checked.state);
         track('answer_check', {
@@ -263,6 +294,22 @@ export default function Practice() {
           help: helpRef.current,
           draft: checked.draft,
         });
+        // A phrase landed well enough pays XP, once per phrase per play.
+        void game
+          .phraseChecked({
+            melodyId: playId,
+            phrase,
+            accuracy: scoreOf(grade.noteResults).pct,
+            level: levelId,
+            answerShown: helpRef.current === 'answer',
+          })
+          .then((award) => {
+            if (!award) return;
+            setPhraseXp((prev) => ({ ...prev, [`${playId}:${phrase}`]: award.xp }));
+            emit(phraseEvents(award));
+            if (award.rankUp) setRankUpName(award.rankUp);
+          })
+          .catch(() => undefined);
       },
     }),
     [
@@ -277,6 +324,8 @@ export default function Practice() {
       session,
       setDraft,
       picked,
+      game,
+      emit,
     ],
   );
 
@@ -292,12 +341,18 @@ export default function Practice() {
   const loopRevealAnswer = loop.revealAnswer;
   const showFirstNote = useCallback(() => {
     helpRef.current = 'first_note';
+    melodyHelps.current += 1;
     loopRetryWithHint();
   }, [loopRetryWithHint]);
   const showAnswer = useCallback(() => {
     helpRef.current = 'answer';
+    melodyHelps.current += 1;
     loopRevealAnswer();
   }, [loopRevealAnswer]);
+  const currentMelodyId = loop.melody?.id;
+  useEffect(() => {
+    melodyHelps.current = 0; // a new melody starts without helps taken
+  }, [currentMelodyId]);
 
   // Funnel analytics inside the loop: heard a melody → started tapping → checked (`answer_check` above).
   // The phase rides along on `app_background`, so a leave mid-answer shows as such.
@@ -352,7 +407,15 @@ export default function Practice() {
     : picked && pickedPending.current
       ? picked.rank
       : loop.level.rank;
-  const streak = useMemo(() => practiceStreak(finishedAt, new Date()), [finishedAt]);
+  // What the tune just finished earned: its phrases' XP plus the completion's challenge rewards.
+  const summary = useMemo(() => {
+    if (!loop.melody || finished?.melodyId !== loop.melody.id) return null;
+    const prefix = `${loop.melody.id}:`;
+    const fromPhrases = Object.entries(phraseXp)
+      .filter(([key]) => key.startsWith(prefix))
+      .reduce((sum, [, xp]) => sum + xp, 0);
+    return gameSummary(fromPhrases, finished.result, finished.snap);
+  }, [loop.melody, finished, phraseXp]);
 
   const grade = loop.grade;
   const showFeedback = loop.phase === 'feedback' && !!grade;
@@ -413,13 +476,13 @@ export default function Practice() {
             title={loop.melody?.title}
             grades={loop.phraseGrades}
             results={loop.tuneGrade?.noteResults}
-            streak={streak}
+            game={summary}
           />
           {loop.rankChange ? <RankChangeBanner change={loop.rankChange} /> : null}
         </ScrollView>
       ) : showFeedback ? (
         <ScrollView contentContainerStyle={styles.feedback} showsVerticalScrollIndicator={false}>
-          <VerdictBanner grade={grade!} />
+          <VerdictBanner grade={grade!} xp={phraseXp[phraseKey]} />
           {stuck ? (
             <StuckHelp
               onFirstNote={showFirstNote}
@@ -494,6 +557,7 @@ export default function Practice() {
           />
         )}
       </View>
+      <RankUpModal rank={rankUpName} onClose={() => setRankUpName(null)} />
     </Screen>
   );
 }

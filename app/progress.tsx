@@ -1,4 +1,5 @@
-// Progress screen (spec 011): three things a beginner can act on, drawn rather than listed.
+// Progress screen (specs 011, 013): a rank on top, then three things a beginner can act on, drawn
+// rather than listed.
 //   1. "Am I getting better?" — a ring of notes landed this week, against last week.
 //   2. "Am I practising regularly?" — the week as seven day circles, with the streak.
 //   3. "What do I play next?" — the weakest kind of move in everyday words, drawn, with one melody to
@@ -15,6 +16,7 @@ import { Card } from '../src/components/common/Card';
 import { Button } from '../src/components/common/Button';
 import { Ring } from '../src/components/common/Ring';
 import { WeekStrip } from '../src/components/progress/WeekStrip';
+import { RankCard } from '../src/components/progress/RankCard';
 import { MoveShape } from '../src/components/progress/MoveShape';
 import { useHistory } from '../src/features/progress/useHistory';
 import {
@@ -25,30 +27,33 @@ import {
   weakSpotTitle,
   weakestInterval,
 } from '../src/lib/insights';
-import { practiceStreak, weekDays } from '../src/lib/streak';
+import { weekDays } from '../src/lib/streak';
+import { useGamification } from '../src/features/gamification/useGamification';
 import { tunesForInterval } from '../src/services/melody/catalog';
 import { colors, font, radius, textAlpha, withAlpha } from '../src/theme/nocturne';
 
 export default function Progress() {
   const router = useRouter();
   const { attempts, melodies, loading } = useHistory();
+  const game = useGamification();
 
   const insight = useMemo(() => {
     const now = new Date();
-    const finishedAt = attempts.map((a) => a.createdAt);
     const map = intervalStats(noteEvents(attempts, melodies));
     const weakest = weakestInterval(map.stats);
     return {
       accuracy: noteAccuracy(attempts, now),
-      streak: practiceStreak(finishedAt, now),
-      week: weekDays(finishedAt, now),
       mapped: map.stats.length > 0,
       weakest,
       picks: weakest ? tunesForInterval(weakest.kind, attempts) : [],
     };
   }, [attempts, melodies]);
 
-  const { accuracy, streak, week, mapped, weakest, picks } = insight;
+  const { accuracy, mapped, weakest, picks } = insight;
+  const challengesDone = game?.challenges.filter((c) => c.completed).length ?? 0;
+  const challengesTotal = game?.challenges.length ?? 0;
+  const week = game ? weekDays(game.activeDays, game.today, challengesDone, challengesTotal) : [];
+  const streakDays = game?.streak.days ?? 0;
   const headline = accuracy.week ?? accuracy.all;
   const [pick, ...others] = picks;
   const practise = (tune: string) => router.push({ pathname: '/practice', params: { tune } });
@@ -78,6 +83,8 @@ export default function Progress() {
           </Card>
         ) : (
           <>
+            {game ? <RankCard rank={game.rank} onPress={() => router.push('/journey')} /> : null}
+
             <View style={styles.hero}>
               <Ring
                 size={112}
@@ -107,15 +114,17 @@ export default function Progress() {
             <Card style={styles.card}>
               <View style={styles.weekHead}>
                 <Text style={styles.cardTitle}>
-                  {streak.days === 0
+                  {streakDays === 0
                     ? 'Start a streak today'
-                    : `${streak.days} ${streak.days === 1 ? 'day' : 'days'} in a row`}
+                    : `${streakDays} ${streakDays === 1 ? 'day' : 'days'} in a row`}
                 </Text>
                 <Text style={styles.weekToday}>
-                  {streak.goalMet ? "Today's goal done" : `${streak.today} of ${streak.goal} today`}
+                  {challengesDone >= challengesTotal && challengesTotal > 0
+                    ? 'All challenges done'
+                    : `${challengesDone} of ${challengesTotal} challenges`}
                 </Text>
               </View>
-              <WeekStrip days={week} goal={streak.goal} />
+              <WeekStrip days={week} goal={challengesTotal || 3} />
             </Card>
 
             <Card style={[styles.card, styles.next]}>

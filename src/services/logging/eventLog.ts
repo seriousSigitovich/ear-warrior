@@ -25,6 +25,14 @@ export type AppEventName =
   | 'answer_start'
   | 'answer_check'
   | 'draft_on'
+  | 'exercise_completed'
+  | 'xp_earned'
+  | 'rank_up'
+  | 'mastery_unlocked'
+  | 'daily_challenge_started'
+  | 'daily_challenge_completed'
+  | 'all_daily_challenges_completed'
+  | 'streak_extended'
   | 'session_end';
 
 /** A route as the funnel names it: `/` → `home`, `/sign-in` → `sign_in`. Pure. */

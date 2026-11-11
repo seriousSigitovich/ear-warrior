@@ -62,6 +62,9 @@ export interface PhraseCheck {
   phrases: number;
   grade: AttemptGrade;
   first: boolean;
+  /** The play of the melody this phrase belongs to (its served id), and the melody's level id. */
+  melodyId: string;
+  level: string;
 }
 
 export interface PracticeLoopDeps {
@@ -581,6 +584,8 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
       phrases: phraseCount(melody),
       grade: result,
       first,
+      melodyId: melody.id,
+      level: melody.difficultyId,
     });
   }, [deps, phase, melody, phrase, phraseIndex, replaying, endReplay]);
 

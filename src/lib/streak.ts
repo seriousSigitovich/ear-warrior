@@ -1,18 +1,6 @@
-// The daily habit: a small goal of melodies per day and the run of days in a row it was practised on.
-// Derived from the finished tunes already on record (their `createdAt`), so nothing new is stored and
-// nothing is invented. Days are the learner's own calendar days (local time). Pure.
-
-/** Melodies a day that count as the day's practice done. Small on purpose: easy to keep up. */
-export const DAILY_GOAL = 3;
-
-export interface Streak {
-  /** Days in a row with practice, counting today — or up to yesterday while today is still open. */
-  days: number;
-  /** Melodies finished today. */
-  today: number;
-  goal: number;
-  goalMet: boolean;
-}
+// Practice days (spec 013): a day is the learner's local calendar day as "YYYY-MM-DD", fixed at the
+// moment the practice happened, so a later change of timezone never moves it. The streak is the run of
+// consecutive days with practice; the week strip draws the current week. Pure.
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -22,39 +10,30 @@ export function dayKey(d: Date): string {
   return `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}`;
 }
 
-/** Local noon of the day `n` days before `d`'s day: noon, so a DST shift never skips or repeats a day. */
-function daysBefore(d: Date, n: number): Date {
-  const noon = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12);
-  return new Date(noon.getTime() - n * DAY_MS);
+/** Local noon of a day key: noon, so a DST shift never skips or repeats a day. */
+function noonOf(key: string): Date {
+  const [y, m, d] = key.split('-').map(Number);
+  return new Date(y, m - 1, d, 12);
 }
 
-/** The streak as of `now`, from the times (ISO) tunes were finished. */
-export function practiceStreak(finishedAt: readonly string[], now: Date): Streak {
-  const perDay = new Map<string, number>();
-  for (const iso of finishedAt) {
-    const t = new Date(iso);
-    if (Number.isNaN(t.getTime())) continue;
-    const key = dayKey(t);
-    perDay.set(key, (perDay.get(key) ?? 0) + 1);
-  }
-  const today = perDay.get(dayKey(now)) ?? 0;
+/** The day `n` days after `key` (negative: before). */
+export function shiftDay(key: string, n: number): string {
+  return dayKey(new Date(noonOf(key).getTime() + n * DAY_MS));
+}
 
-  // A day not practised on yet does not break the run: it counts back from yesterday until it is.
-  let days = 0;
-  for (let back = today > 0 ? 0 : 1; perDay.has(dayKey(daysBefore(now, back))); back++) days++;
-
-  return { days, today, goal: DAILY_GOAL, goalMet: today >= DAILY_GOAL };
+/**
+ * Days in a row with practice, counting today — or up to yesterday while today is still open. Opening
+ * the app does not break it; only a whole day without practice does.
+ */
+export function activeStreak(days: ReadonlySet<string>, today: string): number {
+  let n = 0;
+  for (let back = days.has(today) ? 0 : 1; days.has(shiftDay(today, -back)); back++) n++;
+  return n;
 }
 
 /** "3 days", "1 day", "0 days". */
 export function daysLabel(days: number): string {
   return `${days} ${days === 1 ? 'day' : 'days'}`;
-}
-
-/** What to say about the habit once a tune is finished, e.g. "3-day streak · 2 of 3 today". */
-export function streakLine(s: Streak): string {
-  const today = s.goalMet ? "Today's goal done" : `${s.today} of ${s.goal} today`;
-  return s.days > 1 ? `${s.days}-day streak · ${today}` : today;
 }
 
 /** One day of the current week as the week strip draws it. */
@@ -63,27 +42,32 @@ export interface WeekDay {
   letter: string;
   /** Practised on (past), not practised on (past), today, or still to come. */
   state: 'done' | 'empty' | 'today' | 'ahead';
-  /** Tunes finished that day. */
+  /** Today only: daily challenges done so far. */
   count: number;
+  /** Today only: all of them done. */
   goalMet: boolean;
 }
 
 const LETTERS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
-/** The current week, Monday to Sunday, from the times (ISO) tunes were finished. */
-export function weekDays(finishedAt: readonly string[], now: Date): WeekDay[] {
-  const perDay = new Map<string, number>();
-  for (const iso of finishedAt) {
-    const t = new Date(iso);
-    if (Number.isNaN(t.getTime())) continue;
-    const key = dayKey(t);
-    perDay.set(key, (perDay.get(key) ?? 0) + 1);
-  }
-  const sinceMonday = (now.getDay() + 6) % 7; // getDay: 0 = Sunday
+/** The current week, Monday to Sunday: past days by whether they had practice, today by its challenges. */
+export function weekDays(
+  active: ReadonlySet<string>,
+  today: string,
+  challengesDone: number,
+  challenges: number,
+): WeekDay[] {
+  const sinceMonday = (noonOf(today).getDay() + 6) % 7; // getDay: 0 = Sunday
   return LETTERS.map((letter, i) => {
-    const count = perDay.get(dayKey(daysBefore(now, sinceMonday - i))) ?? 0;
+    const key = shiftDay(today, i - sinceMonday);
     const state: WeekDay['state'] =
-      i === sinceMonday ? 'today' : i > sinceMonday ? 'ahead' : count > 0 ? 'done' : 'empty';
-    return { letter, state, count, goalMet: count >= DAILY_GOAL };
+      i === sinceMonday ? 'today' : i > sinceMonday ? 'ahead' : active.has(key) ? 'done' : 'empty';
+    const isToday = i === sinceMonday;
+    return {
+      letter,
+      state,
+      count: isToday ? challengesDone : 0,
+      goalMet: isToday && challengesDone >= challenges,
+    };
   });
 }

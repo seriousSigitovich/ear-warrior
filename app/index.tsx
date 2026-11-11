@@ -1,57 +1,31 @@
 // Home screen (T035): start a practice session and navigate into the core loop.
-// Redesigned onto Nocturne — hero heading, waveform motif, quick stats, outlined actions.
-import React, { useCallback, useMemo, useState } from 'react';
-import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+// Redesigned onto Nocturne — hero heading, waveform motif, the reward standing (spec 013), outlined actions.
+import React, { useCallback } from 'react';
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { MAX_RANK } from '../src/services/melody/levels';
-import { DEFAULT_DIFFICULTY_SETTINGS, effectiveRank } from '../src/features/difficulty/adapt';
 import { KEY_VALUE_TABLE, defaultRowStore } from '../src/services/storage/db';
 import { keyValueOverRowStore } from '../src/lib/deviceId';
 import { isOnboarded } from '../src/lib/onboarding';
-import { getDifficultyRepository } from '../src/features/difficulty/difficultyRepository';
 import { heroScale, scaled } from '../src/lib/heroScale';
-import { daysLabel, practiceStreak } from '../src/lib/streak';
-import { useHistory } from '../src/features/progress/useHistory';
+import { daysLabel } from '../src/lib/streak';
+import { useGamification } from '../src/features/gamification/useGamification';
+import { Flame } from '../src/components/gamification/Flame';
+import { RankCard } from '../src/components/progress/RankCard';
 import { Screen } from '../src/components/common/Screen';
 import { Button } from '../src/components/common/Button';
-import { Card } from '../src/components/common/Card';
 import { Kicker } from '../src/components/common/Kicker';
 import { Waveform, HERO_BARS } from '../src/components/common/Waveform';
 import { ensureAuthReady, getAuthService } from '../src/features/auth/authService';
-import { colors, font, textAlpha } from '../src/theme/nocturne';
+import { colors, font, radius, textAlpha, withAlpha } from '../src/theme/nocturne';
 
 export default function Home() {
   const router = useRouter();
-  const [rank, setRank] = useState(effectiveRank(DEFAULT_DIFFICULTY_SETTINGS));
   // The hero block grows on tall phones instead of leaving most of the screen empty.
   const s = heroScale(useWindowDimensions().height);
-  // The habit, from the tunes finished on this device: re-read on focus, so it is fresh after practice.
-  const { attempts } = useHistory();
-  const streak = useMemo(
-    () =>
-      practiceStreak(
-        attempts.map((a) => a.createdAt),
-        new Date(),
-      ),
-    [attempts],
-  );
-
-  // Re-read on every focus, not just first mount: expo-router keeps this screen mounted while the
-  // Difficulty screen is pushed on top, so a mount-only effect would show a stale level after the
-  // learner changes difficulty and navigates back.
-  useFocusEffect(
-    useCallback(() => {
-      let cancelled = false;
-      getDifficultyRepository()
-        .load()
-        .then((s) => {
-          if (!cancelled) setRank(effectiveRank(s));
-        });
-      return () => {
-        cancelled = true;
-      };
-    }, []),
-  );
+  // The standing (rank, XP, streak, challenges): re-read on focus, so it is fresh after practice.
+  const game = useGamification();
+  const challengesDone = game?.challenges.filter((c) => c.completed).length ?? 0;
+  const challengesTotal = game?.challenges.length ?? 3;
 
   // First launch: the first melody, then the sign-in offer (spec 005 FR-003) — each once, never blocking (both
   // have Skip). On focus rather than mount, so the offer follows onboarding when it pops back to Home.
@@ -102,29 +76,39 @@ export default function Home() {
 
       <View style={styles.spacer} />
 
-      {/* All three are read from what is stored: the level from the difficulty state, the streak and
-          today's count from the finished tunes on record. Nothing here is invented. */}
-      <View style={styles.statRow}>
-        <Card style={styles.stat}>
-          <Text style={styles.statKicker}>Level</Text>
-          <Text style={styles.statValue}>
-            {rank} of {MAX_RANK}
-          </Text>
-        </Card>
-        <Card style={styles.stat} accessibilityLabel={`Streak: ${daysLabel(streak.days)} in a row`}>
-          <Text style={styles.statKicker}>Streak</Text>
-          <Text style={styles.statValue}>{daysLabel(streak.days)}</Text>
-        </Card>
-        <Card
-          style={styles.stat}
-          accessibilityLabel={`Today: ${streak.today} of ${streak.goal} melodies`}
-        >
-          <Text style={styles.statKicker}>Today</Text>
-          <Text style={[styles.statValue, streak.goalMet && styles.statDone]}>
-            {streak.today} of {streak.goal}
-          </Text>
-        </Card>
-      </View>
+      {/* Read from what is stored by the reward service: nothing here is invented. The training itself
+          stays the biggest thing on the screen. */}
+      {game ? (
+        <View style={styles.standing}>
+          <RankCard rank={game.rank} onPress={() => router.push('/journey')} />
+          <View style={styles.statRow}>
+            <View
+              style={styles.stat}
+              accessible
+              accessibilityLabel={`Streak: ${daysLabel(game.streak.days)} in a row`}
+            >
+              <Text style={styles.statKicker}>Streak</Text>
+              <View style={styles.statLine}>
+                <Flame size={18} />
+                <Text style={styles.statValue}>{daysLabel(game.streak.days)}</Text>
+              </View>
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Daily challenges: ${challengesDone} of ${challengesTotal} done`}
+              onPress={() => router.push('/challenges')}
+              style={({ pressed }) => [styles.stat, pressed && styles.statPressed]}
+            >
+              <Text style={styles.statKicker}>Daily challenges</Text>
+              <Text
+                style={[styles.statValue, challengesDone === challengesTotal && styles.statDone]}
+              >
+                {challengesDone} of {challengesTotal}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
 
       <Button
         label="Start practice"
@@ -167,8 +151,18 @@ const styles = StyleSheet.create({
   blurb: { color: textAlpha[65] },
   wave: { marginTop: 28 },
   spacer: { flex: 1 },
-  statRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
-  stat: { flex: 1, paddingVertical: 14, paddingHorizontal: 12 },
+  standing: { gap: 10, marginBottom: 16 },
+  statRow: { flexDirection: 'row', gap: 10 },
+  stat: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    gap: 2,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+  },
+  statPressed: { backgroundColor: withAlpha(colors.accent, 0.14) },
+  statLine: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   statKicker: {
     color: colors.accent,
     fontSize: 10,

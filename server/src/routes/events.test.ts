@@ -26,6 +26,22 @@ test('accepts draft mode events (spec 008)', () => {
   assert.equal(EventBody.safeParse({ ...base, name: 'answer_check', props: check }).success, true);
 });
 
+test('accepts the gamification events (spec 013)', () => {
+  const events: [string, Record<string, number | string | boolean>][] = [
+    ['exercise_completed', { exercise_id: 'mary', difficulty_level: 'L1', accuracy: 95, hints_used: 0 }],
+    ['xp_earned', { xp_amount: 15, source: 'phrase', difficulty_level: 'L1', accuracy: 92 }],
+    ['rank_up', { rank_name: 'Apprentice' }],
+    ['mastery_unlocked', { difficulty_level: 'L1' }],
+    ['daily_challenge_started', { challenge_id: 'practice' }],
+    ['daily_challenge_completed', { challenge_id: 'practice', xp_amount: 10 }],
+    ['all_daily_challenges_completed', { xp_amount: 25 }],
+    ['streak_extended', { streak_length: 3 }],
+  ];
+  for (const [name, props] of events) {
+    assert.equal(EventBody.safeParse({ ...base, name, props }).success, true, name);
+  }
+});
+
 test('rejects an unknown event name', () => {
   assert.equal(EventBody.safeParse({ ...base, name: 'purchase' }).success, false);
 });

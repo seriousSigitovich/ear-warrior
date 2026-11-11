@@ -8,7 +8,7 @@ import { AttemptGrade } from '../../models';
 import { Card } from '../common/Card';
 import { colors, font, textAlpha, withAlpha } from '../../theme/nocturne';
 
-export function VerdictBanner({ grade }: { grade: AttemptGrade }) {
+export function VerdictBanner({ grade, xp }: { grade: AttemptGrade; xp?: number }) {
   const correct = grade.verdict === 'correct';
   const total = grade.noteResults.filter((r) => r.targetIndex !== null).length;
   const matched = grade.noteResults.filter((r) => r.status === 'matched').length;
@@ -26,12 +26,17 @@ export function VerdictBanner({ grade }: { grade: AttemptGrade }) {
           {correct ? '✓' : '✕'}
         </Text>
       </View>
-      <View>
+      <View style={styles.text}>
         <Text style={styles.title}>{correct ? 'Correct' : 'Not quite'}</Text>
         <Text style={styles.subtitle}>
           {matched} of {total} notes matched
         </Text>
       </View>
+      {xp && xp > 0 ? (
+        <Text style={styles.xp} accessibilityLabel={`${xp} XP earned`}>
+          +{xp} XP
+        </Text>
+      ) : null}
     </Card>
   );
 }
@@ -51,6 +56,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  text: { flex: 1 },
+  xp: { color: colors.accent, fontSize: 16, fontWeight: font.weightHeading },
   glyph: { fontSize: 16, fontWeight: '700', lineHeight: 20 },
   title: { color: colors.text, fontSize: 15, fontWeight: font.weightHeading },
   subtitle: { color: textAlpha[55], fontSize: 12, marginTop: 2 },

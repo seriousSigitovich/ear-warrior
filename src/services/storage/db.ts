@@ -11,6 +11,15 @@ export const DIFFICULTY_SETTINGS_TABLE = 'difficulty_settings';
 /** Small key-value area (anonymous device id, R9) — keeps it out of a separate native store. */
 export const KEY_VALUE_TABLE = 'key_value';
 
+/** Melodies completed at or above the pass mark, for level mastery and the daily challenges (spec 013). */
+export const COMPLETIONS_TABLE = 'completions';
+/** Append-only XP awards with deterministic ids: awarding twice is impossible by construction. */
+export const XP_AWARDS_TABLE = 'xp_awards';
+/** Levels reached Mastered, with the date; a row is never removed. */
+export const MASTERY_TABLE = 'mastery';
+/** Small flags of the reward system (the one-time conversion of past attempts, challenges started). */
+export const GAMIFICATION_META_TABLE = 'gamification_meta';
+
 /** Every table the app creates on open. */
 export const ALL_TABLES = [
   SESSIONS_TABLE,
@@ -18,6 +27,10 @@ export const ALL_TABLES = [
   MELODIES_TABLE,
   DIFFICULTY_SETTINGS_TABLE,
   KEY_VALUE_TABLE,
+  COMPLETIONS_TABLE,
+  XP_AWARDS_TABLE,
+  MASTERY_TABLE,
+  GAMIFICATION_META_TABLE,
 ];
 
 /** Minimal document store keyed by string id. The SQLite adapter serializes rows as JSON docs. */

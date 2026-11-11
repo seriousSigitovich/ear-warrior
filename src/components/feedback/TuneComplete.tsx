@@ -1,15 +1,18 @@
 // Closing card of a tune: a word of praise, the tune named (the reveal is part of the payoff), the
-// score — notes matched, phrases right first time — the day's habit (streak and daily goal), and the
-// tune note by note with the wrong notes and what they should have been. All of it while the tune
-// plays whole once more. The right notes are named only here, once the tune is over: before that,
-// finding them by ear is the exercise.
+// score — notes matched, phrases right first time — what the melody earned (XP and where it leaves the
+// rank, any level just mastered, the day's challenges and streak), and the tune note by note with the
+// wrong notes and what they should have been. All of it while the tune plays whole once more. The right
+// notes are named only here, once the tune is over: before that, finding them by ear is the exercise.
 import React, { useEffect } from 'react';
 import { AccessibilityInfo, StyleSheet, Text, View } from 'react-native';
+import { levelLabel } from '../../lib/levelLabels';
 import { tuneSummary } from '../../lib/phrases';
 import { mistakesOf, noteStrip, praise, scoreOf } from '../../lib/review';
-import { Streak, streakLine } from '../../lib/streak';
 import { AttemptGrade, NoteResult } from '../../models';
+import { GameSummary } from '../../services/gamification/summary';
+import { nextRankLine } from '../progress/RankCard';
 import { Card } from '../common/Card';
+import { Flame } from '../gamification/Flame';
 import { TuneReview } from './TuneReview';
 import { colors, font, textAlpha } from '../../theme/nocturne';
 
@@ -22,11 +25,11 @@ export interface TuneCompleteProps {
   grades: readonly AttemptGrade[];
   /** The tune's note results on its first tries, numbered across the whole tune. */
   results?: readonly NoteResult[];
-  /** The practice habit as of this tune; absent for a tune that does not count. */
-  streak?: Streak;
+  /** What the melody earned and where that leaves the learner (spec 013); absent until known. */
+  game?: GameSummary | null;
 }
 
-export function TuneComplete({ title, grades, results, streak }: TuneCompleteProps) {
+export function TuneComplete({ title, grades, results, game }: TuneCompleteProps) {
   const s = tuneSummary(grades);
   const all = results ?? grades.flatMap((g) => g.noteResults);
   const score = scoreOf(all);
@@ -35,13 +38,18 @@ export function TuneComplete({ title, grades, results, streak }: TuneCompletePro
   const kicker = praise(score.pct);
   const phrasesLine = `${s.phrasesRight} of ${s.phrases} ${s.phrases === 1 ? 'phrase' : 'phrases'} right first time`;
   const notesLine = `${score.matched} of ${score.notes} notes`;
-  const habit = streak ? streakLine(streak) : null;
+  const nextRank = game ? nextRankLine(game.rank) : '';
+  const habit = game
+    ? `${game.streakDays > 0 ? `${game.streakDays}-day streak · ` : ''}${game.challengesDone} of ${game.challengesTotal} daily challenges`
+    : null;
 
   useEffect(() => {
     AccessibilityInfo.announceForAccessibility(
-      `${kicker}. ${headline}. ${score.pct} percent. ${notesLine}. ${phrasesLine}.${habit ? ` ${habit}.` : ''}`,
+      `${kicker}. ${headline}. ${score.pct} percent. ${notesLine}. ${phrasesLine}.${
+        game && game.earnedXp > 0 ? ` ${game.earnedXp} XP.` : ''
+      }${game?.masteryUnlocked.length ? ` ${game.masteryUnlocked.map(levelLabel).join(', ')} mastered.` : ''}`,
     );
-  }, [kicker, headline, score.pct, phrasesLine, notesLine, habit]);
+  }, [kicker, headline, score.pct, phrasesLine, notesLine, game]);
 
   return (
     <>
@@ -55,16 +63,41 @@ export function TuneComplete({ title, grades, results, streak }: TuneCompletePro
             <Text style={styles.line}>{phrasesLine}</Text>
           </View>
         </View>
+
+        {game && game.earnedXp > 0 ? (
+          <View style={styles.xp}>
+            <View style={styles.xpRow}>
+              <Text style={styles.xpEarned}>+{game.earnedXp} XP</Text>
+              <Text style={styles.xpNext}>{nextRank}</Text>
+            </View>
+            <View
+              style={styles.xpBar}
+              accessible
+              accessibilityRole="progressbar"
+              accessibilityLabel={`${game.rank.name}, ${nextRank}`}
+            >
+              <View style={[styles.xpFill, { width: `${game.rank.pct}%` }]} />
+            </View>
+            {game.parts.length > 0 ? (
+              <Text style={styles.xpParts}>{game.parts.join(' · ')}</Text>
+            ) : null}
+          </View>
+        ) : null}
+
+        {game && game.masteryUnlocked.length > 0 ? (
+          <View style={styles.mastery}>
+            {game.masteryUnlocked.map((level) => (
+              <Text key={level} style={styles.masteryText}>
+                ✓ {levelLabel(level)} mastered
+              </Text>
+            ))}
+          </View>
+        ) : null}
+
         {habit ? (
           <View style={styles.habit}>
+            {game && game.streakDays > 0 ? <Flame size={14} /> : null}
             <Text style={styles.habitText}>{habit}</Text>
-            {streak!.goalMet ? null : (
-              <View style={styles.goal} accessibilityElementsHidden importantForAccessibility="no">
-                {Array.from({ length: streak!.goal }, (_, i) => (
-                  <View key={i} style={[styles.pip, i < streak!.today && styles.pipDone]} />
-                ))}
-              </View>
-            )}
           </View>
         ) : null}
       </Card>
@@ -88,20 +121,33 @@ const styles = StyleSheet.create({
   lines: { gap: 2, flex: 1 },
   line: { color: textAlpha[60], fontSize: 14 },
 
+  xp: {
+    gap: 6,
+    marginTop: 10,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.divider,
+  },
+  xpRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 },
+  xpEarned: { color: colors.accent, fontSize: 18, fontWeight: font.weightHeading },
+  xpNext: { color: textAlpha[60], fontSize: 12, flexShrink: 1, textAlign: 'right' },
+  xpBar: { height: 5, borderRadius: 3, backgroundColor: colors.divider, overflow: 'hidden' },
+  xpFill: { height: 5, borderRadius: 3, backgroundColor: colors.accent },
+  xpParts: { color: textAlpha[50], fontSize: 12 },
+
+  mastery: { marginTop: 6, gap: 2 },
+  masteryText: { color: colors.accentRamp[300], fontSize: 14, fontWeight: font.weightHeading },
+
   habit: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 10,
+    gap: 6,
     marginTop: 10,
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: colors.divider,
   },
   habitText: { color: colors.accentRamp[300], fontSize: 14, flexShrink: 1 },
-  goal: { flexDirection: 'row', gap: 5 },
-  pip: { width: 18, height: 5, borderRadius: 3, backgroundColor: colors.divider },
-  pipDone: { backgroundColor: colors.accent },
 
   mistakes: { padding: 16, gap: 8 },
   mistakesTitle: {
