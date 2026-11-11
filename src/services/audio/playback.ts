@@ -27,13 +27,6 @@ export interface AudioPlayback {
    * match. The note fallback picks it up from its next note. No effect when nothing is playing.
    */
   setRate(rate: number): void;
-  /**
-   * Hold the melody sounding now where it is; `playMelody` stays pending until it is resumed and plays
-   * out, or until something else takes over. No effect when no melody is playing.
-   */
-  pause(): void;
-  /** Carry on a paused melody from where it was held. */
-  resume(): void;
   playReferenceTone(midi: number): Promise<void>;
   stop(): Promise<void>;
 }
@@ -42,10 +35,6 @@ export interface AudioPlayback {
 export interface ClipHandle {
   /** Change its speed in place, pitch kept. */
   setRate(rate: number): void;
-  /** Hold it where it is. */
-  pause(): void;
-  /** Carry on from where it was held. */
-  resume(): void;
   /** Fade it out over `fadeMs` (a short default) and free its player (no-op once released or stopped). */
   release(fadeMs?: number): void;
 }
@@ -182,12 +171,6 @@ export function defaultNativePlayer(): NativePlayer {
         setRate: (next) => {
           if (active.has(player)) applyRate(player, next);
         },
-        pause: () => {
-          if (active.has(player)) player.pause();
-        },
-        resume: () => {
-          if (active.has(player)) player.play();
-        },
         release: (fadeMs = FADE_MS) => fadeOut(player, fadeMs),
       };
     },
@@ -220,19 +203,6 @@ export function createAudioPlayback(native: NativePlayer = defaultNativePlayer()
   // Speed of what is sounding; the note fallback reads it before each note.
   let rate = 1;
   let clip: ClipRun | null = null;
-  // The melody is held (pause): the clip's clock stands still, the note fallback waits before its next
-  // note. Anything that takes over the output lifts it.
-  let paused = false;
-  let wake: (() => void)[] = [];
-  const unpause = () => {
-    paused = false;
-    const waiting = wake;
-    wake = [];
-    for (const go of waiting) go();
-  };
-  const whilePaused = async () => {
-    while (paused) await new Promise<void>((go) => wake.push(go));
-  };
 
   /** Something else takes over: the sounding clip's wait ends now (stopAll silences the audio). */
   const settle = () => {
@@ -271,7 +241,6 @@ export function createAudioPlayback(native: NativePlayer = defaultNativePlayer()
       // Nothing may still be ringing under the melody (a replay pressed mid-clip, a tapped fret).
       const mine = ++generation;
       settle();
-      unpause();
       rate = startRate;
       await native.stopAll();
       if (generation !== mine) return;
@@ -301,7 +270,6 @@ export function createAudioPlayback(native: NativePlayer = defaultNativePlayer()
           await wait(((note.startMs - cursor) * startRate) / rate);
           cursor = note.startMs;
         }
-        await whilePaused();
         if (generation !== mine) return;
         await native.playTone(note.midi, (note.durationMs * startRate) / rate);
         cursor += note.durationMs;
@@ -311,42 +279,20 @@ export function createAudioPlayback(native: NativePlayer = defaultNativePlayer()
       rate = next;
       const run = clip;
       if (!run) return;
-      run.handle.setRate(next);
-      if (paused) return; // the clock stands still; `resume` starts it at this rate
       run.clock.setRate(next, Date.now());
+      run.handle.setRate(next);
       arm(run);
-    },
-    pause() {
-      if (paused) return;
-      paused = true;
-      const run = clip;
-      if (!run) return;
-      clearTimeout(run.timer);
-      run.clock.setRate(0, Date.now()); // frozen: no media time passes while held
-      run.handle.pause();
-    },
-    resume() {
-      if (!paused) return;
-      const run = clip;
-      if (run) {
-        run.clock.setRate(rate, Date.now());
-        run.handle.resume();
-        arm(run);
-      }
-      unpause();
     },
     async playReferenceTone(midi) {
       // One string at a time: the previous tap fades as the new one starts, so taps never stack.
       generation++;
       settle();
-      unpause();
       await native.stopAll();
       await native.playTone(midi, TAP_HOLD_MS);
     },
     stop: () => {
       generation++;
       settle();
-      unpause();
       return native.stopAll();
     },
   };

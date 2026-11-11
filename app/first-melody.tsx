@@ -78,6 +78,7 @@ export default function FirstMelody() {
       difficulty: getDifficultyRepository(),
       sessionId: 'first-melody',
       scored: () => false,
+      listenFirst: true,
       tapReplacesLast: true,
       onPhraseChecked: ({ grade }) => {
         tries.current += 1;

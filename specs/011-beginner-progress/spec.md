@@ -17,6 +17,10 @@ listing them, and removes the rest.
 
 ## User Scenarios & Testing *(mandatory)*
 
+> **Removed 2026-11-11 (owner: "a useless metric")**: the accuracy ring of User Story 1 and the change-on-last-week
+> pill were taken off the screen, with the note-accuracy code behind them. A replacement tied to the product (phrases
+> right first time, longest phrase reproduced, mastery of the current level) is a candidate for a later spec.
+
 ### User Story 1 - "Am I getting better?" at a glance (Priority: P1)
 
 One ring shows the share of notes landed this week, with the change against last week beside it.

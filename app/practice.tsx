@@ -6,7 +6,7 @@ import { InteractionManager, ScrollView, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { Session } from '../src/models';
 import { curatedMelody, historyFromAttempts } from '../src/services/melody/curated';
-import { catalogTune, tuneAsk } from '../src/services/melody/catalog';
+import { catalogTune } from '../src/services/melody/catalog';
 import { DEFAULT_GRADING_CFG } from '../src/services/grading/grade';
 import { MAX_RANK, MIN_RANK, getLevel, getLevelByRank } from '../src/services/melody/levels';
 import { scoreOf } from '../src/lib/review';
@@ -386,20 +386,31 @@ export default function Practice() {
     void loopReplay();
   }, [melodyId, rank, loop.phase, loopReplay]);
 
-  // Hearing it from the start while still listening counts as a replay too (`where` tells them apart).
-  const loopRestart = loop.restartListening;
-  const restart = useCallback(() => {
+  // Hearing the whole melody on request counts as a replay too (`where` tells them apart).
+  const loopHearWhole = loop.hearWhole;
+  const hearWhole = useCallback(() => {
     if (!melodyId) return;
     if (replays.current.melodyId !== melodyId) replays.current = { melodyId, n: 0 };
     replays.current.n += 1;
     track('melody_replay', {
       rank,
       n: replays.current.n,
-      where: 'playingMelody',
+      where: 'whole',
       speed: speedRef.current,
     });
-    loopRestart();
-  }, [melodyId, rank, loopRestart]);
+    void loopHearWhole();
+  }, [melodyId, rank, loopHearWhole]);
+
+  // Practice starts playing by itself (spec 014): once the learner's level is loaded, serve a melody. If
+  // that fails, the idle screen keeps its Play melody button so nobody is stuck.
+  const autoStarted = useRef(false);
+  const [startFailed, setStartFailed] = useState(false);
+  const loopNext = loop.next;
+  useEffect(() => {
+    if (!loop.ready || autoStarted.current) return;
+    autoStarted.current = true;
+    loopNext().catch(() => setStartFailed(true));
+  }, [loop.ready, loopNext]);
 
   // The level of the tune on screen: a picked tune need not be on the rank in effect.
   const shownRank = loop.melody
@@ -422,7 +433,6 @@ export default function Practice() {
   const complete = loop.phase === 'complete';
   const answering = loop.phase === 'awaitingInput';
   const noteCount = loop.phrase?.notes.length ?? 0;
-  const introPlaying = loop.phase === 'playingMelody' && loop.listening === 'tune';
   const stuck = showFeedback && grade!.verdict !== 'correct' && shouldOfferHelp(loop.fails);
 
   // A flash belongs to the board it was tapped on: gone once the answer view closes.
@@ -466,7 +476,7 @@ export default function Practice() {
           phrases={loop.phrases}
           index={loop.phraseIndex}
           grades={loop.phraseGrades}
-          stage={introPlaying ? 'tune' : complete ? 'done' : 'phrase'}
+          stage={complete ? 'done' : 'phrase'}
         />
       ) : null}
 
@@ -507,22 +517,13 @@ export default function Practice() {
           draft={draft.on}
           onToggleDraft={switchDraft}
           flash={flash}
+          onHearWhole={loop.phraseIndex === 0 && loop.phrases > 1 ? hearWhole : undefined}
         />
       ) : (
-        <PracticeStage
-          phase={loop.phase}
-          paused={loop.paused}
-          idleHint={
-            picked && pickedPending.current
-              ? `${picked.name}: ${tuneAsk(picked)}. Press play, listen, then find the notes.`
-              : undefined
-          }
-        />
+        <PracticeStage phase={loop.phase} />
       )}
 
-      {/* Not on the first play of a melody: that screen is for listening only. A replay still follows
-          the slider live. */}
-      {loop.phase === 'playingMelody' ? null : <SpeedSlider speed={speed} onChange={changeSpeed} />}
+      <SpeedSlider speed={speed} onChange={changeSpeed} />
 
       {/* Fixed height whatever the controls (the feedback row is lower than the others), so the slider
           stays put between phases. */}
@@ -537,18 +538,12 @@ export default function Practice() {
             onClear={loop.clearFrets}
             onCheck={loop.submitAnswer}
           />
-        ) : (
+        ) : loop.phase === 'idle' && !startFailed ? null : (
           <TransportControls
             phase={loop.phase}
-            listening={loop.listening}
             replaying={loop.replaying}
-            paused={loop.paused}
             lastPhrase={loop.phraseIndex + 1 >= loop.phrases}
             onPlay={loop.next}
-            onPause={loop.pauseListening}
-            onResume={loop.resumeListening}
-            onRestart={restart}
-            onSkip={loop.skipListening}
             onReplay={replay}
             onStopReplay={loop.stopReplay}
             onRetry={loop.retry}

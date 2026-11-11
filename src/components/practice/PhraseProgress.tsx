@@ -12,17 +12,15 @@ export interface PhraseProgressProps {
   index: number;
   /** First-try grade of each phrase answered so far. */
   grades: readonly AttemptGrade[];
-  /** The whole tune is playing (before the first phrase), or the tune is done. */
-  stage: 'tune' | 'phrase' | 'done';
+  /** A phrase is in play, or the tune is done. */
+  stage: 'phrase' | 'done';
 }
 
 export function PhraseProgress({ phrases, index, grades, stage }: PhraseProgressProps) {
   const label =
-    stage === 'tune'
-      ? 'Whole melody'
-      : stage === 'done'
-        ? `${phrases} ${phrases === 1 ? 'phrase' : 'phrases'}`
-        : `Phrase ${index + 1} of ${phrases}`;
+    stage === 'done'
+      ? `${phrases} ${phrases === 1 ? 'phrase' : 'phrases'}`
+      : `Phrase ${index + 1} of ${phrases}`;
   return (
     <View
       style={styles.wrap}

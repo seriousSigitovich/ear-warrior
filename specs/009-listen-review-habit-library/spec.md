@@ -22,6 +22,9 @@ scope for this change.
 
 ## User Scenarios & Testing *(mandatory)*
 
+> **Withdrawn by spec 014 (2026-11-11)**: the listening screens these controls belonged to were removed; repeat and
+> stop are the Replay / Stop button on the answer screen, and skipping is starting to tap.
+
 ### User Story 1 - Control the melody while listening (Priority: P1)
 
 While the whole melody or a phrase plays before the answer, the learner can pause it, hear it again from the start,

@@ -28,7 +28,6 @@ function fakePlayer(clips: string[] = []) {
     fromMs: number;
     rates: number[];
     released: boolean;
-    paused: boolean;
     fadeMs?: number;
   }[] = [];
   let stops = 0;
@@ -43,18 +42,11 @@ function fakePlayer(clips: string[] = []) {
         fromMs,
         rates: [rate],
         released: false,
-        paused: false,
         fadeMs: undefined as number | undefined,
       };
       playedClips.push(clip);
       return {
         setRate: (r) => clip.rates.push(r),
-        pause: () => {
-          clip.paused = true;
-        },
-        resume: () => {
-          clip.paused = false;
-        },
         release: (fadeMs) => {
           clip.released = true;
           clip.fadeMs = fadeMs;
@@ -145,37 +137,6 @@ describe('audio playback (contracts/audio-playback.md)', () => {
       expect(resolved).toBe(true);
       expect(f.playedClips[0].released).toBe(true);
       expect(f.playedClips[0].fadeMs).toBe(180);
-    });
-
-    test('a paused clip stands still and ends as much later as it was held', async () => {
-      const f = fakePlayer(['tune']);
-      const pb = createAudioPlayback(f.native);
-      const done = start(pb, 120); // 1500 ms
-      await jest.advanceTimersByTimeAsync(500);
-      pb.pause();
-      expect(f.playedClips[0].paused).toBe(true);
-      await jest.advanceTimersByTimeAsync(5000);
-      expect(done()).toBe(false);
-      pb.resume();
-      expect(f.playedClips[0].paused).toBe(false);
-      await jest.advanceTimersByTimeAsync(999);
-      expect(done()).toBe(false);
-      await jest.advanceTimersByTimeAsync(1);
-      expect(done()).toBe(true);
-    });
-
-    test('a stop ends a paused clip, and the next melody is not held', async () => {
-      const f = fakePlayer(['tune']);
-      const pb = createAudioPlayback(f.native);
-      const first = start(pb, 120);
-      await jest.advanceTimersByTimeAsync(100);
-      pb.pause();
-      await pb.stop();
-      await jest.advanceTimersByTimeAsync(0);
-      expect(first()).toBe(true);
-      const second = start(pb, 120);
-      await jest.advanceTimersByTimeAsync(1500);
-      expect(second()).toBe(true);
     });
 
     test('a stop ends the clip’s wait at once', async () => {

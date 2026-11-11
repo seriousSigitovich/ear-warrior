@@ -1,25 +1,18 @@
-// Transport controls (T032, FR-003/FR-007/FR-008/FR-009): the bottom action bar for the phases that
-// are not the fretboard answer — Play melody on idle; Pause · Restart · Skip while the tune or a
-// phrase plays before the answer; Replay · Retry · Next phrase on a phrase's result; Replay · Next
-// melody once the tune is done. Replay turns into Stop while it plays.
+// Transport controls (T032, FR-003/FR-007/FR-008/FR-009; spec 014): the bottom action bar for the phases that
+// are not the fretboard answer — Play melody if the practice could not start by itself; Replay · Retry ·
+// Next phrase on a phrase's result; Replay · Next melody once the tune is done. Replay turns into Stop
+// while it plays. (The phrase itself plays on the answer screen, whose own controls handle it.)
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Listening, LoopPhase } from '../../features/practice/usePracticeLoop';
+import { LoopPhase } from '../../features/practice/usePracticeLoop';
 import { Button } from '../common/Button';
 
 export interface TransportControlsProps {
   phase: LoopPhase;
-  listening: Listening;
   replaying: boolean;
-  /** The melody being listened to is held. */
-  paused: boolean;
   /** The phrase on screen is the tune's last. */
   lastPhrase: boolean;
   onPlay: () => void;
-  onPause: () => void;
-  onResume: () => void;
-  onRestart: () => void;
-  onSkip: () => void;
   onReplay: () => void;
   onStopReplay: () => void;
   onRetry: () => void;
@@ -29,15 +22,9 @@ export interface TransportControlsProps {
 
 export function TransportControls({
   phase,
-  listening,
   replaying,
-  paused,
   lastPhrase,
   onPlay,
-  onPause,
-  onResume,
-  onRestart,
-  onSkip,
   onReplay,
   onStopReplay,
   onRetry,
@@ -57,22 +44,6 @@ export function TransportControls({
     return (
       <View style={styles.wrap}>
         <Button label="Play melody" onPress={onPlay} style={styles.tall} />
-      </View>
-    );
-  }
-
-  if (phase === 'playingMelody') {
-    const whole = listening === 'tune';
-    return (
-      <View style={styles.row} accessibilityLabel={whole ? 'Melody controls' : 'Phrase controls'}>
-        <Button
-          label={paused ? 'Resume' : 'Pause'}
-          variant="secondary"
-          onPress={paused ? onResume : onPause}
-          style={styles.grow}
-        />
-        <Button label="Restart" variant="secondary" onPress={onRestart} style={styles.grow} />
-        <Button label="Skip" onPress={onSkip} style={styles.grow} />
       </View>
     );
   }
@@ -105,7 +76,7 @@ export function TransportControls({
 
 const styles = StyleSheet.create({
   wrap: { gap: 12 },
-  row: { flexDirection: 'row', gap: 8, minHeight: 52 },
+  row: { flexDirection: 'row', gap: 8 },
   grow: { flex: 1 },
   wide: { flex: 1.6 },
   tall: { minHeight: 52 },

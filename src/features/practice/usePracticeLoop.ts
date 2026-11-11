@@ -1,10 +1,9 @@
-// Practice-loop state machine (T028, US1). A tune is learnt phrase by phrase:
-//   idle → playingMelody (the whole tune) → for each phrase:
-//     playingMelody (the phrase) → awaitingInput → grading → feedback → (retry | next phrase)
-//   → complete (the tune is named, summed up and played whole once more) → next tune.
+// Practice-loop state machine (T028, US1; spec 014). A tune is learnt phrase by phrase:
+//   idle → for each phrase: awaitingInput (the phrase plays at once, board live) → grading → feedback
+//   → (retry | next phrase) → complete (the tune is named, summed up and played whole) → next tune.
 // A phrase fits in the ear's working memory where a 60-note tune does not, and the tune stays whole:
-// each phrase is heard in place, and the tune is played in full at both ends.
-// While listening (`playingMelody`, tune or phrase) the learner can pause, start over or skip ahead.
+// the whole tune can be heard on request while answering the first phrase, and is played in full at the
+// end. The coached first melody (`listenFirst`) keeps a listening phase of its own (`playingMelody`).
 // A replay is not a phase: it sounds the phrase (or, once complete, the tune) over whatever is on
 // screen, so the learner compares by ear without losing sight of their notes.
 // The learner answers by tapping notes on an on-screen fretboard; pure logic (melody, phrases,
@@ -52,9 +51,6 @@ import { fingering } from '../../lib/hints';
 
 export type LoopPhase =
   'idle' | 'playingMelody' | 'awaitingInput' | 'grading' | 'feedback' | 'complete';
-
-/** What `playingMelody` is sounding: the whole tune up front, or the phrase to answer. */
-export type Listening = 'tune' | 'phrase';
 
 /** A phrase was checked. `first` is the learner's first try at it — the one the tune is scored on. */
 export interface PhraseCheck {
@@ -119,6 +115,11 @@ export interface PracticeLoopDeps {
    * of the level they should be served at. Defaults to every scored tune adapting.
    */
   adapts?: (m: Melody) => boolean;
+  /**
+   * Listen to each phrase on its own screen (`playingMelody`) before the answer opens — the coached first
+   * melody. Default off: the phrase plays on the answer screen itself, the board already live.
+   */
+  listenFirst?: boolean;
   /** Injected for testability; defaults to wall-clock time. */
   now?: () => Date;
 }
@@ -129,11 +130,6 @@ export interface RankChange {
   to: number;
   direction: 'up' | 'down';
 }
-
-/** Breath between the whole tune and its first phrase. */
-const INTRO_GAP_MS = 600;
-
-const pause = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 /** Sound the whole tune at `speed` × its own tempo: schedule and clip both slow down, pitch stays. */
 function playTuneAt(playback: AudioPlayback, m: Melody, speed: number): Promise<void> {
@@ -153,7 +149,6 @@ function playPhraseAt(playback: AudioPlayback, m: Melody, i: number, speed: numb
 
 export function usePracticeLoop(deps: PracticeLoopDeps) {
   const [phase, setPhase] = useState<LoopPhase>('idle');
-  const [listening, setListening] = useState<Listening>('tune');
   const [melody, setMelody] = useState<Melody | null>(null);
   const [phraseIndex, setPhraseIndex] = useState(0);
   // The grade of the phrase on screen (feedback), and of the whole tune (complete).
@@ -176,11 +171,6 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
   const replayTokenRef = useRef(0);
   // Bumped by each new tune: a tune's intro → first phrase hand-over only runs if it is still current.
   const tuneTokenRef = useRef(0);
-  // What the learner asked of the melody being listened to (`playingMelody`): its play-through reads
-  // this when the audio ends, to tell "heard out" from "start over" and "enough, move on".
-  const listenAskRef = useRef<'none' | 'restart' | 'skip'>('none');
-  // The melody being listened to is held (pause).
-  const [paused, setPaused] = useState(false);
   // First try at each phrase: what the tune is scored on (a retry is practice, FR-011a).
   const firstGradesRef = useRef<AttemptGrade[]>([]);
   const firstAnswersRef = useRef<DetectedNote[][]>([]);
@@ -213,11 +203,19 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
     [deps.playback],
   );
 
+  // The learner's level is known: the first tune is served at it, not at the default.
+  const [ready, setReady] = useState(false);
   useEffect(() => {
     let cancelled = false;
-    deps.difficulty.load().then((loaded) => {
-      if (!cancelled) setSettings(loaded);
-    });
+    deps.difficulty
+      .load()
+      .then((loaded) => {
+        if (!cancelled) setSettings(loaded);
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (!cancelled) setReady(true);
+      });
     return () => {
       cancelled = true;
     };
@@ -288,38 +286,19 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
 
   const speedNow = useCallback(() => deps.speed?.() ?? 1, [deps]);
 
-  /**
-   * Sound what the learner listens to before answering, again for as long as they ask to hear it from
-   * the start. Resolves with how it ended: heard out, or cut short by Skip.
-   */
-  const listenThrough = useCallback(async (play: () => Promise<void>, current: () => boolean) => {
-    // Read through a function: the ask is set from a button while `play` is awaited.
-    const asked = (): 'none' | 'restart' | 'skip' => listenAskRef.current;
-    for (;;) {
-      listenAskRef.current = 'none';
-      setPaused(false);
-      await play();
-      if (!current() || asked() !== 'restart') break;
-    }
-    setPaused(false);
-    return asked() === 'skip' ? 'skipped' : 'heard';
-  }, []);
-
-  /** Play phrase `i` for the learner to answer, then hand over to them. */
-  const playPhrase = useCallback(
-    async (m: Melody, i: number) => {
-      const token = tuneTokenRef.current;
-      setListening('phrase');
-      setPhase('playingMelody');
-      await deps.session.enterPlayback();
-      await listenThrough(
-        () => playPhraseAt(deps.playback, m, i, speedNow()),
-        () => tuneTokenRef.current === token,
-      );
-      if (tuneTokenRef.current !== token) return;
-      setPhase('awaitingInput');
+  /** Sound `play` over the current screen as a replay: `replaying` is true until it ends, or is superseded. */
+  const sound = useCallback(
+    async (play: () => Promise<void>) => {
+      const token = ++replayTokenRef.current;
+      setReplaying(true);
+      try {
+        await deps.session.enterPlayback();
+        await play();
+      } finally {
+        if (replayTokenRef.current === token) setReplaying(false);
+      }
     },
-    [deps, speedNow, listenThrough],
+    [deps.session],
   );
 
   /** End a sounding replay at once. With `silence`, also cut the audio (a tap cuts it by itself). */
@@ -332,13 +311,34 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
     [deps.playback],
   );
 
-  /** Serve a new tune from `at`: play it whole, then its first phrase. */
+  /**
+   * Hand phrase `i` to the learner and sound it. By default the answer opens at once and the phrase plays on
+   * it (a tap or Check cuts it, like any replay); with `listenFirst` it is listened to on its own first.
+   */
+  const playPhrase = useCallback(
+    async (m: Melody, i: number) => {
+      if (!deps.listenFirst) {
+        setPhase('awaitingInput');
+        await sound(() => playPhraseAt(deps.playback, m, i, speedNow()));
+        return;
+      }
+      const token = tuneTokenRef.current;
+      setPhase('playingMelody');
+      await deps.session.enterPlayback();
+      await playPhraseAt(deps.playback, m, i, speedNow());
+      if (tuneTokenRef.current !== token) return;
+      setPhase('awaitingInput');
+    },
+    [deps, sound, speedNow],
+  );
+
+  /** Serve a new tune from `at`: straight to its first phrase. */
   const serve = useCallback(
     async (at: DifficultyLevel) => {
       endReplay(false); // the new melody's playback cuts the old audio itself
       await historyRef.current; // pick against the full history, not a half-loaded one
       const m = deps.nextMelody(at, deps.seed(), masteredRef.current, recentRef.current);
-      const token = ++tuneTokenRef.current;
+      tuneTokenRef.current += 1; // a new tune: anything still queued for the old one must not run
       if (scored(m)) recentRef.current.push(tuneIdOf(m.id));
       setFails(0);
       setHint(null);
@@ -351,25 +351,9 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
       setTuneGrade(null);
       setRankChange(null);
       setAnswer([]);
-      // A one-phrase tune is its own first phrase: no whole-tune intro to sit through first.
-      if (phraseCount(m) === 1) {
-        await playPhrase(m, 0);
-        return;
-      }
-      setListening('tune');
-      setPhase('playingMelody');
-      await deps.session.enterPlayback();
-      const ended = await listenThrough(
-        () => playTuneAt(deps.playback, m, speedNow()),
-        () => tuneTokenRef.current === token,
-      );
-      if (tuneTokenRef.current !== token) return;
-      // A skipped intro goes straight on; one heard to the end gets a breath first.
-      if (ended === 'heard') await pause(INTRO_GAP_MS);
-      if (tuneTokenRef.current !== token) return;
       await playPhrase(m, 0);
     },
-    [deps, endReplay, playPhrase, scored, speedNow, listenThrough],
+    [deps, endReplay, playPhrase, scored, speedNow],
   );
 
   const next = useCallback(() => serve(level), [serve, level]);
@@ -392,50 +376,22 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
     await serve(getLevelByRank(Math.max(MIN_RANK, rank - 1)));
   }, [deps.difficulty, serve]);
 
-  /**
-   * Enough listening: cut short what is playing before the answer and move on — from the whole tune to
-   * its first phrase, from a phrase straight to answering it.
-   */
-  const skipListening = useCallback(() => {
-    if (phase !== 'playingMelody') return;
-    listenAskRef.current = 'skip';
-    deps.playback.stop().catch(() => undefined);
-  }, [deps.playback, phase]);
-
-  /** Hear what is playing before the answer again from its start. */
-  const restartListening = useCallback(() => {
-    if (phase !== 'playingMelody') return;
-    listenAskRef.current = 'restart';
-    deps.playback.stop().catch(() => undefined);
-  }, [deps.playback, phase]);
-
-  /** Hold what is playing before the answer where it is. */
-  const pauseListening = useCallback(() => {
-    if (phase !== 'playingMelody') return;
-    deps.playback.pause();
-    setPaused(true);
-  }, [deps.playback, phase]);
-
-  const resumeListening = useCallback(() => {
-    if (phase !== 'playingMelody') return;
-    deps.playback.resume();
-    setPaused(false);
-  }, [deps.playback, phase]);
-
   /** Sound the phrase again (FR-007) over the current screen — or the whole tune once it is done. */
   const replay = useCallback(async () => {
     if (!melody || (phase !== 'awaitingInput' && phase !== 'feedback' && phase !== 'complete'))
       return;
-    const token = ++replayTokenRef.current;
-    setReplaying(true);
-    try {
-      await deps.session.enterPlayback();
-      if (phase === 'complete') await playTuneAt(deps.playback, melody, speedNow());
-      else await playPhraseAt(deps.playback, melody, phraseIndex, speedNow());
-    } finally {
-      if (replayTokenRef.current === token) setReplaying(false);
-    }
-  }, [deps, melody, phase, phraseIndex, speedNow]);
+    await sound(() =>
+      phase === 'complete'
+        ? playTuneAt(deps.playback, melody, speedNow())
+        : playPhraseAt(deps.playback, melody, phraseIndex, speedNow()),
+    );
+  }, [deps.playback, sound, melody, phase, phraseIndex, speedNow]);
+
+  /** Hear the whole tune while answering its first phrase: it replaces what is sounding. */
+  const hearWhole = useCallback(async () => {
+    if (!melody || phase !== 'awaitingInput') return;
+    await sound(() => playTuneAt(deps.playback, melody, speedNow()));
+  }, [deps.playback, sound, melody, phase, speedNow]);
 
   const stopReplay = useCallback(() => endReplay(true), [endReplay]);
 
@@ -496,16 +452,9 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
         if (deps.adapts?.(m) ?? true) await adapt(result);
       }
       // The payoff: hear the whole tune just answered note by note.
-      const token = ++replayTokenRef.current;
-      setReplaying(true);
-      try {
-        await deps.session.enterPlayback();
-        await playTuneAt(deps.playback, m, speedNow());
-      } finally {
-        if (replayTokenRef.current === token) setReplaying(false);
-      }
+      await sound(() => playTuneAt(deps.playback, m, speedNow()));
     },
-    [deps, adapt, completeAttempt, scored, speedNow],
+    [deps, sound, adapt, completeAttempt, scored, speedNow],
   );
 
   /** From a phrase's result: on to the next phrase, or close the tune after the last. */
@@ -592,8 +541,7 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
   return useMemo(
     () => ({
       phase,
-      listening,
-      paused,
+      ready,
       replaying,
       answer,
       melody,
@@ -610,11 +558,8 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
       hint,
       next,
       easier,
-      skipListening,
-      restartListening,
-      pauseListening,
-      resumeListening,
       replay,
+      hearWhole,
       stopReplay,
       retry,
       retryKeeping,
@@ -629,8 +574,7 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
     }),
     [
       phase,
-      listening,
-      paused,
+      ready,
       replaying,
       answer,
       melody,
@@ -647,11 +591,8 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
       hint,
       next,
       easier,
-      skipListening,
-      restartListening,
-      pauseListening,
-      resumeListening,
       replay,
+      hearWhole,
       stopReplay,
       retry,
       retryKeeping,
