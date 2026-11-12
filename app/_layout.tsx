@@ -14,6 +14,7 @@ import { screenFromPath } from '../src/services/logging/eventLog';
 import { requestSync } from '../src/services/sync/instance';
 import { getOrCreateDeviceId, keyValueOverRowStore } from '../src/lib/deviceId';
 import { KEY_VALUE_TABLE, defaultRowStore } from '../src/services/storage/db';
+import { getUpdater } from '../src/services/updates/launchUpdate';
 
 initSentry();
 
@@ -84,7 +85,23 @@ function useSync(): void {
   }, []);
 }
 
+// OTA: download a published update right at launch and whenever the app comes back, in the background; switch to it
+// when the app leaves the screen, so the next open is already the new version (no wait for a second launch).
+function useOtaUpdate(): void {
+  useEffect(() => {
+    const updater = getUpdater();
+    if (!updater) return;
+    void updater.check();
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void updater.check();
+      else if (state === 'background') void updater.applyIfReady();
+    });
+    return () => sub.remove();
+  }, []);
+}
+
 function RootLayout() {
+  useOtaUpdate();
   useAuthLifecycle();
   useSentryUser();
   // One launch of the app = one `app_open`; day-2 return is read off these server-side.
