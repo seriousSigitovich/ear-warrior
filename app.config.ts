@@ -34,7 +34,7 @@ const config: ExpoConfig = {
     package: 'com.earwarrior.app',
     // Play rejects an upload whose versionCode was already used. appVersionSource is `local` (eas.json),
     // so bump this by one before every AAB upload.
-    versionCode: 4,
+    versionCode: 5,
     adaptiveIcon: {
       foregroundImage: './assets/app/adaptive-fg.png',
       monochromeImage: './assets/app/adaptive-fg.png',
