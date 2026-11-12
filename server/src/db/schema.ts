@@ -273,3 +273,11 @@ export const progressDifficulty = pgTable('progress_difficulty', {
   streakCount: integer('streak_count').notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
 });
+
+/** The owner's manual challenges for one calendar day (spec 020); a day without a row uses the generator. */
+export const dailyChallengeOverrides = pgTable('daily_challenge_overrides', {
+  date: date('date', { mode: 'string' }).primaryKey(),
+  challenges: jsonb('challenges').notNull(),
+  allBonusXp: integer('all_bonus_xp').notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});

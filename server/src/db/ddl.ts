@@ -227,6 +227,14 @@ export async function applyDdl(sql: Sql): Promise<void> {
       primary key (user_id, tune_id)
     );
 
+    -- The owner's manual daily challenges (spec 020); a day without a row uses the generator.
+    create table if not exists daily_challenge_overrides (
+      date         date        primary key,
+      challenges   jsonb       not null,
+      all_bonus_xp int         not null,
+      updated_at   timestamptz not null default now()
+    );
+
     -- Owner's view: attempt_log with the account each row belongs to (data-model.md "Attribution rule").
     -- A row before a device's first link belongs to whoever linked first; otherwise to the link that was
     -- open at its time; a gap after sign-out is anonymous (user_id / email are null).

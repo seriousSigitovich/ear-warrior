@@ -5,11 +5,13 @@ import { buildApp } from '../app.js';
 import { createMemoryStore } from '../auth/memoryStore.js';
 import { createRecordingMailer } from '../auth/mailer.js';
 import { createMemoryProgressStore } from '../progress/memoryStore.js';
+import { createMemoryChallengeStore } from '../challenges/memoryStore.js';
 
 const NOW = new Date('2026-11-12T10:00:00Z');
 const app = buildApp({
   auth: { store: createMemoryStore(), mailer: createRecordingMailer(), now: () => NOW, config: () => ({ pepper: 'p' }), randomCode: () => 1 },
   progress: createMemoryProgressStore(),
+  challengeStore: createMemoryChallengeStore(),
   challenges: { now: () => NOW },
   logger: false,
 });

@@ -4,15 +4,18 @@
 // (every timezone is within one), anything else is refused.
 import type { FastifyInstance } from 'fastify';
 import { challengesFor, isValidDate } from '../challenges/daily.js';
+import type { ChallengeStore } from '../challenges/override.js';
 
 export interface ChallengesDeps {
   now?: () => Date;
+  /** The owner's manual days (spec 020); a day without one, or a store that fails, uses the generator. */
+  store?: ChallengeStore;
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const WINDOW_DAYS = 2;
 
-export function registerChallenges(app: FastifyInstance, { now = () => new Date() }: ChallengesDeps = {}): void {
+export function registerChallenges(app: FastifyInstance, { now = () => new Date(), store }: ChallengesDeps = {}): void {
   app.get('/api/challenges/today', async (req, reply) => {
     const date = String((req.query as { date?: unknown }).date ?? '');
     const asked = isValidDate(date) ? Date.parse(`${date}T00:00:00Z`) : NaN;
@@ -20,7 +23,8 @@ export function registerChallenges(app: FastifyInstance, { now = () => new Date(
     if (Number.isNaN(asked) || Math.abs(asked - today) > WINDOW_DAYS * DAY_MS) {
       return reply.status(400).send({ ok: false, error: 'invalid_date' });
     }
-    const { challenges, allBonusXp } = challengesFor(date);
+    const manual = await store?.get(date).catch(() => null);
+    const { challenges, allBonusXp } = manual ?? challengesFor(date);
     void reply.header('Cache-Control', 'public, max-age=300');
     return {
       ok: true,

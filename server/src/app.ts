@@ -6,6 +6,9 @@ import { registerTelemetry } from './routes/telemetry.js';
 import { registerEvents } from './routes/events.js';
 import { registerProgress } from './routes/progress.js';
 import { registerChallenges, type ChallengesDeps } from './routes/challenges.js';
+import { registerAdminChallenges } from './routes/adminChallenges.js';
+import { createPgChallengeStore } from './challenges/pgStore.js';
+import type { ChallengeStore } from './challenges/override.js';
 import { registerSocial } from './routes/social.js';
 import { registerAuth, type AuthDeps } from './routes/auth.js';
 import { registerUsers } from './routes/users.js';
@@ -27,6 +30,8 @@ export interface BuildOptions {
   progress?: ProgressStore;
   /** Overrides for /api/challenges/today (tests pass a fixed clock). */
   challenges?: ChallengesDeps;
+  /** Replaces the Postgres store of the owner's manual challenge days (tests pass an in-memory one). */
+  challengeStore?: ChallengeStore;
   /** Replaces the Postgres read behind /admin/users (tests). */
   usage?: (now: Date) => Promise<UsageReport>;
   /** Replaces the Postgres read behind /admin/funnel (tests). */
@@ -58,7 +63,9 @@ export function buildApp(opts: BuildOptions = {}): FastifyInstance {
   const auth = opts.auth ?? defaultAuthDeps();
   registerAuth(app, auth);
   registerProgress(app, { auth: auth.store, progress: opts.progress ?? createPgProgressStore(db) });
-  registerChallenges(app, opts.challenges);
+  const challengeStore = opts.challengeStore ?? createPgChallengeStore(db);
+  registerChallenges(app, { ...opts.challenges, store: challengeStore });
+  registerAdminChallenges(app, challengeStore, opts.challenges?.now);
   registerUsers(app, opts.usage ?? loadUsageReport);
   registerFunnel(app, opts.funnel ?? loadFunnel);
 
