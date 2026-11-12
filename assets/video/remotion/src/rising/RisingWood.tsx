@@ -58,9 +58,12 @@ const GRAIN = (() => {
 })();
 
 /** `chord`: a note of the opening chord above its root — drawn big, but the camera kicks only on the root. */
-type Hit = { id: string; string: number; fret: number; land: number; gone?: number; big?: boolean; chord?: boolean };
+/** `soft`: when it is gone it fades over 0.25 s instead of vanishing (a looping cut clears its neck this way). */
+type Hit = { id: string; string: number; fret: number; land: number; gone?: number; big?: boolean; chord?: boolean; soft?: boolean };
 /** What the neck draws for one story: its notes and its camera. */
 export type Wood = { S: TuneStory; HITS: Hit[]; cameraAt: (t: number) => Pose };
+/** The seconds before the end of a looping cut when its neck, slots and type have cleared, so the last frame leads into the first. */
+export const LOOP_CLEAR = 0.5;
 const landPoint = (h: Hit): V3 => [noteX(h.fret), 0, stringZ(h.string)];
 function sparkAt(h: Hit, t: number): V3 | null {
   const a = t - (h.land - FLY);
@@ -77,31 +80,39 @@ const P_TOP: Pose = { pos: [2.05, 14.6, 1.2], yaw: -Math.PI / 2, pitch: -Math.PI
  * The neck for a story. `hook`: #60's opening hit lands a big note on frame 0. `enter`: when the camera leaves the low close shot on the
  * hook note for the road down the neck (#60: 0.22 s; the band cut: when it arrives from the stage).
  */
-export function woodOf(S: TuneStory, { hook = true, enter = 0.22 }: { hook?: boolean; enter?: number } = {}): Wood {
+export function woodOf(S: TuneStory, { hook = !S.LOOP, enter = S.LOOP ? -3 : 0.22 }: { hook?: boolean; enter?: number } = {}): Wood {
   const { T, HEARD, HOOK_NOTE, HOOK_CHORD } = S;
   const opening: Hit[] = HOOK_CHORD
     ? HOOK_CHORD.map((n, k) => ({ id: k ? `hook${k}` : 'hook', string: n.string, fret: n.fret, land: k * STRUM_GAP, gone: 1.55, big: true, chord: k > 0 }))
     : [{ id: 'hook', string: HOOK_NOTE.string, fret: HOOK_NOTE.fret, land: 0, gone: 1.55, big: true }];
+  const clearAt = S.DURATION - LOOP_CLEAR;
   const HITS: Hit[] = [
     ...(hook ? opening : []),
     ...HEARD.map((n, i): Hit => {
       const next = HEARD.slice(i + 1).find((m) => m.string === n.string && m.fret === n.fret);
-      return { id: `h${i}`, string: n.string, fret: n.fret, land: n.t, gone: next ? next.t - 0.06 : undefined };
+      return S.LOOP ? { id: `h${i}`, string: n.string, fret: n.fret, land: n.t, gone: next ? Math.min(next.t - 0.06, clearAt) : clearAt, soft: !next || next.t - 0.06 >= clearAt }
+        : { id: `h${i}`, string: n.string, fret: n.fret, land: n.t, gone: next ? next.t - 0.06 : undefined };
     }),
   ];
   const P_HOOK = pose([1.4, 1.5, -4.1], [noteX(HOOK_NOTE.fret), 0.2, HOOK_NOTE.string - 2.5], 900, 0.1);   // low and close, on the hit
   /** Down the neck towards the nut; frets 0–4 mid-frame. A tune that reaches fret 5 gets #60's wider lens aimed a little towards the treble. */
   const P_ROAD = (S.MAX_FRET ?? 4) > 4 ? pose([-6.2, 4.6, 0], [4.6, 0, 0.5], 860) : pose([-6.2, 4.6, 0], [4, 0, 0], 1050);
-  return { S, HITS, cameraAt: (t) => cameraAt(t, T, HITS, P_HOOK, P_ROAD, enter) };
+  return { S, HITS, cameraAt: (t) => cameraAt(t, T, HITS, P_HOOK, P_ROAD, enter, S.LOOP ? S.DURATION : 0) };
 }
 
-function cameraAt(t: number, T: TuneStory['T'], HITS: Hit[], P_HOOK: Pose, P_ROAD: Pose, enter: number): Pose {
+/** `loop` (the film's length, or 0): the camera stays on the road, never cranes to the tab, and its drift runs whole cycles of the film so the last frame matches the first. */
+function cameraAt(t: number, T: TuneStory['T'], HITS: Hit[], P_HOOK: Pose, P_ROAD: Pose, enter: number, loop = 0): Pose {
   let p = lerpPose(P_HOOK, P_ROAD, springAt(t, enter, SOFT));
+  if (loop) {
+    const w = (2 * Math.PI * t) / loop;
+    p = { ...p, yaw: p.yaw + 0.025 * Math.sin(w), pos: v3.add(p.pos, [0, 0.12 * Math.sin(w), 0.28 * Math.sin(w + 1)]) };
+  } else {
   const pre = Math.sin(Math.PI * clamp((t - T.hold) / 0.22)) * (t < T.hold + 0.22 ? 1 : 0);
   p = lerpPose(p, P_TOP, springAt(t, T.hold + 0.2, CRANE));
   p = { ...p, pos: v3.add(p.pos, [-0.6 * pre, 0.25 * pre, 0]) };
   const road = 1 - clamp((t - T.hold - 0.2) / 0.4);
   p = { ...p, yaw: p.yaw + road * 0.025 * Math.sin(t * 0.7), pos: v3.add(p.pos, [0, road * 0.12 * Math.sin(t * 0.9), road * 0.28 * Math.sin(t * 0.45)]) };
+  }
   const c = makeCam(p);
   let push = 0;
   for (const h of HITS) { const a = t - h.land; if (!h.chord && a >= 0 && a < 0.5) push += (h.big ? 0.4 : 0.14) * kick(a, 10); }
@@ -139,7 +150,7 @@ function fibre(cam: Cam, zAt: (x: number) => number, x0: number, x1: number, str
  */
 export const Guitar: React.FC<{ t: number; cam: Cam; names: number; w: Wood; neck?: boolean; ghost?: boolean; board?: boolean }> = ({ t, cam, names, w: { S: { T }, HITS }, neck = true, ghost = false, board = true }) => {
   const live = HITS.filter((h) => t >= h.land - FLY);
-  const lit = live.filter((h) => t >= h.land && (h.gone === undefined || t < h.gone));
+  const lit = live.filter((h) => t >= h.land && (h.gone === undefined || t < h.gone + (h.soft ? 0.25 : 0)));
   const dots = lit.map((h) => ({ h, s: springAt(t, h.land, CALM) * (h.gone === undefined ? 1 : 1 - clamp((t - h.gone) / 0.25) ** 2) }))
     .sort((a, b) => depth(cam, landPoint(b.h)) - depth(cam, landPoint(a.h)));
 
@@ -343,9 +354,34 @@ export const Beads: React.FC<{ t: number; y: number; S: TuneStory; from?: number
   );
 };
 
+/** "? ? ?" — one slot per note, in two rows; each turns into an amber ember as its note sounds, so the whole tune is a row to fill. */
+export const Slots: React.FC<{ t: number; y: number; S: TuneStory; outAt?: number }> = ({ t, y, S: { HEARD }, outAt }) => {
+  const show = presence(t, -0.2, outAt);
+  if (show < 0.01) return null;
+  const N = HEARD.length, per = Math.ceil(N / 2), d = 60, gap = 16;
+  const rows = [HEARD.slice(0, per), HEARD.slice(per)];
+  return (
+    <div style={{ position: 'absolute', left: 0, right: 0, top: y, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, opacity: Math.min(1, show), transform: `translateY(${(1 - Math.min(1, show)) * 20}px)` }}>
+      {rows.map((row, r) => (
+        <div key={r} style={{ display: 'flex', gap }}>
+          {row.map((n) => {
+            const p = Math.min(1, springAt(t, n.t, CALM));
+            return (
+              <div key={n.order} style={{ position: 'relative', width: d, height: d, borderRadius: 99, border: `2px solid rgba(181,171,252,${0.5 - 0.3 * p})`, transform: `scale(${1 + 0.3 * p * kick(t - n.t, 6)})` }}>
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: SERIF, fontStyle: 'italic', fontSize: 38, color: WOOD.lilac, opacity: 0.8 * (1 - p) }}>?</div>
+                <div style={{ position: 'absolute', inset: 6, borderRadius: 99, background: `radial-gradient(circle, #FFF4DE 0%, ${WOOD.amber} 40%, ${WOOD.ember} 100%)`, boxShadow: `0 0 ${26 * p}px rgba(255,154,60,0.85)`, opacity: p, transform: `scale(${p})` }} />
+              </div>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+};
+
 // --- the film ---------------------------------------------------------------------------------------------------------------------------
 /** The tunes cut in this look: #71's Rising Sun, then the next ones from king/tunes.mjs. */
-export const WOOD_TUNES = ['rising', 'canon', 'scarborough', 'greensleeves', 'birthday', 'gladiators', 'darkeyes', 'bulerias', 'cucaracha', 'hava', 'polkka', 'habanera'] as const;
+export const WOOD_TUNES = ['rising', 'canon', 'scarborough', 'greensleeves', 'birthday', 'gladiators', 'darkeyes', 'bulerias', 'cucaracha', 'hava', 'polkka', 'habanera', 'condor'] as const;
 export type WoodTune = (typeof WOOD_TUNES)[number];
 /** The soundtrack render-rising.mjs lays for a tune (#71 keeps its old name). */
 export const woodWav = (tune: WoodTune) => (tune === 'rising' ? 'rising-wood.wav' : `wood-${tune}.wav`);
@@ -371,14 +407,14 @@ export const Lens: React.FC<{ frame: number }> = ({ frame }) => (
   </>
 );
 /** Scene 3's type: your turn, then which song next (`end: 'next'`) or a call to follow for the next tunes (`'follow'`). */
-export const YourTurn: React.FC<{ t: number; T: TuneStory['T']; end?: TuneStory['END_TEXT'] }> = ({ t, T, end = 'next' }) => (
+export const YourTurn: React.FC<{ t: number; T: TuneStory['T']; end?: TuneStory['END_TEXT']; outAt?: number }> = ({ t, T, end = 'next', outAt }) => (
   <>
-    <Line t={t} at={T.cta} y={300} size={150}>Your turn.</Line>
-    <Caps t={t} at={T.sub} y={440} text="NO TABS · JUST YOUR EARS" />
+    <Line t={t} at={T.cta} outAt={outAt} y={300} size={150}>Your turn.</Line>
+    <Caps t={t} at={T.sub} outAt={outAt} y={440} text="NO TABS · JUST YOUR EARS" />
     {end === 'follow' ? (
       <>
-        <Line t={t} at={T.comment} y={1560} size={66}>{'Follow for '}<span style={{ fontStyle: 'italic', color: WOOD.lilac }}>the next tune</span>{'\nto play by ear'}</Line>
-        <Caps t={t} at={T.comment + 0.35} y={1720} text="NEW CHALLENGES · NO TABS" color={WOOD.lilac} />
+        <Line t={t} at={T.comment} outAt={outAt} y={1560} size={66}>{'Follow for '}<span style={{ fontStyle: 'italic', color: WOOD.lilac }}>the next tune</span>{'\nto play by ear'}</Line>
+        <Caps t={t} at={T.comment + 0.35} outAt={outAt} y={1720} text="NEW CHALLENGES · NO TABS" color={WOOD.lilac} />
       </>
     ) : (
       <>
@@ -400,21 +436,23 @@ export const RisingWood: React.FC<{ silent?: boolean; tune?: WoodTune; neck?: bo
   const cam = makeCam(W.cameraAt(t));
   // a short intro (listenAt < 2 s): the hook stays until the melody and the staff takes its place, with no "Listen once." between
   const shortIntro = T.listenAt < 2;
-  const hookOut = shortIntro ? T.listenAt - 0.15 : 2.2;
+  // a looping cut: the melody is already sounding on frame 0, so the hook's words come in over it (sound before text) and leave as the tune goes on
+  const loop = !!W.S.LOOP, h0 = loop ? 0.55 : 0, hookOut = loop ? 4.4 : shortIntro ? T.listenAt - 0.15 : 2.2;
+  const clearAt = loop ? W.S.DURATION - LOOP_CLEAR : undefined;
 
   return (
     <AbsoluteFill style={{ background: WOOD.bg, overflow: 'hidden' }}>
       <LampRoom />
-      <Guitar t={t} cam={cam} names={ramp(t, T.hold + 0.5, T.hold + 0.9)} w={W} neck={neck} ghost={ghost} board={board} />
+      <Guitar t={t} cam={cam} names={loop ? 0 : ramp(t, T.hold + 0.5, T.hold + 0.9)} w={W} neck={neck} ghost={ghost} board={board} />
       <AbsoluteFill style={{ background: SCRIM }} />
 
       {/* scene 1 · the hook */}
       {W.S.HOOK_TEXT === 'byear' ? (
         <>
-          <Caps t={t} at={-0.2} outAt={hookOut} y={230} text="GUITARISTS ONLY" color={WOOD.lilac} />
-          <Line t={t} at={-0.2} outAt={hookOut} y={360} size={92}>One listen.</Line>
-          <Line t={t} at={0.05} outAt={hookOut} y={490} size={124}>Can you play this</Line>
-          <Line t={t} at={0.2} outAt={hookOut} y={635} size={124}><span style={{ fontStyle: 'italic', color: WOOD.lilac }}>by ear?</span></Line>
+          <Caps t={t} at={-0.2 + h0} outAt={hookOut} y={loop ? 170 : 230} text="GUITARISTS ONLY" color={WOOD.lilac} />
+          <Line t={t} at={-0.2 + h0} outAt={hookOut} y={loop ? 270 : 360} size={loop ? 84 : 92}>One listen.</Line>
+          <Line t={t} at={0.05 + h0} outAt={hookOut} y={loop ? 385 : 490} size={loop ? 108 : 124}>Can you play this</Line>
+          <Line t={t} at={0.2 + h0} outAt={hookOut} y={loop ? 500 : 635} size={loop ? 108 : 124}><span style={{ fontStyle: 'italic', color: WOOD.lilac }}>by ear?</span></Line>
         </>
       ) : W.S.HOOK_TEXT === 'guitarist' ? (
         <>
@@ -433,10 +471,10 @@ export const RisingWood: React.FC<{ silent?: boolean; tune?: WoodTune; neck?: bo
 
       {/* scene 2 · hear the melody, once */}
       {!shortIntro && <Line t={t} at={T.listen + 0.05} outAt={T.hold} y={290} size={96} italic>Listen once.</Line>}
-      {W.S.SCORE ? <Staff t={t} y={350} S={W.S} show={presence(t, shortIntro ? T.listenAt - 0.1 : T.listen + 0.15, T.hold)} /> : <Beads t={t} y={400} S={W.S} />}
+      {W.S.SLOTS ? <><Caps t={t} at={-0.2} outAt={T.hold + 0.1} y={625} text={`${W.S.HEARD.length} NOTES · NO TABS`} color={WOOD.lilac} /><Slots t={t} y={675} S={W.S} outAt={T.hold + 0.1} /></> : W.S.SCORE ? <Staff t={t} y={350} S={W.S} show={presence(t, shortIntro ? T.listenAt - 0.1 : T.listen + 0.15, T.hold)} /> : <Beads t={t} y={400} S={W.S} />}
 
       {/* scene 3 · your turn, and which song next */}
-      <YourTurn t={t} T={T} end={W.S.END_TEXT} />
+      <YourTurn t={t} T={T} end={W.S.END_TEXT} outAt={clearAt} />
       <Lens frame={frame} />
       {!silent && <Audio src={staticFile(woodWav(tune))} />}
     </AbsoluteFill>

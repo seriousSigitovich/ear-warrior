@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // House of the Rising Sun on #60's cut in the warm-wood look:  node render-rising.mjs  →  public/rising-wood.wav + out/rising-wood.mp4 (1080×1920, 60 fps)
 // Timeline = king/tunes.mjs `rising`, picture in src/rising/RisingWood.tsx, soundtrack king/audio.mjs on that timeline.
-//   --tune=<id>  another tune in the same look (WOOD_TUNES in RisingWood.tsx: canon, scarborough, greensleeves, birthday, gladiators (no wood, BOARDLESS), darkeyes, bulerias, cucaracha, hava, polkka, habanera)
+//   --tune=<id>  another tune in the same look (WOOD_TUNES in RisingWood.tsx: canon, scarborough, greensleeves, birthday, gladiators (no wood, BOARDLESS), darkeyes, bulerias, cucaracha, hava, polkka, habanera, condor (a looping cut: melody from frame 0, "? ? ?" slots, no crane))
 //                → public/wood-<id>.wav + out/wood-<id>.mp4, composition Wood-<id>; check it with  node king/check.mjs --tune=<id> --wav=wood-<id>.wav
 //   --look=<noneck|ghost|embers>  #71 without the neck, same soundtrack → out/rising-<look>.mp4: noneck = the notes still fall, nothing under
 //                them (RisingWood-noneck) · ghost = a string shows only while it rings (RisingWood-ghost) · embers = campfire embers hang
@@ -25,7 +25,7 @@ if (look && (!LOOKS[look] || tune !== 'rising')) throw new Error(`--look takes $
 const wavName = tune === 'rising' ? 'rising-wood' : `wood-${tune}`;  // #71 keeps its file names; must match woodWav() in RisingWood.tsx
 const name = look ? `rising-${look}` : wavName;
 const comp = look ? LOOKS[look] : tune === 'rising' ? 'RisingWood' : `Wood-${tune}`;
-const COVER_AT = 0.9;                                           // the hook fully set, the neck revealed
+const COVER_AT = story.LOOP ? 1.4 : 0.9;                        // the hook fully set, the neck revealed (a looping cut brings its words in over the first notes)
 
 const here = dirname(fileURLToPath(import.meta.url));
 mkdirSync(join(here, 'out'), { recursive: true });

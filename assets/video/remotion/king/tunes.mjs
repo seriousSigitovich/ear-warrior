@@ -9,7 +9,7 @@ const GAPS = { hold: 0.35, cta: 0.45, sub: 0.95, comment: 1.45, sweep: 2.3, end:
 /** Seconds between the strings of the opening chord's downstroke (`hookChord`): king/audio.mjs strums it, src/rising/RisingWood.tsx lands its notes so. */
 export const STRUM_GAP = 0.018;
 /** A story from a melody: the same scene gaps as the Mountain King cut, measured from the melody's last note. */
-function story({ id, title, notes, melody, bpm, hook, hookChord, chord, maxFret = 4, ring, letRing = false, strum, listenAt = 2.75, gaps = GAPS, hookText = '97', endText = 'next', score }) {
+function story({ id, title, notes, melody, bpm, hook, hookChord, chord, maxFret = 4, ring, letRing = false, strum, listenAt = 2.75, gaps = GAPS, hookText = '97', endText = 'next', score, loop = false, slots = false }) {
   const MELODY = melody.map(([string, fret, beats]) => ({ string, fret, beats, midi: midiAt(string, fret), name: noteName(midiAt(string, fret)) }));
   const BEAT = 60 / bpm;
   const OFFSETS = MELODY.reduce((acc, n, i) => [...acc, i ? acc[i - 1] + MELODY[i - 1].beats * BEAT : 0], []);
@@ -32,6 +32,8 @@ function story({ id, title, notes, melody, bpm, hook, hookChord, chord, maxFret 
     END_TEXT: endText,                                              // 'next': "which song next?" · 'follow': follow for the next tunes
     CHORD: chord,
     SCORE: score,                                                   // the melody as written music (score() below), drawn as a staff
+    LOOP: loop,                                                     // a looping cut: the melody from frame 0 (no hook hit), the neck clears before the end so the last frame leads into the first
+    SLOTS: slots,                                                   // "? ? ?" slots that fill as the notes sound, in place of the staff or beads
   };
 }
 
@@ -435,6 +437,30 @@ export const TUNES = {
     hookChord: [[2, 0], [3, 2], [4, 3], [5, 1]],                   // D minor xx0231, the opening hit
     strum: [45, 52, 55, 61, 64],                                   // A7 x02020, home
     bpm: 76, hook: [2, 0], chord: [69, 73, 76],                   // the chord's root D3 · A major (the dominant the line ends on)
+  }),
+  // El Cóndor Pasa (Daniel Alomía Robles, 1913; he died in 1942, so the original is public domain; Simon & Garfunkel's "If I Could" is not used).
+  // Notes and rhythm from the free flutetunes.com MIDI (`tunes/el-condor-pasa.mid`, A minor, 4/4, ♩ = 76 there): the pickup E, then bars of
+  // A G# A B C B C D | E(3) G G | E(3) A G | E(2.5) E D C | D C A. Grace notes (B, D) left out. Flute pitch is the written guitar pitch, so the
+  // sound is an octave down (E3–A4): frets 0–5, the A on the high e string at fret 5 is the only note past fret 4. 22 notes, the first phrase, ending
+  // on the Am the tune comes home to — which is also what leads back into its pickup E, so the cut loops. ♩ = 100 (the tune is slow; 17 beats ≈ 10 s).
+  // A looping cut: the pickup E sounds at 0.12 s (its spark already in flight on frame 0), no hook hit, "? ? ?" slots fill as the notes sound.
+  condor: story({
+    id: 'condor', title: 'El Cóndor Pasa', hookText: 'byear', endText: 'follow', ring: 1.6, loop: true, slots: true,
+    listenAt: 0.12,
+    gaps: { hold: 0.35, cta: 0.1, sub: 0.25, comment: 0.2, sweep: 0.6, end: 1.7 },  // the tail as Habanera's; the loop clears the last 0.5 s
+    ...score({
+      key: 'Am', time: [4, 4], maxFret: 5,
+      bars: [
+        'E4:8',                                       // pickup
+        'A4:8 G#4:8 A4:8 B4:8 C5:8 B4:8 C5:8 D5:8',
+        'E5:h. G5:8 G5:8',
+        'E5:h. A5:8 G5:8',
+        'E5:h~ E5:8 E5:8 D5:8 C5:8',                 // the first E rings 2.5 beats
+        'D5:16 C5:16 A4:h',                           // home: sounds as the strum
+      ],
+    }),
+    strum: [45, 52, 57, 60, 64],                                   // Am x02210, the chord the tune comes home to
+    bpm: 100, hook: [5, 0], chord: [69, 72, 76],                  // camera sits on the pickup E · A minor
   }),
   // The same arpeggio as a 10 s looping band cut (src/rising/RisingBand.tsx): the melody from frame 0, ♩ = 144 so the film is exactly eight bars
   // (seven of melody, one bar of E back into the top), the "your turn" gaps tightened.

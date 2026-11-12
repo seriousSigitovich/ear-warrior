@@ -14,7 +14,7 @@ export function layMelody(gtr, S) {
   };
   HEARD.forEach((n, i) => {
     const last = i === HEARD.length - 1;
-    if (last && S.END_STRUM) S.END_STRUM.forEach((m, k) => gtr.mix(guitarNote(m, 3.6, 1.2), n.t + k * 0.03, 0.75));   // a chord that carries the scene after it
+    if (last && S.END_STRUM) S.END_STRUM.forEach((m, k) => gtr.mix(guitarNote(m, S.LOOP ? 2.4 : 3.6, 1.2), n.t + k * 0.03, 0.75));   // a chord that carries the scene after it
     else gtr.mix(guitarNote(n.midi, last ? 1.4 : ring(i), last ? 0.5 : 0.14), n.t, 1.0);
   });
 }
@@ -27,14 +27,17 @@ export function renderKingAudio(path, S) {
   const gtr = track(DURATION);                                    // everything that goes through the reverb
 
   // scene 1 — the hook, on frame 0: a hard pluck of a low string (or a downstroke of the key's chord), a pick snap, the board "thock"
-  if (S.HOOK_CHORD) S.HOOK_CHORD.forEach((n, k) => gtr.mix(guitarNote(n.midi, Math.min(2.3, S.T.listenAt - 0.05), 0.6), k * STRUM_GAP, 0.8));   // a short intro: damped before the melody
+  if (S.LOOP) { /* a looping cut starts on the melody itself: no hook hit */ }
+  else if (S.HOOK_CHORD) S.HOOK_CHORD.forEach((n, k) => gtr.mix(guitarNote(n.midi, Math.min(2.3, S.T.listenAt - 0.05), 0.6), k * STRUM_GAP, 0.8));   // a short intro: damped before the melody
   else {
     gtr.mix(pluck(HOOK_NOTE.midi, 1.5), 0, 1.1);
     gtr.mix(pluck(HOOK_NOTE.midi + 12, 0.8, 0x1234abcd), 0, 0.4);
   }
-  mix(noise(0.05, 90), 0, 0.5);
-  mix(thump(95, 52, 0.4, 9), 0, 0.55);
-  mix(whoosh(0.34), T.listen - 0.34, 0.1);
+  if (!S.LOOP) {
+    mix(noise(0.05, 90), 0, 0.5);
+    mix(thump(95, 52, 0.4, 9), 0, 0.55);
+    mix(whoosh(0.34), T.listen - 0.34, 0.1);
+  }
 
   // scene 2 — the melody, once
   layMelody(gtr, S);
@@ -52,5 +55,6 @@ export function renderKingAudio(path, S) {
 
   const wet = room(gtr.out);
   for (let i = 0; i < gtr.out.length; i++) out[i] += gtr.out[i] + wet[i] * 0.16;
+  if (S.LOOP) { const n = Math.round(0.06 * 44100); for (let k = 0; k < n; k++) out[out.length - 1 - k] *= k / n; }   // a short fade, so the loop point does not click
   return writeAndMeasure(path, out);
 }

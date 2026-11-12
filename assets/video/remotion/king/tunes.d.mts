@@ -8,6 +8,10 @@ export interface TuneStory extends Pick<typeof KING, 'FPS' | 'DURATION' | 'MELOD
   /** The last line: 'next' asks which song next, 'follow' asks to follow for the next tunes. */
   END_TEXT: 'next' | 'follow';
   /** The melody as written guitar music (king/tunes.mjs `score()`), drawn by src/rising/Staff.tsx in place of the beads. */
+  /** A looping cut: no hook hit, melody from frame 0, the neck clears before the last frame. */
+  LOOP?: boolean;
+  /** "? ? ?" slots that fill as the notes sound (src/rising/RisingWood.tsx `Slots`), in place of the staff or beads. */
+  SLOTS?: boolean;
   SCORE?: { key: string; time: [number, number]; bars: ScoreNote[][] };
 }
 /** One written note: pitch as on the staff (an octave above the sound), duration, a tie into the next, and the melody note it sounds as. */
