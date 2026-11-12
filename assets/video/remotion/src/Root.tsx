@@ -37,6 +37,10 @@ import { HumVideo } from './hum/HumVideo';
 import { JamBlues } from './jam/JamScene';
 import { BdayParty } from './bday/BdayScene';
 import { DURATION as BDAY_DURATION, FPS as BDAY_FPS } from '../bday/story.mjs';
+import { CampNoSignal } from './camp/CampScene';
+import { DURATION as CAMP_DURATION, FPS as CAMP_FPS } from '../camp/story.mjs';
+import { TwinkleEp4 } from './twinkle/TwinkleScene';
+import { DURATION as TWINKLE_DURATION, FPS as TWINKLE_FPS } from '../twinkle/story.mjs';
 import { LearnEar } from './learn/LearnScene';
 import { DURATION as LEARN_DURATION, FPS as LEARN_FPS } from '../learn/story.mjs';
 import { GrooveJam, GrooveCall } from './groove/Groove';
@@ -107,6 +111,8 @@ export const Root: React.FC = () => (
   <Composition id="GrooveCall" component={GrooveCall} durationInFrames={Math.round(GROOVE_DURATION * GROOVE_FPS)} fps={GROOVE_FPS} width={1080} height={1920} />
   <Composition id="JamBlues" component={JamBlues} durationInFrames={Math.round(JAM_DURATION * JAM_FPS)} fps={JAM_FPS} width={1080} height={1920} />
   <Composition id="BdayParty" component={BdayParty} durationInFrames={Math.round(BDAY_DURATION * BDAY_FPS)} fps={BDAY_FPS} width={1080} height={1920} />
+  <Composition id="CampNoSignal" component={CampNoSignal} durationInFrames={Math.round(CAMP_DURATION * CAMP_FPS)} fps={CAMP_FPS} width={1080} height={1920} />
+  <Composition id="TwinkleEp4" component={TwinkleEp4} durationInFrames={Math.round(TWINKLE_DURATION * TWINKLE_FPS)} fps={TWINKLE_FPS} width={1080} height={1920} />
   <Composition id="LearnEar" component={LearnEar} durationInFrames={Math.round(LEARN_DURATION * LEARN_FPS)} fps={LEARN_FPS} width={1080} height={1920} />
   <Composition id="HumSolo" component={HumVideo} durationInFrames={900} fps={60} width={1080} height={1920} />
   <Composition id="HairProof" component={HairProof} durationInFrames={1} fps={60} width={1800} height={1500} />
