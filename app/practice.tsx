@@ -2,7 +2,14 @@
 // Redesigned onto Nocturne: a Practice/Level header, a per-phase stage, and feedback rendered
 // as a verdict card + note chips (with a non-blocking tuning advisory) or a calm retry state.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { InteractionManager, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import {
+  InteractionManager,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { Session } from '../src/models';
 import { curatedMelody, historyFromAttempts, tuneIdOf } from '../src/services/melody/curated';
@@ -69,6 +76,8 @@ import { StuckHelp } from '../src/components/feedback/StuckHelp';
 import { colors, withAlpha } from '../src/theme/nocturne';
 
 const APP_VERSION = '0.1.0';
+/** Room the navigation bar keeps on each side of the title for the back arrow and the settings icon, dp. */
+const TITLE_SIDE = 68;
 
 /** Every pitch the fretboard can sound (E2–E5), rendered ahead of time so a tap plays at once. */
 const FRETBOARD_MIDI = Array.from({ length: 37 }, (_, i) => 40 + i);
@@ -548,6 +557,10 @@ export default function Practice() {
   );
   // The settings panel (speed, Draft, hear whole, skip, clear) behind the icon in the navigation bar.
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // The phrase progress in the navigation bar spans what is left between the back arrow and the settings icon,
+  // the same on both sides so it stands in the middle of the screen.
+  const windowWidth = useWindowDimensions().width;
+  const titleWidth = windowWidth - 2 * TITLE_SIDE;
   useEffect(() => {
     if (!answering) setSettingsOpen(false);
   }, [answering]);
@@ -567,6 +580,7 @@ export default function Practice() {
           to leave the board the room (spec 021). */}
       <Stack.Screen
         options={{
+          headerTitleAlign: 'center',
           headerTitle: answering
             ? () => (
                 <PhraseProgress
@@ -576,6 +590,7 @@ export default function Practice() {
                   stage="phrase"
                   label={hint}
                   compact
+                  width={titleWidth}
                 />
               )
             : '', // not `undefined`: that falls back to the route name ("practice") instead of the layout's empty title

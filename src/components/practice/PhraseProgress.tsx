@@ -16,6 +16,8 @@ export interface PhraseProgressProps {
   stage: 'phrase' | 'done';
   /** In the navigation bar (spec 021): centred, a fixed width, no space below. */
   compact?: boolean;
+  /** Width of the compact block, dp: as wide as the navigation bar leaves it. */
+  width?: number;
   /** Say this instead of "Phrase N of M" (a hint line while answering). */
   label?: string;
 }
@@ -26,6 +28,7 @@ export function PhraseProgress({
   grades,
   stage,
   compact,
+  width,
   label: override,
 }: PhraseProgressProps) {
   const label =
@@ -35,7 +38,7 @@ export function PhraseProgress({
       : `Phrase ${index + 1} of ${phrases}`);
   return (
     <View
-      style={[styles.wrap, compact && styles.compact]}
+      style={[styles.wrap, compact && styles.compact, compact && width ? { width } : null]}
       accessible
       accessibilityRole="progressbar"
       accessibilityLabel={label}
