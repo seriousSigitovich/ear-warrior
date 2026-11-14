@@ -14,22 +14,36 @@ export interface PhraseProgressProps {
   grades: readonly AttemptGrade[];
   /** A phrase is in play, or the tune is done. */
   stage: 'phrase' | 'done';
+  /** In the navigation bar (spec 021): centred, a fixed width, no space below. */
+  compact?: boolean;
+  /** Say this instead of "Phrase N of M" (a hint line while answering). */
+  label?: string;
 }
 
-export function PhraseProgress({ phrases, index, grades, stage }: PhraseProgressProps) {
+export function PhraseProgress({
+  phrases,
+  index,
+  grades,
+  stage,
+  compact,
+  label: override,
+}: PhraseProgressProps) {
   const label =
-    stage === 'done'
+    override ??
+    (stage === 'done'
       ? `${phrases} ${phrases === 1 ? 'phrase' : 'phrases'}`
-      : `Phrase ${index + 1} of ${phrases}`;
+      : `Phrase ${index + 1} of ${phrases}`);
   return (
     <View
-      style={styles.wrap}
+      style={[styles.wrap, compact && styles.compact]}
       accessible
       accessibilityRole="progressbar"
       accessibilityLabel={label}
       accessibilityValue={{ min: 0, max: phrases, now: grades.length }}
     >
-      <Text style={styles.label}>{label}</Text>
+      <Text style={[styles.label, compact && styles.labelCompact]} numberOfLines={1}>
+        {label}
+      </Text>
       <View style={styles.bar}>
         {Array.from({ length: phrases }, (_, i) => {
           const g = grades[i];
@@ -53,6 +67,8 @@ export function PhraseProgress({ phrases, index, grades, stage }: PhraseProgress
 const styles = StyleSheet.create({
   wrap: { gap: 8, marginBottom: 16 },
   label: { color: textAlpha[60], fontSize: 13, letterSpacing: 0.4 },
+  compact: { gap: 4, marginBottom: 0, width: 220, alignItems: 'stretch' },
+  labelCompact: { textAlign: 'center' },
   bar: { flexDirection: 'row', gap: 3 },
   segment: {
     flex: 1,

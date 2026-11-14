@@ -22,9 +22,34 @@ import {
 } from '../../lib/fretboardA11y';
 import { SLOT_GAP, slotLayout, slotScrollX } from '../../lib/fretboardLayout';
 import { noteName } from '../../lib/pitchNote';
+import { NoteTimeline } from '../../lib/noteRow';
 import { Fretboard } from '../fretboard/Fretboard';
+import { NoteRow } from './NoteRow';
 import { LISTENING_BARS, Waveform, useReduceMotion } from '../common/Waveform';
 import { colors, font, radius, textAlpha, withAlpha } from '../../theme/nocturne';
+
+/**
+ * The player layout (spec 021). With it the answer screen is the fretboard, the note row below it and, over the
+ * board's bottom edge, Check once the phrase is full: no title, caption, slots or buttons. The hint line lives
+ * in the navigation bar and the rest behind the settings icon. Without it (the coached first melody) the
+ * screen is as it was.
+ */
+export interface AnswerPlayer {
+  timeline: NoteTimeline | null;
+  /** Where a paused replay stopped (ms); null when it is not paused. */
+  pausedMs: number | null;
+  position: () => number | null;
+  /** The placed note chosen for replacement. */
+  selected: number | null;
+  /** Pause, resume or play, whichever ▶/⏸ shows. */
+  onTransport: () => void;
+  onScrubStart: () => void;
+  onSeek: (index: number) => void;
+  onUndo: () => void;
+  /** The phrase is full and may be checked. */
+  canCheck: boolean;
+  onCheck: () => void;
+}
 
 export interface FretboardAnswerProps {
   /** Notes in the target melody — the number of slots. */
@@ -49,6 +74,8 @@ export interface FretboardAnswerProps {
   onHearWhole?: () => void;
   /** Offer to jump to the phrase an earlier visit stopped at (spec 017), until the first note is placed. */
   skipToSaved?: { label: string; onPress: () => void };
+  /** The player layout (see AnswerPlayer). */
+  player?: AnswerPlayer;
 }
 
 export function FretboardAnswer({
@@ -64,6 +91,7 @@ export function FretboardAnswer({
   flash,
   onHearWhole,
   skipToSaved,
+  player,
 }: FretboardAnswerProps) {
   // Each tap, undo or clear is spoken to screen-reader users; the board itself does not change label.
   const announced = useRef(taps.length);
@@ -90,6 +118,65 @@ export function FretboardAnswer({
   useEffect(() => {
     slotRow.current?.scrollTo({ x: slotScrollX(next, noteCount, slotsWidth), animated: true });
   }, [next, noteCount, slotsWidth]);
+
+  const boardNode = (
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        delaysContentTouches={false}
+      >
+        <View style={styles.board}>
+          <Fretboard
+            taps={taps}
+            onTap={onTap}
+            hint={hint}
+            focusString={focusString}
+            flash={flash}
+            draft={draft}
+            selected={player?.selected}
+            style={styles.board}
+          />
+          {untouched && !replaying && !draft ? <NudgeFrame /> : null}
+        </View>
+      </ScrollView>
+  );
+
+  if (player) {
+    const names = Array.from({ length: noteCount }, (_, i) => (taps[i] ? noteName(taps[i].midi) : ''));
+    return (
+      <View style={styles.playerWrap}>
+        <View style={styles.boardArea}>
+          {boardNode}
+          {player.canCheck ? (
+            <View style={styles.checkWrap} pointerEvents="box-none">
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Check answer"
+                onPress={player.onCheck}
+                style={({ pressed }) => [styles.check, pressed && styles.checkPressed]}
+              >
+                <Text style={styles.checkText}>Check</Text>
+              </Pressable>
+            </View>
+          ) : null}
+        </View>
+        <NoteRow
+          count={noteCount}
+          names={names}
+          timeline={player.timeline}
+          playing={!!replaying}
+          pausedMs={player.pausedMs}
+          position={player.position}
+          selected={player.selected}
+          onTransport={player.onTransport}
+          onScrubStart={player.onScrubStart}
+          onSeek={player.onSeek}
+          onUndo={player.onUndo}
+          dim={draft}
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.wrap}>
@@ -177,26 +264,7 @@ export function FretboardAnswer({
         ))}
       </ScrollView>
 
-      {/* The prompt and slots stay put; only the board scrolls, and only on a phone too short for
-          the board's minimum fret rows (see Fretboard's MIN_ROW_HEIGHT). */}
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        delaysContentTouches={false}
-      >
-        <View style={styles.board}>
-          <Fretboard
-            taps={taps}
-            onTap={onTap}
-            hint={hint}
-            focusString={focusString}
-            flash={flash}
-            draft={draft}
-            style={styles.board}
-          />
-          {untouched && !replaying && !draft ? <NudgeFrame /> : null}
-        </View>
-      </ScrollView>
+      {boardNode}
     </View>
   );
 }
@@ -278,6 +346,20 @@ const styles = StyleSheet.create({
     borderColor: colors.accent,
   },
   listening: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  playerWrap: { flex: 1, gap: 8 },
+  boardArea: { flex: 1 },
+  checkWrap: { position: 'absolute', left: 0, right: 0, bottom: 12, alignItems: 'center' },
+  check: {
+    minWidth: 168,
+    height: 46,
+    borderRadius: 23,
+    paddingHorizontal: 28,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkPressed: { opacity: 0.85 },
+  checkText: { color: colors.bg, fontSize: 16, fontWeight: '600' },
   slotRow: { flexGrow: 0 },
   slots: { gap: SLOT_GAP },
   slot: {

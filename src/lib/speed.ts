@@ -11,6 +11,9 @@ export const SPEED_MAX = 1;
 export const SPEED_STEP = 0.05;
 export const DEFAULT_SPEED = SPEED_MAX;
 
+/** The speeds the answer screen's settings panel offers (spec 021); the slider on the result screens has every step. */
+export const SPEED_PRESETS = [0.5, 0.75, 1] as const;
+
 /** Key the chosen speed is remembered under between visits. */
 export const SPEED_KEY = 'ew.playbackSpeed';
 

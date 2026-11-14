@@ -10,11 +10,15 @@ import { Button } from '../common/Button';
 export interface TransportControlsProps {
   phase: LoopPhase;
   replaying: boolean;
+  /** A replay was paused part-way: Resume picks it up (spec 021). */
+  paused?: boolean;
   /** The phrase on screen is the tune's last. */
   lastPhrase: boolean;
   onPlay: () => void;
   onReplay: () => void;
   onStopReplay: () => void;
+  onPause?: () => void;
+  onResume?: () => void;
   onRetry: () => void;
   onNextPhrase: () => void;
   onNext: () => void;
@@ -23,19 +27,23 @@ export interface TransportControlsProps {
 export function TransportControls({
   phase,
   replaying,
+  paused,
   lastPhrase,
   onPlay,
   onReplay,
   onStopReplay,
+  onPause,
+  onResume,
   onRetry,
   onNextPhrase,
   onNext,
 }: TransportControlsProps) {
+  // Replay while nothing sounds, Pause while it does, Resume once it is paused (spec 021).
   const replayButton = (
     <Button
-      label={replaying ? 'Stop' : 'Replay'}
+      label={replaying ? (onPause ? 'Pause' : 'Stop') : paused && onResume ? 'Resume' : 'Replay'}
       variant="secondary"
-      onPress={replaying ? onStopReplay : onReplay}
+      onPress={replaying ? (onPause ?? onStopReplay) : paused && onResume ? onResume : onReplay}
       style={styles.grow}
     />
   );

@@ -2,7 +2,7 @@
 // Redesigned onto Nocturne: a Practice/Level header, a per-phase stage, and feedback rendered
 // as a verdict card + note chips (with a non-blocking tuning advisory) or a calm retry state.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { InteractionManager, ScrollView, StyleSheet, View } from 'react-native';
+import { InteractionManager, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { Session } from '../src/models';
 import { curatedMelody, historyFromAttempts, tuneIdOf } from '../src/services/melody/curated';
@@ -19,7 +19,7 @@ import { CompletionResult, Snapshot } from '../src/services/gamification/service
 import { completionEvents, GameEvent, phraseEvents } from '../src/services/gamification/events';
 import { gameSummary } from '../src/services/gamification/summary';
 import { RankUpModal } from '../src/components/gamification/RankUpModal';
-import { DraftSwitch } from '../src/components/practice/DraftSwitch';
+import { SettingsButton, SettingsPanel } from '../src/components/practice/SettingsPanel';
 import { FretPosition, fretMidi, tapStatuses } from '../src/lib/fretboard';
 import {
   DraftState,
@@ -55,7 +55,6 @@ import { Screen } from '../src/components/common/Screen';
 import { Kicker } from '../src/components/common/Kicker';
 import { Tag } from '../src/components/common/Tag';
 import { TransportControls } from '../src/components/controls/TransportControls';
-import { FretboardControls } from '../src/components/controls/FretboardControls';
 import { SpeedSlider } from '../src/components/controls/SpeedSlider';
 import { DEFAULT_SPEED, SPEED_KEY, parseSpeed } from '../src/lib/speed';
 import { PracticeStage } from '../src/components/practice/PracticeStage';
@@ -507,14 +506,86 @@ export default function Practice() {
     [loopTapFret, loopPlayFret],
   );
 
+  // The note row's ▶/⏸: pause what sounds, resume what was paused, else sound the phrase again.
+  const loopPause = loop.pause;
+  const loopResume = loop.resume;
+  const transport = useCallback(() => {
+    if (loop.replaying) loopPause();
+    else if (loop.paused) void loopResume();
+    else replay();
+  }, [loop.replaying, loop.paused, loopPause, loopResume, replay]);
+  const loopSeek = loop.seek;
+  const loopSubmit = loop.submitAnswer;
+  // Everything the answer screen's note row and Check need (spec 021).
+  const phraseFull = noteCount > 0 && loop.answer.length === noteCount;
+  const player = useMemo(
+    () => ({
+      timeline: loop.timeline,
+      pausedMs: loop.paused?.ms ?? null,
+      position: loop.position,
+      selected: loop.cursor,
+      onTransport: transport,
+      onScrubStart: loopPause,
+      onSeek: (index: number) => void loopSeek(index),
+      onUndo: loop.undoFret,
+      canCheck: phraseFull && !draft.on,
+      onCheck: loopSubmit,
+    }),
+    [
+      loop.timeline,
+      loop.paused,
+      loop.position,
+      loop.cursor,
+      transport,
+      loopPause,
+      loopSeek,
+      loop.undoFret,
+      phraseFull,
+      draft.on,
+      loopSubmit,
+    ],
+  );
+  // The settings panel (speed, Draft, hear whole, skip, clear) behind the icon in the navigation bar.
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  useEffect(() => {
+    if (!answering) setSettingsOpen(false);
+  }, [answering]);
+  const untouched = loop.answer.length === 0;
+  const hint = draft.on
+    ? 'Draft: nothing is scored'
+    : loop.cursor !== null
+      ? `Tap the right fret for note ${loop.cursor + 1}`
+      : untouched
+        ? 'Tap the first note you heard'
+        : undefined;
+
   return (
-    <Screen edges={['bottom']}>
+    <Screen edges={['bottom']} style={answering ? styles.answerScreen : undefined}>
       {/* Draft is a mode of the answer screen, so its switch sits in the navigation bar, level with the
-          back button, only while answering (spec 016). */}
+          back button, only while answering (spec 016). While answering, "Phrase N of M" sits there too,
+          to leave the board the room (spec 021). */}
       <Stack.Screen
         options={{
+          headerTitle: answering
+            ? () => (
+                <PhraseProgress
+                  phrases={loop.phrases}
+                  index={loop.phraseIndex}
+                  grades={loop.phraseGrades}
+                  stage="phrase"
+                  label={hint}
+                  compact
+                />
+              )
+            : undefined,
           headerRight: answering
-            ? () => <DraftSwitch on={draft.on} onToggle={switchDraft} />
+            ? () => (
+                <SettingsButton
+                  open={settingsOpen}
+                  lit={draft.on}
+                  onPress={() => setSettingsOpen((o) => !o)}
+                />
+              )
             : undefined,
         }}
       />
@@ -525,7 +596,7 @@ export default function Practice() {
         </View>
       )}
 
-      {loop.melody && loop.phase !== 'idle' ? (
+      {loop.melody && loop.phase !== 'idle' && !answering ? (
         <PhraseProgress
           phrases={loop.phrases}
           index={loop.phraseIndex}
@@ -570,46 +641,65 @@ export default function Practice() {
           hint={loop.hint}
           draft={draft.on}
           flash={flash}
-          onHearWhole={loop.phraseIndex === 0 && loop.phrases > 1 ? hearWhole : undefined}
-          skipToSaved={
-            loop.savedPhrase !== null && skipTarget(loop.phraseIndex, loop.savedPhrase) !== null
-              ? { label: `Skip to phrase ${loop.savedPhrase + 1}`, onPress: loop.skipToSaved }
-              : undefined
-          }
+          player={player}
         />
       ) : (
         <PracticeStage phase={loop.phase} />
       )}
 
-      <SpeedSlider speed={speed} onChange={changeSpeed} />
+      {answering ? null : <SpeedSlider speed={speed} onChange={changeSpeed} />}
 
-      {/* Fixed height whatever the controls (the feedback row is lower than the others), so the slider
-          stays put between phases. */}
-      <View style={styles.controls}>
-        {answering ? (
-          <FretboardControls
-            placed={loop.answer.length}
-            replaying={loop.replaying}
-            onReplay={replay}
-            onStopReplay={loop.stopReplay}
-            onUndo={loop.undoFret}
-            onClear={loop.clearFrets}
-            onCheck={loop.submitAnswer}
+      {/* The result screens keep their buttons; the answer screen has none (its row and Check are in the board's
+          stage). Fixed height whatever the controls, so the speed slider stays put between phases. */}
+      {answering ? null : (
+        <View style={styles.controls}>
+          {loop.phase === 'idle' && !startFailed ? null : (
+            <TransportControls
+              phase={loop.phase}
+              replaying={loop.replaying}
+              paused={loop.paused !== null}
+              lastPhrase={loop.phraseIndex + 1 >= loop.phrases}
+              onPlay={loop.next}
+              onReplay={replay}
+              onStopReplay={loop.stopReplay}
+              onPause={loop.pause}
+              onResume={() => void loopResume()}
+              onRetry={loop.retry}
+              onNextPhrase={loop.nextPhrase}
+              onNext={loop.next}
+            />
+          )}
+        </View>
+      )}
+      {answering && settingsOpen ? (
+        <>
+          <Pressable
+            accessibilityLabel="Close settings"
+            style={StyleSheet.absoluteFill}
+            onPress={() => setSettingsOpen(false)}
           />
-        ) : loop.phase === 'idle' && !startFailed ? null : (
-          <TransportControls
-            phase={loop.phase}
-            replaying={loop.replaying}
-            lastPhrase={loop.phraseIndex + 1 >= loop.phrases}
-            onPlay={loop.next}
-            onReplay={replay}
-            onStopReplay={loop.stopReplay}
-            onRetry={loop.retry}
-            onNextPhrase={loop.nextPhrase}
-            onNext={loop.next}
-          />
-        )}
-      </View>
+          <View style={styles.settings}>
+            <SettingsPanel
+              speed={speed}
+              onSpeed={changeSpeed}
+              draft={draft.on}
+              onToggleDraft={switchDraft}
+              onHearWhole={
+                untouched && loop.phraseIndex === 0 && loop.phrases > 1 ? hearWhole : undefined
+              }
+              skipToSaved={
+                untouched &&
+                loop.savedPhrase !== null &&
+                skipTarget(loop.phraseIndex, loop.savedPhrase) !== null
+                  ? { label: `Skip to phrase ${loop.savedPhrase + 1}`, onPress: loop.skipToSaved }
+                  : undefined
+              }
+              onClear={untouched ? undefined : loop.clearFrets}
+              onClose={() => setSettingsOpen(false)}
+            />
+          </View>
+        </>
+      ) : null}
       <RankUpModal rank={rankUpName} onClose={() => setRankUpName(null)} />
     </Screen>
   );
@@ -624,4 +714,7 @@ const styles = StyleSheet.create({
   },
   feedback: { gap: 18, paddingVertical: 8 },
   controls: { minHeight: 52, justifyContent: 'flex-end' },
+  // The answer screen gives the board every dp it can: tighter padding, the rest is in the navigation bar.
+  settings: { position: 'absolute', top: 4, left: 16, right: 16 },
+  answerScreen: { paddingTop: 8, paddingBottom: 16 },
 });

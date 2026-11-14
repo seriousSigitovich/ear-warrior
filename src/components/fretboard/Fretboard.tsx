@@ -52,6 +52,8 @@ export interface FretboardProps {
   flash?: { position: FretPosition; id: number } | null;
   /** Draft mode: the neck is drawn as a blueprint (strings, frets, nut, inlays, frame). */
   draft?: boolean;
+  /** The placed note chosen for replacement (spec 021): it carries the ring that else marks the latest one. */
+  selected?: number | null;
   style?: StyleProp<ViewStyle>;
 }
 
@@ -77,12 +79,13 @@ export function Fretboard({
   focusString,
   flash,
   draft = false,
+  selected,
   style,
 }: FretboardProps) {
   // Last tap wins when the same cell is pressed twice, so its number is the most recent one.
   const markers = new Map<string, number>();
   taps.forEach((t, i) => markers.set(`${t.string}:${t.fret}`, i));
-  const latest = statuses ? -1 : taps.length - 1;
+  const latest = statuses ? -1 : (selected ?? taps.length - 1);
 
   // The read-only result board is one screen-reader stop with a summary; the answer board exposes
   // each cell as a button.
