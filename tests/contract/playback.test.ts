@@ -152,6 +152,147 @@ describe('audio playback (contracts/audio-playback.md)', () => {
     });
   });
 
+  describe('position, pause and picking up (spec 021)', () => {
+    beforeEach(() => jest.useFakeTimers());
+    afterEach(() => jest.useRealTimers());
+
+    // Three beats at 120 bpm: notes start at 0, 500, 1000; 1500 ms in all.
+    const three = (bpm = 120) => scheduleMelody(melody([64, 67, 69]), bpm);
+
+    test('position is null until something sounds, then follows the clip in the tune’s own time', async () => {
+      const f = fakePlayer(['tune']);
+      const pb = createAudioPlayback(f.native);
+      expect(pb.position()).toBeNull();
+      void pb.playMelody(three(), 'tune');
+      await jest.advanceTimersByTimeAsync(500);
+      expect(pb.position()).toBe(500);
+    });
+
+    test('position does not depend on the speed: half speed covers half as much tune per second', async () => {
+      const f = fakePlayer(['tune']);
+      const pb = createAudioPlayback(f.native);
+      void pb.playMelody(three(60), 'tune', 0.5);
+      await jest.advanceTimersByTimeAsync(1000);
+      expect(pb.position()).toBe(500);
+      pb.setRate(1);
+      await jest.advanceTimersByTimeAsync(200);
+      expect(pb.position()).toBe(700);
+    });
+
+    test('position never passes the end of the schedule, and is null once the melody is done', async () => {
+      const f = fakePlayer(['tune']);
+      const pb = createAudioPlayback(f.native);
+      void pb.playMelody(three(), 'tune');
+      await jest.advanceTimersByTimeAsync(1499);
+      expect(pb.position()).toBe(1499);
+      await jest.advanceTimersByTimeAsync(1);
+      expect(pb.position()).toBeNull();
+    });
+
+    test('pause says where it stopped, silences the clip and ends its wait', async () => {
+      const f = fakePlayer(['tune']);
+      const pb = createAudioPlayback(f.native);
+      let resolved = false;
+      void pb.playMelody(three(), 'tune').then(() => (resolved = true));
+      await jest.advanceTimersByTimeAsync(700);
+      const before = f.stops();
+      expect(pb.pause()).toBe(700);
+      expect(f.stops()).toBe(before + 1);
+      await jest.advanceTimersByTimeAsync(0);
+      expect(resolved).toBe(true);
+      expect(pb.position()).toBeNull();
+    });
+
+    test('pause with nothing sounding does nothing and says null', () => {
+      const f = fakePlayer(['tune']);
+      const pb = createAudioPlayback(f.native);
+      expect(pb.pause()).toBeNull();
+      expect(f.stops()).toBe(0);
+    });
+
+    test('a clip picked up at an offset starts that far in and runs only the rest', async () => {
+      const f = fakePlayer(['tune']);
+      const pb = createAudioPlayback(f.native);
+      let resolved = false;
+      void pb.playMelody(three(), 'tune', 1, undefined, 500).then(() => (resolved = true));
+      await jest.advanceTimersByTimeAsync(0);
+      expect(f.playedClips[0].fromMs).toBe(500);
+      expect(pb.position()).toBe(500);
+      await jest.advanceTimersByTimeAsync(999);
+      expect(resolved).toBe(false);
+      await jest.advanceTimersByTimeAsync(1);
+      expect(resolved).toBe(true);
+    });
+
+    test('a phrase picked up at an offset adds it to the phrase’s place in the clip', async () => {
+      const f = fakePlayer(['tune']);
+      const pb = createAudioPlayback(f.native);
+      let resolved = false;
+      void pb.playMelody(three(), 'tune', 1, 2000, 500).then(() => (resolved = true));
+      await jest.advanceTimersByTimeAsync(0);
+      expect(f.playedClips[0].fromMs).toBe(2500);
+      // 1500 − 500 offset − 90 fade
+      await jest.advanceTimersByTimeAsync(909);
+      expect(resolved).toBe(false);
+      await jest.advanceTimersByTimeAsync(1);
+      expect(resolved).toBe(true);
+    });
+
+    test('pause then play from there carries on at the same spot, at a new speed too', async () => {
+      const f = fakePlayer(['tune']);
+      const pb = createAudioPlayback(f.native);
+      void pb.playMelody(three(), 'tune');
+      await jest.advanceTimersByTimeAsync(600);
+      const where = pb.pause()!;
+      void pb.playMelody(three(60), 'tune', 0.5, undefined, where);
+      await jest.advanceTimersByTimeAsync(0);
+      expect(f.playedClips[1].fromMs).toBe(600);
+      expect(f.playedClips[1].rates).toEqual([0.5]);
+      expect(pb.position()).toBe(600);
+    });
+
+    /** Note samples that hold for their duration, so a melody is still playing when it is paused. */
+    function holding() {
+      const f = fakePlayer();
+      f.native.playTone = async (midi, durationMs) => {
+        f.played.push({ midi, durationMs });
+        await new Promise<void>((r) => setTimeout(r, durationMs));
+      };
+      return f;
+    }
+
+    test('the note fallback follows the same clock and stops between notes on pause', async () => {
+      const f = holding();
+      const pb = createAudioPlayback(f.native);
+      void pb.playMelody(three(), undefined);
+      await jest.advanceTimersByTimeAsync(700);
+      expect(pb.position()).toBe(700);
+      expect(pb.pause()).toBe(700);
+      await jest.advanceTimersByTimeAsync(2000);
+      expect(f.played.map((p) => p.midi)).toEqual([64, 67]);
+    });
+
+    test('the note fallback picks up at the first note that begins at or after the offset', async () => {
+      const f = holding();
+      const pb = createAudioPlayback(f.native);
+      void pb.playMelody(three(), undefined, 1, undefined, 400);
+      await jest.advanceTimersByTimeAsync(0);
+      // no wait for the 100 ms gap: it starts on the next whole note
+      expect(f.played.map((p) => p.midi)).toEqual([67]);
+      expect(pb.position()).toBe(500);
+      await jest.advanceTimersByTimeAsync(500);
+      expect(f.played.map((p) => p.midi)).toEqual([67, 69]);
+    });
+
+    test('an offset exactly on a note starts with that note', async () => {
+      const f = holding();
+      const pb = createAudioPlayback(f.native);
+      void pb.playMelody(three(), undefined, 1, undefined, 500);
+      await jest.advanceTimersByTimeAsync(0);
+      expect(f.played.map((p) => p.midi)).toEqual([67]);
+    });
+  });
+
   test('a speed change reaches a note-by-note melody from its next note', async () => {
     const f = fakePlayer();
     const pb = createAudioPlayback(f.native);

@@ -20,8 +20,29 @@ export interface AudioPlayback {
    *
    * With `fromMs`, the schedule is a phrase of the clip's tune starting that far into the clip (in the
    * tune's own tempo): the clip plays from there and fades out just before the next phrase would begin.
+   *
+   * With `offsetMs`, it starts that far into the schedule instead of at its first note (in the tune's own
+   * tempo, whatever `rate` is): a paused melody picks up where `pause()` said it stopped. The note-sample
+   * fallback starts at the first note that begins at or after that spot.
    */
-  playMelody(m: PlaybackMelody, clipId?: string, rate?: number, fromMs?: number): Promise<void>;
+  playMelody(
+    m: PlaybackMelody,
+    clipId?: string,
+    rate?: number,
+    fromMs?: number,
+    offsetMs?: number,
+  ): Promise<void>;
+  /**
+   * Where the melody sounding now is, in ms into the schedule it was started with at the tune's own tempo
+   * (so it does not depend on the speed); null when nothing is playing. Safe to poll.
+   */
+  position(): number | null;
+  /**
+   * Silence what is sounding and say where it was (the same number `position()` gave), so it can be picked
+   * up with `playMelody`'s `offsetMs`; null (and nothing done) when nothing was playing. A sounding
+   * melody's promise resolves, as for `stop()`.
+   */
+  pause(): number | null;
   /**
    * Change the speed of the melody sounding now: the rest of it plays at `rate` and its end moves to
    * match. The note fallback picks it up from its next note. No effect when nothing is playing.
@@ -183,6 +204,14 @@ export function defaultNativePlayer(): NativePlayer {
 
 const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
+/** Where the sounding melody is: its clock runs from where this playback started, `baseMs` into the schedule. */
+interface Timeline {
+  clock: MediaClock;
+  baseMs: number;
+  /** Length of the whole schedule, in the tune's own (tempo-1×) milliseconds. */
+  totalMs: number;
+}
+
 /** The clip sounding now: where it is, where its schedule ends, and the wait for that end. */
 interface ClipRun {
   handle: ClipHandle;
@@ -203,14 +232,22 @@ export function createAudioPlayback(native: NativePlayer = defaultNativePlayer()
   // Speed of what is sounding; the note fallback reads it before each note.
   let rate = 1;
   let clip: ClipRun | null = null;
+  // Where the sounding melody is (clip or note samples), for `position()` and `pause()`.
+  let line: Timeline | null = null;
 
   /** Something else takes over: the sounding clip's wait ends now (stopAll silences the audio). */
   const settle = () => {
+    line = null;
     const run = clip;
     if (!run) return;
     clip = null;
     clearTimeout(run.timer);
     run.done();
+  };
+
+  const position = (): number | null => {
+    if (!line) return null;
+    return Math.min(line.totalMs, line.baseMs + line.clock.position(Date.now()));
   };
 
   /** (Re)time the end of the clip's schedule from where it is now at its current speed. */
@@ -220,6 +257,7 @@ export function createAudioPlayback(native: NativePlayer = defaultNativePlayer()
       () => {
         if (clip !== run) return;
         clip = null;
+        line = null;
         run.done();
         if (run.cut) {
           run.handle.release(PHRASE_FADE_MS / run.clock.rate);
@@ -237,35 +275,48 @@ export function createAudioPlayback(native: NativePlayer = defaultNativePlayer()
       sampleManifest(midiNotes); // range guard: throws on any note outside E2–E6
       await native.preloadTones(midiNotes);
     },
-    async playMelody(m, clipId, startRate = 1, fromMs) {
+    async playMelody(m, clipId, startRate = 1, fromMs, offsetMs = 0) {
       // Nothing may still be ringing under the melody (a replay pressed mid-clip, a tapped fret).
       const mine = ++generation;
       settle();
       rate = startRate;
       await native.stopAll();
       if (generation !== mine) return;
-      const handle = clipId ? native.startClip(clipId, startRate, fromMs ?? 0) : null;
+      const totalMs = totalDurationMs(m) * startRate;
+      const offset = Math.min(Math.max(0, offsetMs), totalMs);
+      const handle = clipId ? native.startClip(clipId, startRate, (fromMs ?? 0) + offset) : null;
       if (handle) {
         const cut = fromMs !== undefined;
         await new Promise<void>((done) => {
+          const clock = createMediaClock(startRate, Date.now());
           const run: ClipRun = {
             handle,
-            clock: createMediaClock(startRate, Date.now()),
+            clock,
             // A phrase hands over to its fade just before the next phrase would begin.
-            endMs: Math.max(0, totalDurationMs(m) * startRate - (cut ? PHRASE_FADE_MS : 0)),
+            endMs: Math.max(0, totalMs - offset - (cut ? PHRASE_FADE_MS : 0)),
             cut,
             done,
           };
           clip = run;
+          line = { clock, baseMs: offset, totalMs };
           arm(run);
         });
         return;
       }
       // Schedule each note by startMs; resolve only after the final note completes, or early once
       // something else has taken over the output. The schedule is laid out at `startRate`, so each
-      // gap and note is rescaled to the speed in effect when it comes up.
-      let cursor = 0;
-      for (const note of m.notes) {
+      // gap and note is rescaled to the speed in effect when it comes up. A melody picked up part-way
+      // starts at the first note that begins at or after the offset.
+      const notes = m.notes.filter((n) => n.startMs * startRate >= offset - 1);
+      if (notes.length === 0) return;
+      const mark: Timeline = {
+        clock: createMediaClock(startRate, Date.now()),
+        baseMs: notes[0].startMs * startRate,
+        totalMs,
+      };
+      line = mark;
+      let cursor = notes[0].startMs;
+      for (const note of notes) {
         if (note.startMs > cursor) {
           await wait(((note.startMs - cursor) * startRate) / rate);
           cursor = note.startMs;
@@ -274,12 +325,22 @@ export function createAudioPlayback(native: NativePlayer = defaultNativePlayer()
         await native.playTone(note.midi, (note.durationMs * startRate) / rate);
         cursor += note.durationMs;
       }
+      if (line === mark) line = null;
+    },
+    position,
+    pause() {
+      const where = position();
+      if (where === null) return null;
+      generation++;
+      settle();
+      native.stopAll().catch(() => undefined);
+      return where;
     },
     setRate(next) {
       rate = next;
+      line?.clock.setRate(next, Date.now());
       const run = clip;
       if (!run) return;
-      run.clock.setRate(next, Date.now());
       run.handle.setRate(next);
       arm(run);
     },
