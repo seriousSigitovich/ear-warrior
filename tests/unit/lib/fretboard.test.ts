@@ -9,6 +9,7 @@ import {
   isValidPosition,
   makeTap,
   positionsForMidi,
+  replaceTap,
   tapStatuses,
   tapsToDetected,
   undoTap,
@@ -175,5 +176,29 @@ describe('tapStatuses', () => {
     const statuses = tapStatuses(grade.noteResults);
     expect(statuses).toHaveLength(taps.length);
     expect(statuses).toEqual(['matched', 'wrong']);
+  });
+});
+
+describe('replaceTap (spec 021: fix a note in the middle)', () => {
+  const at = (string: number, fret: number, atMs: number) => makeTap({ string, fret }, atMs);
+  const answer = [at(5, 0, 1000), at(5, 2, 1400), at(5, 3, 1800)];
+
+  test('swaps the note at the index and keeps its time, so order and timing stay', () => {
+    const next = replaceTap(answer, 1, at(4, 1, 9000));
+    expect(next.map((t) => t.midi)).toEqual([answer[0].midi, fretMidi({ string: 4, fret: 1 }), answer[2].midi]);
+    expect(next.map((t) => t.atMs)).toEqual([1000, 1400, 1800]);
+  });
+
+  test('leaves the others alone and does not touch the original', () => {
+    const next = replaceTap(answer, 0, at(4, 1, 9000));
+    expect(next[1]).toBe(answer[1]);
+    expect(next[2]).toBe(answer[2]);
+    expect(answer[0].midi).toBe(fretMidi({ string: 5, fret: 0 }));
+  });
+
+  test('an index outside the answer changes nothing', () => {
+    expect(replaceTap(answer, 3, at(4, 1, 9000))).toBe(answer);
+    expect(replaceTap(answer, -1, at(4, 1, 9000))).toBe(answer);
+    expect(replaceTap(answer, 1.5, at(4, 1, 9000))).toBe(answer);
   });
 });

@@ -28,6 +28,7 @@ import {
 import { TuneHistory, tuneIdOf } from '../../services/melody/curated';
 import { DifficultySettingsRepository } from '../../services/storage/repositories';
 import { beatMs, scheduleMelody } from '../../lib/schedule';
+import { noteTimeline, resumable } from '../../lib/noteRow';
 import {
   combinePhraseAnswers,
   combinePhraseGrades,
@@ -44,6 +45,7 @@ import {
   addTap,
   fretMidi,
   makeTap,
+  replaceTap,
   tapsToDetected,
   undoTap,
 } from '../../lib/fretboard';
@@ -146,19 +148,49 @@ export interface RankChange {
   direction: 'up' | 'down';
 }
 
-/** Sound the whole tune at `speed` × its own tempo: schedule and clip both slow down, pitch stays. */
-function playTuneAt(playback: AudioPlayback, m: Melody, speed: number): Promise<void> {
-  return playback.playMelody(scheduleMelody(m, m.tempoBpm * speed), tuneIdOf(m.id), speed);
+/** What a replay sounds: a phrase, or the whole tune. */
+export type SoundKind = 'phrase' | 'tune';
+
+/** A replay stopped part-way (spec 021): which it was and how far in, in ms at the tune's own tempo. */
+export interface PausedPlace {
+  kind: SoundKind;
+  ms: number;
 }
 
-/** Sound phrase `i` of the tune, out of the tune's own clip. */
-function playPhraseAt(playback: AudioPlayback, m: Melody, i: number, speed: number): Promise<void> {
+/**
+ * Sound the whole tune at `speed` × its own tempo: schedule and clip both slow down, pitch stays.
+ * `offsetMs` picks it up that far in (a paused tune).
+ */
+function playTuneAt(
+  playback: AudioPlayback,
+  m: Melody,
+  speed: number,
+  offsetMs = 0,
+): Promise<void> {
+  return playback.playMelody(
+    scheduleMelody(m, m.tempoBpm * speed),
+    tuneIdOf(m.id),
+    speed,
+    undefined,
+    offsetMs,
+  );
+}
+
+/** Sound phrase `i` of the tune, out of the tune's own clip, from `offsetMs` into the phrase. */
+function playPhraseAt(
+  playback: AudioPlayback,
+  m: Melody,
+  i: number,
+  speed: number,
+  offsetMs = 0,
+): Promise<void> {
   const fromMs = phraseStartBeats(m, i) * beatMs(m.tempoBpm);
   return playback.playMelody(
     scheduleMelody(phraseMelody(m, i), m.tempoBpm * speed),
     tuneIdOf(m.id),
     speed,
     fromMs,
+    offsetMs,
   );
 }
 
@@ -177,8 +209,17 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
   const [rankChange, setRankChange] = useState<RankChange | null>(null);
   // The notes tapped so far for the current phrase, in order.
   const [answer, setAnswer] = useState<FretTap[]>([]);
+  // A placed note chosen for replacement (spec 021): the next fret tap goes there instead of at the end.
+  const [cursor, setCursor] = useState<number | null>(null);
+  const cursorRef = useRef(cursor);
+  cursorRef.current = cursor;
   // A replay is sounding. Kept apart from `phase` so replaying never swaps the screen.
   const [replaying, setReplaying] = useState(false);
+  // A replay the learner paused: where to pick it up (spec 021). Gone as soon as anything else sounds, the
+  // phrase changes or the answer is checked.
+  const [paused, setPaused] = useState<PausedPlace | null>(null);
+  // What the replay sounding now is, so a pause knows which timeline its position belongs to.
+  const soundingRef = useRef<SoundKind>('phrase');
   // Failed checks on the phrase on screen: enough of them and help is offered (lib/hints).
   const [fails, setFails] = useState(0);
   // Where the phrase's first note lives, once the learner asked for it.
@@ -305,8 +346,10 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
 
   /** Sound `play` over the current screen as a replay: `replaying` is true until it ends, or is superseded. */
   const sound = useCallback(
-    async (play: () => Promise<void>) => {
+    async (kind: SoundKind, play: () => Promise<void>) => {
       const token = ++replayTokenRef.current;
+      soundingRef.current = kind;
+      setPaused(null);
       setReplaying(true);
       try {
         await deps.session.enterPlayback();
@@ -336,7 +379,7 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
     async (m: Melody, i: number) => {
       if (!deps.listenFirst) {
         setPhase('awaitingInput');
-        await sound(() => playPhraseAt(deps.playback, m, i, speedNow()));
+        await sound('phrase', () => playPhraseAt(deps.playback, m, i, speedNow()));
         return;
       }
       const token = tuneTokenRef.current;
@@ -401,7 +444,7 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
   const replay = useCallback(async () => {
     if (!melody || (phase !== 'awaitingInput' && phase !== 'feedback' && phase !== 'complete'))
       return;
-    await sound(() =>
+    await sound(phase === 'complete' ? 'tune' : 'phrase', () =>
       phase === 'complete'
         ? playTuneAt(deps.playback, melody, speedNow())
         : playPhraseAt(deps.playback, melody, phraseIndex, speedNow()),
@@ -411,7 +454,7 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
   /** Hear the whole tune while answering its first phrase: it replaces what is sounding. */
   const hearWhole = useCallback(async () => {
     if (!melody || phase !== 'awaitingInput') return;
-    await sound(() => playTuneAt(deps.playback, melody, speedNow()));
+    await sound('tune', () => playTuneAt(deps.playback, melody, speedNow()));
   }, [deps.playback, sound, melody, phase, speedNow]);
 
   /** Jump ahead to the phrase an earlier visit stopped at, from an earlier phrase before a note is placed. */
@@ -428,6 +471,67 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
   }, [melody, savedPhrase, phase, phraseIndex, playPhrase]);
 
   const stopReplay = useCallback(() => endReplay(true), [endReplay]);
+
+  /** Keep `where` (ms into what sounded) as the place to pick up from, unless too little is left to play. */
+  const remember = useCallback(
+    (where: number | null) => {
+      if (where === null || !melody) return;
+      const kind = soundingRef.current;
+      const total = noteTimeline(kind === 'tune' ? melody : phraseMelody(melody, phraseIndex)).totalMs;
+      if (resumable(where, total)) setPaused({ kind, ms: where });
+    },
+    [melody, phraseIndex],
+  );
+
+  /** Silence the replay where it is and keep the place (the row's ⏸, or a touch on the row). */
+  const pause = useCallback(() => {
+    if (!replaying) return;
+    const where = deps.playback.pause();
+    endReplay(false);
+    remember(where);
+  }, [deps.playback, replaying, endReplay, remember]);
+
+  /** Carry on from the paused place, at the speed in effect now. */
+  const resume = useCallback(async () => {
+    const place = paused;
+    if (!melody || !place) return;
+    await sound(place.kind, () =>
+      place.kind === 'tune'
+        ? playTuneAt(deps.playback, melody, speedNow(), place.ms)
+        : playPhraseAt(deps.playback, melody, phraseIndex, speedNow(), place.ms),
+    );
+  }, [deps.playback, sound, melody, paused, phraseIndex, speedNow]);
+
+  /** Play the phrase from note `index` (a tap or the release of a drag on the note row). */
+  const seek = useCallback(
+    async (index: number) => {
+      if (!melody || !phrase || phase !== 'awaitingInput') return;
+      const { starts } = noteTimeline(phrase);
+      const ms = starts[Math.min(Math.max(0, Math.round(index)), starts.length - 1)] ?? 0;
+      // Landing on a placed note selects it for replacement; past the last one there is nothing to replace.
+      setCursor(index < answerRef.current.length ? index : null);
+      await sound('phrase', () => playPhraseAt(deps.playback, melody, phraseIndex, speedNow(), ms));
+    },
+    [deps.playback, sound, melody, phrase, phase, phraseIndex, speedNow],
+  );
+
+  /** Where a replay sounding now is, for the note row (ms into the phrase or tune; null when none). */
+  const position = useCallback(() => deps.playback.position(), [deps.playback]);
+
+  /** A tap or another sound takes over a replay: what it had not yet played stays available to resume. */
+  const suspend = useCallback(() => {
+    const where = deps.playback.position();
+    endReplay(false);
+    remember(where);
+  }, [deps.playback, endReplay, remember]);
+
+  // The place belongs to the phrase and screen it was paused on.
+  useEffect(() => {
+    setPaused(null);
+    setCursor(null);
+  }, [melody, phraseIndex, phase]);
+
+  const timeline = useMemo(() => (phrase ? noteTimeline(phrase) : null), [phrase]);
 
   const retry = useCallback(() => {
     if (!melody) return;
@@ -486,7 +590,7 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
         if (deps.adapts?.(m) ?? true) await adapt(result);
       }
       // The payoff: hear the whole tune just answered note by note.
-      await sound(() => playTuneAt(deps.playback, m, speedNow()));
+      await sound('tune', () => playTuneAt(deps.playback, m, speedNow()));
     },
     [deps, sound, adapt, completeAttempt, scored, speedNow],
   );
@@ -513,20 +617,24 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
   const tapFret = useCallback(
     (position: FretPosition) => {
       if (phase !== 'awaitingInput' || !phrase) return;
-      // Tapping means the learner has heard enough: the tone below cuts the replay's audio.
-      if (replaying) endReplay(false);
+      // Tapping means the learner has heard enough for now: the tone below cuts the replay's audio, and
+      // the place stays so it can be picked up again.
+      if (replaying) suspend();
       const tap = makeTap(position, (deps.now?.() ?? new Date()).getTime());
       // Hearing the note is the point — it is how the learner compares it with the melody. It plays
       // even when the answer is already full, so a slot can be auditioned before undoing.
       deps.playback.playReferenceTone(tap.midi).catch(() => undefined);
       const cap = phrase.notes.length;
-      setAnswer((prev) =>
-        prev.length >= cap && deps.tapReplacesLast
+      setAnswer((prev) => {
+        const at = cursorRef.current;
+        if (at !== null && at < prev.length) return replaceTap(prev, at, tap);
+        return prev.length >= cap && deps.tapReplacesLast
           ? [...prev.slice(0, -1), tap]
-          : addTap(prev, tap, cap),
-      );
+          : addTap(prev, tap, cap);
+      });
+      setCursor(null);
     },
-    [deps, phase, phrase, replaying, endReplay],
+    [deps, phase, phrase, replaying, suspend],
   );
 
   /**
@@ -536,14 +644,20 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
   const playFret = useCallback(
     (position: FretPosition) => {
       if (phase !== 'awaitingInput') return;
-      if (replaying) endReplay(false);
+      if (replaying) suspend();
       deps.playback.playReferenceTone(fretMidi(position)).catch(() => undefined);
     },
-    [deps, phase, replaying, endReplay],
+    [deps, phase, replaying, suspend],
   );
 
-  const undoFret = useCallback(() => setAnswer((prev) => undoTap(prev)), []);
-  const clearFrets = useCallback(() => setAnswer([]), []);
+  const undoFret = useCallback(() => {
+    setAnswer((prev) => undoTap(prev));
+    setCursor(null);
+  }, []);
+  const clearFrets = useCallback(() => {
+    setAnswer([]);
+    setCursor(null);
+  }, []);
 
   /** Grade the phrase as answered ("Check"). Needs at least one note. */
   const submitAnswer = useCallback(async () => {
@@ -578,6 +692,9 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
       phase,
       ready,
       replaying,
+      paused,
+      timeline,
+      cursor,
       answer,
       melody,
       phrase,
@@ -598,6 +715,10 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
       skipToSaved,
       savedPhrase,
       stopReplay,
+      pause,
+      resume,
+      seek,
+      position,
       retry,
       retryKeeping,
       retryWithHint,
@@ -613,6 +734,9 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
       phase,
       ready,
       replaying,
+      paused,
+      timeline,
+      cursor,
       answer,
       melody,
       phrase,
@@ -626,6 +750,10 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
       rankChange,
       fails,
       hint,
+      pause,
+      resume,
+      seek,
+      position,
       next,
       easier,
       replay,

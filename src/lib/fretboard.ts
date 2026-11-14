@@ -74,6 +74,15 @@ export function addTap(taps: FretTap[], tap: FretTap, capacity: number): FretTap
   return taps.length >= capacity ? taps : [...taps, tap];
 }
 
+/**
+ * Replace the tap at `index` with `tap`, keeping the time of the tap it replaces so the order and timing the
+ * grader sees do not change (spec 021: fixing a note in the middle). An index outside the answer changes nothing.
+ */
+export function replaceTap(taps: FretTap[], index: number, tap: FretTap): FretTap[] {
+  if (!Number.isInteger(index) || index < 0 || index >= taps.length) return taps;
+  return taps.map((t, i) => (i === index ? { ...tap, atMs: t.atMs } : t));
+}
+
 /** Drop the most recent tap. */
 export function undoTap(taps: FretTap[]): FretTap[] {
   return taps.slice(0, -1);
