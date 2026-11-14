@@ -285,7 +285,8 @@ function UndoGlyph() {
     <View style={styles.key}>
       <View style={styles.keyTip} />
       <View style={styles.keyBody}>
-        <Text style={styles.cross}>×</Text>
+        <View style={[styles.crossBar, { transform: [{ rotate: '45deg' }] }]} />
+        <View style={[styles.crossBar, { transform: [{ rotate: '-45deg' }] }]} />
       </View>
     </View>
   );
@@ -349,7 +350,8 @@ const styles = StyleSheet.create({
     borderBottomColor: 'transparent',
     borderLeftColor: colors.accent,
   },
-  key: { width: 24, height: 16, justifyContent: 'center' },
+  // The tip sticks out 1.3 dp to the left of the box, so the key is nudged right to sit centred in its button.
+  key: { width: 24, height: 16, justifyContent: 'center', left: 0.7 },
   keyTip: {
     position: 'absolute',
     left: 1,
@@ -376,5 +378,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cross: { color: colors.text, fontSize: 14, lineHeight: 15, marginLeft: 2 },
+  crossBar: { position: 'absolute', width: 9, height: 1.5, borderRadius: 1, backgroundColor: colors.text },
 });
