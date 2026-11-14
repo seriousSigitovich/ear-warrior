@@ -161,7 +161,7 @@ export function renderFunnelPage(devices: DeviceRun[], now: Date, sort: FunnelSo
   const body = `
 <header>
   <h1>Воронка первого запуска · Ear Warrior</h1>
-  <div class="controls"><a href="/admin/users">Тестеры</a><a href="/admin/social">Соцсети</a></div>
+  <div class="controls"><a href="/admin/users">Тестеры</a><a href="/admin/social">Соцсети</a><a href="/admin/challenges">Челленджи</a></div>
 </header>
 ${total ? '' : '<div class="empty">Пока нет устройств с новой аналитикой.</div>'}
 <h3>Докуда доходят · ${total} устр.</h3>

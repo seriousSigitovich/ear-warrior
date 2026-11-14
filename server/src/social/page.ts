@@ -250,7 +250,7 @@ export function renderPage(m: PageModel): string {
   const body = `
 <header>
   <h1>Соцсети · Ear Warrior</h1>
-  <div class="controls"><a href="/admin/users">Тестеры</a>${periodLinks(m)}${platformLinks(m)}
+  <div class="controls"><a href="/admin/users">Тестеры</a><a href="/admin/challenges">Челленджи</a>${periodLinks(m)}${platformLinks(m)}
     <form method="post" action="/admin/social/collect" style="margin:0"><button type="submit">Обновить сейчас</button></form>
   </div>
 </header>

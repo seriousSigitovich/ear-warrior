@@ -9,6 +9,7 @@ import { Kicker } from '../src/components/common/Kicker';
 import { Button } from '../src/components/common/Button';
 import { getAuthService } from '../src/features/auth/authService';
 import {
+  CodeStep,
   FlowEvent,
   FlowState,
   initialFlow,
@@ -16,6 +17,7 @@ import {
   reduce,
   resendSecondsLeft,
 } from '../src/services/auth/flow';
+import { normalizeEmail } from '../src/lib/email';
 import { describeError } from '../src/services/auth/messages';
 import type { AuthError } from '../src/services/auth/client';
 import { track } from '../src/features/analytics/tracker';
@@ -29,6 +31,8 @@ export default function SignIn() {
   const [code, setCode] = useState('');
   const [now, setNow] = useState(Date.now());
   const handled = useRef<FlowState | null>(null);
+  // The unfinished code step from an earlier visit; lets the same email skip a second (rate-limited) request.
+  const pending = useRef<CodeStep | null>(null);
   const lastStep = useRef<FlowState['step']>('email');
 
   const dispatch = useCallback(
@@ -42,7 +46,30 @@ export default function SignIn() {
     void service.lastEmail().then((last) => {
       if (last) setEmailText((current) => current || last);
     });
+    // Came back after "Send code" without finishing: resume at the code step, not the email field.
+    void service.pendingCode().then((p) => {
+      if (!p) return;
+      pending.current = p;
+      setEmailText((current) => current || p.email);
+      setFlow((s) => (s.step === 'email' && !s.error ? p : s));
+    });
   }, [service]);
+
+  // Remember the code step so leaving the screen (back, Skip, app restart) does not lose it.
+  useEffect(() => {
+    if (flow.step !== 'code') return;
+    pending.current = flow;
+    void service.savePendingCode(flow);
+  }, [flow, service]);
+
+  const submitEmail = useCallback(() => {
+    const p = pending.current;
+    if (p && !p.needsNewCode && p.expiresAt > Date.now() && normalizeEmail(emailText) === p.email) {
+      setFlow(p); // same address, code still live: asking again would only hit the resend limit
+      return;
+    }
+    dispatch({ type: 'submit_email', email: emailText });
+  }, [dispatch, emailText]);
 
   // Perform the IO of the current step exactly once per state object.
   useEffect(() => {
@@ -136,13 +163,13 @@ export default function SignIn() {
               textContentType="emailAddress"
               editable={!busy}
               returnKeyType="send"
-              onSubmitEditing={() => dispatch({ type: 'submit_email', email: emailText })}
+              onSubmitEditing={submitEmail}
             />
             <ErrorNote error={error} />
             <Button
               label={flow.step === 'requesting' ? 'Sending…' : 'Send code'}
               disabled={busy || emailText.trim().length === 0}
-              onPress={() => dispatch({ type: 'submit_email', email: emailText })}
+              onPress={submitEmail}
               style={styles.cta}
             />
           </>

@@ -234,4 +234,41 @@ describe('auth service (device-side lifecycle)', () => {
     await service.verify('a@x.co', '123456');
     expect(seen).toEqual([]);
   });
+
+  describe('pending code step', () => {
+    const step = {
+      step: 'code' as const,
+      email: 'a@x.co',
+      resendAt: 1_000_000 + 60_000,
+      expiresAt: 1_000_000 + 600_000,
+      needsNewCode: false,
+    };
+
+    test('a saved code step comes back on the next visit, resend time intact', async () => {
+      const { service } = make();
+      await service.savePendingCode(step);
+      expect(await service.pendingCode()).toEqual({ ...step, attemptsLeft: undefined });
+    });
+
+    test('nothing saved, cleared, or expired means no pending step', async () => {
+      const { service } = make();
+      expect(await service.pendingCode()).toBeNull();
+      await service.savePendingCode(step);
+      await service.clearPendingCode();
+      expect(await service.pendingCode()).toBeNull();
+      await service.savePendingCode(step);
+      now = step.expiresAt;
+      expect(await service.pendingCode()).toBeNull();
+    });
+
+    test('signing in, signing out and deleting the account all drop it', async () => {
+      const { service } = make({ session: memorySession({ token: 'tok', email: 'a@x.co' }) });
+      await service.savePendingCode(step);
+      await service.verify('a@x.co', '123456');
+      expect(await service.pendingCode()).toBeNull();
+      await service.savePendingCode(step);
+      await service.signOut();
+      expect(await service.pendingCode()).toBeNull();
+    });
+  });
 });

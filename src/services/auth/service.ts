@@ -4,12 +4,14 @@
 import { KeyValueStore } from '../../lib/deviceId';
 import { normalizeEmail } from '../../lib/email';
 import type { AuthClient, Result } from './client';
+import { CodeStep, parsePending, serializePending, toPending } from './flow';
 import type { SessionStore } from './session';
 
 export type AuthState = { status: 'anonymous' } | { status: 'signedIn'; email: string };
 
 export const LAST_EMAIL_KEY = 'ew.lastEmail';
 export const OFFER_SEEN_KEY = 'ew.signInOfferSeen';
+export const PENDING_CODE_KEY = 'ew.pendingCode';
 const STALE_AFTER_MS = 60 * 60 * 1000;
 
 interface Deps {
@@ -41,6 +43,7 @@ export function createAuthService({ client, session, kv, getDeviceId, now }: Dep
   async function clearLocal(): Promise<void> {
     await session.clear();
     await kv.setItem(LAST_EMAIL_KEY, '');
+    await kv.setItem(PENDING_CODE_KEY, '');
     setState({ status: 'anonymous' });
   }
 
@@ -91,6 +94,16 @@ export function createAuthService({ client, session, kv, getDeviceId, now }: Dep
       return client ? client.requestCode(normalizeEmail(email)) : Promise.resolve(unavailable);
     },
 
+    /** The code step left unfinished (screen closed after "Send code"), or null when none is live. */
+    async pendingCode(): Promise<CodeStep | null> {
+      return parsePending(await kv.getItem(PENDING_CODE_KEY), now());
+    },
+
+    savePendingCode: (step: CodeStep) =>
+      kv.setItem(PENDING_CODE_KEY, serializePending(toPending(step))),
+
+    clearPendingCode: () => kv.setItem(PENDING_CODE_KEY, ''),
+
     async verify(
       email: string,
       code: string,
@@ -100,6 +113,7 @@ export function createAuthService({ client, session, kv, getDeviceId, now }: Dep
       if (res.ok) {
         await session.set({ token: res.value.token, email: res.value.email });
         await kv.setItem(LAST_EMAIL_KEY, res.value.email);
+        await kv.setItem(PENDING_CODE_KEY, '');
         lastCheckedAt = now();
         setState({ status: 'signedIn', email: res.value.email });
       }

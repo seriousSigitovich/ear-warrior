@@ -67,7 +67,7 @@ export function renderUsersPage(report: UsageReport, now: Date, sort: UsersSort 
   const body = `
 <header>
   <h1>Тестеры · Ear Warrior</h1>
-  <div class="controls"><a href="/admin/funnel">Воронка</a><a href="/admin/social">Соцсети</a></div>
+  <div class="controls"><a href="/admin/funnel">Воронка</a><a href="/admin/social">Соцсети</a><a href="/admin/challenges">Челленджи</a></div>
 </header>
 ${report.accounts.length ? '' : '<div class="empty">Аккаунтов пока нет.</div>'}
 <h3>Аккаунты · ${report.accounts.length}</h3>

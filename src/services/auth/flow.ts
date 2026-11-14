@@ -35,6 +35,51 @@ export type FlowEvent =
 
 export const initialFlow = (lastEmail = ''): FlowState => ({ step: 'email', email: lastEmail });
 
+/**
+ * The code step as stored on the device, so leaving the screen after "Send code" and coming back does not
+ * show the email field again (a second request inside the resend window gets `rate_limited`).
+ */
+export type PendingCode = Pick<CodeStep, 'email' | 'resendAt' | 'expiresAt' | 'needsNewCode' | 'attemptsLeft'>;
+
+export const toPending = (s: CodeStep): PendingCode => ({
+  email: s.email,
+  resendAt: s.resendAt,
+  expiresAt: s.expiresAt,
+  needsNewCode: s.needsNewCode,
+  attemptsLeft: s.attemptsLeft,
+});
+
+export const serializePending = (p: PendingCode): string => JSON.stringify(p);
+
+/** The stored code step if it is still worth showing: well-formed and its code not yet expired. */
+export function parsePending(raw: string | null, now: number): CodeStep | null {
+  if (!raw) return null;
+  let p: Partial<PendingCode>;
+  try {
+    p = JSON.parse(raw) as Partial<PendingCode>;
+  } catch {
+    return null;
+  }
+  if (
+    !p ||
+    typeof p.email !== 'string' ||
+    typeof p.resendAt !== 'number' ||
+    typeof p.expiresAt !== 'number' ||
+    typeof p.needsNewCode !== 'boolean' ||
+    p.expiresAt <= now
+  ) {
+    return null;
+  }
+  return {
+    step: 'code',
+    email: p.email,
+    resendAt: p.resendAt,
+    expiresAt: p.expiresAt,
+    needsNewCode: p.needsNewCode,
+    attemptsLeft: typeof p.attemptsLeft === 'number' ? p.attemptsLeft : undefined,
+  };
+}
+
 export const isSixDigits = (code: string): boolean => /^[0-9]{6}$/.test(code);
 
 /** Whole seconds until "Send again" unlocks; 0 when it already has (or there is no code step). */

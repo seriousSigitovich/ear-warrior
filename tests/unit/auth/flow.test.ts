@@ -1,8 +1,12 @@
 import { AuthError } from '../../../src/services/auth/client';
 import {
+  CodeStep,
   FlowState,
   initialFlow,
   isSixDigits,
+  parsePending,
+  serializePending,
+  toPending,
   reduce,
   resendSecondsLeft,
 } from '../../../src/services/auth/flow';
@@ -156,5 +160,31 @@ describe('sign-in flow state machine', () => {
       ),
     ).toBe(s);
     expect(reduce(s, { type: 'submit_code', code: '123456' }, NOW)).toBe(s);
+  });
+});
+
+describe('pending code step (survives leaving the screen)', () => {
+  const step = (): CodeStep => atCodeStep() as CodeStep;
+
+  test('round-trips through storage while the code is still live', () => {
+    const s = { ...step(), attemptsLeft: 3 };
+    expect(parsePending(serializePending(toPending(s)), NOW + 1000)).toEqual(s);
+  });
+
+  test('keeps the resend cooldown as an absolute time, so a rate-limit window is not restarted', () => {
+    const restored = parsePending(serializePending(toPending(step())), NOW + 30_000)!;
+    expect(resendSecondsLeft(restored, NOW + 30_000)).toBe(30);
+  });
+
+  test('an expired code is dropped', () => {
+    expect(parsePending(serializePending(toPending(step())), NOW + 600_000)).toBeNull();
+  });
+
+  test('empty, garbage or malformed storage is ignored', () => {
+    expect(parsePending(null, NOW)).toBeNull();
+    expect(parsePending('', NOW)).toBeNull();
+    expect(parsePending('{nope', NOW)).toBeNull();
+    expect(parsePending('{"email":"a@x.co"}', NOW)).toBeNull();
+    expect(parsePending('null', NOW)).toBeNull();
   });
 });

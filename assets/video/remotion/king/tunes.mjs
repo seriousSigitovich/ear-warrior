@@ -462,6 +462,31 @@ export const TUNES = {
     strum: [45, 52, 57, 60, 64],                                   // Am x02210, the chord the tune comes home to
     bpm: 100, hook: [5, 0], chord: [69, 72, 76],                  // camera sits on the pickup E · A minor
   }),
+  // What Shall We Do with the Drunken Sailor (sea shanty, traditional, public domain), D dorian, 4/4, the whole 8-bar verse: three "what shall we
+  // do" lines (A-line, G-line, A-line rising to the D) and the "early in the morning" line home. Pitches as the app's library.abc #27 (from the
+  // Wikimedia Commons MIDI), written an octave above the sound: D3–D4 on the D, G, B and e strings, frets 0–3. ♩ = 186 (the MIDI's). Opens on a
+  // D minor strum (the key's chord, the dorian home) and the last D sounds as it.
+  sailor: story({
+    id: 'sailor', title: 'Drunken Sailor', hookText: 'byear', endText: 'follow', ring: 0.45,
+    listenAt: 1.4,
+    gaps: { hold: 0.32, cta: 0.1, sub: 0.25, comment: 0.2, sweep: 0.6, end: 1.7 },
+    ...score({
+      key: 'C', time: [4, 4],
+      bars: [
+        'A4:q A4:8 A4:8 A4:q A4:8 A4:8',            // What shall we do with the
+        'A4:q D4:q F4:q A4:q',                       // drun-ken sai-lor
+        'G4:q G4:8 G4:8 G4:q G4:8 G4:8',            // what shall we do with the
+        'G4:q C4:q E4:q G4:q',                       // drun-ken sai-lor
+        'A4:q A4:8 A4:8 A4:q A4:8 A4:8',            // what shall we do with the
+        'A4:q B4:q C5:q D5:q',                       // drun-ken sai-lor
+        'C5:q A4:q G4:q E4:q',                       // ear-ly in the
+        'D4:h',                                      // morn-ing: the D sounds as the strum
+      ],
+    }),
+    hookChord: [[2, 0], [3, 2], [4, 3], [5, 1]],                   // D minor xx0231, the opening hit
+    strum: [50, 57, 62, 65],                                       // D minor xx0231, home
+    bpm: 186, hook: [2, 0], chord: [62, 65, 69],                  // the chord's root D3 · D minor
+  }),
   // The same arpeggio as a 10 s looping band cut (src/rising/RisingBand.tsx): the melody from frame 0, ♩ = 144 so the film is exactly eight bars
   // (seven of melody, one bar of E back into the top), the "your turn" gaps tightened.
   risingBand: story({ ...RISING, id: 'risingBand', bpm: 144, listenAt: 0, gaps: { hold: 0.15, cta: 0.15, sub: 0.3, comment: 0.45, sweep: 0.85, end: 1.5 } }),
