@@ -577,7 +577,7 @@ export default function Practice() {
                   compact
                 />
               )
-            : undefined,
+            : '', // not `undefined`: that falls back to the route name ("practice") instead of the layout's empty title
           headerRight: answering
             ? () => (
                 <SettingsButton
