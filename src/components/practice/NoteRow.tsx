@@ -110,6 +110,7 @@ export function NoteRow({
   const originRef = useRef(0);
   const dragRef = useRef<number | null>(null);
   const startXRef = useRef(0);
+  const holdRef = useRef<number | null>(null);
   const shownRef = useRef<number | null>(null);
   const startsRef = useRef<readonly number[]>([]);
   const startRef = useRef(onScrubStart);
@@ -171,7 +172,11 @@ export function NoteRow({
   // What the circles show: while a finger drags, the note under it; during a tap, what was shown when it
   // landed; just after a release, the note it sent the phrase to, until the sound reports its position; else
   // the sounding position, else the paused place.
-  const base = playing && now !== null ? now : landing !== null ? landing : pausedMs;
+  // Pressing ▶ on a paused phrase flips `playing` before the sound has started and reported a position (the
+  // audio mode and the old clip are settled first), so until it does the row keeps showing what it showed.
+  const base = playing ? (now ?? landing ?? holdRef.current) : (landing ?? pausedMs);
+  if (!playing) holdRef.current = base;
+  else if (now !== null) holdRef.current = now;
   const dragged = touch?.moved ? touch.index : null;
   const shown =
     dragged !== null && starts[dragged] !== undefined
