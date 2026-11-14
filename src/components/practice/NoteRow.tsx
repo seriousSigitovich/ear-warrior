@@ -1,25 +1,34 @@
-// The note row at the bottom of the answer screen (spec 021): one circle per note of the phrase, ▶/⏸ at its
-// left, ⌫ at its right. It is the player and the editor in one:
-//   - the circles show the notes placed so far (their names), and while a melody sounds, how far it has got;
-//   - a tap on a circle plays the phrase from that note (and selects a placed note for replacement); a drag
-//     slides along the notes in silence and the release plays from the nearest one — a touch on the row stops
-//     what sounds first, keeping its place;
+// The note track at the bottom of the answer screen (spec 021): a scrubber. ▶/⏸ at the left, then a line with one
+// mark per note of the phrase and a handle at the playing position, ⌫ at the right. It is the player and the
+// editor in one:
+//   - a mark is filled once a note is placed there, and the name of the note (C, F#…) stands above it;
+//   - while a melody sounds, the handle slides along the line and the line lights up behind it;
+//   - a tap on the track plays the phrase from the nearest note (and selects a placed note for replacement); a
+//     drag slides the handle in silence and the release plays from there — a touch on the track stops what
+//     sounds first, keeping its place;
 //   - ⌫ takes the last note back.
 // Plain RN (a PanResponder, no native slider module), so it ships over the air.
 import React, { useEffect, useRef, useState } from 'react';
 import { LayoutChangeEvent, PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
 import {
   NoteTimeline,
-  NAME_MIN,
+  TRACK_PAD,
+  handleX,
+  markCenters,
   noteAtOffset,
-  circleCenters,
-  circleSize,
   rowState,
+  showsNames,
 } from '../../lib/noteRow';
 import { colors } from '../../theme/nocturne';
 
-export const ROW_HEIGHT = 44;
-const BUTTON = 34;
+export const ROW_HEIGHT = 56;
+const TRANSPORT = 40;
+const UNDO = 34;
+const LINE_Y = 36;
+const LINE_HEIGHT = 3;
+const MARK = 9;
+const HANDLE_W = TRACK_PAD * 2;
+const HANDLE_H = 24;
 const POLL_MS = 80;
 /** A finger that moves less than this many dp between touching down and lifting is a tap, not a drag. */
 const TAP_SLOP = 6;
@@ -28,6 +37,11 @@ export type RowTransport = 'pause' | 'play' | 'replay';
 
 export function transportOf(playing: boolean, paused: boolean): RowTransport {
   return playing ? 'pause' : paused ? 'play' : 'replay';
+}
+
+/** "C#4" → "C#": the octave is on the board, and the name has to fit above a mark. */
+function letter(name: string): string {
+  return name.replace(/\d+$/, '');
 }
 
 export interface NoteRowProps {
@@ -47,13 +61,13 @@ export interface NoteRowProps {
   selected: number | null;
   /** Pause, resume or replay, whichever ▶/⏸ shows. */
   onTransport: () => void;
-  /** A touch lands on the row: silence what sounds (keeping its place). */
+  /** A touch lands on the track: silence what sounds (keeping its place). */
   onScrubStart: () => void;
-  /** The finger lifts on a circle: play from that note. */
+  /** The finger lifts at a note: play from it. */
   onSeek: (index: number) => void;
   /** Take the last note back. */
   onUndo: () => void;
-  /** Draft mode: the circles dim, as the old slots did. */
+  /** Draft mode: the track dims, as the old slots did. */
   dim?: boolean;
 }
 
@@ -73,11 +87,13 @@ export function NoteRow({
 }: NoteRowProps) {
   const [width, setWidth] = useState(0);
   const [now, setNow] = useState<number | null>(null);
-  // A touch in progress: the circle under the finger, whether the finger has travelled (a drag, not a tap) and
-  // what the circles showed when it landed. A tap keeps showing that, so the row does not blink.
-  const [touch, setTouch] = useState<{ index: number; moved: boolean; frozen: number | null } | null>(
-    null,
-  );
+  // A touch in progress: the note under the finger, whether the finger has travelled (a drag, not a tap) and
+  // what the track showed when it landed. A tap keeps showing that, so the track does not blink.
+  const [touch, setTouch] = useState<{
+    index: number;
+    moved: boolean;
+    frozen: number | null;
+  } | null>(null);
   // Where the phrase was sent from a touch, shown until the sound reports its own position.
   const [landing, setLanding] = useState<number | null>(null);
 
@@ -138,8 +154,8 @@ export function NoteRow({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
       onPanResponderTerminationRequest: () => false,
-      // The touch lands on the circles area itself (its children ignore touches), so locationX is along it
-      // and pageX − locationX is where it starts on screen; the drag is measured from there.
+      // The touch lands on the track itself (its children ignore touches), so locationX is along it and
+      // pageX − locationX is where it starts on screen; the drag is measured from there.
       onPanResponderGrant: (e) => {
         originRef.current = e.nativeEvent.pageX - e.nativeEvent.locationX;
         startRef.current();
@@ -169,14 +185,13 @@ export function NoteRow({
   const starts = timeline?.starts ?? [];
   startsRef.current = starts;
   const total = timeline?.totalMs ?? 0;
-  // What the circles show: while a finger drags, the note under it; during a tap, what was shown when it
-  // landed; just after a release, the note it sent the phrase to, until the sound reports its position; else
-  // the sounding position, else the paused place.
   // Pressing ▶ on a paused phrase flips `playing` before the sound has started and reported a position (the
-  // audio mode and the old clip are settled first), so until it does the row keeps showing what it showed.
+  // audio mode and the old clip are settled first), so until it does the track keeps showing what it showed.
   const base = playing ? (now ?? landing ?? holdRef.current) : (landing ?? pausedMs);
   if (!playing) holdRef.current = base;
   else if (now !== null) holdRef.current = now;
+  // What the track shows: while a finger drags, the note under it; during a tap, what was shown when it
+  // landed; just after a release, the note it sent the phrase to; else the sounding position, else the paused place.
   const dragged = touch?.moved ? touch.index : null;
   const shown =
     dragged !== null && starts[dragged] !== undefined
@@ -186,11 +201,16 @@ export function NoteRow({
         : base;
   if (!touch) shownRef.current = base;
   const state = rowState(shown, starts, total);
-  const size = circleSize(count, width);
-  const centers = circleCenters(count, width);
+  const centers = markCenters(count, width);
+  const hx = shown === null ? null : handleX(shown, starts, total, width);
+  const handleAt = hx ?? centers[0] ?? 0;
+  const labelled = showsNames(count, width);
   const firstEmpty = names.findIndex((n) => n === '');
   const transport = transportOf(playing, pausedMs !== null);
-  const current = touch?.index ?? selected ?? (state.current >= 0 ? state.current : Math.max(0, state.played - 1));
+  const current =
+    touch?.index ??
+    selected ??
+    (state.current >= 0 ? state.current : Math.max(0, state.played - 1));
   const placed = names.filter((n) => n !== '').length;
 
   return (
@@ -205,14 +225,15 @@ export function NoteRow({
               : 'Play melody'
         }
         onPress={onTransport}
-        hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
-        style={[styles.button, styles.play, transport !== 'replay' && styles.playOn]}
+        hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+        style={({ pressed }) => [styles.transport, pressed && styles.pressed]}
       >
         <TransportGlyph kind={transport} />
       </Pressable>
+      <View style={styles.sep} />
 
       <View
-        style={styles.circles}
+        style={styles.track}
         onLayout={onLayout}
         {...responder.panHandlers}
         accessible
@@ -229,33 +250,51 @@ export function NoteRow({
           )
         }
       >
-        {width > 0
-          ? centers.map((x, i) => (
-              <Circle
+        {width > 0 && count > 0 ? (
+          <>
+            <View
+              pointerEvents="none"
+              style={[
+                styles.line,
+                { left: centers[0], width: Math.max(0, centers[count - 1] - centers[0]) },
+              ]}
+            />
+            <View
+              pointerEvents="none"
+              style={[styles.line, styles.lit, { left: centers[0], width: handleAt - centers[0] }]}
+            />
+            {centers.map((x, i) => (
+              <Mark
                 key={i}
-                left={x - size / 2}
-                top={(ROW_HEIGHT - size) / 2}
-                size={size}
-                name={size >= NAME_MIN ? (names[i] ?? '') : ''}
+                x={x}
                 filled={(names[i] ?? '') !== ''}
-                played={i < state.played}
-                sounding={i === state.current}
-                touched={i === dragged}
-                selected={i === selected && dragged === null}
                 next={i === firstEmpty}
+                selected={i === selected && dragged === null}
               />
-            ))
-          : null}
+            ))}
+            {centers.map((x, i) =>
+              (names[i] ?? '') !== '' && (labelled || (i === selected && dragged === null)) ? (
+                <Label
+                  key={`n${i}`}
+                  x={x}
+                  text={letter(names[i])}
+                  selected={i === selected && dragged === null}
+                />
+              ) : null,
+            )}
+            <View pointerEvents="none" style={[styles.handle, { left: handleAt - HANDLE_W / 2 }]} />
+          </>
+        ) : null}
       </View>
 
-      {/* Always takes its place, so the circles do not shift when the first note goes in or the last comes out. */}
-      <View style={styles.button}>
+      {/* Always takes its place, so the track does not shift when the first note goes in or the last comes out. */}
+      <View style={styles.undoSlot}>
         {placed > 0 ? (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Undo last note"
             onPress={onUndo}
-            hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+            hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
             style={styles.undo}
           >
             <UndoGlyph />
@@ -266,61 +305,49 @@ export function NoteRow({
   );
 }
 
-function Circle({
-  left,
-  top,
-  size,
-  name,
+function Mark({
+  x,
   filled,
-  played,
-  sounding,
-  touched,
-  selected,
   next,
+  selected,
 }: {
-  left: number;
-  top: number;
-  size: number;
-  name: string;
-  /** A note is placed here (the name may be left out when the circle is too small for it). */
+  x: number;
   filled: boolean;
-  played: boolean;
-  sounding: boolean;
-  touched: boolean;
-  selected: boolean;
   next: boolean;
+  selected: boolean;
 }) {
   return (
     <View
       pointerEvents="none"
       style={[
-        styles.circle,
-        { left, top, width: size, height: size, borderRadius: size / 2 },
-        filled && styles.placed,
-        next && styles.next,
-        played && styles.played,
-        sounding && styles.sounding,
-        touched && styles.touched,
-        selected && styles.selected,
+        styles.mark,
+        { left: x - MARK / 2 },
+        filled && styles.markFilled,
+        next && styles.markNext,
+        selected && styles.markSelected,
       ]}
+    />
+  );
+}
+
+function Label({ x, text, selected }: { x: number; text: string; selected: boolean }) {
+  return (
+    <View
+      pointerEvents="none"
+      style={[styles.label, { left: x - 14 }, selected && styles.labelSelected]}
     >
-      {/* The circle cannot grow, so a large system font is capped to keep "C#4" inside it. */}
       <Text
-        style={[
-          styles.name,
-          { fontSize: size >= 20 ? 9 : 8 },
-          (sounding || touched) && styles.nameDark,
-        ]}
+        style={[styles.labelText, selected && styles.labelTextSelected]}
         maxFontSizeMultiplier={1.2}
         numberOfLines={1}
       >
-        {name}
+        {text}
       </Text>
     </View>
   );
 }
 
-/** Pause bars, a play triangle or a replay ring, drawn with Views (no SVG). */
+/** Pause bars or a play triangle, drawn with Views (no SVG), dark on the filled button. */
 function TransportGlyph({ kind }: { kind: RowTransport }) {
   if (kind === 'pause') {
     return (
@@ -349,41 +376,66 @@ function UndoGlyph() {
 const styles = StyleSheet.create({
   row: { height: ROW_HEIGHT, flexDirection: 'row', alignItems: 'center', gap: 8 },
   dim: { opacity: 0.4 },
-  button: { width: BUTTON, height: BUTTON, alignItems: 'center', justifyContent: 'center' },
-  play: {
-    borderRadius: BUTTON / 2,
-    borderWidth: 1,
-    borderColor: colors.divider,
-    backgroundColor: colors.surface,
-  },
-  playOn: { borderColor: colors.accent },
-  undo: {
-    width: BUTTON,
-    height: BUTTON,
-    borderRadius: BUTTON / 2,
-    borderWidth: 1,
-    borderColor: colors.divider,
-    backgroundColor: colors.surface,
+  transport: {
+    width: TRANSPORT,
+    height: TRANSPORT,
+    borderRadius: TRANSPORT / 2,
+    backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  circles: { flex: 1, height: ROW_HEIGHT },
-  circle: {
+  pressed: { opacity: 0.85 },
+  sep: { width: StyleSheet.hairlineWidth * 2, height: 28, backgroundColor: colors.divider },
+  track: { flex: 1, height: ROW_HEIGHT },
+  line: {
     position: 'absolute',
+    top: LINE_Y,
+    height: LINE_HEIGHT,
+    borderRadius: LINE_HEIGHT / 2,
+    backgroundColor: colors.divider,
+  },
+  lit: { backgroundColor: colors.accentRamp[600] },
+  mark: {
+    position: 'absolute',
+    top: LINE_Y + LINE_HEIGHT / 2 - MARK / 2,
+    width: MARK,
+    height: MARK,
+    borderRadius: MARK / 2,
+    backgroundColor: colors.neutral[800],
+  },
+  markFilled: { backgroundColor: colors.accent },
+  markNext: { borderWidth: 1.5, borderColor: colors.accent, backgroundColor: colors.bg },
+  markSelected: { borderWidth: 2, borderColor: colors.text },
+  label: {
+    position: 'absolute',
+    top: 8,
+    width: 28,
+    alignItems: 'center',
+    borderRadius: 6,
+    paddingVertical: 1,
+  },
+  labelSelected: { backgroundColor: colors.text },
+  labelText: { color: colors.accentRamp[200], fontSize: 11, fontWeight: '600' },
+  labelTextSelected: { color: colors.bg },
+  handle: {
+    position: 'absolute',
+    top: LINE_Y + LINE_HEIGHT / 2 - HANDLE_H / 2,
+    width: HANDLE_W,
+    height: HANDLE_H,
+    borderRadius: HANDLE_W / 2,
+    backgroundColor: colors.text,
+  },
+  undoSlot: { width: UNDO, height: UNDO, alignItems: 'center', justifyContent: 'center' },
+  undo: {
+    width: UNDO,
+    height: UNDO,
+    borderRadius: UNDO / 2,
     borderWidth: 1,
-    borderColor: colors.neutral[800],
-    backgroundColor: colors.bg,
+    borderColor: colors.divider,
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  placed: { borderColor: colors.accent, backgroundColor: colors.accentRamp[900] },
-  next: { borderColor: colors.accent },
-  played: { backgroundColor: colors.accentRamp[700], borderColor: colors.accentRamp[600] },
-  sounding: { backgroundColor: colors.accentRamp[400], borderColor: colors.accentRamp[300] },
-  touched: { backgroundColor: colors.text, borderColor: colors.text },
-  selected: { borderColor: colors.text, borderWidth: 2 },
-  name: { color: colors.accentRamp[200], fontWeight: '600' },
-  nameDark: { color: colors.bg },
   glyph: {
     width: 16,
     height: 16,
@@ -392,17 +444,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 3,
   },
-  bar: { width: 4, height: 14, borderRadius: 1, backgroundColor: colors.accent },
+  bar: { width: 4, height: 14, borderRadius: 1, backgroundColor: colors.bg },
   triangle: {
     marginLeft: 3,
     width: 0,
     height: 0,
-    borderTopWidth: 8,
-    borderBottomWidth: 8,
-    borderLeftWidth: 13,
+    borderTopWidth: 9,
+    borderBottomWidth: 9,
+    borderLeftWidth: 14,
     borderTopColor: 'transparent',
     borderBottomColor: 'transparent',
-    borderLeftColor: colors.accent,
+    borderLeftColor: colors.bg,
   },
   // The tip sticks out 1.3 dp to the left of the box, so the key is nudged right to sit centred in its button.
   key: { width: 24, height: 16, justifyContent: 'center', left: 0.7 },
@@ -432,5 +484,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  crossBar: { position: 'absolute', width: 9, height: 1.5, borderRadius: 1, backgroundColor: colors.text },
+  crossBar: {
+    position: 'absolute',
+    width: 9,
+    height: 1.5,
+    borderRadius: 1,
+    backgroundColor: colors.text,
+  },
 });

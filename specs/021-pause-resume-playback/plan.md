@@ -4,7 +4,7 @@
 
 ## Summary
 
-A row of note circles at the bottom of the answer screen is the player and the editor; the settings icon in the
+A row of note marks at the bottom of the answer screen is the player and the editor; the settings icon in the
 navigation bar holds the rest. Playback position is one number, **media milliseconds into the melody passed to
 `playMelody`** (tempo-1× time, the unit `MediaClock` and a clip's `fromMs` already use). The audio service reports it
 (`position()`), stops at it (`pause()`) and starts from it (`playMelody(..., offsetMs)`). The practice loop keeps one
@@ -26,7 +26,7 @@ a Draft pill were each shown and dropped).
 
 ## Performance targets
 
-- A tap on a circle makes the phrase sound from that note within 150 ms (SC-004): one `stopAll` fade (50 ms) plus a
+- A tap on a mark makes the phrase sound from that note within 150 ms (SC-004): one `stopAll` fade (50 ms) plus a
   `seekTo` and `play`; no work on the JS thread beyond one state update.
 - The row's position poll is 10 Hz and runs only while a melody sounds; it stops with the sound.
 - No new network, storage or analytics; memory is a few numbers.
@@ -41,11 +41,11 @@ a Draft pill were each shown and dropped).
 ## Source Code
 
 ```text
-src/lib/noteRow.ts                                # NEW note starts, circle state, nearest circle, end rule
+src/lib/noteRow.ts                                # NEW note starts, mark state, nearest mark, end rule
 src/lib/fretboard.ts                              # + replaceTap
 src/services/audio/playback.ts                    # + position(), pause(), offsetMs
 src/features/practice/usePracticeLoop.ts          # + paused, pause, resume, seek, position, timeline, cursor
-src/components/practice/NoteRow.tsx               # NEW the row: circles, ▶/⏸, backspace key
+src/components/practice/NoteRow.tsx               # NEW the row: marks, ▶/⏸, backspace key
 src/components/practice/SettingsPanel.tsx         # NEW panel and navigation-bar icon
 src/components/practice/FretboardAnswer.tsx       # `player` layout (the coached first melody keeps the old one)
 src/components/practice/PhraseProgress.tsx        # compact + label override (navigation bar)

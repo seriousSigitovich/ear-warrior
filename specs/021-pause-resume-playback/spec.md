@@ -10,7 +10,7 @@
 entire melody before returning to the challenge. [...] having the option to pause the audio, return to the challenge,
 and then resume playback from where you left off would be a really useful addition." Owner (2026-11-14), after seeing
 several layouts: the answer screen keeps only navigation, the phrase, the fretboard and a trigger; a row of note
-circles is the controller for the melody (navigate, fix any note, undo the last), everything else is hidden; Check shows
+marks is the controller for the melody (navigate, fix any note, undo the last), everything else is hidden; Check shows
 up only when the phrase is full; the row sits at the bottom; the trigger for the rest is a settings icon at the top
 right of the navigation bar.
 
@@ -27,23 +27,24 @@ speed, and the service now has `position()`, `pause()` and `playMelody(..., offs
 ## The screen
 
 Top to bottom: navigation bar (back arrow, "Phrase N of M" over its progress segments, settings icon) · fretboard, full
-width and as tall as the room allows · a row of note circles, with ▶/⏸ at its left and a backspace key at its right · Check, a pill
+width and as tall as the room allows · a track of note marks with a handle, with ▶/⏸ at its left and a backspace key at its right · Check, a pill
 over the bottom of the board, only when the phrase is full. Nothing else is on the screen.
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - Navigate the melody with the circle row (Priority: P1)
+### User Story 1 - Navigate the melody with the note track (Priority: P1)
 
 **Acceptance Scenarios**:
 
-1. **Given** a phrase is on the answer screen, **When** it shows, **Then** a row at the bottom has one circle per note
-   of the phrase, all visible at once, ▶ at its left; a circle shows the name of the note placed there.
-2. **Given** a phrase is sounding, **When** it plays, **Then** the circles already sounded are filled, the one sounding
-   is bright, and ▶ is ⏸.
-3. **Given** ⏸ is pressed, **When** the sound stops, **Then** the circles stay where they are and the button is ▶;
+1. **Given** a phrase is on the answer screen, **When** it shows, **Then** a track at the bottom has one mark per note
+   of the phrase, all visible at once, ▶ at its left and a handle on the track; a note placed at a mark has its name
+   (C, F#) above it.
+2. **Given** a phrase is sounding, **When** it plays, **Then** the handle slides along the track and the
+   line lights up behind it, and ▶ is ⏸.
+3. **Given** ⏸ is pressed, **When** the sound stops, **Then** the handle stays where it is and the button is ▶;
    pressing it continues from where it stopped, at the speed in effect now.
-4. **Given** a circle is tapped (also while the phrase sounds), **When** the finger lifts, **Then** the phrase plays
-   from that note, and the circles do not blink in between: a tap keeps showing what was shown when it landed, and the
+4. **Given** a mark is tapped (also while the phrase sounds), **When** the finger lifts, **Then** the phrase plays
+   from that note, and the marks do not blink in between: a tap keeps showing what was shown when it landed, and the
    spot it sent the phrase to is shown until the sound reports its own position.
 5. **Given** the finger is dragged along the row (also while it sounds), **When** it moves, **Then** the sound stops and
    stays silent; on release the phrase plays from the nearest note.
@@ -56,11 +57,11 @@ over the bottom of the board, only when the phrase is full. Nothing else is on t
 
 **Acceptance Scenarios**:
 
-1. **Given** note 3 is placed, **When** its circle is tapped, **Then** the phrase plays from note 3 and note 3 is
-   selected (a ring on its circle and on its marker on the board; the title says "Tap the right fret for note 3").
+1. **Given** note 3 is placed, **When** its mark is tapped, **Then** the phrase plays from note 3 and note 3 is
+   selected (a ring on its mark and on its marker on the board; the title says "Tap the right fret for note 3").
 2. **Given** a note is selected, **When** a fret is tapped, **Then** it replaces that note only, the notes before and
-   after stay, and the selection is cleared (the next tap goes to the first empty circle).
-3. **Given** a note is selected, **When** a circle past the last placed note is tapped, the backspace key is pressed, or the answer is
+   after stay, and the selection is cleared (the next tap goes to the first empty mark).
+3. **Given** a note is selected, **When** a mark past the last placed note is tapped, the backspace key is pressed, or the answer is
    cleared, **Then** the selection is cleared.
 
 ### User Story 3 - Undo the last note (Priority: P1)
@@ -68,7 +69,7 @@ over the bottom of the board, only when the phrase is full. Nothing else is on t
 **Acceptance Scenarios**:
 
 1. **Given** at least one note is placed, **When** the learner looks at the row, **Then** a backspace key is at its right end.
-2. **Given** the backspace key is pressed, **When** it acts, **Then** the last note is removed, its circle empties and any selection is
+2. **Given** the backspace key is pressed, **When** it acts, **Then** the last note is removed, its mark empties and any selection is
    cleared.
 3. **Given** no note is placed, **When** the row shows, **Then** there is no backspace key.
 
@@ -77,7 +78,7 @@ over the bottom of the board, only when the phrase is full. Nothing else is on t
 **Acceptance Scenarios**:
 
 1. **Given** fewer notes are placed than the phrase has, **When** the screen shows, **Then** there is no Check.
-2. **Given** the last circle is filled, **When** the screen shows, **Then** a Check pill appears over the bottom of the
+2. **Given** the last mark is filled, **When** the screen shows, **Then** a Check pill appears over the bottom of the
    board, above the row, without moving the board.
 3. **Given** a note is removed again, **When** the phrase is no longer full, **Then** Check goes away.
 
@@ -110,9 +111,9 @@ over the bottom of the board, only when the phrase is full. Nothing else is on t
   Navigation snaps to note starts; pause keeps the exact position. The note-sample fallback resumes at the next whole note.
 - A pause in the last 300 ms of a phrase counts as finished: ▶ plays from the start.
 - A replaced note keeps the time of the note it replaces, so the order and timing the grader sees are unchanged.
-- Long phrases: a circle is as big as the row allows, 22 dp at most and 10 dp at least (on the usual 228 dp row: 22 dp up
-  to 9 notes, 15–16 dp at 12, 10 dp at 17), never overlapping a neighbour. Below 14 dp it has no room for a note name
-  and stays blank; the name is on the board's marker. The whole row stays one line, never scrolls.
+- Long phrases: the marks are spaced evenly along the track (at least 9 dp apart for any library phrase on a 170–400 dp
+  track; 12.4 dp at 17 notes on the usual 213 dp one). Note names stand above the marks only while neighbours are 14 dp
+  or more apart (12 notes on the usual track: yes; 17: no), and always above the selected one. The track never scrolls.
 - A phrase of one note has no row to navigate; ▶ and the backspace key are still offered.
 - Backgrounding needs no rule: the audio stops with the screen as it does today, and a paused place is only in memory.
 
@@ -123,14 +124,14 @@ over the bottom of the board, only when the phrase is full. Nothing else is on t
 - **FR-001**: Playback position MUST be one number, ms into the melody at the tune's own tempo (`MediaClock`
   position); the service reports it (`position()`), stops at it (`pause()`) and starts from it (`playMelody` offset).
   Built and contract-tested.
-- **FR-002**: The circle row MUST sit at the bottom of the answer screen, one line, with ▶/⏸ at the left and a backspace key at the
-  right (only when a note is placed; drawn as a backspace key); its touch target MUST be at least 44 dp tall and its circles MUST need no scroll
+- **FR-002**: The note track (a scrubber: a line, one mark per note, a handle) MUST sit at the bottom of the answer screen, one line, with ▶/⏸ at the left and a backspace key at the
+  right (only when a note is placed; drawn as a backspace key); its touch target MUST be 56 dp tall and its marks MUST need no scroll
   for any library phrase (4–17 notes).
 - **FR-003**: A touch on the row MUST stop a sounding phrase at once (keeping its place); a drag follows the finger
   without sound; the release plays from the nearest note; a tap is a drag of zero length.
 - **FR-004**: The row MUST be exposed to screen readers as an adjustable control ("Note 3 of 8"; increment and decrement
   move one note and play from there); ▶/⏸ and the backspace key are separate buttons with labels.
-- **FR-005**: The answer MUST support a selected note (cursor): tapping a placed circle selects it, the next fret tap
+- **FR-005**: The answer MUST support a selected note (cursor): tapping a placed mark selects it, the next fret tap
   replaces that note (keeping its time) and clears the selection; the backspace key, Clear answer, a new phrase and Check clear it.
 - **FR-006**: Check MUST be offered only when the number of placed notes equals the phrase's, and MUST NOT shift the
   board (it floats over its bottom edge). While Draft is on it is not offered.
@@ -155,9 +156,9 @@ over the bottom of the board, only when the phrase is full. Nothing else is on t
 ## Success Criteria *(mandatory)*
 
 - **SC-001**: On a phrase of 8+ notes, pause after the 3rd note, tap 3 frets, press ▶ — the 4th note sounds next.
-- **SC-002**: A wrong 3rd note of 8 is fixed in two taps (its circle, the right fret) with the other 7 notes untouched.
+- **SC-002**: A wrong 3rd note of 8 is fixed in two taps (its mark, the right fret) with the other 7 notes untouched.
 - **SC-003**: Pause → ▶ adds no more than a short fade (~50 ms) of silence and no repeated note at the join.
-- **SC-004**: Tapping a circle makes the phrase sound from that note within 150 ms.
+- **SC-004**: Tapping a mark makes the phrase sound from that note within 150 ms.
 - **SC-005**: The board is at least as tall as before this change on a 360×640 dp phone, with no vertical scroll.
 - **SC-006**: Same tester asked again after the next build: "I can pause and continue" is answered yes.
 

@@ -1,13 +1,14 @@
 import { Melody } from '../../../src/models';
 import {
   END_MS,
-  CIRCLE_MAX,
-  CIRCLE_MIN,
-  NAME_MIN,
+  NAME_STEP_MIN,
+  TRACK_PAD,
   noteAtOffset,
   noteTimeline,
-  circleCenters,
-  circleSize,
+  handleX,
+  markCenters,
+  markStep,
+  showsNames,
   rowState,
   resumable,
 } from '../../../src/lib/noteRow';
@@ -68,53 +69,64 @@ describe('rowState', () => {
   });
 });
 
-describe('circle geometry', () => {
-  test('circles are as big as fits, within their limits', () => {
-    expect(circleSize(8, 330)).toBe(CIRCLE_MAX);
-    expect(circleSize(12, 250)).toBe(16); // 250 / 12 = 20 dp a circle, less 4 for the gap
-    expect(circleSize(17, 250)).toBe(CIRCLE_MIN);
-    expect(circleSize(0, 250)).toBe(CIRCLE_MAX);
-  });
-  test('circles never overlap, for any library phrase length on a phone from 188 to 400 dp of row', () => {
-    for (let count = 4; count <= 17; count++) {
-      for (let width = 188; width <= 400; width += 4) {
-        const c = circleCenters(count, width);
-        const size = circleSize(count, width);
-        expect(c[1] - c[0]).toBeGreaterThanOrEqual(size);
-      }
-    }
-  });
-
-  test('the longest phrase on the usual 228 dp row gets 10 dp circles, too small for a name; 12 notes still get one', () => {
-    expect(circleSize(17, 228)).toBe(CIRCLE_MIN);
-    expect(circleSize(17, 228)).toBeLessThan(NAME_MIN);
-    expect(circleSize(12, 228)).toBeGreaterThanOrEqual(NAME_MIN);
-  });
-
-  test('centres are evenly spaced, the first and last a radius in from the ends', () => {
-    const c = circleCenters(3, 100);
-    const r = circleSize(3, 100) / 2;
-    expect(c[0]).toBe(r);
-    expect(c[2]).toBe(100 - r);
+describe('track geometry', () => {
+  test('marks are evenly spaced from the pad to the far pad', () => {
+    const c = markCenters(5, 200);
+    expect(c[0]).toBe(TRACK_PAD);
+    expect(c[4]).toBe(200 - TRACK_PAD);
     expect(c[1] - c[0]).toBeCloseTo(c[2] - c[1]);
   });
-  test('a single circle sits in the middle', () => {
-    expect(circleCenters(1, 100)).toEqual([50]);
+
+  test('a single mark sits in the middle and none gives nothing', () => {
+    expect(markCenters(1, 100)).toEqual([50]);
+    expect(markCenters(0, 100)).toEqual([]);
+  });
+
+  test('names need 14 dp between marks: 12 notes on the usual 213 dp track have them, 17 do not', () => {
+    expect(markStep(12, 213)).toBeGreaterThanOrEqual(NAME_STEP_MIN);
+    expect(showsNames(12, 213)).toBe(true);
+    expect(showsNames(17, 213)).toBe(false);
+    expect(showsNames(1, 213)).toBe(false);
+  });
+
+  test('marks never crowd: for every library phrase length on tracks from 170 to 400 dp they are at least 9 dp apart', () => {
+    for (let count = 4; count <= 17; count++) {
+      for (let width = 170; width <= 400; width += 5) {
+        expect(markStep(count, width)).toBeGreaterThanOrEqual(9);
+      }
+    }
   });
 });
 
 describe('noteAtOffset', () => {
-  test('a touch picks the nearest circle', () => {
-    const c = circleCenters(5, 200);
-    c.forEach((y, i) => expect(noteAtOffset(y, 200, 5)).toBe(i));
+  test('a touch picks the nearest mark', () => {
+    const c = markCenters(5, 200);
+    c.forEach((x, i) => expect(noteAtOffset(x, 200, 5)).toBe(i));
     expect(noteAtOffset(c[2] + 3, 200, 5)).toBe(2);
   });
   test('beyond either end it clamps', () => {
     expect(noteAtOffset(-50, 200, 5)).toBe(0);
     expect(noteAtOffset(900, 200, 5)).toBe(4);
   });
-  test('one note, or no height, is always note 0', () => {
+  test('one note, or no width, is always note 0', () => {
     expect(noteAtOffset(40, 100, 1)).toBe(0);
     expect(noteAtOffset(40, 0, 5)).toBe(0);
+  });
+});
+
+describe('handleX', () => {
+  const starts = [0, 500, 1500];
+  const c = markCenters(3, 200);
+  test('nothing playing gives no handle', () => {
+    expect(handleX(null, starts, 2000, 200)).toBeNull();
+  });
+  test('it sits on a mark at the start of its note and runs on to the next', () => {
+    expect(handleX(0, starts, 2000, 200)).toBeCloseTo(c[0]);
+    expect(handleX(500, starts, 2000, 200)).toBeCloseTo(c[1]);
+    expect(handleX(250, starts, 2000, 200)).toBeCloseTo((c[0] + c[1]) / 2);
+  });
+  test('it is on the last mark from its start to the end', () => {
+    expect(handleX(1500, starts, 2000, 200)).toBeCloseTo(c[2]);
+    expect(handleX(2000, starts, 2000, 200)).toBeCloseTo(c[2]);
   });
 });
