@@ -1,12 +1,12 @@
 // Home screen (T035): start a practice session and navigate into the core loop.
 // Redesigned onto Nocturne — hero heading, waveform motif, the reward standing (spec 013), outlined actions.
 import React, { useCallback } from 'react';
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { KEY_VALUE_TABLE, defaultRowStore } from '../src/services/storage/db';
 import { keyValueOverRowStore } from '../src/lib/deviceId';
 import { isOnboarded } from '../src/lib/onboarding';
-import { heroScale, scaled } from '../src/lib/heroScale';
+import { heroScale, isCompact, scaled } from '../src/lib/heroScale';
 import { daysLabel } from '../src/lib/streak';
 import { useGamification } from '../src/features/gamification/useGamification';
 import { AttentionDot } from '../src/components/gamification/AttentionDot';
@@ -23,7 +23,10 @@ import { colors, font, radius, textAlpha, withAlpha } from '../src/theme/nocturn
 export default function Home() {
   const router = useRouter();
   // The hero block grows on tall phones instead of leaving most of the screen empty.
-  const s = heroScale(useWindowDimensions().height);
+  const windowHeight = useWindowDimensions().height;
+  const s = heroScale(windowHeight);
+  // On a short phone the waveform goes and the padding shrinks, so the four buttons stay on screen.
+  const compact = isCompact(windowHeight);
   // The standing (rank, XP, streak, challenges): re-read on focus, so it is fresh after practice.
   const game = useGamification();
   const challengesDone = game?.challenges.filter((c) => c.completed).length ?? 0;
@@ -54,101 +57,115 @@ export default function Home() {
   );
 
   return (
-    <Screen style={styles.screen}>
-      <Kicker style={{ fontSize: scaled(11, s) }}>Ear Warrior</Kicker>
-      <Text style={[styles.title, { fontSize: scaled(30, s), lineHeight: scaled(35, s) }]}>
-        Hear it.{'\n'}Play it back.{'\n'}Nail it.
-      </Text>
-      <Text
-        style={[
-          styles.blurb,
-          { fontSize: scaled(14, s), lineHeight: scaled(22, s), maxWidth: scaled(280, s) },
-        ]}
+    <Screen style={compact ? styles.screenCompact : styles.screen}>
+      {/* Scrolls only on a window too short even for the compact layout, never cutting a button off. */}
+      <ScrollView
+        style={styles.flex}
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        bounces={false}
       >
-        A short melody plays. You find it on the fretboard by ear. We tell you exactly which notes
-        landed.
-      </Text>
+        <Kicker style={{ fontSize: scaled(11, s) }}>Ear Warrior</Kicker>
+        <Text style={[styles.title, { fontSize: scaled(30, s), lineHeight: scaled(35, s) }]}>
+          Hear it.{'\n'}Play it back.{'\n'}Nail it.
+        </Text>
+        <Text
+          style={[
+            styles.blurb,
+            { fontSize: scaled(14, s), lineHeight: scaled(22, s), maxWidth: scaled(280, s) },
+          ]}
+        >
+          A short melody plays. You find it on the fretboard by ear. We tell you exactly which notes
+          landed.
+        </Text>
 
-      <Waveform
-        bars={HERO_BARS}
-        height={scaled(48, s)}
-        barWidth={scaled(5, s)}
-        gap={scaled(4, s)}
-        breathe
-        style={styles.wave}
-      />
+        {compact ? null : (
+          <Waveform
+            bars={HERO_BARS}
+            height={scaled(48, s)}
+            barWidth={scaled(5, s)}
+            gap={scaled(4, s)}
+            breathe
+            style={styles.wave}
+          />
+        )}
 
-      <View style={styles.spacer} />
+        <View style={styles.spacer} />
 
-      {/* Read from what is stored by the reward service: nothing here is invented. The training itself
+        {/* Read from what is stored by the reward service: nothing here is invented. The training itself
           stays the biggest thing on the screen. */}
-      {game ? (
-        <View style={styles.standing}>
-          <RankCard rank={game.rank} onPress={() => router.push('/journey')} />
-          <View style={styles.statRow}>
-            <View
-              style={styles.stat}
-              accessible
-              accessibilityLabel={`Streak: ${daysLabel(game.streak.days)} in a row`}
-            >
-              <Text style={styles.statKicker}>Streak</Text>
-              <View style={styles.statLine}>
-                <Flame size={18} />
-                <Text style={styles.statValue}>{daysLabel(game.streak.days)}</Text>
-              </View>
-            </View>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`Daily challenges: ${challengesDone} of ${challengesTotal} done${
-                left > 0 ? `, ${left} left` : ''
-              }`}
-              onPress={() => router.push('/challenges')}
-              style={({ pressed }) => [styles.stat, pressed && styles.statPressed]}
-            >
-              {left > 0 ? <AttentionDot /> : null}
-              <Text style={styles.statKicker}>Daily challenges</Text>
-              <Text
-                style={[styles.statValue, challengesDone === challengesTotal && styles.statDone]}
+        {game ? (
+          <View style={styles.standing}>
+            <RankCard rank={game.rank} onPress={() => router.push('/journey')} />
+            <View style={styles.statRow}>
+              <View
+                style={styles.stat}
+                accessible
+                accessibilityLabel={`Streak: ${daysLabel(game.streak.days)} in a row`}
               >
-                {challengesDone} of {challengesTotal}
-              </Text>
-            </Pressable>
+                <Text style={styles.statKicker}>Streak</Text>
+                <View style={styles.statLine}>
+                  <Flame size={18} />
+                  <Text style={styles.statValue}>{daysLabel(game.streak.days)}</Text>
+                </View>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Daily challenges: ${challengesDone} of ${challengesTotal} done${
+                  left > 0 ? `, ${left} left` : ''
+                }`}
+                onPress={() => router.push('/challenges')}
+                style={({ pressed }) => [styles.stat, pressed && styles.statPressed]}
+              >
+                {left > 0 ? <AttentionDot /> : null}
+                <Text style={styles.statKicker}>Daily challenges</Text>
+                <Text
+                  style={[styles.statValue, challengesDone === challengesTotal && styles.statDone]}
+                >
+                  {challengesDone} of {challengesTotal}
+                </Text>
+              </Pressable>
+            </View>
           </View>
-        </View>
-      ) : null}
+        ) : null}
 
-      <Button
-        label="Start practice"
-        glow
-        onPress={() => router.push('/practice')}
-        style={styles.cta}
-      />
-      <View style={styles.secondaryRow}>
         <Button
-          label="Melodies"
-          variant="secondary"
-          onPress={() => router.push('/melodies')}
-          style={styles.grow}
+          label="Start practice"
+          glow
+          onPress={() => router.push('/practice')}
+          style={styles.cta}
         />
-        <Button
-          label="Progress"
-          variant="secondary"
-          onPress={() => router.push('/progress')}
-          style={styles.grow}
-        />
-        <Button
-          label="Settings"
-          variant="secondary"
-          onPress={() => router.push('/settings')}
-          style={styles.grow}
-        />
-      </View>
+        <View style={styles.secondaryRow}>
+          <Button
+            label="Melodies"
+            variant="secondary"
+            onPress={() => router.push('/melodies')}
+            style={styles.grow}
+          />
+          <Button
+            label="Progress"
+            variant="secondary"
+            onPress={() => router.push('/progress')}
+            style={styles.grow}
+          />
+          <Button
+            label="Settings"
+            variant="secondary"
+            onPress={() => router.push('/settings')}
+            style={styles.grow}
+          />
+        </View>
+      </ScrollView>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { paddingTop: 40 },
+  screenCompact: { paddingTop: 12 },
+  // A little room at the sides so the attention dot on the challenges card, which sits half outside it, is not cut.
+  flex: { flex: 1, marginHorizontal: -8 },
+  scroll: { flexGrow: 1, paddingHorizontal: 8 },
   title: {
     color: colors.text,
     fontWeight: font.weightHeading,

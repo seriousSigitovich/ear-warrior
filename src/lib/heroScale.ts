@@ -18,3 +18,14 @@ export function heroScale(windowHeight: number): number {
 export function scaled(size: number, scale: number): number {
   return Math.round(size * scale);
 }
+
+/**
+ * A window this short cannot hold Home's whole stack (hero text, waveform, rank, streak, challenges and
+ * four buttons): the decoration goes and the top padding shrinks. 700 dp is just above the 640 dp floor
+ * the app is laid out for.
+ */
+export const COMPACT_BELOW = 700;
+
+export function isCompact(windowHeight: number): boolean {
+  return windowHeight < COMPACT_BELOW;
+}
