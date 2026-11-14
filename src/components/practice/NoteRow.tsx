@@ -10,6 +10,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { LayoutChangeEvent, PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
 import {
   NoteTimeline,
+  NAME_MIN,
   noteAtOffset,
   circleCenters,
   circleSize,
@@ -186,7 +187,8 @@ export function NoteRow({
                 left={x - size / 2}
                 top={(ROW_HEIGHT - size) / 2}
                 size={size}
-                name={names[i] ?? ''}
+                name={size >= NAME_MIN ? (names[i] ?? '') : ''}
+                filled={(names[i] ?? '') !== ''}
                 played={i < state.played}
                 sounding={i === state.current}
                 touched={i === drag}
@@ -220,6 +222,7 @@ function Circle({
   top,
   size,
   name,
+  filled,
   played,
   sounding,
   touched,
@@ -230,6 +233,8 @@ function Circle({
   top: number;
   size: number;
   name: string;
+  /** A note is placed here (the name may be left out when the circle is too small for it). */
+  filled: boolean;
   played: boolean;
   sounding: boolean;
   touched: boolean;
@@ -242,7 +247,7 @@ function Circle({
       style={[
         styles.circle,
         { left, top, width: size, height: size, borderRadius: size / 2 },
-        name !== '' && styles.placed,
+        filled && styles.placed,
         next && styles.next,
         played && styles.played,
         sounding && styles.sounding,

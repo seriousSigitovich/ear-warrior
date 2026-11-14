@@ -11,7 +11,10 @@ import { scheduleMelody, totalDurationMs } from './schedule';
 export const END_MS = 300;
 
 export const CIRCLE_MAX = 22;
-export const CIRCLE_MIN = 14;
+/** Smallest circle: at 17 notes (the longest library phrase) a 228 dp row spaces circles 13.4 dp apart, so 10 never overlaps. */
+export const CIRCLE_MIN = 10;
+/** A circle this big or bigger has room for a note name ("C#4" at 8 dp type); smaller ones stay blank. */
+export const NAME_MIN = 14;
 
 export interface NoteTimeline {
   /** Media start of every note, ms. */

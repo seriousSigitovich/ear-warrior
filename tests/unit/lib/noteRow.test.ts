@@ -3,6 +3,7 @@ import {
   END_MS,
   CIRCLE_MAX,
   CIRCLE_MIN,
+  NAME_MIN,
   noteAtOffset,
   noteTimeline,
   circleCenters,
@@ -74,6 +75,22 @@ describe('circle geometry', () => {
     expect(circleSize(17, 250)).toBe(CIRCLE_MIN);
     expect(circleSize(0, 250)).toBe(CIRCLE_MAX);
   });
+  test('circles never overlap, for any library phrase length on a phone from 188 to 400 dp of row', () => {
+    for (let count = 4; count <= 17; count++) {
+      for (let width = 188; width <= 400; width += 4) {
+        const c = circleCenters(count, width);
+        const size = circleSize(count, width);
+        expect(c[1] - c[0]).toBeGreaterThanOrEqual(size);
+      }
+    }
+  });
+
+  test('the longest phrase on the usual 228 dp row gets 10 dp circles, too small for a name; 12 notes still get one', () => {
+    expect(circleSize(17, 228)).toBe(CIRCLE_MIN);
+    expect(circleSize(17, 228)).toBeLessThan(NAME_MIN);
+    expect(circleSize(12, 228)).toBeGreaterThanOrEqual(NAME_MIN);
+  });
+
   test('centres are evenly spaced, the first and last a radius in from the ends', () => {
     const c = circleCenters(3, 100);
     const r = circleSize(3, 100) / 2;

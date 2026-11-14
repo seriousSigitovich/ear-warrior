@@ -109,8 +109,9 @@ over the bottom of the board, only when the phrase is full. Nothing else is on t
   Navigation snaps to note starts; pause keeps the exact position. The note-sample fallback resumes at the next whole note.
 - A pause in the last 300 ms of a phrase counts as finished: ▶ plays from the start.
 - A replaced note keeps the time of the note it replaces, so the order and timing the grader sees are unchanged.
-- 15–17 note phrases: the circles shrink to 14 dp and their names no longer fit; the name shows on the board's marker.
-  The whole row stays one line, never scrolls.
+- Long phrases: a circle is as big as the row allows, 22 dp at most and 10 dp at least (on the usual 228 dp row: 22 dp up
+  to 9 notes, 15–16 dp at 12, 10 dp at 17), never overlapping a neighbour. Below 14 dp it has no room for a note name
+  and stays blank; the name is on the board's marker. The whole row stays one line, never scrolls.
 - A phrase of one note has no row to navigate; ▶ and the backspace key are still offered.
 - Backgrounding needs no rule: the audio stops with the screen as it does today, and a paused place is only in memory.
 
