@@ -66,6 +66,7 @@ import { VerdictBanner } from '../src/components/feedback/VerdictBanner';
 import { NoteResultChips } from '../src/components/feedback/NoteResultChips';
 import { RankChangeBanner } from '../src/components/feedback/RankChangeBanner';
 import { StuckHelp } from '../src/components/feedback/StuckHelp';
+import { colors, withAlpha } from '../src/theme/nocturne';
 
 const APP_VERSION = '0.1.0';
 
@@ -675,7 +676,7 @@ export default function Practice() {
         <>
           <Pressable
             accessibilityLabel="Close settings"
-            style={StyleSheet.absoluteFill}
+            style={[StyleSheet.absoluteFill, styles.scrim]}
             onPress={() => setSettingsOpen(false)}
           />
           <View style={styles.settings}>
@@ -715,6 +716,8 @@ const styles = StyleSheet.create({
   feedback: { gap: 18, paddingVertical: 8 },
   controls: { minHeight: 52, justifyContent: 'flex-end' },
   // The answer screen gives the board every dp it can: tighter padding, the rest is in the navigation bar.
+  // Dims the board behind the settings panel, so the panel stands off it.
+  scrim: { backgroundColor: withAlpha(colors.bg, 0.6) },
   settings: { position: 'absolute', top: 4, left: 16, right: 16 },
   answerScreen: { paddingTop: 8, paddingBottom: 16 },
 });

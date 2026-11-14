@@ -38,7 +38,7 @@ export function SettingsPanel({
   };
   return (
     <View style={styles.panel} accessibilityViewIsModal>
-      <View style={styles.row}>
+      <View style={[styles.row, styles.rowFirst]}>
         <Text style={styles.label}>Speed</Text>
         <View style={styles.seg} accessibilityRole="radiogroup">
           {SPEED_PRESETS.map((p) => {
@@ -98,7 +98,12 @@ function Action({
   onPress: () => void;
 }) {
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={styles.row}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={styles.row}
+    >
       <Text style={styles.label}>{label}</Text>
       <Text style={[styles.glyph, warm && { color: colors.warm }]}>{glyph}</Text>
     </Pressable>
@@ -136,10 +141,13 @@ export function SettingsButton({
 
 const styles = StyleSheet.create({
   panel: {
-    backgroundColor: colors.surface,
+    // Not the board's surface colour: the panel sits over the fretboard and has to stand off it (the palette's
+    // violet 900, as Draft's neck), with a violet rim and a lift.
+    backgroundColor: colors.accentRamp[900],
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.divider,
+    borderColor: colors.accentRamp[700],
+    elevation: 12,
     paddingHorizontal: 16,
     paddingVertical: 4,
   },
@@ -148,21 +156,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.divider,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.divider,
   },
+  rowFirst: { borderTopWidth: 0 },
   label: { color: colors.text, fontSize: 15 },
   glyph: { color: textAlpha[60], fontSize: 18 },
-  seg: { flexDirection: 'row', borderWidth: 1, borderColor: colors.divider, borderRadius: radius.md, overflow: 'hidden' },
+  seg: {
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderColor: colors.accentRamp[700],
+    borderRadius: radius.md,
+    overflow: 'hidden',
+  },
   segItem: { paddingHorizontal: 12, paddingVertical: 8, minWidth: 52, alignItems: 'center' },
-  segOn: { backgroundColor: colors.accentRamp[800] },
+  segOn: { backgroundColor: colors.accentRamp[700] },
   segText: { color: textAlpha[60], fontSize: 13 },
   segTextOn: { color: colors.text },
   track: {
     width: 42,
     height: 24,
     borderRadius: 12,
-    backgroundColor: colors.neutral[800],
+    backgroundColor: colors.accentRamp[800],
     justifyContent: 'center',
   },
   trackOn: { backgroundColor: colors.accent },
@@ -178,5 +193,12 @@ const styles = StyleSheet.create({
   },
   iconOn: { backgroundColor: colors.accentRamp[900] },
   iconLine: { width: 18, height: 2, borderRadius: 1 },
-  iconKnob: { position: 'absolute', top: -2.5, width: 7, height: 7, borderRadius: 3.5, marginLeft: -3.5 },
+  iconKnob: {
+    position: 'absolute',
+    top: -2.5,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    marginLeft: -3.5,
+  },
 });
