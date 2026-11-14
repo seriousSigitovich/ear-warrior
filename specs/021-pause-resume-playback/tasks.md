@@ -19,5 +19,5 @@ Test tasks come first in each group (constitution II). `[US#]` is the user story
 
 - [X] T008 Checks: jest 563, typecheck (only the old `delaysContentTouches` error remains), lint
 - [X] T009 [SC-001…SC-005] Emulator at 360×640 dp: pause/resume, drag, selection and replacement, Check on a full phrase, settings panel, the backspace key
-- [ ] T010 [SC-003, SC-006] On a phone, by ear: the join after pause; a long touch near the screen edge; a 15–17 note phrase
-- [ ] T011 Release: OTA (owner's go-ahead); no server change, no new events
+- [ ] T010 (left open after release, owner shipped it before this check) [SC-003, SC-006] On a phone, by ear: the join after pause; a long touch near the screen edge; a 15–17 note phrase
+- [X] T011 Release: OTA on the production channel, group `d90e4ec9`, 2026-11-14 (owner's go-ahead); no server change, no new events

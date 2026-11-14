@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-14
 
-**Status**: Implemented, checked on the emulator at 360×640 dp; not yet heard on a phone, not released
+**Status**: Implemented and released by OTA on 2026-11-14 (production, group `d90e4ec9`); checked on the emulator at 360×640 dp, not yet heard on a phone
 
 **Input**: Beta tester (level 9, 2026-11-14): "When listening to the audio to identify the notes, you have to listen to the
 entire melody before returning to the challenge. [...] having the option to pause the audio, return to the challenge,
