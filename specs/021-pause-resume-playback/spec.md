@@ -43,7 +43,8 @@ over the bottom of the board, only when the phrase is full. Nothing else is on t
 3. **Given** ⏸ is pressed, **When** the sound stops, **Then** the circles stay where they are and the button is ▶;
    pressing it continues from where it stopped, at the speed in effect now.
 4. **Given** a circle is tapped (also while the phrase sounds), **When** the finger lifts, **Then** the phrase plays
-   from that note.
+   from that note, and the circles do not blink in between: a tap keeps showing what was shown when it landed, and the
+   spot it sent the phrase to is shown until the sound reports its own position.
 5. **Given** the finger is dragged along the row (also while it sounds), **When** it moves, **Then** the sound stops and
    stays silent; on release the phrase plays from the nearest note.
 6. **Given** nothing sounds and the phrase has played out (or has not yet played), **When** ▶ is pressed, **Then** the

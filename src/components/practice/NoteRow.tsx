@@ -21,6 +21,8 @@ import { colors } from '../../theme/nocturne';
 export const ROW_HEIGHT = 44;
 const BUTTON = 34;
 const POLL_MS = 80;
+/** A finger that moves less than this many dp between touching down and lifting is a tap, not a drag. */
+const TAP_SLOP = 6;
 
 export type RowTransport = 'pause' | 'play' | 'replay';
 
@@ -71,7 +73,13 @@ export function NoteRow({
 }: NoteRowProps) {
   const [width, setWidth] = useState(0);
   const [now, setNow] = useState<number | null>(null);
-  const [drag, setDrag] = useState<number | null>(null);
+  // A touch in progress: the circle under the finger, whether the finger has travelled (a drag, not a tap) and
+  // what the circles showed when it landed. A tap keeps showing that, so the row does not blink.
+  const [touch, setTouch] = useState<{ index: number; moved: boolean; frozen: number | null } | null>(
+    null,
+  );
+  // Where the phrase was sent from a touch, shown until the sound reports its own position.
+  const [landing, setLanding] = useState<number | null>(null);
 
   // The playing position, read ten times a second while a melody sounds.
   useEffect(() => {
@@ -84,21 +92,45 @@ export function NoteRow({
     return () => clearInterval(id);
   }, [playing, position]);
 
+  // The sound has taken over (or is not coming): the landing spot is no longer needed.
+  useEffect(() => {
+    if (landing === null) return;
+    if (playing && now !== null) {
+      setLanding(null);
+      return;
+    }
+    const id = setTimeout(() => setLanding(null), 700);
+    return () => clearTimeout(id);
+  }, [landing, playing, now]);
+
   // The responder is made once; it reads what changes through refs.
   const widthRef = useRef(0);
   const countRef = useRef(count);
   countRef.current = count;
   const originRef = useRef(0);
   const dragRef = useRef<number | null>(null);
+  const startXRef = useRef(0);
+  const shownRef = useRef<number | null>(null);
+  const startsRef = useRef<readonly number[]>([]);
   const startRef = useRef(onScrubStart);
   startRef.current = onScrubStart;
   const seekRef = useRef(onSeek);
   seekRef.current = onSeek;
 
-  const at = (x: number) => {
+  const at = (x: number, begin = false) => {
     const i = noteAtOffset(x, widthRef.current, countRef.current);
     dragRef.current = i;
-    setDrag(i);
+    if (begin) {
+      startXRef.current = x;
+      setTouch({ index: i, moved: false, frozen: shownRef.current });
+    } else {
+      // A finger that stays within a few dp is still a tap.
+      setTouch((t) => ({
+        index: i,
+        moved: (t?.moved ?? false) || Math.abs(x - startXRef.current) > TAP_SLOP,
+        frozen: t?.frozen ?? null,
+      }));
+    }
   };
   const responder = useRef(
     PanResponder.create({
@@ -110,18 +142,20 @@ export function NoteRow({
       onPanResponderGrant: (e) => {
         originRef.current = e.nativeEvent.pageX - e.nativeEvent.locationX;
         startRef.current();
-        at(e.nativeEvent.locationX);
+        at(e.nativeEvent.locationX, true);
       },
       onPanResponderMove: (_e, g) => at(g.moveX - originRef.current),
       onPanResponderRelease: () => {
         const i = dragRef.current;
         dragRef.current = null;
-        setDrag(null);
-        if (i !== null) seekRef.current(i);
+        setTouch(null);
+        if (i === null) return;
+        setLanding(startsRef.current[i] ?? null);
+        seekRef.current(i);
       },
       onPanResponderTerminate: () => {
         dragRef.current = null;
-        setDrag(null);
+        setTouch(null);
       },
     }),
   ).current;
@@ -132,16 +166,26 @@ export function NoteRow({
   };
 
   const starts = timeline?.starts ?? [];
+  startsRef.current = starts;
   const total = timeline?.totalMs ?? 0;
-  // What the circles show: the finger while dragging, else the sounding position, else the paused place.
+  // What the circles show: while a finger drags, the note under it; during a tap, what was shown when it
+  // landed; just after a release, the note it sent the phrase to, until the sound reports its position; else
+  // the sounding position, else the paused place.
+  const base = playing && now !== null ? now : landing !== null ? landing : pausedMs;
+  const dragged = touch?.moved ? touch.index : null;
   const shown =
-    drag !== null && starts[drag] !== undefined ? starts[drag] : playing ? now : pausedMs;
+    dragged !== null && starts[dragged] !== undefined
+      ? starts[dragged]
+      : touch
+        ? touch.frozen
+        : base;
+  if (!touch) shownRef.current = base;
   const state = rowState(shown, starts, total);
   const size = circleSize(count, width);
   const centers = circleCenters(count, width);
   const firstEmpty = names.findIndex((n) => n === '');
   const transport = transportOf(playing, pausedMs !== null);
-  const current = drag ?? selected ?? (state.current >= 0 ? state.current : Math.max(0, state.played - 1));
+  const current = touch?.index ?? selected ?? (state.current >= 0 ? state.current : Math.max(0, state.played - 1));
   const placed = names.filter((n) => n !== '').length;
 
   return (
@@ -191,8 +235,8 @@ export function NoteRow({
                 filled={(names[i] ?? '') !== ''}
                 played={i < state.played}
                 sounding={i === state.current}
-                touched={i === drag}
-                selected={i === selected && drag === null}
+                touched={i === dragged}
+                selected={i === selected && dragged === null}
                 next={i === firstEmpty}
               />
             ))
