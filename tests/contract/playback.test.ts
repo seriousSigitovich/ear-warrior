@@ -335,18 +335,6 @@ describe('audio playback (contracts/audio-playback.md)', () => {
     expect(f.played).toEqual([{ midi: 64, durationMs: 800 }]);
   });
 
-  test('pluck sounds a note without cutting anything that rings, so a strum can ring together', async () => {
-    const f = fakePlayer();
-    const pb = createAudioPlayback(f.native);
-    await pb.pluck(40);
-    await pb.pluck(64);
-    expect(f.played).toEqual([
-      { midi: 40, durationMs: 1600 },
-      { midi: 64, durationMs: 1600 },
-    ]);
-    expect(f.stops()).toBe(0);
-  });
-
   test('a new tap and a new melody first silence whatever is still ringing', async () => {
     const f = fakePlayer();
     const pb = createAudioPlayback(f.native);

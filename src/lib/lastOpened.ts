@@ -2,6 +2,7 @@
 // again. The place saved after a first-try check (spec 017) says more, so it wins when it is for the same tune or
 // newer. Kept on the device only; pure over a key-value store.
 import type { KeyValueStore } from './deviceId';
+import type { NoteResult } from '../models';
 import { MelodyPlaceRow, latestPlace } from './melodyProgress';
 
 export const LAST_OPENED_KEY = 'ew.lastOpenedTune';
@@ -54,6 +55,8 @@ export interface ContinueTarget {
   answered: number;
   /** Open with the saved first tries (`resume=1`); false for a melody only opened, which starts at phrase 1. */
   saved: boolean;
+  /** How the last answered phrase went and when (saved places only), for Home's last-result block. */
+  last: { results: NoteResult[]; at: string } | null;
 }
 
 /**
@@ -73,7 +76,14 @@ export function continueTarget(
     opened.tuneId !== place?.tuneId &&
     (!place || Date.parse(opened.at) > Date.parse(place.updatedAt));
   if (openedIsNewer && opened && openedPhrases !== null) {
-    return { tuneId: opened.tuneId, phrases: openedPhrases, phrase: 0, answered: 0, saved: false };
+    return {
+      tuneId: opened.tuneId,
+      phrases: openedPhrases,
+      phrase: 0,
+      answered: 0,
+      saved: false,
+      last: null,
+    };
   }
   return place
     ? {
@@ -82,6 +92,13 @@ export function continueTarget(
         phrase: place.phrase,
         answered: place.grades.length,
         saved: true,
+        last:
+          place.grades.length > 0
+            ? {
+                results: place.grades[place.grades.length - 1].noteResults,
+                at: place.updatedAt,
+              }
+            : null,
       }
     : null;
 }

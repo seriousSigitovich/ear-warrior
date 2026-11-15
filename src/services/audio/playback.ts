@@ -49,11 +49,6 @@ export interface AudioPlayback {
    */
   setRate(rate: number): void;
   playReferenceTone(midi: number): Promise<void>;
-  /**
-   * Sound one note and let it ring, alongside whatever else rings: nothing is cut, so notes plucked one
-   * after another sound together like a strum (Home's open strings). A longer hold than a tap's tone.
-   */
-  pluck(midi: number): Promise<void>;
   stop(): Promise<void>;
 }
 
@@ -101,8 +96,6 @@ const CLIP_RELEASE_MS = 800;
  * faded out over FADE_MS instead of being cut.
  */
 const TAP_HOLD_MS = 800;
-/** How long a plucked open string rings. */
-const PLUCK_HOLD_MS = 1600;
 const FADE_MS = 120;
 /** Fade used when a new sound takes over from one still ringing: quick, but still click-free. */
 const TAKEOVER_FADE_MS = 50;
@@ -357,9 +350,6 @@ export function createAudioPlayback(native: NativePlayer = defaultNativePlayer()
       settle();
       await native.stopAll();
       await native.playTone(midi, TAP_HOLD_MS);
-    },
-    async pluck(midi) {
-      await native.playTone(midi, PLUCK_HOLD_MS);
     },
     stop: () => {
       generation++;

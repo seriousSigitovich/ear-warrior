@@ -1,24 +1,23 @@
 // Home screen (T035), reworked in spec 023: the melody to continue over six strings that move and sound when
 // touched, one main button, a strip of the standing, and a bottom bar.
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { KEY_VALUE_TABLE, defaultRowStore } from '../src/services/storage/db';
 import { keyValueOverRowStore } from '../src/lib/deviceId';
 import { isOnboarded } from '../src/lib/onboarding';
-import { openStringMidi } from '../src/lib/openStrings';
+import { lastResult } from '../src/lib/lastResult';
+import { tuneIdOf } from '../src/services/melody/curated';
 import { daysLabel, weekPracticeDays } from '../src/lib/streak';
 import { useGamification } from '../src/features/gamification/useGamification';
 import { useContinueTarget } from '../src/features/progress/useContinueTarget';
 import { catalogTune } from '../src/services/melody/catalog';
-import { answeredPhraseNotes } from '../src/services/melody/neckNotes';
-import { createAudioPlayback } from '../src/services/audio/playback';
-import { createAudioSession } from '../src/services/audio/session';
+import { useHistory } from '../src/features/progress/useHistory';
 import { AttentionDot } from '../src/components/gamification/AttentionDot';
 import { Flame } from '../src/components/gamification/Flame';
 import { challengesLeft } from '../src/lib/gamification';
 import { HomeNavBar } from '../src/components/home/HomeNavBar';
-import { StringsHero } from '../src/components/home/StringsHero';
+import { LastResultBlock } from '../src/components/home/LastResultBlock';
 import { Screen } from '../src/components/common/Screen';
 import { Button } from '../src/components/common/Button';
 import { Kicker } from '../src/components/common/Kicker';
@@ -39,11 +38,17 @@ export default function Home() {
   // Where Continue leads: the melody left half-way, or the one last opened even if nothing was answered in it.
   const resume = useContinueTarget();
   const resumeTune = resume ? catalogTune(resume.tuneId) : null;
-  // The notes of the phrase answered last, lit on the neck (none for a melody only opened).
-  const neckNotes = useMemo(
-    () => (resume?.saved ? answeredPhraseNotes(resume.tuneId, resume.answered) : []),
-    [resume],
-  );
+  // How the last phrase (or else the last attempt) went, note by note.
+  const { attempts } = useHistory();
+  // Under a melody's name its own result comes first; failing that, the latest attempt of any melody, named.
+  const result = useMemo(() => {
+    if (!game) return null;
+    const own = resume ? attempts.filter((a) => tuneIdOf(a.melodyId) === resume.tuneId) : attempts;
+    return (
+      lastResult(resume?.last ?? null, own, game.today) ??
+      lastResult(null, attempts, game.today, (id) => catalogTune(tuneIdOf(id))?.name ?? null)
+    );
+  }, [game, resume, attempts]);
   const rank = game?.rank;
   const rankXp = rank
     ? rank.next
@@ -51,23 +56,6 @@ export default function Home() {
       : `${rank.xp} XP`
     : '';
   const weekDays = game ? weekPracticeDays(game.activeDays, game.today) : 0;
-
-  // The open strings: a touch sounds the string (one pluck rings on while the next starts, so a strum rings together).
-  const audio = useMemo(() => createAudioPlayback(), []);
-  const playbackReady = useRef(false);
-  useEffect(() => () => void audio.stop().catch(() => undefined), [audio]);
-  const pluck = useCallback(
-    (row: number) => {
-      if (!playbackReady.current) {
-        playbackReady.current = true;
-        void createAudioSession()
-          .enterPlayback()
-          .catch(() => undefined);
-      }
-      void audio.pluck(openStringMidi(row)).catch(() => undefined);
-    },
-    [audio],
-  );
 
   // First launch: the first melody, then the sign-in offer (spec 005 FR-003) — each once, never blocking (both
   // have Skip). On focus rather than mount, so the offer follows onboarding when it pops back to Home.
@@ -121,7 +109,16 @@ export default function Home() {
           </View>
         )}
 
-        <StringsHero onPluck={pluck} notes={neckNotes} />
+        <View style={styles.mid}>
+          {result ? (
+            <LastResultBlock result={result} />
+          ) : (
+            <Text style={styles.intro}>
+              A short melody plays. You find it on the fretboard by ear. We tell you exactly which
+              notes landed.
+            </Text>
+          )}
+        </View>
 
         {resume && resumeTune ? (
           <>
@@ -225,6 +222,9 @@ const styles = StyleSheet.create({
   flex: { flex: 1, marginHorizontal: -8 },
   scroll: { flexGrow: 1, paddingHorizontal: 8, paddingBottom: 8 },
   title: { marginTop: 14, marginBottom: 6 },
+  // The free height between the melody and the main button; the last result sits in the middle of it.
+  mid: { flex: 1, justifyContent: 'center', minHeight: 150, paddingVertical: 12 },
+  intro: { color: textAlpha[65], fontSize: 16, lineHeight: 24 },
   where: { fontSize: 10 },
   name: {
     color: colors.text,

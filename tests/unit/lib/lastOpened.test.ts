@@ -15,7 +15,18 @@ const place = (tuneId: string, sec: number): MelodyPlaceRow => ({
   phrases: 5,
   grades: [
     { noteResults: [], answer: [60] },
-    { noteResults: [], answer: [62] },
+    {
+      noteResults: [
+        {
+          targetIndex: 0,
+          status: 'matched',
+          expectedMidi: 62,
+          detectedMidi: 62,
+          octaveMismatch: false,
+        },
+      ],
+      answer: [62],
+    },
   ],
   updatedAt: iso(sec),
   deleted: false,
@@ -65,12 +76,15 @@ describe('what Continue opens', () => {
       phrase: 0,
       answered: 0,
       saved: false,
+      last: null,
     });
   });
 
   test('the saved place when it is for the melody last opened', () => {
     const t = continueTarget([place('a', 1)], { tuneId: 'a', at: iso(9) }, fits);
     expect(t).toMatchObject({ tuneId: 'a', phrase: 2, answered: 2, saved: true });
+    expect(t?.last?.results).toHaveLength(1);
+    expect(t?.last?.at).toBe(iso(1));
   });
 
   test('a different melody opened after the saved place wins; opened before it, the place wins', () => {
