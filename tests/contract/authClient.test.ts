@@ -141,4 +141,79 @@ describe('AuthClient over fetch', () => {
     )!;
     expect(await client.me('tok')).toEqual({ ok: false, error: { code: 'invalid_session' } });
   });
+  describe('Google sign-in (spec 022)', () => {
+    test('providers maps the google flag, and any failure is a typed error', async () => {
+      const calls: Call[] = [];
+      const client = createAuthClient(
+        'https://api.test',
+        fakeFetch(200, { ok: true, email: true, google: true }, calls),
+      )!;
+      expect(await client.providers()).toEqual({ ok: true, value: { google: true } });
+      expect(calls[0].url).toBe('https://api.test/api/auth/providers');
+      expect(calls[0].init.method).toBe('GET');
+      const off = createAuthClient('https://api.test', failingFetch)!;
+      expect(await off.providers()).toEqual({ ok: false, error: { code: 'network' } });
+    });
+
+    test('googleStart posts nothing and returns the browser link and the verifier', async () => {
+      const calls: Call[] = [];
+      const client = createAuthClient(
+        'https://api.test',
+        fakeFetch(
+          200,
+          { ok: true, url: 'https://accounts.google.com/x?y=1', verifier: 'v'.repeat(43) },
+          calls,
+        ),
+      )!;
+      expect(await client.googleStart()).toEqual({
+        ok: true,
+        value: { url: 'https://accounts.google.com/x?y=1', verifier: 'v'.repeat(43) },
+      });
+      expect(calls[0].url).toBe('https://api.test/api/auth/google/start');
+      expect(calls[0].init.method).toBe('POST');
+      expect(calls[0].init.body).toBeUndefined();
+    });
+
+    test('googleStart maps google_disabled', async () => {
+      const client = createAuthClient(
+        'https://api.test',
+        fakeFetch(503, { ok: false, error: 'google_disabled' }),
+      )!;
+      expect(await client.googleStart()).toEqual({ ok: false, error: { code: 'google_disabled' } });
+    });
+
+    test('googleExchange sends ticket, verifier and device id and maps the session', async () => {
+      const calls: Call[] = [];
+      const client = createAuthClient(
+        'https://api.test',
+        fakeFetch(200, { ok: true, token: 'tok', email: 'a@x.co', created: true }, calls),
+      )!;
+      expect(await client.googleExchange('T', 'V', 'dev_1')).toEqual({
+        ok: true,
+        value: { token: 'tok', email: 'a@x.co', created: true },
+      });
+      expect(calls[0].url).toBe('https://api.test/api/auth/google/exchange');
+      expect(JSON.parse(String(calls[0].init.body))).toEqual({
+        ticket: 'T',
+        verifier: 'V',
+        device_id: 'dev_1',
+      });
+    });
+
+    test('googleExchange maps invalid_ticket and network failures', async () => {
+      const refused = createAuthClient(
+        'https://api.test',
+        fakeFetch(401, { ok: false, error: 'invalid_ticket' }),
+      )!;
+      expect(await refused.googleExchange('T', 'V', 'dev_1')).toEqual({
+        ok: false,
+        error: { code: 'invalid_ticket' },
+      });
+      const off = createAuthClient('https://api.test', failingFetch)!;
+      expect(await off.googleExchange('T', 'V', 'dev_1')).toEqual({
+        ok: false,
+        error: { code: 'network' },
+      });
+    });
+  });
 });

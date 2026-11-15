@@ -55,6 +55,32 @@ export function describeError(error: AuthError): ErrorCopy {
         title: 'You were signed out',
         hint: 'Sign in again whenever you like. Practice works without it.',
       };
+    case 'unverified_email':
+      return {
+        title: "Google hasn't verified that email",
+        hint: 'Verify it in your Google account, or sign in with an email code instead.',
+      };
+    case 'expired':
+    case 'invalid_ticket':
+      return {
+        title: 'That sign-in took too long',
+        hint: 'Tap "Continue with Google" to try again.',
+      };
+    case 'google_failed':
+      return {
+        title: "Google sign-in didn't work",
+        hint: 'Try again, or sign in with an email code.',
+      };
+    case 'google_disabled':
+      return {
+        title: "Google sign-in isn't available right now",
+        hint: 'Use the email code — you can keep practising either way.',
+      };
+    case 'browser_unavailable':
+      return {
+        title: "Couldn't open your browser",
+        hint: 'Open Chrome once, or sign in with an email code instead.',
+      };
     case 'network':
     case 'auth_disabled':
       return OFFLINE;

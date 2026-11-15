@@ -12,6 +12,9 @@ export type AuthState = { status: 'anonymous' } | { status: 'signedIn'; email: s
 export const LAST_EMAIL_KEY = 'ew.lastEmail';
 export const OFFER_SEEN_KEY = 'ew.signInOfferSeen';
 export const PENDING_CODE_KEY = 'ew.pendingCode';
+export const GOOGLE_PENDING_KEY = 'ew.googlePending';
+/** How long the verifier waits for the learner to come back from the browser (spec 022 R5). */
+const GOOGLE_PENDING_TTL_MS = 10 * 60 * 1000;
 const STALE_AFTER_MS = 60 * 60 * 1000;
 
 interface Deps {
@@ -44,7 +47,31 @@ export function createAuthService({ client, session, kv, getDeviceId, now }: Dep
     await session.clear();
     await kv.setItem(LAST_EMAIL_KEY, '');
     await kv.setItem(PENDING_CODE_KEY, '');
+    await kv.setItem(GOOGLE_PENDING_KEY, '');
     setState({ status: 'anonymous' });
+  }
+
+  /** A server-issued session becomes the signed-in state — the same effects whichever method produced it. */
+  async function adoptSession(token: string, email: string): Promise<void> {
+    await session.set({ token, email });
+    await kv.setItem(LAST_EMAIL_KEY, email);
+    await kv.setItem(PENDING_CODE_KEY, '');
+    await kv.setItem(GOOGLE_PENDING_KEY, '');
+    lastCheckedAt = now();
+    setState({ status: 'signedIn', email });
+  }
+
+  /** The verifier kept while the learner is in the browser, or null when none is live. */
+  async function pendingVerifier(): Promise<string | null> {
+    const raw = await kv.getItem(GOOGLE_PENDING_KEY);
+    if (!raw) return null;
+    try {
+      const p = JSON.parse(raw) as { verifier?: unknown; startedAt?: unknown };
+      const fresh = typeof p.startedAt === 'number' && now() - p.startedAt <= GOOGLE_PENDING_TTL_MS;
+      return fresh && typeof p.verifier === 'string' ? p.verifier : null;
+    } catch {
+      return null;
+    }
   }
 
   async function revalidate(token: string): Promise<void> {
@@ -110,15 +137,57 @@ export function createAuthService({ client, session, kv, getDeviceId, now }: Dep
     ): Promise<Result<{ token: string; email: string; created: boolean }>> {
       if (!client) return unavailable;
       const res = await client.verify(normalizeEmail(email), code, await getDeviceId());
-      if (res.ok) {
-        await session.set({ token: res.value.token, email: res.value.email });
-        await kv.setItem(LAST_EMAIL_KEY, res.value.email);
-        await kv.setItem(PENDING_CODE_KEY, '');
-        lastCheckedAt = now();
-        setState({ status: 'signedIn', email: res.value.email });
-      }
+      if (res.ok) await adoptSession(res.value.token, res.value.email);
       return res;
     },
+
+    /** Spec 022: is the Google button worth showing? Any doubt hides it (FR-014). */
+    async googleAvailable(): Promise<boolean> {
+      if (!client) return false;
+      const res = await client.providers();
+      return res.ok && res.value.google;
+    },
+
+    /**
+     * Spec 022: ask the server for the Google link, keep the verifier for the return trip, open the browser.
+     * `openUrl` is injected (React Native `Linking.openURL`), so this stays testable.
+     */
+    async startGoogle(openUrl: (url: string) => Promise<unknown>): Promise<Result<void>> {
+      if (!client) return unavailable;
+      const res = await client.googleStart();
+      if (!res.ok) return res;
+      await kv.setItem(
+        GOOGLE_PENDING_KEY,
+        JSON.stringify({ verifier: res.value.verifier, startedAt: now() }),
+      );
+      try {
+        await openUrl(res.value.url);
+      } catch {
+        await kv.setItem(GOOGLE_PENDING_KEY, '');
+        return { ok: false, error: { code: 'browser_unavailable' } };
+      }
+      return { ok: true, value: undefined };
+    },
+
+    /** Spec 022: the return link brought a ticket; present it with the verifier kept at the start. */
+    async finishGoogle(ticket: string): Promise<Result<{ email: string; created: boolean }>> {
+      if (!client) return unavailable;
+      const verifier = await pendingVerifier();
+      if (!verifier) {
+        await kv.setItem(GOOGLE_PENDING_KEY, '');
+        return { ok: false, error: { code: 'expired' } };
+      }
+      const res = await client.googleExchange(ticket, verifier, await getDeviceId());
+      if (!res.ok) {
+        await kv.setItem(GOOGLE_PENDING_KEY, '');
+        return res;
+      }
+      await adoptSession(res.value.token, res.value.email);
+      return { ok: true, value: { email: res.value.email, created: res.value.created } };
+    },
+
+    /** Spec 022: the learner backed out at Google (or the link said so): forget the verifier. */
+    cancelGoogle: () => kv.setItem(GOOGLE_PENDING_KEY, ''),
 
     async signOut(): Promise<void> {
       const stored = await session.get();

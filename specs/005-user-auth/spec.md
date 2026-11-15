@@ -15,6 +15,7 @@
 - Q: Which sign-in methods? → A: **Email one-time code only.** No passwords, no Google, no other providers (Google is a later, separate piece).
 - Q: Required or optional? → A: **Optional.** The learner can skip sign-in and use every feature anonymously, exactly as today (the per-install anonymous device id of spec 001 FR-019 stays).
 - Q: What is the reason to sign in during the beta? → A: So the owner can tell testers apart, follow up with them personally, and tie usage and crash reports to a person who has agreed to it.
+- Amendment 2026-11-15: Google sign-in is now specified separately in [spec 022](../022-google-sign-in/spec.md) as a second optional method on the same account (identity = verified email). "Google out of scope" below describes this spec only.
 - Q: Does this supersede an earlier decision? → A: Yes. The 2026-10-11 decision "Google + email, optional" is narrowed to "email code, optional". It also amends spec 001 FR-019 / SC-008 and spec 002 ("there are no accounts"): an account now **may** exist, and when it does, email is personal data that the privacy policy must cover.
 - Q: Should signing in on a fresh install bring back earlier progress? → A: **No, not for now (option B).** The account only identifies the person; each install keeps its own history, as today. Restoring progress on a new install is a later spec, most naturally together with Google sign-in.
 

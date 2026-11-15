@@ -487,6 +487,27 @@ export const TUNES = {
     strum: [50, 57, 62, 65],                                       // D minor xx0231, home
     bpm: 186, hook: [2, 0], chord: [62, 65, 69],                  // the chord's root D3 · D minor
   }),
+  // Gruber, Silent Night (1818, public domain), C major, 6/8, the first four bars (the app's library.abc #28, "Silent night, holy night, all is
+  // calm"): G. A G E. twice, then D D B., C C G. Written an octave above the sound: E3–D4 on the D, G and B strings, frets 0–3, 14 notes. ♩ = 88
+  // (library 75, a touch quicker so the cut stays ~12 s). Opens on a C major strum (the key's chord); the line stops on the G over it, so home
+  // is the same C strum, the question a lullaby leaves hanging.
+  silent: story({
+    id: 'silent', title: 'Silent Night', hookText: 'byear', endText: 'follow', ring: 0.8,
+    listenAt: 1.4,
+    gaps: { hold: 0.6, cta: 0.1, sub: 0.25, comment: 0.2, sweep: 0.6, end: 1.7 },
+    ...score({
+      key: 'C', time: [6, 8],
+      bars: [
+        'G4:8. A4:16 G4:8 E4:q.',                   // Si-lent night
+        'G4:8. A4:16 G4:8 E4:q.',                   // ho-ly night
+        'D5:q D5:8 B4:q.',                          // all is calm
+        'C5:q C5:8 G4:q.',                          // all is bright: the G sounds as the strum
+      ],
+    }),
+    hookChord: [[1, 3], [2, 2], [3, 0], [4, 1], [5, 0]],           // C major x32010, the opening hit
+    strum: [48, 52, 55, 60, 64],                                   // C major x32010, home
+    bpm: 88, hook: [1, 3], chord: [72, 76, 79],                   // the chord's root C3 · C major
+  }),
   // The same arpeggio as a 10 s looping band cut (src/rising/RisingBand.tsx): the melody from frame 0, ♩ = 144 so the film is exactly eight bars
   // (seven of melody, one bar of E back into the top), the "your turn" gaps tightened.
   risingBand: story({ ...RISING, id: 'risingBand', bpm: 144, listenAt: 0, gaps: { hold: 0.15, cta: 0.15, sub: 0.3, comment: 0.45, sweep: 0.85, end: 1.5 } }),

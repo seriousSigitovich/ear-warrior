@@ -141,6 +141,32 @@ export function runStoreContract(name: string, make: () => Promise<AuthStore>, o
       assert.notEqual(fresh.userId, userId);
     });
 
+    test('a Google ticket is single use, expires, and carries the verified email and challenge (spec 022)', async () => {
+      const put = (hash: string, now: Date, ttlMin = 2) =>
+        s.issueGoogleTicket({ ticketHash: hash, email: 'a@x.co', challenge: 'chal', now, expiresAt: new Date(now.getTime() + ttlMin * 60_000) });
+      await put('t1', T0);
+      assert.deepEqual(await s.takeGoogleTicket('t1', at(1)), { email: 'a@x.co', challenge: 'chal' });
+      assert.equal(await s.takeGoogleTicket('t1', at(1)), null, 'used once');
+      assert.equal(await s.takeGoogleTicket('nope', at(1)), null, 'unknown');
+      await put('t2', T0);
+      assert.equal(await s.takeGoogleTicket('t2', at(3)), null, 'expired');
+    });
+
+    test('purgeGoogleTicketsBefore removes old tickets only', async () => {
+      await s.issueGoogleTicket({ ticketHash: 'old', email: 'a@x.co', challenge: 'c', now: at(-1500), expiresAt: at(-1498) });
+      await s.issueGoogleTicket({ ticketHash: 'new', email: 'a@x.co', challenge: 'c', now: at(0), expiresAt: at(2) });
+      await s.purgeGoogleTicketsBefore(at(-1440));
+      assert.deepEqual(await s.takeGoogleTicket('new', at(1)), { email: 'a@x.co', challenge: 'c' });
+      assert.equal(await s.takeGoogleTicket('old', at(-1499)), null, 'purged');
+    });
+
+    test('signIn with an address already stored finds that account for either sign-in method', async () => {
+      const first = await signIn('a@x.co', DEV, 'tokA', at(0));
+      const again = await signIn('a@x.co', DEV2, 'tokB', at(1));
+      assert.equal(again.created, false);
+      assert.equal(again.userId, first.userId);
+    });
+
     test('deleteUserByEmail finds the account or reports there is none', async () => {
       await signIn('a@x.co', DEV, 'tok1', at(0));
       assert.equal(await s.deleteUserByEmail('nobody@x.co'), false);

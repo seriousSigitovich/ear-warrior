@@ -15,7 +15,14 @@ export type AuthErrorCode =
   | 'auth_disabled'
   | 'store_failed'
   | 'server_error'
-  | 'network';
+  | 'network'
+  // Google sign-in (spec 022). The first two come from the server; the rest are decided on the device.
+  | 'google_disabled'
+  | 'invalid_ticket'
+  | 'unverified_email'
+  | 'expired'
+  | 'google_failed'
+  | 'browser_unavailable';
 
 export interface AuthError {
   code: AuthErrorCode;
@@ -35,6 +42,16 @@ export interface AuthClient {
   me(token: string): Promise<Result<{ email: string }>>;
   signOut(token: string): Promise<Result<void>>;
   deleteAccount(token: string): Promise<Result<void>>;
+  /** Spec 022: is Google sign-in switched on at the server? */
+  providers(): Promise<Result<{ google: boolean }>>;
+  /** Spec 022: the browser link for Google and the secret the return trip must present. */
+  googleStart(): Promise<Result<{ url: string; verifier: string }>>;
+  /** Spec 022: trade the one-time ticket from the return link (plus the verifier) for a session. */
+  googleExchange(
+    ticket: string,
+    verifier: string,
+    deviceId: string,
+  ): Promise<Result<{ token: string; email: string; created: boolean }>>;
 }
 
 const KNOWN_CODES: ReadonlySet<string> = new Set<AuthErrorCode>([
@@ -49,6 +66,8 @@ const KNOWN_CODES: ReadonlySet<string> = new Set<AuthErrorCode>([
   'invalid_session',
   'auth_disabled',
   'store_failed',
+  'google_disabled',
+  'invalid_ticket',
 ]);
 
 type Body = Record<string, unknown>;
@@ -120,5 +139,18 @@ export function createAuthClient(
     me: (token) => call('GET', '/api/auth/me', (b) => ({ email: String(b.email) }), { token }),
     signOut: (token) => call('POST', '/api/auth/signout', () => undefined, { token }),
     deleteAccount: (token) => call('DELETE', '/api/auth/account', () => undefined, { token }),
+    providers: () => call('GET', '/api/auth/providers', (b) => ({ google: b.google === true })),
+    googleStart: () =>
+      call('POST', '/api/auth/google/start', (b) => ({
+        url: String(b.url),
+        verifier: String(b.verifier),
+      })),
+    googleExchange: (ticket, verifier, deviceId) =>
+      call(
+        'POST',
+        '/api/auth/google/exchange',
+        (b) => ({ token: String(b.token), email: String(b.email), created: b.created === true }),
+        { body: { ticket, verifier, device_id: deviceId } },
+      ),
   };
 }

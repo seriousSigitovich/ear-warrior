@@ -177,6 +177,16 @@ export const loginCodes = pgTable('login_codes', {
   sourceHash: text('source_hash').notNull(),
 });
 
+/** Spec 022: one-time hand-over from the Google callback to the app; only sha256(ticket) is stored. */
+export const googleTickets = pgTable('google_tickets', {
+  ticketHash: text('ticket_hash').primaryKey(),
+  email: text('email').notNull(),
+  challenge: text('challenge').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  usedAt: timestamp('used_at', { withTimezone: true }),
+});
+
 /** Signed-in sessions; only sha256(token) is stored. */
 export const authSessions = pgTable('auth_sessions', {
   tokenHash: text('token_hash').primaryKey(),

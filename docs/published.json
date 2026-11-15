@@ -908,5 +908,25 @@
     "visibility": "public",
     "title": "8 years of guitar. Can't play the Wedding March.",
     "publishedAt": "2026-11-14T17:31:15.467Z"
+  },
+  {
+    "file": "assets/video/remotion/out/wood-silent.mp4",
+    "videoNo": 96,
+    "platform": "youtube",
+    "postId": "CZIPvAnn8MQ",
+    "url": "https://www.youtube.com/shorts/CZIPvAnn8MQ",
+    "visibility": "private",
+    "title": "Guitarists: can you play Silent Night by ear?",
+    "publishedAt": "2026-11-15T17:42:52.741Z"
+  },
+  {
+    "file": "assets/video/remotion/out/wood-silent.mp4",
+    "videoNo": 96,
+    "platform": "instagram",
+    "postId": "18038090231890938",
+    "url": "https://www.instagram.com/reel/DfxVyikEoMw/",
+    "visibility": "public",
+    "title": "Guitarists: can you play Silent Night by ear?",
+    "publishedAt": "2026-11-15T17:43:34.641Z"
   }
 ]

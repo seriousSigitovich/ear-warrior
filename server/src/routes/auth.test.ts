@@ -7,7 +7,7 @@ import type { FastifyInstance } from 'fastify';
 import { buildApp } from '../app.js';
 import { createMemoryStore } from '../auth/memoryStore.js';
 import { createRecordingMailer, type RecordingMailer } from '../auth/mailer.js';
-import type { AuthConfig, AuthDeps } from './auth.js';
+import { googleConfigFromEnv, type AuthConfig, type AuthDeps } from './auth.js';
 import type { AuthStore } from '../auth/store.js';
 
 const DEV = 'dev_00000000000000000000000000000001';
@@ -338,4 +338,18 @@ test('logs never contain the code or the session token', async () => {
   assert.ok(log.length > 0, 'the logger was actually capturing');
   assert.equal(log.includes(code), false, 'code in logs');
   assert.equal(log.includes(token), false, 'token in logs');
+});
+
+// ---------- spec 022: Google configuration from the environment ----------
+
+test('googleConfigFromEnv needs both id and secret and builds the redirect URI from the public API URL', () => {
+  assert.equal(googleConfigFromEnv({}), undefined);
+  assert.equal(googleConfigFromEnv({ GOOGLE_CLIENT_ID: 'id' }), undefined);
+  assert.equal(googleConfigFromEnv({ GOOGLE_CLIENT_SECRET: 's' }), undefined);
+  assert.deepEqual(googleConfigFromEnv({ GOOGLE_CLIENT_ID: 'id', GOOGLE_CLIENT_SECRET: 's' }), {
+    clientId: 'id',
+    clientSecret: 's',
+    redirectUri: 'https://ear-warrior-api.vercel.app/api/auth/google/callback',
+  });
+  assert.equal(googleConfigFromEnv({ GOOGLE_CLIENT_ID: 'id', GOOGLE_CLIENT_SECRET: 's', PUBLIC_API_URL: 'http://localhost:3000/' })?.redirectUri, 'http://localhost:3000/api/auth/google/callback');
 });

@@ -153,6 +153,16 @@ export async function applyDdl(sql: Sql): Promise<void> {
     create index if not exists login_codes_email_idx on login_codes (email, created_at desc);
     create index if not exists login_codes_source_idx on login_codes (source_hash, created_at desc);
 
+    -- Spec 022: Google-verified email handed from the callback to the app once; only the ticket's hash is kept.
+    create table if not exists google_tickets (
+      ticket_hash text primary key,
+      email       text not null,
+      challenge   text not null,
+      created_at  timestamptz not null default now(),
+      expires_at  timestamptz not null,
+      used_at     timestamptz
+    );
+
     create table if not exists auth_sessions (
       token_hash  text primary key,
       user_id     uuid not null references users (id) on delete cascade,

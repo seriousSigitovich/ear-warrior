@@ -11,6 +11,7 @@ import { createPgChallengeStore } from './challenges/pgStore.js';
 import type { ChallengeStore } from './challenges/override.js';
 import { registerSocial } from './routes/social.js';
 import { registerAuth, type AuthDeps } from './routes/auth.js';
+import { registerAuthGoogle } from './routes/authGoogle.js';
 import { registerUsers } from './routes/users.js';
 import { registerFunnel } from './routes/funnel.js';
 import { defaultAuthDeps } from './auth/defaults.js';
@@ -39,9 +40,29 @@ export interface BuildOptions {
   logger?: FastifyServerOptions['logger'];
 }
 
+/** Request logs carry the URL; on the Google callback its query holds the one-time `code` and `state` (spec 022 FR-016). */
+function withRedactedCallbackQuery(logger: BuildOptions['logger']): FastifyServerOptions['logger'] {
+  if (logger === false) return false;
+  const base = logger === true || logger === undefined ? {} : (logger as Record<string, unknown>);
+  const serializers = (base.serializers ?? {}) as Record<string, unknown>;
+  return {
+    ...base,
+    serializers: {
+      ...serializers,
+      req: (req: { method?: string; url?: string; host?: string; ip?: string; socket?: { remotePort?: number } }) => ({
+        method: req.method,
+        url: req.url?.startsWith('/api/auth/google/') ? req.url.split('?')[0] : req.url,
+        host: req.host,
+        remoteAddress: req.ip,
+        remotePort: req.socket?.remotePort,
+      }),
+    },
+  } as FastifyServerOptions['logger'];
+}
+
 export function buildApp(opts: BuildOptions = {}): FastifyInstance {
   const app = Fastify({
-    logger: opts.logger ?? true,
+    logger: withRedactedCallbackQuery(opts.logger),
     // Trust the proxy so client IPs/UA are read correctly behind a load balancer.
     trustProxy: true,
   });
@@ -62,6 +83,7 @@ export function buildApp(opts: BuildOptions = {}): FastifyInstance {
   registerSocial(app);
   const auth = opts.auth ?? defaultAuthDeps();
   registerAuth(app, auth);
+  registerAuthGoogle(app, auth);
   registerProgress(app, { auth: auth.store, progress: opts.progress ?? createPgProgressStore(db) });
   const challengeStore = opts.challengeStore ?? createPgChallengeStore(db);
   registerChallenges(app, { ...opts.challenges, store: challengeStore });

@@ -1,8 +1,8 @@
 // Postgres AuthStore (Drizzle). Tables: db/ddl.ts. Rules that must survive concurrent serverless
 // instances (attempt counting, single use, one open link per device) are single statements or one transaction.
-import { and, desc, eq, gte, isNull, lt, ne, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, gte, isNull, lt, ne, sql } from 'drizzle-orm';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
-import { authSessions, deviceLinks, loginCodes, users } from '../db/schema.js';
+import { authSessions, deviceLinks, googleTickets, loginCodes, users } from '../db/schema.js';
 import type { AuthStore } from './store.js';
 
 export function createPgStore(db: PostgresJsDatabase<Record<string, unknown>>): AuthStore {
@@ -123,6 +123,23 @@ export function createPgStore(db: PostgresJsDatabase<Record<string, unknown>>): 
       if (!u) return false;
       await this.deleteUser(u.id);
       return true;
+    },
+
+    async issueGoogleTicket({ ticketHash, email, challenge, now, expiresAt }) {
+      await db.insert(googleTickets).values({ ticketHash, email, challenge, createdAt: now, expiresAt });
+    },
+
+    async takeGoogleTicket(ticketHash, now) {
+      const [row] = await db
+        .update(googleTickets)
+        .set({ usedAt: now })
+        .where(and(eq(googleTickets.ticketHash, ticketHash), isNull(googleTickets.usedAt), gt(googleTickets.expiresAt, now)))
+        .returning({ email: googleTickets.email, challenge: googleTickets.challenge });
+      return row ?? null;
+    },
+
+    async purgeGoogleTicketsBefore(cutoff) {
+      await db.delete(googleTickets).where(lt(googleTickets.createdAt, cutoff));
     },
 
     async attributedEmail(deviceId, at) {

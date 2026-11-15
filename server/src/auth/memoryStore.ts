@@ -5,6 +5,7 @@ import type { AuthStore, CodeRow, SessionInfo } from './store.js';
 interface User { id: string; email: string }
 interface Link { deviceId: string; userId: string; linkedAt: Date; unlinkedAt: Date | null }
 interface Session { tokenHash: string; userId: string; deviceId: string; revokedAt: Date | null }
+interface Ticket { ticketHash: string; email: string; challenge: string; createdAt: Date; expiresAt: Date; usedAt: Date | null }
 interface CodeRecord extends CodeRow { sourceHash: string }
 
 export function createMemoryStore(): AuthStore {
@@ -12,6 +13,7 @@ export function createMemoryStore(): AuthStore {
   let codes: CodeRecord[] = [];
   let links: Link[] = [];
   let sessions: Session[] = [];
+  let tickets: Ticket[] = [];
 
   const userByEmail = (email: string) => users.find((u) => u.email === email);
   const toRow = ({ sourceHash: _omit, ...row }: CodeRecord): CodeRow => ({ ...row });
@@ -101,6 +103,21 @@ export function createMemoryStore(): AuthStore {
       if (!u) return false;
       await this.deleteUser(u.id);
       return true;
+    },
+
+    async issueGoogleTicket({ ticketHash, email, challenge, now, expiresAt }) {
+      tickets.push({ ticketHash, email, challenge, createdAt: now, expiresAt, usedAt: null });
+    },
+
+    async takeGoogleTicket(ticketHash, now) {
+      const t = tickets.find((x) => x.ticketHash === ticketHash);
+      if (!t || t.usedAt || t.expiresAt <= now) return null;
+      t.usedAt = now;
+      return { email: t.email, challenge: t.challenge };
+    },
+
+    async purgeGoogleTicketsBefore(cutoff) {
+      tickets = tickets.filter((t) => t.createdAt >= cutoff);
     },
 
     async attributedEmail(deviceId, at) {

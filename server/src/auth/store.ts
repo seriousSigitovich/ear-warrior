@@ -42,6 +42,11 @@ export interface AuthStore {
   deleteUser(userId: string): Promise<void>;
   /** Same by address (owner CLI). False when there is no such account. */
   deleteUserByEmail(email: string): Promise<boolean>;
+  /** Spec 022: stores a one-time hand-over of a Google-verified email (only the ticket's hash is kept). */
+  issueGoogleTicket(input: { ticketHash: string; email: string; challenge: string; now: Date; expiresAt: Date }): Promise<void>;
+  /** Marks the ticket used and returns what it carries; null when unknown, already used or expired. Atomic: true exactly once. */
+  takeGoogleTicket(ticketHash: string, now: Date): Promise<{ email: string; challenge: string } | null>;
+  purgeGoogleTicketsBefore(cutoff: Date): Promise<void>;
   /** Reference implementation of the attribution rule (data-model.md): whose is an event of `deviceId` at `at`? */
   attributedEmail(deviceId: string, at: Date): Promise<string | null>;
 }

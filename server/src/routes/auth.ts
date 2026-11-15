@@ -13,6 +13,7 @@ import type { Mailer } from '../auth/mailer.js';
 import { CODE_RETENTION_S, CODE_TTL_S, MAX_ATTEMPTS, RESEND_AFTER_S, WINDOW_S } from '../auth/policy.js';
 import type { AuthStore } from '../auth/store.js';
 import { generateToken, hashToken, parseBearer } from '../auth/tokens.js';
+import type { GoogleConfig } from '../auth/googleIdentity.js';
 
 export interface AuthConfig {
   /** Secret mixed into code and source hashes. Without it the routes answer 503. */
@@ -30,6 +31,19 @@ export interface AuthDeps {
   config: () => AuthConfig;
   /** Source of the 6-digit number; defaults to a CSPRNG. Tests pin it. */
   randomCode?: () => number;
+  /** Spec 022: the Google OAuth client, or undefined when Google sign-in is not configured. Read per request. */
+  google?: () => GoogleConfig | undefined;
+  /** Spec 022: the HTTP client used to reach Google's token endpoint. Tests inject a fake. */
+  fetch?: typeof fetch;
+}
+
+const DEFAULT_PUBLIC_API_URL = 'https://ear-warrior-api.vercel.app';
+
+/** Spec 022: Google sign-in is on only when both the client id and secret are set. */
+export function googleConfigFromEnv(env: Record<string, string | undefined> = process.env): GoogleConfig | undefined {
+  if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) return undefined;
+  const base = (env.PUBLIC_API_URL || DEFAULT_PUBLIC_API_URL).replace(/\/$/, '');
+  return { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET, redirectUri: `${base}/api/auth/google/callback` };
 }
 
 export function authConfigFromEnv(env: Record<string, string | undefined> = process.env): AuthConfig {

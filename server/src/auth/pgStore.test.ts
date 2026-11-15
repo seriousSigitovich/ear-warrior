@@ -20,7 +20,7 @@ if (!skip) {
 runStoreContract(
   'postgres',
   async () => {
-    await sql.unsafe('truncate users, login_codes, auth_sessions, device_links restart identity cascade');
+    await sql.unsafe('truncate users, login_codes, auth_sessions, device_links, google_tickets restart identity cascade');
     return createPgStore(db);
   },
   { skip },

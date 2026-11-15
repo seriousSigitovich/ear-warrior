@@ -52,6 +52,13 @@ function fakeClient(over: Partial<AuthClient> = {}): AuthClient & { calls: strin
     me: track('me', async () => ok({ email: 'a@x.co' })),
     signOut: track('signOut', async () => ok(undefined)),
     deleteAccount: track('deleteAccount', async () => ok(undefined)),
+    providers: track('providers', async () => ok({ google: true })),
+    googleStart: track('googleStart', async () =>
+      ok({ url: 'https://accounts.google.com/x', verifier: 'v'.repeat(43) }),
+    ),
+    googleExchange: track('googleExchange', async () =>
+      ok({ token: 'gtok', email: 'g@x.co', created: true }),
+    ),
     ...over,
   } as AuthClient & { calls: string[] };
 }
@@ -270,5 +277,129 @@ describe('auth service (device-side lifecycle)', () => {
       await service.signOut();
       expect(await service.pendingCode()).toBeNull();
     });
+  });
+});
+
+describe('Google sign-in (spec 022)', () => {
+  const link = (url = 'https://accounts.google.com/x') =>
+    jest.fn(async (u: string) => void u && url);
+
+  test('googleAvailable follows the server, and any failure hides it', async () => {
+    expect(await make().service.googleAvailable()).toBe(true);
+    expect(
+      await make({
+        client: fakeClient({ providers: async () => ok({ google: false }) }),
+      }).service.googleAvailable(),
+    ).toBe(false);
+    expect(
+      await make({
+        client: fakeClient({ providers: async () => fail('network') }),
+      }).service.googleAvailable(),
+    ).toBe(false);
+    expect(await make({ client: null }).service.googleAvailable()).toBe(false);
+  });
+
+  test('startGoogle keeps the verifier before it opens the browser', async () => {
+    const { service, kv } = make();
+    let stored = '';
+    const open = jest.fn(async () => {
+      stored = kv.data['ew.googlePending'];
+    });
+    expect(await service.startGoogle(open)).toEqual(ok(undefined));
+    expect(open).toHaveBeenCalledWith('https://accounts.google.com/x');
+    expect(JSON.parse(stored)).toEqual({ verifier: 'v'.repeat(43), startedAt: 1_000_000 });
+  });
+
+  test('startGoogle: offline or a server refusal opens nothing and keeps nothing', async () => {
+    const open = link();
+    const a = make({ client: fakeClient({ googleStart: async () => fail('network') }) });
+    expect(await a.service.startGoogle(open)).toEqual(fail('network'));
+    const b = make({ client: fakeClient({ googleStart: async () => fail('google_disabled') }) });
+    expect(await b.service.startGoogle(open)).toEqual(fail('google_disabled'));
+    expect(open).not.toHaveBeenCalled();
+    expect(a.kv.data['ew.googlePending'] ?? '').toBe('');
+  });
+
+  test('startGoogle: a browser that cannot open the link is a clear error and leaves nothing pending', async () => {
+    const { service, kv } = make();
+    const res = await service.startGoogle(async () => {
+      throw new Error('no activity');
+    });
+    expect(res).toEqual(fail('browser_unavailable'));
+    expect(kv.data['ew.googlePending'] ?? '').toBe('');
+  });
+
+  test('finishGoogle trades the ticket plus the stored verifier for a session, like a verified code', async () => {
+    const { service, session, kv, seen, client } = make();
+    await service.startGoogle(link());
+    const res = await service.finishGoogle('T'.repeat(43));
+    expect(res).toEqual(ok({ email: 'g@x.co', created: true }));
+    expect(session.current).toEqual({ token: 'gtok', email: 'g@x.co' });
+    expect(service.getState()).toEqual({ status: 'signedIn', email: 'g@x.co' });
+    expect(seen).toEqual([{ status: 'signedIn', email: 'g@x.co' }]);
+    expect(kv.data['ew.googlePending']).toBe('');
+    expect(kv.data['ew.lastEmail']).toBe('g@x.co');
+    expect((client as ReturnType<typeof fakeClient>).calls).toContain('googleExchange');
+  });
+
+  test('finishGoogle passes ticket, verifier and device id to the client', async () => {
+    const googleExchange = jest.fn(async () => ok({ token: 't', email: 'g@x.co', created: false }));
+    const { service } = make({ client: fakeClient({ googleExchange }) });
+    await service.startGoogle(link());
+    await service.finishGoogle('T'.repeat(43));
+    expect(googleExchange).toHaveBeenCalledWith('T'.repeat(43), 'v'.repeat(43), 'dev_1');
+  });
+
+  test('finishGoogle with nothing pending, or a verifier older than 10 minutes, sends nothing and says "expired"', async () => {
+    const a = make();
+    expect(await a.service.finishGoogle('T'.repeat(43))).toEqual(fail('expired'));
+    expect((a.client as ReturnType<typeof fakeClient>).calls).not.toContain('googleExchange');
+
+    const b = make();
+    await b.service.startGoogle(link());
+    now += 10 * 60 * 1000 + 1;
+    expect(await b.service.finishGoogle('T'.repeat(43))).toEqual(fail('expired'));
+    expect(b.service.getState()).toEqual({ status: 'anonymous' });
+    expect(b.kv.data['ew.googlePending']).toBe('');
+  });
+
+  test('finishGoogle failures leave the learner anonymous and clear the pending verifier', async () => {
+    for (const code of ['invalid_ticket', 'network', 'server_error'] as const) {
+      const { service, session, kv } = make({
+        client: fakeClient({ googleExchange: async () => fail(code) }),
+      });
+      await service.startGoogle(link());
+      expect(await service.finishGoogle('T'.repeat(43))).toEqual(fail(code));
+      expect(session.current).toBeNull();
+      expect(service.getState()).toEqual({ status: 'anonymous' });
+      expect(kv.data['ew.googlePending']).toBe('');
+    }
+  });
+
+  test('cancelGoogle drops a pending verifier', async () => {
+    const { service, kv } = make();
+    await service.startGoogle(link());
+    await service.cancelGoogle();
+    expect(kv.data['ew.googlePending']).toBe('');
+  });
+
+  test('sign-out after Google ends anonymous and the next start asks the server for a fresh link (FR-003, FR-009)', async () => {
+    const googleStart = jest.fn(async () =>
+      ok({ url: 'https://accounts.google.com/x', verifier: 'v'.repeat(43) }),
+    );
+    const { service, session } = make({ client: fakeClient({ googleStart }) });
+    await service.startGoogle(link());
+    await service.finishGoogle('T'.repeat(43));
+    await service.signOut();
+    expect(service.getState()).toEqual({ status: 'anonymous' });
+    expect(session.current).toBeNull();
+    await service.startGoogle(link());
+    expect(googleStart).toHaveBeenCalledTimes(2);
+  });
+
+  test('without an API url Google sign-in is unavailable and nothing is called', async () => {
+    const { service } = make({ client: null });
+    expect(await service.startGoogle(link())).toEqual(fail('auth_disabled'));
+    expect(await service.finishGoogle('T'.repeat(43))).toEqual(fail('auth_disabled'));
   });
 });

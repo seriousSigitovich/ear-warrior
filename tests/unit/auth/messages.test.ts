@@ -56,3 +56,31 @@ describe('actionable error copy (Constitution III)', () => {
     }
   });
 });
+
+describe('Google sign-in copy (spec 022)', () => {
+  test.each([
+    'unverified_email',
+    'expired',
+    'invalid_ticket',
+    'google_failed',
+    'google_disabled',
+    'browser_unavailable',
+  ] as const)('%s says what happened and what to do', (code) => {
+    const copy = describeError({ code });
+    expect(copy.title.length).toBeGreaterThan(5);
+    expect(copy.hint.length).toBeGreaterThan(10);
+  });
+  test('the expired and invalid-ticket cases share one message', () => {
+    expect(describeError({ code: 'invalid_ticket' })).toEqual(describeError({ code: 'expired' }));
+  });
+  test('the email route is offered where it helps', () => {
+    for (const code of [
+      'unverified_email',
+      'google_failed',
+      'google_disabled',
+      'browser_unavailable',
+    ] as const) {
+      expect(describeError({ code }).hint).toMatch(/email code/i);
+    }
+  });
+});

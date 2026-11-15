@@ -146,7 +146,7 @@ function AccountSection() {
   const confirmDelete = () =>
     Alert.alert(
       'Delete your account?',
-      'This removes your email and its link to your usage data. Practice history on this phone stays. This can’t be undone.',
+      'This removes your email and its link to your usage data. Practice history on this phone stays. Your Google account isn’t changed. This can’t be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -193,11 +193,7 @@ function AccountSection() {
               You’re practising anonymously. Signing in is optional — it only lets us follow up with
               you about feedback.
             </Text>
-            <Button
-              label="Sign in with email"
-              variant="secondary"
-              onPress={() => router.push('/sign-in')}
-            />
+            <Button label="Sign in" variant="secondary" onPress={() => router.push('/sign-in')} />
           </>
         )}
       </Card>

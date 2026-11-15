@@ -1,12 +1,21 @@
-// Optional email sign-in (spec 005): email -> 6-digit code, with a one-tap Skip at every step.
+// Optional sign-in (spec 005, 022): Google, or email -> 6-digit code, with a one-tap Skip at every step.
 // All decisions live in services/auth/flow.ts; this screen renders the state and performs the IO each
 // transition asks for. Nothing here gates a feature — dismissing it leaves the app fully usable.
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import {
+  AccessibilityInfo,
+  Linking,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Screen } from '../src/components/common/Screen';
 import { Kicker } from '../src/components/common/Kicker';
 import { Button } from '../src/components/common/Button';
+import { GoogleButton } from '../src/components/common/GoogleButton';
 import { getAuthService } from '../src/features/auth/authService';
 import {
   CodeStep,
@@ -17,6 +26,13 @@ import {
   reduce,
   resendSecondsLeft,
 } from '../src/services/auth/flow';
+import {
+  GoogleEvent,
+  GoogleState,
+  initialGoogle,
+  parseGoogleReturn,
+  reduceGoogle,
+} from '../src/services/auth/googleFlow';
 import { normalizeEmail } from '../src/lib/email';
 import { describeError } from '../src/services/auth/messages';
 import type { AuthError } from '../src/services/auth/client';
@@ -35,10 +51,59 @@ export default function SignIn() {
   const pending = useRef<CodeStep | null>(null);
   const lastStep = useRef<FlowState['step']>('email');
 
+  // Google sign-in (spec 022): the browser round-trip comes back as earwarrior://sign-in?ticket=… (or ?error=…).
+  const params = useLocalSearchParams<{ ticket?: string | string[]; error?: string | string[] }>();
+  const [google, setGoogle] = useState<GoogleState>(initialGoogle());
+  const [googleOn, setGoogleOn] = useState(false);
+  const handledGoogle = useRef<GoogleState | null>(null);
+  const handledLink = useRef('');
+  const ticketRef = useRef('');
+  const dispatchGoogle = useCallback(
+    (event: GoogleEvent) => setGoogle((s) => reduceGoogle(s, event)),
+    [],
+  );
+
   const dispatch = useCallback(
     (event: FlowEvent) => setFlow((s) => reduce(s, event, Date.now())),
     [],
   );
+
+  useEffect(() => {
+    void service.googleAvailable().then(setGoogleOn);
+  }, [service]);
+
+  // A return link is acted on once, whichever params re-render brings it.
+  useEffect(() => {
+    const link = parseGoogleReturn(params);
+    if (!link) return;
+    const key = link.kind === 'ticket' ? `t:${link.ticket}` : `e:${link.code}`;
+    if (handledLink.current === key) return;
+    handledLink.current = key;
+    if (link.kind === 'ticket') ticketRef.current = link.ticket;
+    else void service.cancelGoogle();
+    dispatchGoogle({ type: 'returned', link });
+  }, [params, service, dispatchGoogle]);
+
+  // Perform the IO of the current Google step exactly once per state object.
+  useEffect(() => {
+    if (handledGoogle.current === google) return;
+    handledGoogle.current = google;
+    if (google.step === 'starting') {
+      void service
+        .startGoogle((url) => Linking.openURL(url))
+        .then((result) => dispatchGoogle({ type: 'started', result }));
+    } else if (google.step === 'exchanging') {
+      void service
+        .finishGoogle(ticketRef.current)
+        .then((result) => dispatchGoogle({ type: 'exchanged', result }));
+    } else if (google.step === 'done') {
+      track('signin_done', { method: 'google' });
+      if (router.canGoBack()) router.back();
+      else router.replace('/');
+    } else if (google.step === 'idle' && google.error) {
+      track('signin_error', { step: 'google', error: google.error.code });
+    }
+  }, [google, service, dispatchGoogle, router]);
 
   // Show the offer once: opening this screen counts as having seen it, however it ends.
   useEffect(() => {
@@ -133,19 +198,44 @@ export default function SignIn() {
         : undefined;
   const error: AuthError | undefined =
     flow.step === 'email' || flow.step === 'code' ? flow.error : undefined;
+  const googleBusy = google.step === 'starting' || google.step === 'exchanging';
+  const googleError = google.step === 'idle' ? google.error : undefined;
 
   return (
     <Screen edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
         <Kicker>Sign in</Kicker>
         <Text style={styles.title} accessibilityRole="header">
-          {codeStep ? 'Enter your code' : 'Sign in with email'}
+          {codeStep ? 'Enter your code' : googleOn ? 'Sign in' : 'Sign in with email'}
         </Text>
         <Text style={styles.blurb}>
           {codeStep
             ? `We sent a 6-digit code to ${codeStep.email}. It works for 10 minutes. Not there? Check spam.`
             : 'Sign in so we can reach out about your feedback. Practice works without it.'}
         </Text>
+
+        {!codeStep && googleOn ? (
+          <>
+            <GoogleButton
+              onPress={() => dispatchGoogle({ type: 'tap' })}
+              disabled={googleBusy}
+              busyLabel={
+                google.step === 'starting'
+                  ? 'Opening Google…'
+                  : google.step === 'exchanging'
+                    ? 'Signing you in…'
+                    : undefined
+              }
+            />
+            {google.step === 'waiting' ? (
+              <Text style={styles.waiting} accessibilityLiveRegion="polite">
+                Finish in your browser, then come back to the app.
+              </Text>
+            ) : null}
+            <ErrorNote error={googleError} />
+            <Text style={styles.or}>or use an email code</Text>
+          </>
+        ) : null}
 
         {!codeStep ? (
           <>
@@ -280,6 +370,14 @@ const styles = StyleSheet.create({
   errorTitle: { color: colors.warm, fontSize: 14, fontWeight: font.weightSemibold },
   errorHint: { color: textAlpha[70], fontSize: 13, lineHeight: 19 },
   cta: { marginTop: 18, minHeight: 52 },
+  waiting: {
+    color: textAlpha[70],
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: 10,
+    textAlign: 'center',
+  },
+  or: { color: textAlpha[55], fontSize: 13, textAlign: 'center', marginVertical: 18 },
   second: { marginTop: 10 },
   link: { marginTop: 10, minHeight: 48, alignSelf: 'center' },
   spacer: { flex: 1, minHeight: 24 },

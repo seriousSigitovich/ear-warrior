@@ -11,7 +11,7 @@
 | Итог каждого ответа: уровень, длина, верно/нет, сколько нот совпало/неверно/пропущено | всегда | наш сервер | `attempt_log` |
 | События: `app_open`, `onboarding_done`, `session_start`, `session_end` (длина, число попыток) | всегда | наш сервер | `app_events` |
 | Краши: ошибка, версия, модель, версия Android | при сбое | Sentry | — |
-| Email | только при входе | наш сервер, почтовый сервис, Sentry | `users`, `login_codes` |
+| Email | только при входе (код на почту или «Continue with Google»: от Google приходит только email и флаг «подтверждён», без имени и фото) | наш сервер, почтовый сервис (только для кода), Sentry | `users`, `login_codes`, `google_tickets` (2 минуты, только хеш билета) |
 | Прогресс аккаунта: мелодия, поставленные ноты и их оценка, сложность | только при входе | наш сервер | `progress_attempts`, `progress_difficulty` |
 | Хеш IP | при запросе кода | наш сервер | `login_codes.source_hash` (только лимиты, не геолокация) |
 
@@ -30,7 +30,7 @@
 
 | Раздел формы | Тип | Обязательно? | Цели |
 |---|---|---|---|
-| Personal info | Email address | Optional | Account management, Developer communications, Analytics |
+| Personal info | Email address | Optional (код на почту или Google) | Account management, Developer communications, Analytics |
 | App activity | App interactions | Required | Analytics, App functionality |
 | App activity | Other user-generated content | Optional (только с аккаунтом) | App functionality |
 | App info and performance | Crash logs | Required | Analytics |
