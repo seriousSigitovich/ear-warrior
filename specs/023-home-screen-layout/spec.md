@@ -4,8 +4,8 @@
 
 **Created**: 2026-11-15
 
-**Status**: Implemented 2026-11-15, not released. Checked on the emulator (the last-result block with a real
-attempt); a half-answered phrase still to be seen there (T024). Needs an OTA.
+**Status**: Implemented and released by OTA on 2026-11-16 (production, group `a19a736e`, commit `545d588`); checked
+on the emulator at 360×640 dp and on a tall phone, not yet seen on a real phone.
 
 **Input** (third round, 2026-11-15): "Home looks boring and like a pile of stuff — propose improvements." Of twelve
 pictured directions the owner chose no. 11, the sounding strings, and added: the strings are animated as endless
