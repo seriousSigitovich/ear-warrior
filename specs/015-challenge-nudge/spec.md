@@ -41,7 +41,7 @@ adding a number to read.
 
 - **FR-001**: Home MUST show a pulsing dot on the daily challenges tile while any of today's challenges is not
   completed, and MUST NOT show it when all are completed or the standing is not loaded; it MUST NOT be shown on
-  the Progress button.
+  the Progress button. *(Amendment 2026-11-15: while the daily challenges are hidden, [spec 023](../023-home-screen-layout/spec.md) FR-008, there is no tile and no dot on Home; they return with the tile.)*
 - **FR-002**: The number of challenges left MUST come from one pure function over the day's challenge states.
 - **FR-003**: The accessibility label of the marked tile MUST say how many challenges are left.
 - **FR-004**: No new analytics event, no new dependency.

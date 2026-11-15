@@ -127,7 +127,7 @@ does not.
 - **FR-007**: The streak MUST count consecutive local days with at least one XP award, and MUST NOT reset because
   the app was opened.
 - **FR-008**: Persistence MUST use the existing local store and survive restarts, and MUST NOT reset existing data.
-- **FR-009**: Home MUST show rank, XP progress, streak and an entry to Daily Challenges; a Daily Challenges screen
+- **FR-009**: Home MUST show rank, XP progress, streak and an entry to Daily Challenges *(amended 2026-11-15, [spec 023](../023-home-screen-layout/spec.md): rank and streak as cards, the week strip; the Daily Challenges entry is hidden for now)*; a Daily Challenges screen
   and a Musical Journey (ranks and nine levels) screen MUST exist; a rank-up MUST show a celebratory modal once.
 - **FR-010**: The closing card MUST show what the melody just finished earned; phrase results MUST show phrase XP.
 - **FR-011**: Events `exercise_completed`, `xp_earned`, `rank_up`, `mastery_unlocked`, `daily_challenge_started`,

@@ -90,4 +90,4 @@ on another device, and carry on.
 
 - Resuming does not pay phrase XP again for earlier phrases (they are not replayed); replaying them from phrase 1
   pays like any replay (spec 013).
-- Practice from "Start practice" keeps picking a new melody; a Continue card on Home is a later step.
+- Practice from "Start practice" keeps picking a new melody; a Continue card on Home is a later step. *(Amendment 2026-11-15: done in [spec 023](../023-home-screen-layout/spec.md), which also offers the melody last opened when nothing was answered in it.)* *(Amendment 2026-11-15: done in [spec 023](../023-home-screen-layout/spec.md), which also offers the melody last opened when nothing was answered in it.)*
