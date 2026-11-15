@@ -11,6 +11,7 @@ import { daysLabel, weekPracticeDays } from '../src/lib/streak';
 import { useGamification } from '../src/features/gamification/useGamification';
 import { useContinueTarget } from '../src/features/progress/useContinueTarget';
 import { catalogTune } from '../src/services/melody/catalog';
+import { answeredPhraseNotes } from '../src/services/melody/neckNotes';
 import { createAudioPlayback } from '../src/services/audio/playback';
 import { createAudioSession } from '../src/services/audio/session';
 import { AttentionDot } from '../src/components/gamification/AttentionDot';
@@ -38,6 +39,11 @@ export default function Home() {
   // Where Continue leads: the melody left half-way, or the one last opened even if nothing was answered in it.
   const resume = useContinueTarget();
   const resumeTune = resume ? catalogTune(resume.tuneId) : null;
+  // The notes of the phrase answered last, lit on the neck (none for a melody only opened).
+  const neckNotes = useMemo(
+    () => (resume?.saved ? answeredPhraseNotes(resume.tuneId, resume.answered) : []),
+    [resume],
+  );
   const rank = game?.rank;
   const rankXp = rank
     ? rank.next
@@ -115,7 +121,7 @@ export default function Home() {
           </View>
         )}
 
-        <StringsHero onPluck={pluck} />
+        <StringsHero onPluck={pluck} notes={neckNotes} />
 
         {resume && resumeTune ? (
           <>
