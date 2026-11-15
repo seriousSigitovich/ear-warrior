@@ -71,3 +71,11 @@ export function weekDays(
     };
   });
 }
+
+/** Days with practice in the current week, Monday up to and including `today`. */
+export function weekPracticeDays(active: ReadonlySet<string>, today: string): number {
+  const sinceMonday = (noonOf(today).getDay() + 6) % 7;
+  let n = 0;
+  for (let back = 0; back <= sinceMonday; back++) if (active.has(shiftDay(today, -back))) n++;
+  return n;
+}
