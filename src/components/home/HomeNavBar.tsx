@@ -53,7 +53,7 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.divider,
   },
-  item: { flex: 1, minHeight: 60, alignItems: 'center', justifyContent: 'center', gap: 3 },
+  item: { flex: 1, minHeight: 56, alignItems: 'center', justifyContent: 'center', gap: 3 },
   pressed: { backgroundColor: withAlpha(colors.accent, 0.14) },
   icon: { width: ICON, height: ICON },
   label: { color: colors.accentRamp[400], fontSize: 11 },
