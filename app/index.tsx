@@ -88,7 +88,7 @@ export default function Home() {
         showsVerticalScrollIndicator={false}
         bounces={false}
       >
-        <Kicker>Ear Warrior</Kicker>
+        <Kicker style={styles.center}>Ear Warrior</Kicker>
         {resume && resumeTune ? (
           <View style={styles.title}>
             <Kicker style={styles.where}>
@@ -221,19 +221,21 @@ const styles = StyleSheet.create({
   // A little room at the sides so the attention dot, which sits half outside its item, is not cut.
   flex: { flex: 1, marginHorizontal: -8 },
   scroll: { flexGrow: 1, paddingHorizontal: 8, paddingBottom: 8 },
-  title: { marginTop: 14, marginBottom: 6 },
+  center: { textAlign: 'center' },
+  title: { marginTop: 14, marginBottom: 6, alignItems: 'center' },
   // The free height between the melody and the main button; the last result sits in the middle of it.
   mid: { flex: 1, justifyContent: 'center', minHeight: 150, paddingVertical: 12 },
-  intro: { color: textAlpha[65], fontSize: 16, lineHeight: 24 },
-  where: { fontSize: 10 },
+  intro: { color: textAlpha[65], fontSize: 16, lineHeight: 24, textAlign: 'center' },
+  where: { fontSize: 10, textAlign: 'center' },
   name: {
     color: colors.text,
     fontSize: 30,
     lineHeight: 35,
     fontWeight: font.weightHeading,
     marginTop: 6,
+    textAlign: 'center',
   },
-  meta: { color: textAlpha[55], fontSize: 14, marginTop: 4 },
+  meta: { color: textAlpha[55], fontSize: 14, marginTop: 4, textAlign: 'center' },
   cta: { minHeight: 54, marginTop: 14 },
   link: { alignSelf: 'center', marginTop: 4 },
   strip: { flexDirection: 'row', alignItems: 'center', marginTop: 10, paddingVertical: 4 },
