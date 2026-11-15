@@ -38,31 +38,24 @@ src/lib/streak.ts                          # + weekPracticeDays
 src/lib/heroScale.ts                       # - isCompact, COMPACT_BELOW
 src/features/progress/useContinueTarget.ts # NEW hook: places + last opened, re-read on focus
 src/components/home/HomeNavBar.tsx         # NEW bottom bar
-src/components/home/StringsHero.tsx        # NEW the moving, sounding strings
-src/lib/openStrings.ts                     # NEW string at a touch, its note, sine keyframes
-src/lib/neckNotes.ts                       # NEW notes → neck positions, frets to scale, a pinned string's arc
-src/services/melody/neckNotes.ts           # NEW the last answered phrase of a tune as neck positions
-src/services/audio/playback.ts             # + pluck (rings alongside, cuts nothing)
+src/components/home/LastResultBlock.tsx    # NEW the last result, note by note
+src/lib/lastResult.ts                      # NEW which result, its chips, its line
 assets/nav/*.svg, *.png                    # NEW icons (Tabler outline, MIT)
 scripts/build-nav-icons.sh                 # NEW renders the PNGs (rsvg-convert)
 app/index.tsx                              # Home rebuilt
 app/practice.tsx                           # records / clears the last opened melody
-tests/unit/lib/lastOpened.test.ts, openStrings.test.ts, neckNotes.test.ts, tests/unit/melody/neckNotes.test.ts, streak.test.ts, tests/contract/playback.test.ts, melodyProgress.test.ts, heroScale.test.ts
+tests/unit/lib/lastOpened.test.ts, lastResult.test.ts, streak.test.ts, melodyProgress.test.ts, heroScale.test.ts
 ```
 
-## The neck
+## The last result
 
-A stretch of neck drawn from Views: the nut, fret wires at the real 12-tone spacing (they crowd up the neck), inlays
-and numbers. Each string is a row of short segments pinned at the nut and the far edge; one looping clock
-(`Animated.Value`, native driver) drives a per-string swing (cos, a different phase per string) multiplied by the
-string's own amplitude, which a pluck raises and lets fall; a segment's lift and tilt are the arc and slope of a
-string pinned at both ends there. About 20 segments a string. Touches go to one responder view (children ignore
-them) so the touch height maps straight to a string. The lit notes are the last answered phrase of the tune
-(`answeredPhraseNotes`), placed by `neckPositions`; phrases not yet answered are never drawn.
+`continueTarget` carries the results and time of the last answered phrase of a saved place; `lastResult` picks that,
+else the latest finished attempt of the melody, else of any melody (named), and turns it into chips and a line. The
+block is a fade-in view; nothing else moves. The strings and the neck tried before it are in the history
+(`34e86fe`, `2963ce1`) and removed.
 
 ## Risks
 
-- The strings are about 400 native animation nodes; a very modest phone may stutter (T017).
 
 - Layout fit is checked by eye on the emulator; no unit test sees layout.
 - "Last opened" is not synced: on a second device only saved places continue.

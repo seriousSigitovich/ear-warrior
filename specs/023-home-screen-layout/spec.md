@@ -4,14 +4,16 @@
 
 **Created**: 2026-11-15
 
-**Status**: Implemented 2026-11-15, not released. Checked on the emulator (strings moving, a pluck swelling the string
-and starting the player); not yet heard on a phone (T017). Needs an OTA.
+**Status**: Implemented 2026-11-15, not released. Checked on the emulator (the last-result block with a real
+attempt); a half-answered phrase still to be seen there (T024). Needs an OTA.
 
 **Input** (third round, 2026-11-15): "Home looks boring and like a pile of stuff — propose improvements." Of twelve
 pictured directions the owner chose no. 11, the sounding strings, and added: the strings are animated as endless
 waves, and touching them plays the open strings. Seen on the emulator it looked odd (strings waving like weed, bare
 and floating); the owner asked for it to look organic and on theme and chose the neck with notes (variant A): strings
-pinned at a nut, frets to scale, the notes lit.
+pinned at a nut, frets to scale, the notes lit. Then: "everything on Home is fine except the neck; it looks silly,
+off-theme and solves nothing — propose something else". Of four useful options (hear the phrase, last attempt, the
+path of levels, the week in notes) the owner chose *Last attempt*. The strings and the neck were removed.
 
 **Input** (first round): Owner (2026-11-15): "the home screen does not fit small screens and scrolls — optimise it, show several
 layouts as a picture first." Of three layouts the owner chose B, the bottom bar, and then asked for it on every screen
@@ -32,12 +34,10 @@ smallest windows. Spec 017 left "a Continue card on Home" for later; this is tha
 ## The screen
 
 Top to bottom: the brand · the melody to continue (*Where you stopped* / *Last opened*, its name, "Level 1 · Phrase 2
-of 2"), or "Train your ear" when there is none · **a stretch of guitar neck**: nut, fret wires to scale (1–12), inlays,
-fret numbers, six strings (three plain, three wound in the palette's warm tone) pinned at the nut and the far edge,
-the notes of the phrase answered last lit on it · the main button (Continue, or Start practice) with a quiet "Start
-something new" link under Continue · a strip of three numbers (streak, rank with "40 / 100 XP", days practised this
-week) · the bottom bar. No cards. The same on every phone; on a tall one the neck stays 290 dp tall and centred in
-the free room.
+of 2"), or "Train your ear" when there is none · **the last result**: how the last phrase (or attempt) went, note by
+note, in the free height · the main button (Continue, or Start practice) with a quiet "Start something new" link under
+Continue · a strip of three numbers (streak, rank with "40 / 100 XP", days practised this week) · the bottom bar. No
+cards. The same on every phone.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -46,7 +46,7 @@ the free room.
 **Acceptance Scenarios**:
 
 1. **Given** a 360×640 dp phone, **When** Home opens, **Then** every control is visible without scrolling.
-2. **Given** a tall phone, **When** Home opens, **Then** the strings take the extra height.
+2. **Given** a tall phone, **When** Home opens, **Then** the free height goes to the last result, which stays in the middle of it.
 3. **Given** a window too short even for this, **When** Home opens, **Then** it scrolls and no control is cut off.
 
 ### User Story 2 - Continue where I was (Priority: P1)
@@ -73,21 +73,21 @@ the free room.
 3. **Given** the daily challenges are shown (flag on), **Then** the third item is "N / 3 challenges" with the
    attention dot and opens them.
 
-### User Story 6 - The neck (Priority: P1)
+### User Story 6 - See how the last go went (Priority: P1)
 
 **Acceptance Scenarios**:
 
-1. **Given** Home is on screen, **Then** the six strings (thin high e on top, thick low E at the bottom) swing gently
-   in one arc each, pinned at the nut and the far edge, endlessly and a little out of step.
-2. **Given** a string is touched, **Then** that string swells and settles and the open string sounds (E2 A2 D3 G3 B3
-   E4).
-3. **Given** a finger is dragged across the strings, **Then** each string it crosses is plucked in turn and they ring
-   together (a strum), without cutting one another.
-4. **Given** one or more phrases of the melody are answered, **Then** the notes of the last answered phrase are lit on
-   the neck at positions that sound them, joined in order, the last one brighter; **given** none is answered, **then**
-   no note is lit. The notes of phrases not yet answered are never shown (they would give the answer away).
-5. **Given** Home is not on screen (Practice is open over it), **Then** the animation stops; **given** reduced motion,
-   **then** the strings do not move on their own (a pluck still swells the string).
+1. **Given** a phrase of the melody on screen was answered, **Then** the block reads "Last phrase · yesterday",
+   "6 of 8 notes", one chip per note named without its octave (landed: filled; wrong: warm outline; missed: quiet
+   outline) and a line: "Clean. Try the next one." when all landed, "N to go. Beat it." when 1–2 were missed, else
+   "Another go will lock it in."
+2. **Given** no phrase was answered but the melody has a finished attempt, **Then** it shows "Last attempt" for that
+   melody; **given** neither, **then** the latest finished attempt of any melody, named ("Last attempt · Hot Cross
+   Buns · 4 days ago"), so it is never taken for the melody on screen.
+3. **Given** there is no phrase and no attempt at all (a new learner), **Then** the block is a line saying how the
+   app works instead.
+4. **Given** a result of more than 16 notes, **Then** the first 16 are shown and "+N" counts the rest.
+5. **Given** the result changes, **Then** the block fades in (not under reduced motion).
 
 ### User Story 4 - Navigation as a bottom bar (Priority: P2)
 
@@ -109,7 +109,7 @@ the free room.
 
 - **FR-001**: Home MUST use one layout for every window height; the compact mode and the waveform are removed.
 - **FR-002**: Home MUST fit a 360×640 dp window without scrolling and MUST fall back to scrolling, never to clipping.
-- **FR-003**: Home MUST have no cards: the melody, the strings, the main button and the strip sit directly on the screen; the strings take the free height.
+- **FR-003**: Home MUST have no cards: the melody, the last result, the main button and the strip sit directly on the screen; the last result takes the free height.
 - **FR-004**: The bottom bar MUST hold Melodies, Progress and Settings, each at least 56 dp tall, with icon and label
   and a screen-reader label; the icons are bundled PNGs (Tabler outline, MIT), no new dependency.
 - **FR-005**: Continue MUST be offered for the most recently changed saved place that still fits its tune, unless a
@@ -119,10 +119,7 @@ the free room.
 - **FR-007**: Continue MUST open `/practice?tune=<id>&resume=1` for a saved place and `/practice?tune=<id>` for a
   melody only opened.
 - **FR-008**: Daily challenges MUST be hidden behind one flag (`SHOW_DAILY_CHALLENGES`); with it off the strip shows the days practised this week and there is no challenges item or attention dot (spec 015); turning it on brings them back as the strip's third item.
-- **FR-009**: The neck MUST be drawn from plain Views (no SVG, no new dependency, so it ships by OTA): a nut, fret wires to scale, inlays and numbers; six strings pinned at both ends, each a row of short segments tilted to the string's arc, moving without end on the native driver, out of step, plain strings light and wound ones in the palette's warm tone.
-- **FR-016**: A touch MUST pluck the string under the finger (it swells and settles) and sound its open note through `AudioPlayback.pluck`, which cuts nothing that rings; a drag across strings plucks each in turn.
-- **FR-018**: The neck MUST light the notes of the last answered phrase of the melody to continue, at positions that sound exactly those notes, preferring the string nearest the previous note; it MUST NOT show notes of phrases not yet answered. The positions are decoration: no answer is ever taken from them.
-- **FR-017**: The animation MUST run only while Home is focused and MUST respect reduced motion.
+- **FR-009**: Home MUST show the last result (US6): of the melody on screen first (its last answered phrase, else its last finished attempt), else the latest attempt of any melody with its name; note names come from the target notes (already answered, so nothing is given away); a result with no target notes is not shown.
 
 ### Key Entities
 
@@ -135,11 +132,11 @@ the free room.
 - **SC-002**: Open a melody, answer nothing, leave: Home shows "Last opened" with that tune within one visit.
 - **SC-003**: Answer two phrases, leave: Continue opens at phrase 3 with the first two marked answered.
 - **SC-004**: Finish the melody: Continue is gone (or points at another).
-- **SC-005**: The strings move on their own; a tap on one swells it and sounds the right open string; a swipe across all six sounds six notes that ring together.
+- **SC-005**: Answer a phrase and leave: Home shows that phrase's result note by note; with none answered, the melody's last attempt or the latest attempt named.
 
 ## Assumptions
 
 - The owner decides when the daily challenges return; this spec only hides them.
-- The neck lights only phrases already answered, by design: showing where the next ones sit would defeat playing by ear.
+- The chips name notes that were already answered, never the ones still to find.
 - Specs 013 FR-009 and 015 FR-001 are amended by FR-008 while the flag is off; spec 017's "a Continue card on Home is a
   later step" is done here.

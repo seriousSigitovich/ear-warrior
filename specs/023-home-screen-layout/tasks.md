@@ -14,21 +14,20 @@ Test tasks come first in each group (constitution II). `[US#]` is the user story
 - [X] T005 [US1, US3, US4, FR-001, FR-003, FR-008] Home rebuilt: one layout, cards pinned and 8 dp apart, bottom bar; `isCompact` and the waveform removed
 - [X] T006 [US2, FR-006, FR-007] `useContinueTarget`, Continue card; Practice records and clears the last opened melody
 
-## Strings (third round)
+## Strings and neck (third round, superseded)
 
-- [X] T012 [US6, FR-016] Contract: failing test, then `AudioPlayback.pluck` (rings alongside, cuts nothing)
-- [X] T013 [US6, FR-009, FR-016] Pure: failing tests, then `src/lib/openStrings.ts` (string at a touch, its note, the sine keyframes); `weekPracticeDays` in `streak.ts`
-- [X] T014 [US6, FR-009, FR-016, FR-017] `StringsHero` (wave segments on one native clock, pluck swell, ring, strum by drag)
-- [X] T015 [US3, FR-003, FR-008] Home rebuilt without cards: melody, strings, main button, strip
-- [X] T016 [SC-005] Emulator: strings move, a tap swells the string under the finger and starts the player; a swipe starts several; smooth lines, no staircase
-- [X] T018 [US6, FR-009, FR-018] Pure: failing tests, then `src/lib/neckNotes.ts` (neck positions of notes, fret scale, standing wave) and `src/services/melody/neckNotes.ts` (last answered phrase of a tune)
-- [X] T019 [US6, FR-009, FR-018] `StringsHero` rebuilt as a neck: nut, frets to scale, inlays, numbers, pinned strings, lit notes; Home passes the notes
-- [X] T020 [SC-005] Emulator: the neck looks like a neck, notes of an answered phrase sit on the right frets (checked with a temporary preview of Hot Cross Buns), a tap starts the player
-- [ ] T017 [SC-005] On a phone, by ear: the six open strings are the right notes, a strum rings together, and the animation is smooth on a modest phone
+- [X] T012…T020 Sounding strings, then a neck with the answered notes lit (commits `34e86fe`, `2963ce1`). Dropped in the fourth round: the owner found the neck off-theme and useless. The code is removed, along with `AudioPlayback.pluck`.
+
+## Last result (fourth round)
+
+- [X] T021 [US6, FR-009] Pure: failing tests, then `src/lib/lastResult.ts` (when, the line, the summary and its choice) and `last` on the continue target
+- [X] T022 [US6, FR-009] `LastResultBlock`; Home shows it in the free height, with the intro line for a new learner
+- [X] T023 [SC-005] Emulator: the block shows the latest attempt, named, with chips and the line
+- [ ] T024 [SC-005] Emulator: a half-answered phrase shows "Last phrase" with its own result
 
 ## Verification
 
-- [X] T007 Checks: jest 629, typecheck, lint
+- [X] T007 Checks: jest 621, typecheck, lint
 - [X] T008 [SC-001] Emulator: week card, rank row, bottom bar, no scroll (owner's screenshots)
 - [ ] T009 [SC-002…SC-004] Emulator: Continue card with a saved place and with a melody only opened; gone after finishing
 - [ ] T010 [SC-001] Emulator at 360×640 dp with a large system font
