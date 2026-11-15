@@ -493,6 +493,9 @@ export default function Practice() {
   const showFeedback = loop.phase === 'feedback' && !!grade;
   const complete = loop.phase === 'complete';
   const answering = loop.phase === 'awaitingInput';
+  // Until the first melody is served the loop sits in `idle`: draw nothing then, or the old idle screen
+  // (header, waveform, speed slider) flashes for a second before the answer screen opens.
+  const starting = loop.phase === 'idle' && !startFailed;
   const noteCount = loop.phrase?.notes.length ?? 0;
   const stuck = showFeedback && grade!.verdict !== 'correct' && shouldOfferHelp(loop.fails);
 
@@ -612,7 +615,7 @@ export default function Practice() {
             : undefined,
         }}
       />
-      {answering ? null : (
+      {answering || starting ? null : (
         <View style={styles.header}>
           <Kicker>Practice</Kicker>
           <Tag label={`Level ${shownRank} of ${MAX_RANK}`} />
@@ -666,15 +669,15 @@ export default function Practice() {
           flash={flash}
           player={player}
         />
-      ) : (
+      ) : starting ? null : (
         <PracticeStage phase={loop.phase} />
       )}
 
-      {answering ? null : <SpeedSlider speed={speed} onChange={changeSpeed} />}
+      {answering || starting ? null : <SpeedSlider speed={speed} onChange={changeSpeed} />}
 
       {/* The result screens keep their buttons; the answer screen has none (its row and Check are in the board's
           stage). Fixed height whatever the controls, so the speed slider stays put between phases. */}
-      {answering ? null : (
+      {answering || starting ? null : (
         <View style={styles.controls}>
           {loop.phase === 'idle' && !startFailed ? null : (
             <TransportControls
