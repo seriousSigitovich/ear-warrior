@@ -34,18 +34,31 @@ three ways to fill the free space (two buttons, card with the week, wave with a 
 ```text
 src/lib/lastOpened.ts                      # NEW last-opened store helpers + continueTarget
 src/lib/melodyProgress.ts                  # + latestPlace
+src/lib/streak.ts                          # + weekPracticeDays
 src/lib/heroScale.ts                       # - isCompact, COMPACT_BELOW
 src/features/progress/useContinueTarget.ts # NEW hook: places + last opened, re-read on focus
 src/components/home/HomeNavBar.tsx         # NEW bottom bar
-src/components/progress/WeekStrip.tsx      # + showCount
+src/components/home/StringsHero.tsx        # NEW the moving, sounding strings
+src/lib/openStrings.ts                     # NEW string at a touch, its note, sine keyframes
+src/services/audio/playback.ts             # + pluck (rings alongside, cuts nothing)
 assets/nav/*.svg, *.png                    # NEW icons (Tabler outline, MIT)
 scripts/build-nav-icons.sh                 # NEW renders the PNGs (rsvg-convert)
 app/index.tsx                              # Home rebuilt
 app/practice.tsx                           # records / clears the last opened melody
-tests/unit/lib/lastOpened.test.ts, melodyProgress.test.ts, heroScale.test.ts
+tests/unit/lib/lastOpened.test.ts, openStrings.test.ts, streak.test.ts, tests/contract/playback.test.ts, melodyProgress.test.ts, heroScale.test.ts
 ```
 
+## Strings
+
+Each string is a row of short segments. One looping clock (`Animated.Value`, native driver) feeds a shared set of
+interpolations (one sine, a lift and a tilt per segment position); a string reads the set from its own offset and
+multiplies it by its own amplitude, which a pluck raises and lets fall. Tilting each segment to the slope of the wave
+keeps the line smooth with few segments. About 20 segments a string, six strings. Touches go to one responder view
+(children ignore them) so the touch height maps straight to a string.
+
 ## Risks
+
+- The strings are about 400 native animation nodes; a very modest phone may stutter (T017).
 
 - Layout fit is checked by eye on the emulator; no unit test sees layout.
 - "Last opened" is not synced: on a second device only saved places continue.
