@@ -1,35 +1,37 @@
-// Home screen (T035), reworked in spec 023: a compact header, one primary card (Continue or Start practice), the
-// weekly activity, the rank, and a bottom bar. Everything is read from the reward service and the saved places.
+// Home screen (T035): start a practice session and navigate into the core loop.
+// Redesigned onto Nocturne — hero heading, a Continue card for the melody left half-way, the week strip,
+// the rank (spec 013), and a bottom bar.
 import React, { useCallback } from 'react';
-import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { KEY_VALUE_TABLE, defaultRowStore } from '../src/services/storage/db';
 import { keyValueOverRowStore } from '../src/lib/deviceId';
 import { isOnboarded } from '../src/lib/onboarding';
 import { heroScale, scaled } from '../src/lib/heroScale';
-import { homeGreeting } from '../src/lib/homeCopy';
-import { WEEKLY_GOAL_DAYS, weekDays, weekPracticeDays } from '../src/lib/streak';
+import { daysLabel, weekDays } from '../src/lib/streak';
 import { useGamification } from '../src/features/gamification/useGamification';
-import { useContinueTarget } from '../src/features/progress/useContinueTarget';
+import { Flame } from '../src/components/gamification/Flame';
+import { nextRankLine } from '../src/components/progress/RankCard';
+import { WeekStrip } from '../src/components/progress/WeekStrip';
 import { catalogTune } from '../src/services/melody/catalog';
-import { DailyChallengeCard } from '../src/components/home/DailyChallengeCard';
+import { useContinueTarget } from '../src/features/progress/useContinueTarget';
+import { RankIcon } from '../src/components/gamification/RankIcon';
 import { HomeNavBar } from '../src/components/home/HomeNavBar';
-import { PracticeCard } from '../src/components/home/PracticeCard';
-import { RankXpCard } from '../src/components/home/RankXpCard';
-import { WeeklyActivityCard } from '../src/components/home/WeeklyActivityCard';
 import { Screen } from '../src/components/common/Screen';
+import { Button } from '../src/components/common/Button';
 import { Kicker } from '../src/components/common/Kicker';
 import { ensureAuthReady, getAuthService } from '../src/features/auth/authService';
-import { colors, font } from '../src/theme/nocturne';
+import { colors, font, radius, textAlpha, withAlpha } from '../src/theme/nocturne';
 
-// Daily challenges are hidden for now (unfinished); flip to true to bring them back: the Daily Challenge card
-// shows the first one not done, and today's ring in the week strip counts them again.
+// Daily challenges are hidden for now (unfinished); flip to true to bring them back: today's ring in the week
+// strip then counts them again (the old tile with its attention dot is in the git history).
 const SHOW_DAILY_CHALLENGES = false;
 
 export default function Home() {
   const router = useRouter();
-  // The greeting grows a little on tall phones.
-  const s = heroScale(useWindowDimensions().height);
+  // The hero block grows on tall phones instead of leaving most of the screen empty.
+  const windowHeight = useWindowDimensions().height;
+  const s = heroScale(windowHeight);
   // The standing (rank, XP, streak, challenges): re-read on focus, so it is fresh after practice.
   const game = useGamification();
   const challengesDone = game?.challenges.filter((c) => c.completed).length ?? 0;
@@ -45,7 +47,6 @@ export default function Home() {
           : d,
       )
     : [];
-  const openChallenge = game?.challenges.find((c) => !c.completed) ?? null;
 
   // First launch: the first melody, then the sign-in offer (spec 005 FR-003) — each once, never blocking (both
   // have Skip). On focus rather than mount, so the offer follows onboarding when it pops back to Home.
@@ -71,50 +72,117 @@ export default function Home() {
 
   return (
     <Screen style={styles.screen}>
-      {/* Scrolls only on a window too short for the cards, never cutting a button off. */}
+      {/* One layout for every phone: scrolls only on a window too short even for this, never cutting a button off. */}
       <ScrollView
         style={styles.flex}
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
         bounces={false}
       >
-        <View style={styles.header}>
-          <Kicker style={{ fontSize: scaled(11, s) }}>Ear Warrior</Kicker>
-          <Text style={[styles.greeting, { fontSize: scaled(20, s), lineHeight: scaled(26, s) }]}>
-            {homeGreeting(game?.streak ?? null)}
-          </Text>
-        </View>
+        <Kicker style={{ fontSize: scaled(11, s) }}>Ear Warrior</Kicker>
+        <Text style={[styles.title, { fontSize: scaled(30, s), lineHeight: scaled(35, s) }]}>
+          Hear it.{'\n'}Play it back.{'\n'}Nail it.
+        </Text>
+        <Text
+          style={[
+            styles.blurb,
+            { fontSize: scaled(14, s), lineHeight: scaled(22, s), maxWidth: scaled(280, s) },
+          ]}
+        >
+          Find the melody on the fretboard by ear.
+        </Text>
 
-        <PracticeCard
-          resume={resume}
-          tune={resumeTune}
-          onContinue={() =>
-            resume &&
-            router.push({
-              pathname: '/practice',
-              params: resume.saved ? { tune: resume.tuneId, resume: '1' } : { tune: resume.tuneId },
-            })
-          }
-          onStart={() => router.push('/practice')}
+        {/* Read from what is stored by the reward service: nothing here is invented. The training itself
+          stays the biggest thing on the screen. */}
+        <View style={styles.spacer} />
+
+        {/* The cards, pinned above the main button: Continue (when something is half-way), the week, the rank. */}
+        {game || resume ? (
+          <View style={styles.panel}>
+            {resume && resumeTune ? (
+              <View style={styles.section}>
+                <Kicker style={styles.resumeKicker}>
+                  {resume.saved ? 'Where you stopped' : 'Last opened'}
+                </Kicker>
+                <Text style={styles.resumeName} numberOfLines={1}>
+                  {resumeTune.name}
+                </Text>
+                <Text style={styles.resumeAt}>
+                  Phrase {resume.phrase + 1} of {resume.phrases}
+                </Text>
+                <View style={styles.segments} accessibilityElementsHidden>
+                  {Array.from({ length: resume.phrases }, (_, i) => (
+                    <View
+                      key={i}
+                      style={[styles.segment, i < resume.answered && styles.segmentDone]}
+                    />
+                  ))}
+                </View>
+                <Button
+                  label="Continue"
+                  onPress={() =>
+                    router.push({
+                      pathname: '/practice',
+                      params: resume.saved
+                        ? { tune: resume.tuneId, resume: '1' }
+                        : { tune: resume.tuneId },
+                    })
+                  }
+                  style={styles.resumeButton}
+                />
+              </View>
+            ) : null}
+            {game ? (
+              <>
+                <View style={[styles.section, styles.weekSection]}>
+                  <View style={styles.weekHead}>
+                    <Text style={styles.statKicker}>This week</Text>
+                    <View
+                      style={styles.statLine}
+                      accessible
+                      accessibilityLabel={`Streak: ${daysLabel(game.streak.days)} in a row`}
+                    >
+                      <Flame size={16} />
+                      <Text style={styles.statValue}>{daysLabel(game.streak.days)}</Text>
+                    </View>
+                  </View>
+                  <WeekStrip
+                    days={week}
+                    goal={challengesTotal || 3}
+                    showCount={SHOW_DAILY_CHALLENGES}
+                  />
+                </View>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`${game.rank.name}, ${game.rank.xp} XP. ${nextRankLine(game.rank)}. Open ranks`}
+                  onPress={() => router.push('/journey')}
+                  style={({ pressed }) => [
+                    styles.section,
+                    styles.rankSection,
+                    pressed && styles.statPressed,
+                  ]}
+                >
+                  <View style={styles.rankHead}>
+                    <RankIcon rankId={game.rank.id} size={34} />
+                    <View style={styles.rankText}>
+                      <Text style={styles.rankName}>{game.rank.name}</Text>
+                    </View>
+                    <Text style={styles.rankXp}>{game.rank.xp} XP</Text>
+                  </View>
+                  <View style={styles.bar}>
+                    <View style={[styles.fill, { width: `${game.rank.pct}%` }]} />
+                  </View>
+                </Pressable>
+              </>
+            ) : null}
+          </View>
+        ) : null}
+        <Button
+          label="Start practice"
+          glow
+          onPress={() => router.push('/practice')}
+          style={styles.cta}
         />
-
-        {SHOW_DAILY_CHALLENGES && openChallenge ? (
-          <DailyChallengeCard challenge={openChallenge} onStart={() => router.push('/practice')} />
-        ) : null}
-
-        {game ? (
-          <>
-            <WeeklyActivityCard
-              days={week}
-              streakDays={game.streak.days}
-              practised={weekPracticeDays(game.activeDays, game.today)}
-              goal={WEEKLY_GOAL_DAYS}
-              challengesGoal={challengesTotal || 3}
-              showChallengeCount={SHOW_DAILY_CHALLENGES}
-            />
-            <RankXpCard rank={game.rank} onPress={() => router.push('/journey')} />
-          </>
-        ) : null}
       </ScrollView>
       <HomeNavBar
         items={[
@@ -129,10 +197,49 @@ export default function Home() {
 
 const styles = StyleSheet.create({
   // No bottom padding: the nav bar sits flush on the safe area.
-  screen: { paddingTop: 8, paddingBottom: 0 },
+  screen: { paddingTop: 12, paddingBottom: 0 },
   flex: { flex: 1, marginHorizontal: -8 },
-  // The cards fill the column; the primary one takes the free height of a tall phone.
-  scroll: { flexGrow: 1, paddingHorizontal: 8, paddingBottom: 8, gap: 8 },
-  header: { marginBottom: 2 },
-  greeting: { color: colors.text, fontWeight: font.weightHeading, marginTop: 0 },
+  scroll: { flexGrow: 1, paddingHorizontal: 8, paddingBottom: 12 },
+  title: {
+    color: colors.text,
+    fontWeight: font.weightHeading,
+    marginTop: 8,
+    marginBottom: 10,
+  },
+  blurb: { color: textAlpha[65] },
+  spacer: { flex: 1, minHeight: 12 },
+  // The cards sit together, a small gap apart.
+  panel: { gap: 8, marginBottom: 12 },
+  section: { backgroundColor: colors.surface, borderRadius: radius.md, padding: 14 },
+  resumeKicker: { fontSize: 10 },
+  resumeName: {
+    color: colors.text,
+    fontSize: 21,
+    fontWeight: font.weightHeading,
+    marginTop: 4,
+  },
+  resumeAt: { color: textAlpha[55], fontSize: 13, marginTop: 2, marginBottom: 12 },
+  segments: { flexDirection: 'row', gap: 4, marginBottom: 14 },
+  segment: { flex: 1, height: 6, borderRadius: 3, backgroundColor: colors.divider },
+  segmentDone: { backgroundColor: colors.accent },
+  resumeButton: { minHeight: 46 },
+  weekSection: { gap: 10 },
+  weekHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  rankSection: { gap: 8 },
+  rankHead: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  rankText: { flex: 1 },
+  rankName: { color: colors.text, fontSize: 16, fontWeight: font.weightHeading },
+  rankXp: { color: colors.accentRamp[300], fontSize: 13 },
+  bar: { height: 4, borderRadius: 2, backgroundColor: colors.divider, overflow: 'hidden' },
+  fill: { height: 4, borderRadius: 2, backgroundColor: colors.accent },
+  statLine: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  statKicker: {
+    color: colors.accent,
+    fontSize: 10,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  statValue: { color: colors.text, fontSize: 14, fontWeight: font.weightHeading },
+  statPressed: { backgroundColor: withAlpha(colors.accent, 0.14) },
+  cta: { minHeight: 52 },
 });
