@@ -9,7 +9,9 @@ and starting the player); not yet heard on a phone (T017). Needs an OTA.
 
 **Input** (third round, 2026-11-15): "Home looks boring and like a pile of stuff — propose improvements." Of twelve
 pictured directions the owner chose no. 11, the sounding strings, and added: the strings are animated as endless
-waves, and touching them plays the open strings.
+waves, and touching them plays the open strings. Seen on the emulator it looked odd (strings waving like weed, bare
+and floating); the owner asked for it to look organic and on theme and chose the neck with notes (variant A): strings
+pinned at a nut, frets to scale, the notes lit.
 
 **Input** (first round): Owner (2026-11-15): "the home screen does not fit small screens and scrolls — optimise it, show several
 layouts as a picture first." Of three layouts the owner chose B, the bottom bar, and then asked for it on every screen
@@ -30,10 +32,12 @@ smallest windows. Spec 017 left "a Continue card on Home" for later; this is tha
 ## The screen
 
 Top to bottom: the brand · the melody to continue (*Where you stopped* / *Last opened*, its name, "Level 1 · Phrase 2
-of 2"), or "Train your ear" when there is none · **six strings** that move like waves and sound when touched, filling
-the free height · the main button (Continue, or Start practice) with a quiet "Start something new" link under Continue
-· a strip of three numbers (streak, rank with "40 / 100 XP", days practised this week) · the bottom bar. No cards. The
-same on every phone; no compact mode.
+of 2"), or "Train your ear" when there is none · **a stretch of guitar neck**: nut, fret wires to scale (1–12), inlays,
+fret numbers, six strings (three plain, three wound in the palette's warm tone) pinned at the nut and the far edge,
+the notes of the phrase answered last lit on it · the main button (Continue, or Start practice) with a quiet "Start
+something new" link under Continue · a strip of three numbers (streak, rank with "40 / 100 XP", days practised this
+week) · the bottom bar. No cards. The same on every phone; on a tall one the neck stays 290 dp tall and centred in
+the free room.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -69,17 +73,20 @@ same on every phone; no compact mode.
 3. **Given** the daily challenges are shown (flag on), **Then** the third item is "N / 3 challenges" with the
    attention dot and opens them.
 
-### User Story 6 - The strings (Priority: P1)
+### User Story 6 - The neck (Priority: P1)
 
 **Acceptance Scenarios**:
 
-1. **Given** Home is on screen, **Then** the six strings (thin high e on top, thick low E at the bottom) move as
-   gentle waves, endlessly, each out of step with the others.
-2. **Given** a string is touched, **Then** that string swells and settles, a ring appears under the finger and the
-   open string sounds (E2 A2 D3 G3 B3 E4).
+1. **Given** Home is on screen, **Then** the six strings (thin high e on top, thick low E at the bottom) swing gently
+   in one arc each, pinned at the nut and the far edge, endlessly and a little out of step.
+2. **Given** a string is touched, **Then** that string swells and settles and the open string sounds (E2 A2 D3 G3 B3
+   E4).
 3. **Given** a finger is dragged across the strings, **Then** each string it crosses is plucked in turn and they ring
    together (a strum), without cutting one another.
-4. **Given** Home is not on screen (Practice is open over it), **Then** the animation stops; **given** reduced motion,
+4. **Given** one or more phrases of the melody are answered, **Then** the notes of the last answered phrase are lit on
+   the neck at positions that sound them, joined in order, the last one brighter; **given** none is answered, **then**
+   no note is lit. The notes of phrases not yet answered are never shown (they would give the answer away).
+5. **Given** Home is not on screen (Practice is open over it), **Then** the animation stops; **given** reduced motion,
    **then** the strings do not move on their own (a pluck still swells the string).
 
 ### User Story 4 - Navigation as a bottom bar (Priority: P2)
@@ -112,8 +119,9 @@ same on every phone; no compact mode.
 - **FR-007**: Continue MUST open `/practice?tune=<id>&resume=1` for a saved place and `/practice?tune=<id>` for a
   melody only opened.
 - **FR-008**: Daily challenges MUST be hidden behind one flag (`SHOW_DAILY_CHALLENGES`); with it off the strip shows the days practised this week and there is no challenges item or attention dot (spec 015); turning it on brings them back as the strip's third item.
-- **FR-009**: The strings MUST be drawn as waves that move without end on the native driver, from plain Views (no SVG, no new dependency, so it ships by OTA), each string at its own phase and with its own thickness and sway.
+- **FR-009**: The neck MUST be drawn from plain Views (no SVG, no new dependency, so it ships by OTA): a nut, fret wires to scale, inlays and numbers; six strings pinned at both ends, each a row of short segments tilted to the string's arc, moving without end on the native driver, out of step, plain strings light and wound ones in the palette's warm tone.
 - **FR-016**: A touch MUST pluck the string under the finger (it swells and settles) and sound its open note through `AudioPlayback.pluck`, which cuts nothing that rings; a drag across strings plucks each in turn.
+- **FR-018**: The neck MUST light the notes of the last answered phrase of the melody to continue, at positions that sound exactly those notes, preferring the string nearest the previous note; it MUST NOT show notes of phrases not yet answered. The positions are decoration: no answer is ever taken from them.
 - **FR-017**: The animation MUST run only while Home is focused and MUST respect reduced motion.
 
 ### Key Entities
@@ -132,7 +140,6 @@ same on every phone; no compact mode.
 ## Assumptions
 
 - The owner decides when the daily challenges return; this spec only hides them.
-- The strings show no notes of the melody yet (the picture chosen had them); mapping the phrase's notes onto the
-  strings is a later step.
+- The neck lights only phrases already answered, by design: showing where the next ones sit would defeat playing by ear.
 - Specs 013 FR-009 and 015 FR-001 are amended by FR-008 while the flag is off; spec 017's "a Continue card on Home is a
   later step" is done here.

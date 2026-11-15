@@ -40,21 +40,25 @@ src/features/progress/useContinueTarget.ts # NEW hook: places + last opened, re-
 src/components/home/HomeNavBar.tsx         # NEW bottom bar
 src/components/home/StringsHero.tsx        # NEW the moving, sounding strings
 src/lib/openStrings.ts                     # NEW string at a touch, its note, sine keyframes
+src/lib/neckNotes.ts                       # NEW notes → neck positions, frets to scale, a pinned string's arc
+src/services/melody/neckNotes.ts           # NEW the last answered phrase of a tune as neck positions
 src/services/audio/playback.ts             # + pluck (rings alongside, cuts nothing)
 assets/nav/*.svg, *.png                    # NEW icons (Tabler outline, MIT)
 scripts/build-nav-icons.sh                 # NEW renders the PNGs (rsvg-convert)
 app/index.tsx                              # Home rebuilt
 app/practice.tsx                           # records / clears the last opened melody
-tests/unit/lib/lastOpened.test.ts, openStrings.test.ts, streak.test.ts, tests/contract/playback.test.ts, melodyProgress.test.ts, heroScale.test.ts
+tests/unit/lib/lastOpened.test.ts, openStrings.test.ts, neckNotes.test.ts, tests/unit/melody/neckNotes.test.ts, streak.test.ts, tests/contract/playback.test.ts, melodyProgress.test.ts, heroScale.test.ts
 ```
 
-## Strings
+## The neck
 
-Each string is a row of short segments. One looping clock (`Animated.Value`, native driver) feeds a shared set of
-interpolations (one sine, a lift and a tilt per segment position); a string reads the set from its own offset and
-multiplies it by its own amplitude, which a pluck raises and lets fall. Tilting each segment to the slope of the wave
-keeps the line smooth with few segments. About 20 segments a string, six strings. Touches go to one responder view
-(children ignore them) so the touch height maps straight to a string.
+A stretch of neck drawn from Views: the nut, fret wires at the real 12-tone spacing (they crowd up the neck), inlays
+and numbers. Each string is a row of short segments pinned at the nut and the far edge; one looping clock
+(`Animated.Value`, native driver) drives a per-string swing (cos, a different phase per string) multiplied by the
+string's own amplitude, which a pluck raises and lets fall; a segment's lift and tilt are the arc and slope of a
+string pinned at both ends there. About 20 segments a string. Touches go to one responder view (children ignore
+them) so the touch height maps straight to a string. The lit notes are the last answered phrase of the tune
+(`answeredPhraseNotes`), placed by `neckPositions`; phrases not yet answered are never drawn.
 
 ## Risks
 
