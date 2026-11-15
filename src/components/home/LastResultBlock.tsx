@@ -66,18 +66,12 @@ export function LastResultBlock({ result }: { result: LastResult }) {
 const CHIP = 34;
 
 const styles = StyleSheet.create({
-  block: { gap: 8, alignItems: 'center' },
-  kicker: { fontSize: 10, textAlign: 'center' },
+  block: { gap: 8 },
+  kicker: { fontSize: 10 },
   score: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
   matched: { color: colors.text, fontSize: 48, lineHeight: 52, fontWeight: font.weightHeading },
   of: { color: textAlpha[55], fontSize: 20 },
-  chips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 7,
-  },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 7 },
   chip: {
     width: CHIP,
     height: CHIP,
@@ -93,5 +87,5 @@ const styles = StyleSheet.create({
   badText: { color: colors.warm },
   missText: { color: textAlpha[45] },
   more: { color: textAlpha[55], fontSize: 13, marginLeft: 2 },
-  line: { color: textAlpha[55], fontSize: 14, textAlign: 'center' },
+  line: { color: textAlpha[55], fontSize: 14 },
 });

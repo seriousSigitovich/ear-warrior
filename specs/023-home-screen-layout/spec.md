@@ -37,7 +37,8 @@ Top to bottom: the brand · the melody to continue (*Where you stopped* / *Last 
 of 2"), or "Train your ear" when there is none · **the last result**: how the last phrase (or attempt) went, note by
 note, in the free height · the main button (Continue, or Start practice) with a quiet "Start something new" link under
 Continue · a strip of three numbers (streak, rank with "40 / 100 XP", days practised this week) · the bottom bar. No
-cards; everything is centred. The same on every phone.
+cards. The melody and the last result are centred vertically, together, in the free height under the brand. The same
+on every phone.
 
 ## User Scenarios & Testing *(mandatory)*
 

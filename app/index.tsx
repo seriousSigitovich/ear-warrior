@@ -88,36 +88,41 @@ export default function Home() {
         showsVerticalScrollIndicator={false}
         bounces={false}
       >
-        <Kicker style={styles.center}>Ear Warrior</Kicker>
-        {resume && resumeTune ? (
-          <View style={styles.title}>
-            <Kicker style={styles.where}>
-              {resume.saved ? 'Where you stopped' : 'Last opened'}
-            </Kicker>
-            <Text style={styles.name} numberOfLines={2}>
-              {resumeTune.name}
-            </Text>
-            <Text style={styles.meta}>
-              Level {resumeTune.rank} · Phrase {resume.phrase + 1} of {resume.phrases}
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.title}>
-            <Kicker style={styles.where}>Ready when you are</Kicker>
-            <Text style={styles.name}>Train your ear</Text>
-            <Text style={styles.meta}>A short melody plays. Find it on the fretboard by ear.</Text>
-          </View>
-        )}
-
-        <View style={styles.mid}>
-          {result ? (
-            <LastResultBlock result={result} />
+        <Kicker>Ear Warrior</Kicker>
+        {/* The melody and its last result sit together in the middle of the free height. */}
+        <View style={styles.centre}>
+          {resume && resumeTune ? (
+            <View style={styles.title}>
+              <Kicker style={styles.where}>
+                {resume.saved ? 'Where you stopped' : 'Last opened'}
+              </Kicker>
+              <Text style={styles.name} numberOfLines={2}>
+                {resumeTune.name}
+              </Text>
+              <Text style={styles.meta}>
+                Level {resumeTune.rank} · Phrase {resume.phrase + 1} of {resume.phrases}
+              </Text>
+            </View>
           ) : (
-            <Text style={styles.intro}>
-              A short melody plays. You find it on the fretboard by ear. We tell you exactly which
-              notes landed.
-            </Text>
+            <View style={styles.title}>
+              <Kicker style={styles.where}>Ready when you are</Kicker>
+              <Text style={styles.name}>Train your ear</Text>
+              <Text style={styles.meta}>
+                A short melody plays. Find it on the fretboard by ear.
+              </Text>
+            </View>
           )}
+
+          <View style={styles.mid}>
+            {result ? (
+              <LastResultBlock result={result} />
+            ) : (
+              <Text style={styles.intro}>
+                A short melody plays. You find it on the fretboard by ear. We tell you exactly which
+                notes landed.
+              </Text>
+            )}
+          </View>
         </View>
 
         {resume && resumeTune ? (
@@ -221,21 +226,20 @@ const styles = StyleSheet.create({
   // A little room at the sides so the attention dot, which sits half outside its item, is not cut.
   flex: { flex: 1, marginHorizontal: -8 },
   scroll: { flexGrow: 1, paddingHorizontal: 8, paddingBottom: 8 },
-  center: { textAlign: 'center' },
-  title: { marginTop: 14, marginBottom: 6, alignItems: 'center' },
-  // The free height between the melody and the main button; the last result sits in the middle of it.
-  mid: { flex: 1, justifyContent: 'center', minHeight: 150, paddingVertical: 12 },
-  intro: { color: textAlpha[65], fontSize: 16, lineHeight: 24, textAlign: 'center' },
-  where: { fontSize: 10, textAlign: 'center' },
+  title: { marginTop: 14, marginBottom: 6 },
+  // The free height under the brand: the melody and the last result are centred in it, together.
+  centre: { flex: 1, justifyContent: 'center', gap: 28, paddingVertical: 12 },
+  mid: {},
+  intro: { color: textAlpha[65], fontSize: 16, lineHeight: 24 },
+  where: { fontSize: 10 },
   name: {
     color: colors.text,
     fontSize: 30,
     lineHeight: 35,
     fontWeight: font.weightHeading,
     marginTop: 6,
-    textAlign: 'center',
   },
-  meta: { color: textAlpha[55], fontSize: 14, marginTop: 4, textAlign: 'center' },
+  meta: { color: textAlpha[55], fontSize: 14, marginTop: 4 },
   cta: { minHeight: 54, marginTop: 14 },
   link: { alignSelf: 'center', marginTop: 4 },
   strip: { flexDirection: 'row', alignItems: 'center', marginTop: 10, paddingVertical: 4 },
