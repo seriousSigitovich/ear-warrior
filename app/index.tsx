@@ -40,14 +40,15 @@ export default function Home() {
   const resumeTune = resume ? catalogTune(resume.tuneId) : null;
   // How the last phrase (or else the last attempt) went, note by note.
   const { attempts } = useHistory();
-  // Under a melody's name its own result comes first; failing that, the latest attempt of any melody, named.
+  // Under a melody's name only that melody's own result is shown, never another melody's: two names on one screen
+  // read as a mistake. With no melody to continue, the latest attempt of any melody is shown, named.
   const result = useMemo(() => {
     if (!game) return null;
-    const own = resume ? attempts.filter((a) => tuneIdOf(a.melodyId) === resume.tuneId) : attempts;
-    return (
-      lastResult(resume?.last ?? null, own, game.today) ??
-      lastResult(null, attempts, game.today, (id) => catalogTune(tuneIdOf(id))?.name ?? null)
-    );
+    if (resume) {
+      const own = attempts.filter((a) => tuneIdOf(a.melodyId) === resume.tuneId);
+      return lastResult(resume.last, own, game.today);
+    }
+    return lastResult(null, attempts, game.today, (id) => catalogTune(tuneIdOf(id))?.name ?? null);
   }, [game, resume, attempts]);
   const rank = game?.rank;
   const rankXp = rank

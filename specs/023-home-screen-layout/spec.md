@@ -82,11 +82,11 @@ on every phone.
    "6 of 8 notes", one chip per note named without its octave (landed: filled; wrong: warm outline; missed: quiet
    outline) and a line: "Clean. Try the next one." when all landed, "N to go. Beat it." when 1–2 were missed, else
    "Another go will lock it in."
-2. **Given** no phrase was answered but the melody has a finished attempt, **Then** it shows "Last attempt" for that
-   melody; **given** neither, **then** the latest finished attempt of any melody, named ("Last attempt · Hot Cross
-   Buns · 4 days ago"), so it is never taken for the melody on screen.
-3. **Given** there is no phrase and no attempt at all (a new learner), **Then** the block is a line saying how the
-   app works instead.
+2. **Given** no phrase was answered but the melody on screen has a finished attempt, **Then** it shows "Last attempt"
+   for that melody. The block never shows another melody's result under this melody's name (two names on one screen
+   read as a mistake).
+3. **Given** the melody on screen has no result yet (or there is no result at all), **Then** the block is a line saying
+   how the app works instead. **Given** there is no melody to continue, **then** the latest attempt of any melody is shown, with that melody's name.
 4. **Given** a result of more than 16 notes, **Then** the first 16 are shown and "+N" counts the rest.
 5. **Given** the result changes, **Then** the block fades in (not under reduced motion).
 
@@ -120,7 +120,7 @@ on every phone.
 - **FR-007**: Continue MUST open `/practice?tune=<id>&resume=1` for a saved place and `/practice?tune=<id>` for a
   melody only opened.
 - **FR-008**: Daily challenges MUST be hidden behind one flag (`SHOW_DAILY_CHALLENGES`); with it off the strip shows the days practised this week and there is no challenges item or attention dot (spec 015); turning it on brings them back as the strip's third item.
-- **FR-009**: Home MUST show the last result (US6): of the melody on screen first (its last answered phrase, else its last finished attempt), else the latest attempt of any melody with its name; note names come from the target notes (already answered, so nothing is given away); a result with no target notes is not shown.
+- **FR-009**: Home MUST show the last result (US6): of the melody on screen (its last answered phrase, else its last finished attempt), and only that melody's; with no melody to continue, the latest attempt of any melody with its name; note names come from the target notes (already answered, so nothing is given away); a result with no target notes is not shown.
 
 ### Key Entities
 
