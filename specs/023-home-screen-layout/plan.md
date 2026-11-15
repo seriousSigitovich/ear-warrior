@@ -37,19 +37,12 @@ src/lib/melodyProgress.ts                  # + latestPlace
 src/lib/heroScale.ts                       # - isCompact, COMPACT_BELOW
 src/features/progress/useContinueTarget.ts # NEW hook: places + last opened, re-read on focus
 src/components/home/HomeNavBar.tsx         # NEW bottom bar
-src/components/home/PracticeCard.tsx       # NEW Continue / Start practice (one card)
-src/components/home/WeeklyActivityCard.tsx # NEW streak, week, weekly goal
-src/components/home/RankXpCard.tsx         # NEW rank, "40 / 100 XP", what is missing, +N XP
-src/components/home/DailyChallengeCard.tsx # NEW a real challenge as a card (off while challenges are hidden)
-src/components/common/AnimatedBar.tsx      # NEW eased progress bar
-src/lib/homeCopy.ts                        # NEW greeting and rank lines
-src/lib/streak.ts                          # + WEEKLY_GOAL_DAYS, weekPracticeDays
 src/components/progress/WeekStrip.tsx      # + showCount
 assets/nav/*.svg, *.png                    # NEW icons (Tabler outline, MIT)
 scripts/build-nav-icons.sh                 # NEW renders the PNGs (rsvg-convert)
 app/index.tsx                              # Home rebuilt
 app/practice.tsx                           # records / clears the last opened melody
-tests/unit/lib/lastOpened.test.ts, homeCopy.test.ts, melodyProgress.test.ts, heroScale.test.ts
+tests/unit/lib/lastOpened.test.ts, melodyProgress.test.ts, heroScale.test.ts
 ```
 
 ## Risks
