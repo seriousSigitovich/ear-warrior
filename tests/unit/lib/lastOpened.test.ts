@@ -69,32 +69,66 @@ describe('the last opened melody as stored', () => {
 });
 
 describe('what Continue opens', () => {
-  test('a melody only opened, with nothing saved: phrase 1, nothing answered', () => {
+  const result = [
+    {
+      targetIndex: 0,
+      status: 'matched' as const,
+      expectedMidi: 62,
+      detectedMidi: 62,
+      octaveMismatch: false,
+    },
+  ];
+  const played = (tuneId: string, sec: number) => ({ tuneId, at: iso(sec), results: result });
+
+  test('a melody only opened, with nothing played or saved: phrase 1, nothing answered', () => {
     expect(continueTarget([], { tuneId: 'a', at: iso(5) }, fits)).toEqual({
       tuneId: 'a',
       phrases: 5,
       phrase: 0,
       answered: 0,
       saved: false,
+      played: false,
       last: null,
     });
   });
 
-  test('the saved place when it is for the melody last opened', () => {
+  test('the saved place, with how its last phrase went', () => {
     const t = continueTarget([place('a', 1)], { tuneId: 'a', at: iso(9) }, fits);
-    expect(t).toMatchObject({ tuneId: 'a', phrase: 2, answered: 2, saved: true });
+    expect(t).toMatchObject({ tuneId: 'a', phrase: 2, answered: 2, saved: true, played: false });
     expect(t?.last?.results).toHaveLength(1);
     expect(t?.last?.at).toBe(iso(1));
   });
 
-  test('a different melody opened after the saved place wins; opened before it, the place wins', () => {
-    expect(continueTarget([place('a', 1)], { tuneId: 'b', at: iso(9) }, fits)?.tuneId).toBe('b');
-    expect(continueTarget([place('a', 9)], { tuneId: 'b', at: iso(1) }, fits)?.tuneId).toBe('a');
+  test('a melody only opened never replaces one that was played', () => {
+    expect(continueTarget([place('a', 1)], { tuneId: 'b', at: iso(9) }, fits)?.tuneId).toBe('a');
+    expect(continueTarget([], { tuneId: 'b', at: iso(9) }, fits, [played('c', 1)])?.tuneId).toBe(
+      'c',
+    );
+  });
+
+  test('the later of a saved place and a finished melody wins', () => {
+    const newerFinish = continueTarget([place('a', 1)], null, fits, [played('b', 9)]);
+    expect(newerFinish).toMatchObject({
+      tuneId: 'b',
+      saved: false,
+      played: true,
+      answered: 0,
+      phrase: 0,
+    });
+    expect(newerFinish?.last).toEqual({ results: result, at: iso(9) });
+    expect(continueTarget([place('a', 9)], null, fits, [played('b', 1)])?.tuneId).toBe('a');
+  });
+
+  test('of several finished melodies, the latest', () => {
+    expect(
+      continueTarget([], null, fits, [played('b', 1), played('c', 7), played('d', 3)])?.tuneId,
+    ).toBe('c');
   });
 
   test('nothing when nothing was left, and a melody that left the library is not offered', () => {
     expect(continueTarget([], null, fits)).toBeNull();
     expect(continueTarget([], { tuneId: 'gone', at: iso(1) }, fits)).toBeNull();
+    expect(continueTarget([], null, fits, [played('gone', 5)])).toBeNull();
     expect(continueTarget([place('a', 1)], { tuneId: 'gone', at: iso(9) }, fits)?.tuneId).toBe('a');
   });
 });

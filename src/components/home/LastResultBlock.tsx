@@ -24,11 +24,9 @@ export function LastResultBlock({ result }: { result: LastResult }) {
     <Animated.View
       style={[styles.block, { opacity: fade }]}
       accessible
-      accessibilityLabel={`${result.kind}${result.title ? `, ${result.title}` : ''}, ${result.when}: ${result.matched} of ${result.total} notes. ${result.line}`}
+      accessibilityLabel={`${result.kind}, ${result.when}: ${result.matched} of ${result.total} notes. ${result.line}`}
     >
-      <Kicker style={styles.kicker}>
-        {[result.kind, result.title, result.when].filter(Boolean).join(' · ')}
-      </Kicker>
+      <Kicker style={styles.kicker}>{`${result.kind} · ${result.when}`}</Kicker>
       <View style={styles.score}>
         <Text style={styles.matched}>{result.matched}</Text>
         <Text style={styles.of}>of {result.total} notes</Text>

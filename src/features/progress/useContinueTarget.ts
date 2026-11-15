@@ -1,15 +1,34 @@
-// What Home's Continue opens (see lib/lastOpened): the saved place or the melody last opened, re-read whenever
-// the screen regains focus. A thin shell over the place hook and the key-value store.
+// What Home's Continue opens (see lib/lastOpened): the melody last played (half-answered or finished), else the one
+// last opened, re-read whenever the screen regains focus. A thin shell over the place hook, the history and the
+// key-value store.
 import { useCallback, useMemo, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { KEY_VALUE_TABLE, defaultRowStore } from '../../services/storage/db';
 import { keyValueOverRowStore } from '../../lib/deviceId';
-import { ContinueTarget, OpenedTune, continueTarget, readOpened } from '../../lib/lastOpened';
+import {
+  ContinueTarget,
+  OpenedTune,
+  PlayedTune,
+  continueTarget,
+  readOpened,
+} from '../../lib/lastOpened';
+import { tuneIdOf } from '../../services/melody/curated';
+import { useHistory } from './useHistory';
 import { catalogTune } from '../../services/melody/catalog';
 import { useMelodyProgress } from './useMelodyProgress';
 
 export function useContinueTarget(): ContinueTarget | null {
   const places = useMelodyProgress();
+  const { attempts } = useHistory();
+  const played = useMemo<PlayedTune[]>(
+    () =>
+      attempts.map((a) => ({
+        tuneId: tuneIdOf(a.melodyId),
+        at: a.createdAt,
+        results: a.noteResults,
+      })),
+    [attempts],
+  );
   const [opened, setOpened] = useState<OpenedTune | null>(null);
   useFocusEffect(
     useCallback(() => {
@@ -25,7 +44,7 @@ export function useContinueTarget(): ContinueTarget | null {
     }, []),
   );
   return useMemo(
-    () => continueTarget(places.values(), opened, (id) => catalogTune(id)?.phrases ?? null),
-    [places, opened],
+    () => continueTarget(places.values(), opened, (id) => catalogTune(id)?.phrases ?? null, played),
+    [places, opened, played],
   );
 }

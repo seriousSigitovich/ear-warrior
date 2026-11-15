@@ -45,60 +45,85 @@ export async function clearOpened(kv: KeyValueStore, tuneId: string): Promise<vo
   if (opened?.tuneId === tuneId) await kv.setItem(LAST_OPENED_KEY, '');
 }
 
+/** A melody the learner finished: the tune, when, and how it went (an attempt, by tune). */
+export interface PlayedTune {
+  tuneId: string;
+  /** ISO time of the attempt. */
+  at: string;
+  results: NoteResult[];
+}
+
 /** What Home's Continue opens. */
 export interface ContinueTarget {
   tuneId: string;
   phrases: number;
   /** 0-based phrase it opens at. */
   phrase: number;
-  /** Phrases already answered (0 for a melody only opened). */
+  /** Phrases already answered (0 for a melody only opened or one finished). */
   answered: number;
-  /** Open with the saved first tries (`resume=1`); false for a melody only opened, which starts at phrase 1. */
+  /** Open with the saved first tries (`resume=1`); false otherwise, which starts at phrase 1. */
   saved: boolean;
-  /** How the last answered phrase went and when (saved places only), for Home's last-result block. */
+  /** The melody was finished and is offered to play again. */
+  played: boolean;
+  /** How the last answered phrase (or the finished attempt) went and when, for Home's last-result block. */
   last: { results: NoteResult[]; at: string } | null;
 }
 
 /**
- * The saved place, unless a different melody was opened after it: that one is what the learner was last at, even
- * with nothing answered in it. A tune that left the library (`phrasesOf` gives null) is never offered.
+ * Where Continue leads: the melody the learner last actually played — a half-answered one (its saved place) or the
+ * latest finished one (offered to play again), whichever is the later; failing both, the melody last opened even
+ * with nothing answered in it. A melody only opened never replaces one that was played, so the result shown under
+ * a melody is always its own. A tune that left the library (`phrasesOf` gives null) is never offered.
  */
 export function continueTarget(
   places: Iterable<MelodyPlaceRow>,
   opened: OpenedTune | null,
   phrasesOf: (tuneId: string) => number | null,
+  played: readonly PlayedTune[] = [],
 ): ContinueTarget | null {
   const place = latestPlace(places, phrasesOf);
+  const finished = played
+    .filter((p) => phrasesOf(p.tuneId) !== null)
+    .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))[0];
+
+  const fromPlace = (p: MelodyPlaceRow): ContinueTarget => ({
+    tuneId: p.tuneId,
+    phrases: p.phrases,
+    phrase: p.phrase,
+    answered: p.grades.length,
+    saved: true,
+    played: false,
+    last:
+      p.grades.length > 0
+        ? { results: p.grades[p.grades.length - 1].noteResults, at: p.updatedAt }
+        : null,
+  });
+
+  if (place && (!finished || Date.parse(place.updatedAt) >= Date.parse(finished.at))) {
+    return fromPlace(place);
+  }
+  if (finished) {
+    return {
+      tuneId: finished.tuneId,
+      phrases: phrasesOf(finished.tuneId) ?? 0,
+      phrase: 0,
+      answered: 0,
+      saved: false,
+      played: true,
+      last: { results: finished.results, at: finished.at },
+    };
+  }
   const openedPhrases = opened ? phrasesOf(opened.tuneId) : null;
-  const openedIsNewer =
-    opened !== null &&
-    openedPhrases !== null &&
-    opened.tuneId !== place?.tuneId &&
-    (!place || Date.parse(opened.at) > Date.parse(place.updatedAt));
-  if (openedIsNewer && opened && openedPhrases !== null) {
+  if (opened && openedPhrases !== null) {
     return {
       tuneId: opened.tuneId,
       phrases: openedPhrases,
       phrase: 0,
       answered: 0,
       saved: false,
+      played: false,
       last: null,
     };
   }
-  return place
-    ? {
-        tuneId: place.tuneId,
-        phrases: place.phrases,
-        phrase: place.phrase,
-        answered: place.grades.length,
-        saved: true,
-        last:
-          place.grades.length > 0
-            ? {
-                results: place.grades[place.grades.length - 1].noteResults,
-                at: place.updatedAt,
-              }
-            : null,
-      }
-    : null;
+  return null;
 }

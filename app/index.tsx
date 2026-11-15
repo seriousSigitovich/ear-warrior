@@ -6,13 +6,11 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { KEY_VALUE_TABLE, defaultRowStore } from '../src/services/storage/db';
 import { keyValueOverRowStore } from '../src/lib/deviceId';
 import { isOnboarded } from '../src/lib/onboarding';
-import { lastResult } from '../src/lib/lastResult';
-import { tuneIdOf } from '../src/services/melody/curated';
+import { lastResultOf } from '../src/lib/lastResult';
 import { daysLabel, weekPracticeDays } from '../src/lib/streak';
 import { useGamification } from '../src/features/gamification/useGamification';
 import { useContinueTarget } from '../src/features/progress/useContinueTarget';
 import { catalogTune } from '../src/services/melody/catalog';
-import { useHistory } from '../src/features/progress/useHistory';
 import { AttentionDot } from '../src/components/gamification/AttentionDot';
 import { Flame } from '../src/components/gamification/Flame';
 import { challengesLeft } from '../src/lib/gamification';
@@ -38,18 +36,19 @@ export default function Home() {
   // Where Continue leads: the melody left half-way, or the one last opened even if nothing was answered in it.
   const resume = useContinueTarget();
   const resumeTune = resume ? catalogTune(resume.tuneId) : null;
-  // How the last phrase (or else the last attempt) went, note by note.
-  const { attempts } = useHistory();
-  // Under a melody's name only that melody's own result is shown, never another melody's: two names on one screen
-  // read as a mistake. With no melody to continue, the latest attempt of any melody is shown, named.
-  const result = useMemo(() => {
-    if (!game) return null;
-    if (resume) {
-      const own = attempts.filter((a) => tuneIdOf(a.melodyId) === resume.tuneId);
-      return lastResult(resume.last, own, game.today);
-    }
-    return lastResult(null, attempts, game.today, (id) => catalogTune(tuneIdOf(id))?.name ?? null);
-  }, [game, resume, attempts]);
+  // How the last phrase (or the finished attempt) of the melody on screen went, note by note: always its own.
+  const result = useMemo(
+    () =>
+      game && resume?.last
+        ? lastResultOf(
+            resume.played ? 'Last attempt' : 'Last phrase',
+            resume.last.results,
+            resume.last.at,
+            game.today,
+          )
+        : null,
+    [game, resume],
+  );
   const rank = game?.rank;
   const rankXp = rank
     ? rank.next
@@ -95,7 +94,7 @@ export default function Home() {
           {resume && resumeTune ? (
             <View style={styles.title}>
               <Kicker style={styles.where}>
-                {resume.saved ? 'Where you stopped' : 'Last opened'}
+                {resume.saved ? 'Where you stopped' : resume.played ? 'Last played' : 'Last opened'}
               </Kicker>
               <Text style={styles.name} numberOfLines={2}>
                 {resumeTune.name}
@@ -129,7 +128,7 @@ export default function Home() {
         {resume && resumeTune ? (
           <>
             <Button
-              label="Continue"
+              label={resume.played ? 'Try again' : 'Continue'}
               glow
               onPress={() =>
                 router.push({

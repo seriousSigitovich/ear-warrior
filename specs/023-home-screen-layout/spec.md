@@ -55,14 +55,14 @@ on every phone.
 **Acceptance Scenarios**:
 
 1. **Given** a melody is half-answered (a place is saved, spec 017), **When** Home opens, **Then** the melody block
-   says "Where you stopped", the tune's name, "Phrase 3 of 8", a segment bar with the answered phrases filled, and a
-   Continue button that opens the melody at phrase 3 with the saved first tries.
-2. **Given** a melody was opened and nothing was answered in it, **When** Home opens, **Then** the card says "Last
-   opened", "Phrase 1 of N", an empty bar, and Continue opens the melody at phrase 1.
-3. **Given** a place is saved for tune A and tune B was opened after it, **When** Home opens, **Then** the card is
-   for B; if B was opened before the place was saved, or the place is for B itself, the saved place is used.
-4. **Given** the melody was finished (or there is nothing to continue), **When** Home opens, **Then** there is no
-   Continue card.
+   says "Where you stopped", the tune's name, "Phrase 3 of 8" and Continue opens it at phrase 3 with the saved first
+   tries; the last-result block shows how its last answered phrase went.
+2. **Given** the last melody played was finished, **When** Home opens, **Then** it says "Last played", the button
+   reads "Try again", it opens the melody at phrase 1, and the last-result block shows how that attempt went.
+3. **Given** a place is saved for tune A and tune B was finished, **Then** whichever happened later is shown.
+4. **Given** a melody was only opened and nothing was answered in it, **Then** it is shown ("Last opened", "Phrase 1
+   of N", Continue at phrase 1) only when nothing was played or saved; it never replaces a melody that was played.
+5. **Given** there is nothing to continue, **Then** Home shows "Train your ear" and Start practice.
 
 ### User Story 3 - The standing in one line (Priority: P2)
 
@@ -82,11 +82,10 @@ on every phone.
    "6 of 8 notes", one chip per note named without its octave (landed: filled; wrong: warm outline; missed: quiet
    outline) and a line: "Clean. Try the next one." when all landed, "N to go. Beat it." when 1–2 were missed, else
    "Another go will lock it in."
-2. **Given** no phrase was answered but the melody on screen has a finished attempt, **Then** it shows "Last attempt"
-   for that melody. The block never shows another melody's result under this melody's name (two names on one screen
-   read as a mistake).
-3. **Given** the melody on screen has no result yet (or there is no result at all), **Then** the block is a line saying
-   how the app works instead. **Given** there is no melody to continue, **then** the latest attempt of any melody is shown, with that melody's name.
+2. **Given** the melody on screen was finished, **Then** it shows "Last attempt" for that melody, the same way. The
+   block never shows another melody's result under this melody's name (two names on one screen read as a mistake).
+3. **Given** the melody on screen has no result (it was only opened, or Home has nothing to continue), **Then** the
+   block is a line saying how the app works instead.
 4. **Given** a result of more than 16 notes, **Then** the first 16 are shown and "+N" counts the rest.
 5. **Given** the result changes, **Then** the block fades in (not under reduced motion).
 
@@ -113,14 +112,12 @@ on every phone.
 - **FR-003**: Home MUST have no cards: the melody, the last result, the main button and the strip sit directly on the screen; the last result takes the free height.
 - **FR-004**: The bottom bar MUST hold Melodies, Progress and Settings, each at least 56 dp tall, with icon and label
   and a screen-reader label; the icons are bundled PNGs (Tabler outline, MIT), no new dependency.
-- **FR-005**: Continue MUST be offered for the most recently changed saved place that still fits its tune, unless a
-  different melody was opened after it (then that melody). A finished melody is never offered.
+- **FR-005**: Continue MUST be offered for the melody last played: the most recently changed saved place that still fits its tune, or the latest finished attempt (offered to play again), whichever is later; failing both, the melody last opened. A melody only opened never replaces one that was played. A finished melody is not offered as "continue" in any other way.
 - **FR-006**: The practice screen MUST record the melody on screen as the last opened (device only) and forget it
   when that melody is finished.
-- **FR-007**: Continue MUST open `/practice?tune=<id>&resume=1` for a saved place and `/practice?tune=<id>` for a
-  melody only opened.
+- **FR-007**: The button MUST open `/practice?tune=<id>&resume=1` for a saved place and `/practice?tune=<id>` otherwise; it reads "Continue", or "Try again" for a finished melody.
 - **FR-008**: Daily challenges MUST be hidden behind one flag (`SHOW_DAILY_CHALLENGES`); with it off the strip shows the days practised this week and there is no challenges item or attention dot (spec 015); turning it on brings them back as the strip's third item.
-- **FR-009**: Home MUST show the last result (US6): of the melody on screen (its last answered phrase, else its last finished attempt), and only that melody's; with no melody to continue, the latest attempt of any melody with its name; note names come from the target notes (already answered, so nothing is given away); a result with no target notes is not shown.
+- **FR-009**: Home MUST show the last result (US6) of the melody on screen only: its last answered phrase, or its finished attempt; note names come from the target notes (already answered, so nothing is given away); a result with no target notes is not shown.
 
 ### Key Entities
 

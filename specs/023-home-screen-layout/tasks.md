@@ -23,6 +23,7 @@ Test tasks come first in each group (constitution II). `[US#]` is the user story
 - [X] T021 [US6, FR-009] Pure: failing tests, then `src/lib/lastResult.ts` (when, the line, the summary and its choice) and `last` on the continue target
 - [X] T022 [US6, FR-009] `LastResultBlock`; Home shows it in the free height, with the intro line for a new learner
 - [X] T023 [SC-005] Emulator: the block shows the latest attempt, named, with chips and the line
+- [X] T025 [US2, FR-005, FR-009] Continue leads to the last played melody (saved place or finished attempt, the later), "Try again" for a finished one; a melody only opened no longer replaces it; Home shows only that melody's result
 - [ ] T024 [SC-005] Emulator: a half-answered phrase shows "Last phrase" with its own result
 
 ## Verification
