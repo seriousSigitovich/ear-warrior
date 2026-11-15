@@ -7,12 +7,13 @@ import { KEY_VALUE_TABLE, defaultRowStore } from '../src/services/storage/db';
 import { keyValueOverRowStore } from '../src/lib/deviceId';
 import { isOnboarded } from '../src/lib/onboarding';
 import { lastResultOf } from '../src/lib/lastResult';
-import { daysLabel, weekPracticeDays } from '../src/lib/streak';
+import { daysLabel } from '../src/lib/streak';
 import { useGamification } from '../src/features/gamification/useGamification';
 import { useContinueTarget } from '../src/features/progress/useContinueTarget';
 import { catalogTune } from '../src/services/melody/catalog';
 import { AttentionDot } from '../src/components/gamification/AttentionDot';
 import { Flame } from '../src/components/gamification/Flame';
+import { RankIcon } from '../src/components/gamification/RankIcon';
 import { challengesLeft } from '../src/lib/gamification';
 import { HomeNavBar } from '../src/components/home/HomeNavBar';
 import { LastResultBlock } from '../src/components/home/LastResultBlock';
@@ -20,7 +21,7 @@ import { Screen } from '../src/components/common/Screen';
 import { Button } from '../src/components/common/Button';
 import { Kicker } from '../src/components/common/Kicker';
 import { ensureAuthReady, getAuthService } from '../src/features/auth/authService';
-import { colors, font, textAlpha, withAlpha } from '../src/theme/nocturne';
+import { colors, font, radius, textAlpha, withAlpha } from '../src/theme/nocturne';
 
 // Daily challenges are hidden for now (unfinished); flip to true to bring them back: the strip's third item then
 // shows how many are done, with its attention dot, and opens them (the old tile is in the git history).
@@ -55,7 +56,6 @@ export default function Home() {
       ? `${rank.xp} / ${rank.next.requiredXp} XP`
       : `${rank.xp} XP`
     : '';
-  const weekDays = game ? weekPracticeDays(game.activeDays, game.today) : 0;
 
   // First launch: the first melody, then the sign-in offer (spec 005 FR-003) — each once, never blocking (both
   // have Skip). On focus rather than mount, so the offer follows onboarding when it pops back to Home.
@@ -88,59 +88,45 @@ export default function Home() {
         showsVerticalScrollIndicator={false}
         bounces={false}
       >
-        <Kicker>Ear Warrior</Kicker>
-        {game && rank ? (
-          <View style={styles.strip}>
-            <View style={[styles.sep, { left: '33.333%' }]} />
-            <View style={[styles.sep, { left: '66.666%' }]} />
-            <View
-              style={styles.stat}
-              accessible
-              accessibilityLabel={`Streak: ${daysLabel(game.streak.days)} in a row`}
-            >
-              <View style={styles.statLine}>
-                <Flame size={16} />
-                <Text style={styles.statValue}>{game.streak.days}</Text>
+        <View style={styles.header}>
+          <Kicker>Ear Warrior</Kicker>
+          {game && rank ? (
+            <View style={styles.chips}>
+              <View
+                style={styles.pill}
+                accessible
+                accessibilityLabel={`Streak: ${daysLabel(game.streak.days)} in a row`}
+              >
+                <Flame size={14} />
+                <Text style={styles.pillText}>{game.streak.days}</Text>
               </View>
-              <Text style={styles.statLabel}>streak</Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`${rank.name}, ${rankXp}. Open ranks`}
+                onPress={() => router.push('/journey')}
+                style={({ pressed }) => [styles.pill, pressed && styles.pressed]}
+              >
+                <RankIcon rankId={rank.id} size={18} />
+                <Text style={styles.pillText}>{rank.name}</Text>
+              </Pressable>
+              {SHOW_DAILY_CHALLENGES ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Daily challenges: ${challengesDone} of ${challengesTotal} done${
+                    left > 0 ? `, ${left} left` : ''
+                  }`}
+                  onPress={() => router.push('/challenges')}
+                  style={({ pressed }) => [styles.pill, pressed && styles.pressed]}
+                >
+                  {left > 0 ? <AttentionDot /> : null}
+                  <Text style={styles.pillText}>
+                    {challengesDone}/{challengesTotal}
+                  </Text>
+                </Pressable>
+              ) : null}
             </View>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`${rank.name}, ${rankXp}. Open ranks`}
-              onPress={() => router.push('/journey')}
-              style={({ pressed }) => [styles.stat, pressed && styles.pressed]}
-            >
-              <Text style={styles.statValue}>{rank.name}</Text>
-              <Text style={styles.statLabel}>{rankXp}</Text>
-            </Pressable>
-            {SHOW_DAILY_CHALLENGES ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Daily challenges: ${challengesDone} of ${challengesTotal} done${
-                  left > 0 ? `, ${left} left` : ''
-                }`}
-                onPress={() => router.push('/challenges')}
-                style={({ pressed }) => [styles.stat, pressed && styles.pressed]}
-              >
-                {left > 0 ? <AttentionDot /> : null}
-                <Text style={styles.statValue}>
-                  {challengesDone} / {challengesTotal}
-                </Text>
-                <Text style={styles.statLabel}>challenges</Text>
-              </Pressable>
-            ) : (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`${weekDays} ${weekDays === 1 ? 'day' : 'days'} practised this week. Open progress`}
-                onPress={() => router.push('/progress')}
-                style={({ pressed }) => [styles.stat, pressed && styles.pressed]}
-              >
-                <Text style={styles.statValue}>{weekDays}</Text>
-                <Text style={styles.statLabel}>{weekDays === 1 ? 'day' : 'days'} this week</Text>
-              </Pressable>
-            )}
-          </View>
-        ) : null}
+          ) : null}
+        </View>
         {/* The melody and its last result sit together in the middle of the free height. */}
         <View style={styles.centre}>
           {resume && resumeTune ? (
@@ -241,18 +227,18 @@ const styles = StyleSheet.create({
   meta: { color: textAlpha[55], fontSize: 14, marginTop: 4 },
   cta: { minHeight: 54, marginTop: 14 },
   link: { alignSelf: 'center', marginTop: 4 },
-  strip: { flexDirection: 'row', alignItems: 'center', marginTop: 14, paddingVertical: 4 },
-  // Three equal columns by width, so a wide label cannot take more room than the others.
-  stat: { width: '33.333%', alignItems: 'center', paddingVertical: 4 },
-  pressed: { backgroundColor: withAlpha(colors.accent, 0.14) },
-  statLine: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  statValue: { color: colors.text, fontSize: 15, fontWeight: font.weightHeading },
-  statLabel: { color: textAlpha[55], fontSize: 11 },
-  sep: {
-    position: 'absolute',
-    top: 8,
-    bottom: 8,
-    width: StyleSheet.hairlineWidth,
-    backgroundColor: colors.divider,
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  chips: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.divider,
   },
+  pillText: { color: colors.text, fontSize: 13, fontWeight: font.weightHeading },
+  pressed: { backgroundColor: withAlpha(colors.accent, 0.14) },
 });

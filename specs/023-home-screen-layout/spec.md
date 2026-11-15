@@ -33,11 +33,11 @@ smallest windows. Spec 017 left "a Continue card on Home" for later; this is tha
 
 ## The screen
 
-Top to bottom: the brand · a strip of three numbers (streak, rank with "40 / 100 XP", days practised this week) · the
+Top to bottom: the brand with two chips at its right (the streak with a flame, the rank with its icon and name) · the
 melody to continue (*Where you stopped* / *Last played* / *Last opened*, its name, "Level 1 · Phrase 2 of 2"), or
 "Train your ear" when there is none · **the last result** of that melody, note by note · the main button (Continue,
 "Try again" for a finished melody, or Start practice) with a quiet "Start something new" link under it · the bottom
-bar. No cards. The melody and the last result are centred vertically, together, in the free height under the strip.
+bar. No cards. The melody and the last result are centred vertically, together, in the free height under the header.
 The same on every phone.
 
 ## User Scenarios & Testing *(mandatory)*
@@ -64,15 +64,15 @@ The same on every phone.
    of N", Continue at phrase 1) only when nothing was played or saved; it never replaces a melody that was played.
 5. **Given** there is nothing to continue, **Then** Home shows "Train your ear" and Start practice.
 
-### User Story 3 - The standing in one line (Priority: P2)
+### User Story 3 - The standing in the header (Priority: P2)
 
 **Acceptance Scenarios**:
 
-1. **Given** the standing has loaded, **When** Home shows, **Then** a strip reads the streak, the rank with "40 / 100
-   XP" (just the XP at the top rank) and the days practised this week; before it loads there is no strip.
-2. **Given** the rank is tapped, **Then** the ranks screen (Journey) opens; the days open Progress.
-3. **Given** the daily challenges are shown (flag on), **Then** the third item is "N / 3 challenges" with the
-   attention dot and opens them.
+1. **Given** the standing has loaded, **When** Home shows, **Then** two chips sit at the right of the brand: the
+   streak (flame and days) and the rank (icon and name); before it loads there are none.
+2. **Given** the rank chip is tapped, **Then** the ranks screen (Journey) opens.
+3. **Given** the daily challenges are shown (flag on), **Then** a third chip "N/3" with the attention dot opens them.
+4. The days practised this week are not on Home; they stay on Progress.
 
 ### User Story 6 - See how the last go went (Priority: P1)
 
@@ -101,7 +101,7 @@ The same on every phone.
 - The saved place no longer fits its tune (phrase count changed) or the tune left the library: it is not offered.
 - A place saved on another device arrives by sync (spec 019): it counts like a local one. "Last opened" is local only.
 - The Continue card needs the melody progress store; while it loads there is no card, never a flash of a wrong one.
-- Before the standing loads, the strip is absent (no placeholders).
+- Before the standing loads, the chips are absent (no placeholders).
 
 ## Requirements *(mandatory)*
 
@@ -109,14 +109,14 @@ The same on every phone.
 
 - **FR-001**: Home MUST use one layout for every window height; the compact mode and the waveform are removed.
 - **FR-002**: Home MUST fit a 360×640 dp window without scrolling and MUST fall back to scrolling, never to clipping.
-- **FR-003**: Home MUST have no cards: the melody, the last result, the main button and the strip sit directly on the screen; the last result takes the free height.
+- **FR-003**: Home MUST have no cards: the melody, the last result, the main button and the header chips sit directly on the screen; the last result takes the free height.
 - **FR-004**: The bottom bar MUST hold Melodies, Progress and Settings, each at least 56 dp tall, with icon and label
   and a screen-reader label; the icons are bundled PNGs (Tabler outline, MIT), no new dependency.
 - **FR-005**: Continue MUST be offered for the melody last played: the most recently changed saved place that still fits its tune, or the latest finished attempt (offered to play again), whichever is later; failing both, the melody last opened. A melody only opened never replaces one that was played. A finished melody is not offered as "continue" in any other way.
 - **FR-006**: The practice screen MUST record the melody on screen as the last opened (device only) and forget it
   when that melody is finished.
 - **FR-007**: The button MUST open `/practice?tune=<id>&resume=1` for a saved place and `/practice?tune=<id>` otherwise; it reads "Continue", or "Try again" for a finished melody.
-- **FR-008**: Daily challenges MUST be hidden behind one flag (`SHOW_DAILY_CHALLENGES`); with it off the strip shows the days practised this week and there is no challenges item or attention dot (spec 015); turning it on brings them back as the strip's third item.
+- **FR-008**: Daily challenges MUST be hidden behind one flag (`SHOW_DAILY_CHALLENGES`); with it off there is no challenges chip or attention dot (spec 015); turning it on brings them back as a third chip in the header.
 - **FR-009**: Home MUST show the last result (US6) of the melody on screen only: its last answered phrase, or its finished attempt; note names come from the target notes (already answered, so nothing is given away); a result with no target notes is not shown.
 
 ### Key Entities

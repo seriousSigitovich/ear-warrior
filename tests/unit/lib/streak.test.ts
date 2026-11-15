@@ -1,11 +1,4 @@
-import {
-  activeStreak,
-  dayKey,
-  daysLabel,
-  shiftDay,
-  weekDays,
-  weekPracticeDays,
-} from '../../../src/lib/streak';
+import { activeStreak, dayKey, daysLabel, shiftDay, weekDays } from '../../../src/lib/streak';
 
 const set = (...days: string[]) => new Set(days);
 
@@ -103,18 +96,5 @@ describe('week', () => {
       'empty',
       'today',
     ]);
-  });
-});
-
-describe('days practised this week', () => {
-  // 2026-11-11 is a Wednesday: the week is 9 to 15 November.
-  test('counts the days from Monday to today, and no others', () => {
-    expect(weekPracticeDays(set(), '2026-11-11')).toBe(0);
-    expect(weekPracticeDays(set('2026-11-09', '2026-11-11'), '2026-11-11')).toBe(2);
-    expect(weekPracticeDays(set('2026-11-08', '2026-11-12'), '2026-11-11')).toBe(0);
-  });
-
-  test('a Sunday still counts its own week, from the Monday before', () => {
-    expect(weekPracticeDays(set('2026-11-09', '2026-11-15'), '2026-11-15')).toBe(2);
   });
 });
