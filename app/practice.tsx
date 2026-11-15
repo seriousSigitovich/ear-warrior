@@ -65,6 +65,7 @@ import { TransportControls } from '../src/components/controls/TransportControls'
 import { SpeedSlider } from '../src/components/controls/SpeedSlider';
 import { DEFAULT_SPEED, SPEED_KEY, parseSpeed } from '../src/lib/speed';
 import { PracticeStage } from '../src/components/practice/PracticeStage';
+import { clearOpened, saveOpened } from '../src/lib/lastOpened';
 import { PhraseProgress } from '../src/components/practice/PhraseProgress';
 import { TuneComplete } from '../src/components/feedback/TuneComplete';
 import { FretboardAnswer } from '../src/components/practice/FretboardAnswer';
@@ -306,6 +307,7 @@ export default function Practice() {
           .catch(() => undefined);
         session.recordAttempt(attempt.verdict === 'correct');
         // Finished: there is no place to continue at any more.
+        void clearOpened(kv, tuneIdOf(melody.id)).catch(() => undefined);
         void melodyProgress.repo
           .clear(tuneIdOf(melody.id))
           .then(() => melodyProgress.sync?.flush())
@@ -380,6 +382,7 @@ export default function Practice() {
       bookmark,
       resumeParam,
       melodyProgress,
+      kv,
     ],
   );
 
@@ -413,6 +416,10 @@ export default function Practice() {
   useEffect(() => setPhase(loop.phase), [loop.phase]);
   const rank = loop.level.rank;
   const melodyId = loop.melody?.id;
+  // Home's Continue offers the melody last opened, even when nothing was answered in it.
+  useEffect(() => {
+    if (melodyId) void saveOpened(kv, tuneIdOf(melodyId)).catch(() => undefined);
+  }, [kv, melodyId]);
   // Keyed on the melody alone: once per melody, not again when the level changes under it.
   useEffect(() => {
     if (melodyId) track('melody_play', { rank, speed: speedRef.current });

@@ -5,6 +5,7 @@ import {
   RemotePlace,
   detectedFromSave,
   gradeFromSave,
+  latestPlace,
   mergeRemote,
   placeOf,
   resumePhrase,
@@ -189,5 +190,28 @@ describe('a saved place against the melody it is restored onto', () => {
     );
     expect(usablePlace(place({ phrase: 5 }), 5)).toBe(false);
     expect(usablePlace(place({ phrase: -1 }), 5)).toBe(false);
+  });
+});
+
+describe('the place Home offers to continue', () => {
+  const fits = () => 5;
+
+  test('is the most recently changed place', () => {
+    const places = [row('a', 1, 10), row('b', 2, 30), row('c', 3, 20)];
+    expect(latestPlace(places, fits)?.tuneId).toBe('b');
+  });
+
+  test('is null when nothing was left half-way', () => {
+    expect(latestPlace([], fits)).toBeNull();
+  });
+
+  test('skips a finished melody, a place that no longer fits and a tune that left the library', () => {
+    const places = [
+      row('done', 1, 40, { deleted: true }),
+      row('edited', 1, 30, { phrases: 4 }),
+      row('gone', 1, 20),
+      row('ok', 1, 10),
+    ];
+    expect(latestPlace(places, (id) => (id === 'gone' ? null : 5))?.tuneId).toBe('ok');
   });
 });

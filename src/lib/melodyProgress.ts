@@ -74,6 +74,24 @@ export function usablePlace(
   );
 }
 
+/**
+ * The place to offer as "Continue" on Home: the most recently changed one that still fits its tune. `phrasesOf`
+ * says how many phrases a tune has now (null for a tune no longer in the library, whose place is ignored).
+ */
+export function latestPlace(
+  places: Iterable<MelodyPlaceRow>,
+  phrasesOf: (tuneId: string) => number | null,
+): MelodyPlaceRow | null {
+  let best: MelodyPlaceRow | null = null;
+  for (const p of places) {
+    if (p.deleted) continue;
+    const phrases = phrasesOf(p.tuneId);
+    if (phrases === null || !usablePlace(p, phrases)) continue;
+    if (!best || time(p.updatedAt) > time(best.updatedAt)) best = p;
+  }
+  return best;
+}
+
 /** Where "Skip to phrase N" goes from phrase `current`: the saved phrase, and only when it is ahead. */
 export function skipTarget(current: number, saved: number): number | null {
   return saved > current ? saved : null;

@@ -15,7 +15,16 @@ function dayLabel(d: WeekDay, goal: number): string {
   return d.count > 0 ? 'practised' : 'no practice';
 }
 
-export function WeekStrip({ days, goal }: { days: readonly WeekDay[]; goal: number }) {
+export function WeekStrip({
+  days,
+  goal,
+  showCount = true,
+}: {
+  days: readonly WeekDay[];
+  goal: number;
+  /** Today's ring carries the number of challenges done. Off while the challenges are hidden: an empty ring. */
+  showCount?: boolean;
+}) {
   return (
     <View style={styles.row}>
       {days.map((d, i) => {
@@ -25,15 +34,15 @@ export function WeekStrip({ days, goal }: { days: readonly WeekDay[]; goal: numb
             key={i}
             style={styles.day}
             accessible
-            accessibilityLabel={`${d.letter}: ${dayLabel(d, goal)}`}
+            accessibilityLabel={`${d.letter}: ${!showCount && d.state === 'today' ? 'today' : dayLabel(d, goal)}`}
           >
             {done ? (
               <View style={[styles.circle, styles.done]}>
                 <Text style={styles.check}>✓</Text>
               </View>
             ) : d.state === 'today' ? (
-              <Ring size={DAY} stroke={3} progress={d.count / goal}>
-                <Text style={styles.count}>{d.count}</Text>
+              <Ring size={DAY} stroke={3} progress={showCount ? d.count / goal : 0}>
+                {showCount ? <Text style={styles.count}>{d.count}</Text> : null}
               </Ring>
             ) : (
               <View style={[styles.circle, styles.empty, d.state === 'ahead' && styles.ahead]} />
