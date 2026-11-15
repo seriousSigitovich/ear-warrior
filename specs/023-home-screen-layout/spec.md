@@ -33,12 +33,12 @@ smallest windows. Spec 017 left "a Continue card on Home" for later; this is tha
 
 ## The screen
 
-Top to bottom: the brand · the melody to continue (*Where you stopped* / *Last opened*, its name, "Level 1 · Phrase 2
-of 2"), or "Train your ear" when there is none · **the last result**: how the last phrase (or attempt) went, note by
-note, in the free height · the main button (Continue, or Start practice) with a quiet "Start something new" link under
-Continue · a strip of three numbers (streak, rank with "40 / 100 XP", days practised this week) · the bottom bar. No
-cards. The melody and the last result are centred vertically, together, in the free height under the brand. The same
-on every phone.
+Top to bottom: the brand · a strip of three numbers (streak, rank with "40 / 100 XP", days practised this week) · the
+melody to continue (*Where you stopped* / *Last played* / *Last opened*, its name, "Level 1 · Phrase 2 of 2"), or
+"Train your ear" when there is none · **the last result** of that melody, note by note · the main button (Continue,
+"Try again" for a finished melody, or Start practice) with a quiet "Start something new" link under it · the bottom
+bar. No cards. The melody and the last result are centred vertically, together, in the free height under the strip.
+The same on every phone.
 
 ## User Scenarios & Testing *(mandatory)*
 

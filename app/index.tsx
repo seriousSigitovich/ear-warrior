@@ -89,6 +89,58 @@ export default function Home() {
         bounces={false}
       >
         <Kicker>Ear Warrior</Kicker>
+        {game && rank ? (
+          <View style={styles.strip}>
+            <View style={[styles.sep, { left: '33.333%' }]} />
+            <View style={[styles.sep, { left: '66.666%' }]} />
+            <View
+              style={styles.stat}
+              accessible
+              accessibilityLabel={`Streak: ${daysLabel(game.streak.days)} in a row`}
+            >
+              <View style={styles.statLine}>
+                <Flame size={16} />
+                <Text style={styles.statValue}>{game.streak.days}</Text>
+              </View>
+              <Text style={styles.statLabel}>streak</Text>
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`${rank.name}, ${rankXp}. Open ranks`}
+              onPress={() => router.push('/journey')}
+              style={({ pressed }) => [styles.stat, pressed && styles.pressed]}
+            >
+              <Text style={styles.statValue}>{rank.name}</Text>
+              <Text style={styles.statLabel}>{rankXp}</Text>
+            </Pressable>
+            {SHOW_DAILY_CHALLENGES ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Daily challenges: ${challengesDone} of ${challengesTotal} done${
+                  left > 0 ? `, ${left} left` : ''
+                }`}
+                onPress={() => router.push('/challenges')}
+                style={({ pressed }) => [styles.stat, pressed && styles.pressed]}
+              >
+                {left > 0 ? <AttentionDot /> : null}
+                <Text style={styles.statValue}>
+                  {challengesDone} / {challengesTotal}
+                </Text>
+                <Text style={styles.statLabel}>challenges</Text>
+              </Pressable>
+            ) : (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`${weekDays} ${weekDays === 1 ? 'day' : 'days'} practised this week. Open progress`}
+                onPress={() => router.push('/progress')}
+                style={({ pressed }) => [styles.stat, pressed && styles.pressed]}
+              >
+                <Text style={styles.statValue}>{weekDays}</Text>
+                <Text style={styles.statLabel}>{weekDays === 1 ? 'day' : 'days'} this week</Text>
+              </Pressable>
+            )}
+          </View>
+        ) : null}
         {/* The melody and its last result sit together in the middle of the free height. */}
         <View style={styles.centre}>
           {resume && resumeTune ? (
@@ -155,59 +207,6 @@ export default function Home() {
             style={styles.cta}
           />
         )}
-
-        {game && rank ? (
-          <View style={styles.strip}>
-            <View
-              style={styles.stat}
-              accessible
-              accessibilityLabel={`Streak: ${daysLabel(game.streak.days)} in a row`}
-            >
-              <View style={styles.statLine}>
-                <Flame size={16} />
-                <Text style={styles.statValue}>{game.streak.days}</Text>
-              </View>
-              <Text style={styles.statLabel}>streak</Text>
-            </View>
-            <View style={styles.sep} />
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`${rank.name}, ${rankXp}. Open ranks`}
-              onPress={() => router.push('/journey')}
-              style={({ pressed }) => [styles.stat, pressed && styles.pressed]}
-            >
-              <Text style={styles.statValue}>{rank.name}</Text>
-              <Text style={styles.statLabel}>{rankXp}</Text>
-            </Pressable>
-            <View style={styles.sep} />
-            {SHOW_DAILY_CHALLENGES ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Daily challenges: ${challengesDone} of ${challengesTotal} done${
-                  left > 0 ? `, ${left} left` : ''
-                }`}
-                onPress={() => router.push('/challenges')}
-                style={({ pressed }) => [styles.stat, pressed && styles.pressed]}
-              >
-                {left > 0 ? <AttentionDot /> : null}
-                <Text style={styles.statValue}>
-                  {challengesDone} / {challengesTotal}
-                </Text>
-                <Text style={styles.statLabel}>challenges</Text>
-              </Pressable>
-            ) : (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`${weekDays} ${weekDays === 1 ? 'day' : 'days'} practised this week. Open progress`}
-                onPress={() => router.push('/progress')}
-                style={({ pressed }) => [styles.stat, pressed && styles.pressed]}
-              >
-                <Text style={styles.statValue}>{weekDays}</Text>
-                <Text style={styles.statLabel}>{weekDays === 1 ? 'day' : 'days'} this week</Text>
-              </Pressable>
-            )}
-          </View>
-        ) : null}
       </ScrollView>
       <HomeNavBar
         items={[
@@ -242,11 +241,18 @@ const styles = StyleSheet.create({
   meta: { color: textAlpha[55], fontSize: 14, marginTop: 4 },
   cta: { minHeight: 54, marginTop: 14 },
   link: { alignSelf: 'center', marginTop: 4 },
-  strip: { flexDirection: 'row', alignItems: 'center', marginTop: 10, paddingVertical: 4 },
-  stat: { flex: 1, alignItems: 'center', paddingVertical: 4 },
+  strip: { flexDirection: 'row', alignItems: 'center', marginTop: 14, paddingVertical: 4 },
+  // Three equal columns by width, so a wide label cannot take more room than the others.
+  stat: { width: '33.333%', alignItems: 'center', paddingVertical: 4 },
   pressed: { backgroundColor: withAlpha(colors.accent, 0.14) },
   statLine: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   statValue: { color: colors.text, fontSize: 15, fontWeight: font.weightHeading },
   statLabel: { color: textAlpha[55], fontSize: 11 },
-  sep: { width: StyleSheet.hairlineWidth, height: 30, backgroundColor: colors.divider },
+  sep: {
+    position: 'absolute',
+    top: 8,
+    bottom: 8,
+    width: StyleSheet.hairlineWidth,
+    backgroundColor: colors.divider,
+  },
 });
