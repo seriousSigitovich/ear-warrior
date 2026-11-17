@@ -3,15 +3,16 @@
 //
 //   server/node_modules/.bin/tsx scripts/export-library.ts <out.json>
 import { writeFileSync } from 'fs';
-import { parseMelody } from '../src/services/melody/classify';
-import { LIBRARY } from '../src/services/melody/curated';
+import { TUNES } from '../server/src/tunes/library.data';
+import { parseNotes } from '../server/src/tunes/notes';
 
 const out = process.argv[2];
 if (!out) throw new Error('usage: export-library.ts <out.json>');
-const tunes = LIBRARY.map((t) => ({
+const tunes = TUNES.map((t) => ({
   id: t.id,
+  rank: t.rank,
   bpm: t.tempoBpm,
-  notes: parseMelody(t.notes).map((n) => [n.midi, n.beats]),
+  notes: (parseNotes(t.notes) ?? []).map((n) => [n.midi, n.beats]),
 }));
 writeFileSync(out, JSON.stringify(tunes));
 console.log(`${tunes.length} tunes -> ${out}`);

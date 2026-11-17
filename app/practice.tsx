@@ -14,17 +14,20 @@ import { Stack, useLocalSearchParams } from 'expo-router';
 import { Session } from '../src/models';
 import { curatedMelody, historyFromAttempts, tuneIdOf } from '../src/services/melody/curated';
 import { catalogTune } from '../src/services/melody/catalog';
-import { DEFAULT_GRADING_CFG } from '../src/services/grading/grade';
 import { MAX_RANK, MIN_RANK, getLevel, getLevelByRank } from '../src/services/melody/levels';
 import { scoreOf } from '../src/lib/review';
-import { getGamification } from '../src/services/gamification/instance';
+import { getRewards } from '../src/services/rewards/instance';
+import { useRewards } from '../src/features/rewards/useRewards';
+import { serverGrader } from '../src/features/practice/grader';
+import { getAudioCache, prefetchLevel } from '../src/services/tunes/instance';
+import { libraryTune } from '../src/services/tunes/library';
 import { getMelodyProgress } from '../src/services/progress/instance';
 import { requestSync } from '../src/services/sync/instance';
 import { MelodyPlaceRow, skipTarget, usablePlace } from '../src/lib/melodyProgress';
 import { phraseCount } from '../src/lib/phrases';
-import { CompletionResult, Snapshot } from '../src/services/gamification/service';
-import { completionEvents, GameEvent, phraseEvents } from '../src/services/gamification/events';
-import { gameSummary } from '../src/services/gamification/summary';
+import { completionEvent, GameEvent, phraseEvents } from '../src/services/rewards/events';
+import { gameSummary, MelodyEarnings } from '../src/services/rewards/summary';
+import type { PhraseResult } from '../src/services/rewards/types';
 import { RankUpModal } from '../src/components/gamification/RankUpModal';
 import { SettingsButton, SettingsPanel } from '../src/components/practice/SettingsPanel';
 import { FretPosition, fretMidi, tapStatuses } from '../src/lib/fretboard';
@@ -68,6 +71,7 @@ import { PracticeStage } from '../src/components/practice/PracticeStage';
 import { clearOpened, saveOpened } from '../src/lib/lastOpened';
 import { PhraseProgress } from '../src/components/practice/PhraseProgress';
 import { TuneComplete } from '../src/components/feedback/TuneComplete';
+import { StatusNotice, noticeFor } from '../src/components/practice/StatusNotice';
 import { FretboardAnswer } from '../src/components/practice/FretboardAnswer';
 import { Fretboard } from '../src/components/fretboard/Fretboard';
 import { VerdictBanner } from '../src/components/feedback/VerdictBanner';
@@ -77,6 +81,8 @@ import { StuckHelp } from '../src/components/feedback/StuckHelp';
 import { colors, withAlpha } from '../src/theme/nocturne';
 
 const APP_VERSION = '0.1.0';
+/** A melody counts as finished from this share of its notes landed (the server's pass mark for a phrase). */
+const COMPLETION_PASS = 80;
 /** Room the navigation bar keeps on each side of the title for the back arrow and the settings icon, dp. */
 const TITLE_SIDE = 68;
 
@@ -117,18 +123,18 @@ export default function Practice() {
       .then(setBookmark)
       .catch(() => setBookmark(null));
   }, [picked, melodyProgress]);
-  // Rewards (spec 013): the service decides every one; this screen reports a phrase checked and a melody
-  // completed, shows what comes back, and sends the events that came with it.
-  const game = useMemo(() => getGamification(), []);
-  // XP each phrase paid during this visit, keyed `<melody id>:<phrase>`, for the result and the closing card.
+  // Rewards (spec 013, 024): the server grades every phrase and pays by its own rules. This screen sends the notes tapped,
+  // shows what comes back and sends the events that came with it; it computes none of it.
+  const rewards = useMemo(() => getRewards(), []);
+  const grader = useMemo(() => serverGrader(rewards), [rewards]);
+  const standing = useRewards();
+  // XP each phrase paid during this visit, keyed `<melody id>:<phrase>`, for the result card.
   const [phraseXp, setPhraseXp] = useState<Record<string, number>>({});
-  // The melody finished last: its completion (null when below the pass mark) and the standing after it.
-  const [finished, setFinished] = useState<{
-    melodyId: string;
-    result: CompletionResult | null;
-    snap: Snapshot | null;
-  } | null>(null);
-  const [rankUpName, setRankUpName] = useState<string | null>(null);
+  // What each melody of this visit earned in all, from the server's answers, for the closing card.
+  const [earnings, setEarnings] = useState<Record<string, MelodyEarnings>>({});
+  // The melody finished last (its closing card shows what it earned).
+  const [finishedId, setFinishedId] = useState<string | null>(null);
+  const [rankUpName, setRankUpName] = useState<{ id: string; name: string } | null>(null);
   // Helps (first note, show answer) taken during the melody on screen: mastery counts melodies without any.
   const melodyHelps = useRef(0);
   const emit = useCallback((events: GameEvent[]) => {
@@ -261,6 +267,37 @@ export default function Practice() {
     return () => task.cancel();
   }, [playback]);
 
+  // What the server paid for a phrase, wherever it comes from: the answer to the check itself, or — for a tune the app
+  // graded on the device — the payout that follows. Shows the XP, tallies the melody's earnings, sends the events.
+  const applyReward = useCallback(
+    (playId: string, phrase: number, levelId: string, reward: PhraseResult) => {
+      const xp = reward.payout.xp;
+      if (xp > 0) setPhraseXp((prev) => ({ ...prev, [`${playId}:${phrase}`]: xp }));
+      setEarnings((prev) => {
+        const was = prev[playId] ?? { phrases: 0, challenges: 0, allBonus: 0 };
+        return {
+          ...prev,
+          [playId]: {
+            phrases: was.phrases + xp,
+            challenges:
+              was.challenges + reward.challengesPaid.reduce((sum, c) => sum + c.rewardXp, 0),
+            allBonus: was.allBonus + reward.allBonusXp,
+          },
+        };
+      });
+      emit(phraseEvents(reward, levelId));
+      if (reward.rankUp) setRankUpName(reward.rankUp);
+    },
+    [emit],
+  );
+  useEffect(
+    () =>
+      grader.onReward?.(({ melodyId: playId, level: levelId, phraseIndex, reward }) =>
+        applyReward(playId, phraseIndex, levelId, reward),
+      ),
+    [grader, applyReward],
+  );
+
   const deps = useMemo<PracticeLoopDeps>(
     () => ({
       nextMelody: (level, seed, mastered, recent) => {
@@ -288,7 +325,12 @@ export default function Practice() {
       loadHistory,
       playback,
       session: createAudioSession(),
-      gradingCfg: DEFAULT_GRADING_CFG,
+      grader,
+      // A tune's clip comes from the server and is kept on the device: make sure it is there before it plays.
+      ensureAudio: async (m) => {
+        const tune = libraryTune(tuneIdOf(m.id));
+        return tune ? getAudioCache().ensure(tune) : true;
+      },
       seed: () => Math.floor(Math.random() * 1e9),
       difficulty,
       speed: () => speedRef.current,
@@ -312,28 +354,33 @@ export default function Practice() {
           .clear(tuneIdOf(melody.id))
           .then(() => melodyProgress.sync?.flush())
           .catch(() => undefined);
-        // The melody is done: it counts as an exercise when enough of it was landed.
-        void game
-          .exerciseCompleted({
-            id: attempt.id,
-            melodyId: melody.id,
-            level: melody.difficultyId,
-            accuracy: scoreOf(attempt.noteResults).pct,
-            hintsUsed: melodyHelps.current,
-          })
-          .then(async (result) => {
-            if (result) {
-              emit(completionEvents(result));
-              if (result.rankUp) setRankUpName(result.rankUp);
-            }
-            setFinished({ melodyId: melody.id, result, snap: await game.snapshot() });
-            void requestSync({ force: true }); // a finished melody goes up to the account at once
-          })
-          .catch(() => undefined);
+        // The melody is done: it counts as an exercise when enough of it was landed. What it earned has already
+        // come back with its phrases' checks; this only names the event and opens the closing card.
+        const accuracy = scoreOf(attempt.noteResults).pct;
+        if (accuracy >= COMPLETION_PASS) {
+          emit([
+            completionEvent(
+              tuneIdOf(melody.id),
+              melody.difficultyId,
+              accuracy,
+              melodyHelps.current,
+            ),
+          ]);
+        }
+        setFinishedId(melody.id);
+        void requestSync({ force: true }); // the place left behind goes up to the account at once
       },
       // One check per phrase. `n` is the tune of this visit it belongs to, `first` marks the try the
       // tune is scored on.
-      onPhraseChecked: ({ phrase, phrases, grade, first, melodyId: playId, level: levelId }) => {
+      onPhraseChecked: ({
+        phrase,
+        phrases,
+        grade,
+        first,
+        melodyId: playId,
+        level: levelId,
+        reward,
+      }) => {
         const checked = draftPhraseChecked(draftRef.current);
         setDraft(checked.state);
         track('answer_check', {
@@ -347,22 +394,9 @@ export default function Practice() {
           help: helpRef.current,
           draft: checked.draft,
         });
-        // A phrase landed well enough pays XP, once per phrase per play.
-        void game
-          .phraseChecked({
-            melodyId: playId,
-            phrase,
-            accuracy: scoreOf(grade.noteResults).pct,
-            level: levelId,
-            answerShown: helpRef.current === 'answer',
-          })
-          .then((award) => {
-            if (!award) return;
-            setPhraseXp((prev) => ({ ...prev, [`${playId}:${phrase}`]: award.xp }));
-            emit(phraseEvents(award));
-            if (award.rankUp) setRankUpName(award.rankUp);
-          })
-          .catch(() => undefined);
+        // What the server paid for the phrase (nothing for one below the pass mark or already paid). A phrase the
+        // app graded itself has no reward yet: it arrives later (`grader.onReward`).
+        if (reward) applyReward(playId, phrase, levelId, reward);
       },
     }),
     [
@@ -377,8 +411,9 @@ export default function Practice() {
       session,
       setDraft,
       picked,
-      game,
+      grader,
       emit,
+      applyReward,
       bookmark,
       resumeParam,
       melodyProgress,
@@ -416,6 +451,8 @@ export default function Practice() {
   useEffect(() => setPhase(loop.phase), [loop.phase]);
   const rank = loop.level.rank;
   const melodyId = loop.melody?.id;
+  // The clips of the level in use and the next one are fetched ahead, so a melody starts without a wait.
+  useEffect(() => prefetchLevel(rank), [rank]);
   // Home's Continue offers the melody last opened, even when nothing was answered in it.
   useEffect(() => {
     if (melodyId) void saveOpened(kv, tuneIdOf(melodyId)).catch(() => undefined);
@@ -479,15 +516,14 @@ export default function Practice() {
     : picked && pickedPending.current
       ? picked.rank
       : loop.level.rank;
-  // What the tune just finished earned: its phrases' XP plus the completion's challenge rewards.
+  // What the tune just finished earned, as the server reported it phrase by phrase, and where that leaves the learner.
   const summary = useMemo(() => {
-    if (!loop.melody || finished?.melodyId !== loop.melody.id) return null;
-    const prefix = `${loop.melody.id}:`;
-    const fromPhrases = Object.entries(phraseXp)
-      .filter(([key]) => key.startsWith(prefix))
-      .reduce((sum, [, xp]) => sum + xp, 0);
-    return gameSummary(fromPhrases, finished.result, finished.snap);
-  }, [loop.melody, finished, phraseXp]);
+    if (!loop.melody || finishedId !== loop.melody.id) return null;
+    return gameSummary(
+      earnings[loop.melody.id] ?? { phrases: 0, challenges: 0, allBonus: 0 },
+      standing,
+    );
+  }, [loop.melody, finishedId, earnings, standing]);
 
   const grade = loop.grade;
   const showFeedback = loop.phase === 'feedback' && !!grade;
@@ -497,6 +533,12 @@ export default function Practice() {
   // (header, waveform, speed slider) flashes for a second before the answer screen opens.
   const starting = loop.phase === 'idle' && !startFailed;
   const noteCount = loop.phrase?.notes.length ?? 0;
+  const notice = noticeFor({
+    audioUnavailable: loop.audioUnavailable,
+    waiting: loop.waiting !== null,
+    helpUnavailable: loop.helpUnavailable,
+    checkFailed: loop.checkFailed,
+  });
   const stuck = showFeedback && grade!.verdict !== 'correct' && shouldOfferHelp(loop.fails);
 
   // A flash belongs to the board it was tapped on: gone once the answer view closes.
@@ -621,6 +663,8 @@ export default function Practice() {
           <Tag label={`Level ${shownRank} of ${MAX_RANK}`} />
         </View>
       )}
+
+      {notice ? <StatusNotice text={notice} /> : null}
 
       {loop.melody && loop.phase !== 'idle' && !answering ? (
         <PhraseProgress

@@ -11,7 +11,7 @@ import { exchangeGoogleCode } from '../auth/googleIdentity.js';
 import { returnPage, type ReturnOutcome } from '../auth/googlePage.js';
 import { challengeOf, newVerifier, signState, verifyState } from '../auth/googleState.js';
 import { generateToken, hashToken } from '../auth/tokens.js';
-import type { AuthDeps } from './auth.js';
+import { mergeAfterSignIn, type AuthDeps } from './auth.js';
 
 const TICKET_TTL_S = 2 * 60;
 const TICKET_RETENTION_S = 24 * 60 * 60;
@@ -98,7 +98,8 @@ export function registerAuthGoogle(app: FastifyInstance, deps: AuthDeps): void {
     if (!taken || challengeOf(verifier) !== taken.challenge) return reply.status(401).send({ ok: false, error: 'invalid_ticket' });
 
     const token = generateToken();
-    const { created } = await store.signIn({ email: taken.email, deviceId, tokenHash: hashToken(token), now: now() });
-    return { ok: true, token, email: taken.email, created };
+    const { userId, created } = await store.signIn({ email: taken.email, deviceId, tokenHash: hashToken(token), now: now() });
+    const merged = await mergeAfterSignIn(req, deps, deviceId, userId);
+    return { ok: true, token, email: taken.email, created, merged };
   });
 }

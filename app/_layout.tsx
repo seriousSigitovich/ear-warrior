@@ -1,6 +1,6 @@
 // Root navigation shell (T015). expo-router Stack inside the safe-area provider.
 // Nocturne: dark ground, headerless Home, slim accent-tinted back headers on inner screens.
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 import { Stack, usePathname } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -15,6 +15,10 @@ import { requestSync } from '../src/services/sync/instance';
 import { getOrCreateDeviceId, keyValueOverRowStore } from '../src/lib/deviceId';
 import { KEY_VALUE_TABLE, defaultRowStore } from '../src/services/storage/db';
 import { getUpdater } from '../src/services/updates/launchUpdate';
+import { startTunes } from '../src/services/tunes/instance';
+import { startRewards } from '../src/services/rewards/instance';
+import { getDifficultyRepository } from '../src/features/difficulty/difficultyRepository';
+import { effectiveRank } from '../src/features/difficulty/adapt';
 
 initSentry();
 
@@ -100,7 +104,29 @@ function useOtaUpdate(): void {
   }, []);
 }
 
+// The library (spec 024) is what every screen reads: fill it from the device before anything draws, so a screen never
+// sees an empty one. The device's copy is a quick local read; the server is asked afterwards, in the background.
+function useTunesReady(): boolean {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    const level = async () => effectiveRank(await getDifficultyRepository().load());
+    void startTunes(level)
+      .catch(() => undefined)
+      .finally(() => {
+        if (cancelled) return;
+        startRewards();
+        setReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return ready;
+}
+
 function RootLayout() {
+  const tunesReady = useTunesReady();
   useOtaUpdate();
   useAuthLifecycle();
   useSentryUser();
@@ -108,6 +134,7 @@ function RootLayout() {
   useEffect(() => track('app_open'), []);
   useScreenTracking();
   useSync();
+  if (!tunesReady) return null;
   return (
     <SafeAreaProvider>
       <StatusBar style="light" />

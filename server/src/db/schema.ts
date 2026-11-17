@@ -20,6 +20,7 @@ import {
   pgTable,
   primaryKey,
   real,
+  smallint,
   text,
   timestamp,
   uuid,
@@ -160,7 +161,9 @@ export const socialRuns = pgTable('social_runs', {
 /** Optional email sign-in (spec 005). An account is a verified email; created on first correct code. */
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
-  email: text('email').notNull(),
+  /** Null for an anonymous (device-only) account until it signs in (spec 024). */
+  email: text('email'),
+  anonymous: boolean('anonymous').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -291,3 +294,82 @@ export const dailyChallengeOverrides = pgTable('daily_challenge_overrides', {
   allBonusXp: integer('all_bonus_xp').notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** The melody library (spec 024). Answers (`notes`) never leave the server except through an explicit reveal. */
+export const tunes = pgTable('tunes', {
+  id: text('id').primaryKey(),
+  title: text('title').notNull(),
+  level: smallint('level').notNull(),
+  tempoBpm: real('tempo_bpm').notNull(),
+  phrases: integer('phrases').array().notNull(),
+  notes: text('notes').notNull(),
+  scale: text('scale').notNull().default(''),
+  source: text('source').notNull().default(''),
+  audioUrl: text('audio_url'),
+  audioSha256: text('audio_sha256'),
+  audioBytes: integer('audio_bytes'),
+  hidden: boolean('hidden').notNull().default(true),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Every phrase check (spec 024); the primary key makes a resend idempotent. */
+export const phraseChecks = pgTable(
+  'phrase_checks',
+  {
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    checkId: text('check_id').notNull(),
+    tuneId: text('tune_id').notNull(),
+    phrase: smallint('phrase').notNull(),
+    attemptNo: integer('attempt_no').notNull(),
+    played: smallint('played').array().notNull(),
+    noteResults: jsonb('note_results').notNull(),
+    accuracy: smallint('accuracy').notNull(),
+    passed: boolean('passed').notNull(),
+    xp: integer('xp').notNull().default(0),
+    payout: jsonb('payout').notNull().default({}),
+    localDay: date('local_day', { mode: 'string' }).notNull(),
+    checkedAt: timestamp('checked_at', { withTimezone: true }).notNull(),
+    receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.userId, t.checkId] }) }),
+);
+
+/** Hints and revealed answers, recorded by the server that revealed them (spec 024). */
+export const phraseEvents = pgTable(
+  'phrase_events',
+  {
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    tuneId: text('tune_id').notNull(),
+    phrase: smallint('phrase').notNull(),
+    kind: text('kind').notNull(),
+    at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.userId, t.tuneId, t.phrase, t.kind] }) }),
+);
+
+/** The XP ledger (spec 024): append-only, one row per paid key. Total XP is the sum of `xp`. */
+export const xpLedger = pgTable(
+  'xp_ledger',
+  {
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    key: text('key').notNull(),
+    kind: text('kind').notNull(),
+    xp: integer('xp').notNull(),
+    breakdown: jsonb('breakdown').notNull().default({}),
+    localDay: date('local_day', { mode: 'string' }).notNull(),
+    at: timestamp('at', { withTimezone: true }).notNull(),
+    seq: bigserial('seq', { mode: 'number' }).notNull(),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.userId, t.key] }) }),
+);
+
+/** Base XP used toward the daily cap (spec 024). */
+export const dailyXp = pgTable(
+  'daily_xp',
+  {
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    localDay: date('local_day', { mode: 'string' }).notNull(),
+    baseXp: real('base_xp').notNull().default(0),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.userId, t.localDay] }) }),
+);

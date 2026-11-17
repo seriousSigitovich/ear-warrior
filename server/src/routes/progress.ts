@@ -7,7 +7,7 @@
 //   GET  /api/progress/melodies            where the learner stopped in each melody (spec 017)
 //   PUT  /api/progress/melodies/:tuneId    save a place; the latest write wins
 //   DELETE /api/progress/melodies/:tuneId?updated_at=…   the melody was finished
-//   POST /api/progress/gamification        awards, completions and mastery the learner earned (spec 019)
+//   POST /api/progress/gamification        awards, completions and mastery from apps before spec 024: stored, never counted; 410 after cutover
 //   GET  /api/progress/gamification?after=&limit=   those rows, after a cursor, in order of arrival
 //   GET  /api/progress/attempts?after=&limit=       the account's attempts, after a cursor (a device that lacks them)
 //
@@ -260,9 +260,15 @@ export function registerProgress(app: FastifyInstance, { auth, progress, now = (
     }
   });
 
+  // Spec 024: rewards are computed here now (routes/phrase.ts). Installed apps from before it still push their rows;
+  // they are stored as they always were but never count for XP or rank. Once those apps are gone the owner sets
+  // GAMIFICATION_GONE=1 and both routes answer 410.
+  const gone = (reply: FastifyReply) => process.env.GAMIFICATION_GONE === '1' && void reply.status(410).send({ ok: false, error: 'gone' });
+
   app.post('/api/progress/gamification', async (req, reply) => {
     const userId = await userOf(req, reply);
     if (!userId) return reply;
+    if (gone(reply)) return reply;
     const parsed = GameRowsBody.safeParse(req.body ?? {});
     if (!parsed.success) return reply.status(400).send({ ok: false, error: 'invalid_payload' });
     try {
@@ -276,6 +282,7 @@ export function registerProgress(app: FastifyInstance, { auth, progress, now = (
   app.get('/api/progress/gamification', async (req, reply) => {
     const userId = await userOf(req, reply);
     if (!userId) return reply;
+    if (gone(reply)) return reply;
     const q = CursorQuery.safeParse(req.query ?? {});
     if (!q.success) return reply.status(400).send({ ok: false, error: 'invalid_query' });
     try {

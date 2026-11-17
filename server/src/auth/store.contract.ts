@@ -173,5 +173,40 @@ export function runStoreContract(name: string, make: () => Promise<AuthStore>, o
       assert.equal(await s.deleteUserByEmail('a@x.co'), true);
       assert.equal(await s.sessionByToken('tok1'), null);
     });
+
+    test('an anonymous identity: one account per device, a session each time, no email, not linked', async () => {
+      const a = await s.anonymousSession({ deviceId: DEV, tokenHash: 'anon1', now: T0 });
+      assert.equal(a.created, true);
+      assert.deepEqual(await s.sessionByToken('anon1'), { userId: a.userId, email: null, deviceId: DEV });
+      const again = await s.anonymousSession({ deviceId: DEV, tokenHash: 'anon2', now: at(5) });
+      assert.deepEqual(again, { userId: a.userId, created: false });
+      assert.equal((await s.sessionByToken('anon2'))?.userId, a.userId);
+      const other = await s.anonymousSession({ deviceId: DEV2, tokenHash: 'anon3', now: at(6) });
+      assert.notEqual(other.userId, a.userId);
+      assert.equal(await s.attributedEmail(DEV, at(10)), null, 'an anonymous identity attributes nothing');
+    });
+
+    test('two simultaneous first calls from one device make one identity', async () => {
+      const [x, y] = await Promise.all([
+        s.anonymousSession({ deviceId: DEV, tokenHash: 'p1', now: T0 }),
+        s.anonymousSession({ deviceId: DEV, tokenHash: 'p2', now: T0 }),
+      ]);
+      assert.equal(x.userId, y.userId);
+      assert.deepEqual([x.created, y.created].sort(), [false, true]);
+    });
+
+    test('anonymousUserOf finds the device\'s anonymous account, even after the device signed in, and never a real one', async () => {
+      const anon = await s.anonymousSession({ deviceId: DEV, tokenHash: 'anon1', now: T0 });
+      const real = await signIn('a@x.co', DEV, 'real1', at(1));
+      assert.equal(await s.anonymousUserOf(DEV, real.userId), anon.userId);
+      assert.equal(await s.anonymousUserOf(DEV, anon.userId), null, 'excluding itself leaves nothing');
+      assert.equal(await s.anonymousUserOf(DEV2, real.userId), null);
+    });
+
+    test('deleting an anonymous account removes its sessions', async () => {
+      const anon = await s.anonymousSession({ deviceId: DEV, tokenHash: 'anon1', now: T0 });
+      await s.deleteUser(anon.userId);
+      assert.equal(await s.sessionByToken('anon1'), null);
+    });
   });
 }

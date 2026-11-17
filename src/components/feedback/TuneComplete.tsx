@@ -1,15 +1,14 @@
 // Closing card of a tune: a word of praise, the tune named (the reveal is part of the payoff), the
 // score — notes matched, phrases right first time — what the melody earned (XP and where it leaves the
-// rank, any level just mastered, the day's challenges and streak), and the tune note by note with the
+// rank, the day's challenges and streak), and the tune note by note with the
 // wrong notes and what they should have been. All of it while the tune plays whole once more. The right
 // notes are named only here, once the tune is over: before that, finding them by ear is the exercise.
 import React, { useEffect } from 'react';
 import { AccessibilityInfo, StyleSheet, Text, View } from 'react-native';
-import { levelLabel } from '../../lib/levelLabels';
 import { tuneSummary } from '../../lib/phrases';
 import { mistakesOf, noteStrip, praise, scoreOf } from '../../lib/review';
 import { AttemptGrade, NoteResult } from '../../models';
-import { GameSummary } from '../../services/gamification/summary';
+import type { GameSummary } from '../../services/rewards/summary';
 import { nextRankLine } from '../progress/RankCard';
 import { Card } from '../common/Card';
 import { Flame } from '../gamification/Flame';
@@ -47,7 +46,7 @@ export function TuneComplete({ title, grades, results, game }: TuneCompleteProps
     AccessibilityInfo.announceForAccessibility(
       `${kicker}. ${headline}. ${score.pct} percent. ${notesLine}. ${phrasesLine}.${
         game && game.earnedXp > 0 ? ` ${game.earnedXp} XP.` : ''
-      }${game?.masteryUnlocked.length ? ` ${game.masteryUnlocked.map(levelLabel).join(', ')} mastered.` : ''}`,
+      }`,
     );
   }, [kicker, headline, score.pct, phrasesLine, notesLine, game]);
 
@@ -81,16 +80,6 @@ export function TuneComplete({ title, grades, results, game }: TuneCompleteProps
             {game.parts.length > 0 ? (
               <Text style={styles.xpParts}>{game.parts.join(' · ')}</Text>
             ) : null}
-          </View>
-        ) : null}
-
-        {game && game.masteryUnlocked.length > 0 ? (
-          <View style={styles.mastery}>
-            {game.masteryUnlocked.map((level) => (
-              <Text key={level} style={styles.masteryText}>
-                ✓ {levelLabel(level)} mastered
-              </Text>
-            ))}
           </View>
         ) : null}
 
@@ -134,9 +123,6 @@ const styles = StyleSheet.create({
   xpBar: { height: 5, borderRadius: 3, backgroundColor: colors.divider, overflow: 'hidden' },
   xpFill: { height: 5, borderRadius: 3, backgroundColor: colors.accent },
   xpParts: { color: textAlpha[50], fontSize: 12 },
-
-  mastery: { marginTop: 6, gap: 2 },
-  masteryText: { color: colors.accentRamp[300], fontSize: 14, fontWeight: font.weightHeading },
 
   habit: {
     flexDirection: 'row',

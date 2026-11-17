@@ -3,13 +3,18 @@
 // received it from the service.
 import React, { useEffect, useRef } from 'react';
 import { Animated, Modal, StyleSheet, Text, View } from 'react-native';
-import { GAMIFICATION } from '../../config/gamification';
 import { Button } from '../common/Button';
 import { RankIcon } from './RankIcon';
 import { useReduceMotion } from '../common/Waveform';
 import { colors, font, radius, textAlpha, withAlpha } from '../../theme/nocturne';
 
-export function RankUpModal({ rank, onClose }: { rank: string | null; onClose: () => void }) {
+export function RankUpModal({
+  rank,
+  onClose,
+}: {
+  rank: { id: string; name: string } | null;
+  onClose: () => void;
+}) {
   const still = useReduceMotion();
   const pop = useRef(new Animated.Value(0)).current;
 
@@ -38,11 +43,11 @@ export function RankUpModal({ rank, onClose }: { rank: string | null; onClose: (
           ]}
           accessible
           accessibilityViewIsModal
-          accessibilityLabel={`New rank: ${rank}`}
+          accessibilityLabel={`New rank: ${rank?.name ?? ''}`}
         >
-          <RankIcon rankId={GAMIFICATION.ranks.find((r) => r.name === rank)?.id ?? ''} size={112} />
+          <RankIcon rankId={rank?.id ?? ''} size={112} />
           <Text style={styles.kicker}>New rank</Text>
-          <Text style={styles.name}>{rank}</Text>
+          <Text style={styles.name}>{rank?.name}</Text>
           <Text style={styles.line}>Your ear is getting sharper.</Text>
           <Button label="Continue" variant="filled" onPress={onClose} style={styles.button} />
         </Animated.View>

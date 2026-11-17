@@ -216,5 +216,15 @@ export function runProgressContract(
       await s.putDifficulty(u, { ...difficulty, adaptiveRank: 5, streakKind: 'none', streakCount: 0 }, at(60));
       assert.deepEqual(await s.getDifficulty(u), { ...difficulty, adaptiveRank: 5, streakKind: 'none', streakCount: 0 });
     });
+
+    test('accountsWithAttempts lists each account that has stored an attempt, once', async () => {
+      const a = await user();
+      const b = await user();
+      await user(); // no attempts
+      await s.addAttempt(a, attempt('x', 'correct', 1));
+      await s.addAttempt(a, attempt('y', 'correct', 2));
+      await s.addAttempt(b, attempt('x', 'incorrect', 3));
+      assert.deepEqual((await s.accountsWithAttempts()).sort(), [a, b].sort());
+    });
   });
 }

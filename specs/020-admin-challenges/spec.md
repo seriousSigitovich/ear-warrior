@@ -1,5 +1,7 @@
 # Feature Specification: Daily Challenges From the Admin
 
+> **Amended 2026-11-16 ([spec 024](../024-server-authoritative-xp/spec.md))**: manual days still decide which challenges are offered; their progress and rewards are the server's.
+
 **Created**: 2026-11-12 | **Status**: Implemented (not deployed) | **Builds on**: [018-backend-challenges](../018-backend-challenges/spec.md)
 
 **Input**: Owner (2026-11-12): "set daily challenges through the admin".

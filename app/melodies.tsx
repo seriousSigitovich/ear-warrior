@@ -10,6 +10,7 @@ import { Screen } from '../src/components/common/Screen';
 import { Kicker } from '../src/components/common/Kicker';
 import { useHistory } from '../src/features/progress/useHistory';
 import { useMelodyProgress } from '../src/features/progress/useMelodyProgress';
+import { useLibraryVersion } from '../src/features/tunes/useLibrary';
 import { usablePlace, type MelodyPlaceRow } from '../src/lib/melodyProgress';
 import { CatalogTune, libraryCatalog, tuneAsk } from '../src/services/melody/catalog';
 import { colors, font, radius, textAlpha, withAlpha } from '../src/theme/nocturne';
@@ -77,6 +78,7 @@ export default function Melodies() {
   const router = useRouter();
   const { attempts } = useHistory();
   const places = useMelodyProgress();
+  const library = useLibraryVersion(); // the list is the catalog: redraw when a newer one arrives
   const sections = useMemo(
     () =>
       libraryCatalog(attempts).map((level) => ({
@@ -85,7 +87,7 @@ export default function Melodies() {
         total: level.tunes.length,
         data: level.tunes,
       })),
-    [attempts],
+    [attempts, library],
   );
 
   return (

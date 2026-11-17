@@ -1,63 +1,36 @@
-// The melody library (FR-021): 100 whole public-domain melodies, one per tune, each on one difficulty
-// rank (1–9) and at its own tempo. The tunes are written in ABC in `library.abc`; `npm run library`
-// turns them into `library.ts`, which this module serves. Every tune is inside the 12-fret neck (E2–E5,
-// MIDI 40–76), so any note can be answered on the on-screen fretboard.
-//
-// `notes` is "pitch:beats" tokens, e.g. "E4:1 D4:2". Rhythm is played back but never graded.
+// The melody library the app serves (FR-021, spec 024): the tunes the server's catalog names (or, before the first
+// download, the few shipped inside the app), each on one difficulty rank (1–9) and at its own tempo. The app holds a
+// tune's rhythm, phrases and voiced clip — never the pitches of its answer; the server grades. Every tune is inside the
+// 12-fret neck (E2–E5, MIDI 40–76), so any note can be answered on the on-screen fretboard.
 import { Attempt, DifficultyLevel, Melody, Note } from '../../models';
 import { hzFromMidi, noteName } from '../../lib/pitchNote';
-import { LibraryTune, TUNES } from './library';
+import { getLibrary } from '../tunes/library';
+import type { LibraryTune } from '../tunes/types';
 import { L1 } from './levels';
 
-export type { LibraryTune } from './library';
-
-/** Everything the app serves, easiest rank first. */
-export const LIBRARY: readonly LibraryTune[] = TUNES;
-
-const PITCH_CLASS: Record<string, number> = {
-  C: 0,
-  'C#': 1,
-  Db: 1,
-  D: 2,
-  'D#': 3,
-  Eb: 3,
-  E: 4,
-  F: 5,
-  'F#': 6,
-  Gb: 6,
-  G: 7,
-  'G#': 8,
-  Ab: 8,
-  A: 9,
-  'A#': 10,
-  Bb: 10,
-  B: 11,
-};
+export type { LibraryTune } from '../tunes/types';
 
 /** Fixed placeholder; the storage layer stamps the real creation time on persist. */
 const CREATED_AT_PLACEHOLDER = new Date(0).toISOString();
 
-function parseNotes(tune: LibraryTune): Note[] {
-  return tune.notes
-    .trim()
-    .split(/\s+/)
-    .map((token, index) => {
-      const [name, beats] = token.split(':');
-      const match = name.match(/^([A-G][#b]?)(-?\d)$/);
-      const durationBeats = Number(beats);
-      if (!match || !(durationBeats > 0)) {
-        throw new Error(`Bad note "${token}" in library tune "${tune.id}".`);
-      }
-      const midi = PITCH_CLASS[match[1]] + 12 * (Number(match[2]) + 1);
-      return {
-        index,
-        midi,
-        noteName: noteName(midi),
-        frequencyHz: hzFromMidi(midi),
-        centsOffset: 0,
-        durationBeats,
-      };
-    });
+/**
+ * A note whose pitch the app does not know: only its length. `midi` 0 marks it; nothing in the app may sound or grade
+ * it (the playback service refuses a melody of such notes whose clip is missing).
+ */
+export function unpitchedNote(index: number, durationBeats: number): Note {
+  return { index, midi: 0, noteName: '', frequencyHz: 0, centsOffset: 0, durationBeats };
+}
+
+/** A note whose pitch the app knows (a tune of the first levels, whose answer ships in the app). */
+export function pitchedNote(index: number, midi: number, durationBeats: number): Note {
+  return {
+    index,
+    midi,
+    noteName: noteName(midi),
+    frequencyHz: hzFromMidi(midi),
+    centsOffset: 0,
+    durationBeats,
+  };
 }
 
 function span(values: number[], unit = ''): string {
@@ -68,12 +41,15 @@ function span(values: number[], unit = ''): string {
 
 /** What a rank holds, for display: how many tunes, their note counts ("17–62") and tempos ("60–140 BPM"). */
 export function levelSummary(rank: number): { tunes: number; notes: string; tempo: string } {
-  const ofRank = LIBRARY.filter((t) => t.rank === rank);
+  const ofRank = getLibrary().filter((t) => t.rank === rank);
   if (ofRank.length === 0) return { tunes: 0, notes: '–', tempo: '–' };
   return {
     tunes: ofRank.length,
-    notes: span(ofRank.map((t) => t.notes.trim().split(/\s+/).length)),
-    tempo: span(ofRank.map((t) => t.tempoBpm), ' BPM'),
+    notes: span(ofRank.map((t) => t.beats.length)),
+    tempo: span(
+      ofRank.map((t) => t.tempoBpm),
+      ' BPM',
+    ),
   };
 }
 
@@ -86,7 +62,9 @@ export function tuneIdOf(melodyId: string): string {
  * Tunes the learner has played at 100% (an attempt with every note right and none extra), read from
  * the recorded attempts so the memory survives restarts and syncs with them.
  */
-export function masteredTuneIds(attempts: readonly Pick<Attempt, 'melodyId' | 'verdict'>[]): Set<string> {
+export function masteredTuneIds(
+  attempts: readonly Pick<Attempt, 'melodyId' | 'verdict'>[],
+): Set<string> {
   return new Set(attempts.filter((a) => a.verdict === 'correct').map((a) => tuneIdOf(a.melodyId)));
 }
 
@@ -105,7 +83,9 @@ export function historyFromAttempts(
 ): TuneHistory {
   return {
     mastered: [...masteredTuneIds(attempts)],
-    recent: [...attempts].sort((a, b) => a.createdAt.localeCompare(b.createdAt)).map((a) => tuneIdOf(a.melodyId)),
+    recent: [...attempts]
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+      .map((a) => tuneIdOf(a.melodyId)),
   };
 }
 
@@ -124,19 +104,19 @@ export function curatedMelody(
   mastered: ReadonlySet<string> = new Set(),
   recent: readonly string[] = [],
 ): Melody {
-  const ofLevel = LIBRARY.filter((t) => t.rank === level.rank);
+  const ofLevel = getLibrary().filter((t) => t.rank === level.rank);
   const fresh = ofLevel.filter((t) => !mastered.has(t.id));
   const pool = fresh.length > 0 ? fresh : ofLevel;
   const lastPlayed = (t: LibraryTune) => recent.lastIndexOf(t.id); // -1: not played yet
   const oldest = Math.min(...pool.map(lastPlayed));
   const tunes = pool.filter((t) => lastPlayed(t) === oldest);
-  const tune = tuneId
-    ? ofLevel.find((t) => t.id === tuneId)
-    : tunes[Math.abs(seed) % tunes.length];
+  const tune = tuneId ? ofLevel.find((t) => t.id === tuneId) : tunes[Math.abs(seed) % tunes.length];
   if (!tune) throw new Error(`No library tune for level ${level.id}.`);
   return {
     id: `${tune.id}-${seed}`,
-    notes: parseNotes(tune),
+    notes: tune.beats.map((beats, i) =>
+      tune.answer ? pitchedNote(i, tune.answer[i], beats) : unpitchedNote(i, beats),
+    ),
     difficultyId: level.id,
     scale: tune.scale,
     tempoBpm: tune.tempoBpm,
@@ -146,36 +126,39 @@ export function curatedMelody(
   };
 }
 
-/** The tune the first melody is cut from, and how many of its notes it keeps. */
-export const FIRST_MELODY_TUNE = 'fifth';
-const FIRST_MELODY_NOTES = 4;
 /**
- * Its own clip, voiced with just those notes (EXCERPTS in assets/guitar-rig/render_library.py): the
- * tune's full clip would have to be cut on a JS timer, and a late timer let the next notes through.
+ * The first melody a new learner plays, in place of an onboarding to read (owner's pick): the four notes that open
+ * Beethoven's Fifth — three repeated, one lower. Short, known to everyone, nearly impossible to lose. One phrase,
+ * slowed down, from a clip of its own that ships inside the app (EXCERPTS in assets/guitar-rig/render_library.py), so it
+ * works on the first launch with no network. It is the one melody whose answer the app holds: it is a coached warm-up,
+ * graded on the device, never recorded, never paid.
  */
 export const FIRST_MELODY_CLIP = 'fifthfirst';
+/** G3 G3 G3 E♭3, and each note's length in beats. */
+const FIRST_MELODY_MIDI = [55, 55, 55, 51];
+const FIRST_MELODY_BEATS = [0.5, 0.5, 0.5, 2.5];
 /**
  * Slower than the symphony's 216 so a beginner hears each note; the clip is voiced at this tempo
  * (keep in sync with EXCERPTS), so nothing is stretched at play time.
  */
 export const FIRST_MELODY_BPM = 120;
 
-/**
- * The first melody a new learner plays, in place of an onboarding to read (owner's pick): the four
- * notes that open Beethoven's Fifth — three repeated, one lower. Short, known to everyone, nearly
- * impossible to lose. One phrase, slowed down, from a clip of its own. Never recorded or scored.
- */
 export function firstMelody(): Melody {
-  const tune = LIBRARY.find((t) => t.id === FIRST_MELODY_TUNE);
-  if (!tune) throw new Error(`First melody tune "${FIRST_MELODY_TUNE}" is not in the library.`);
   return {
     id: `${FIRST_MELODY_CLIP}-first`,
-    notes: parseNotes(tune).slice(0, FIRST_MELODY_NOTES),
+    notes: FIRST_MELODY_MIDI.map((midi, index) => ({
+      index,
+      midi,
+      noteName: noteName(midi),
+      frequencyHz: hzFromMidi(midi),
+      centsOffset: 0,
+      durationBeats: FIRST_MELODY_BEATS[index],
+    })),
     difficultyId: L1.id,
-    scale: tune.scale,
+    scale: 'C_natural_minor',
     tempoBpm: FIRST_MELODY_BPM,
-    phrases: [FIRST_MELODY_NOTES],
-    title: tune.title,
+    phrases: [FIRST_MELODY_MIDI.length],
+    title: 'Symphony No. 5 (opening)',
     createdAt: CREATED_AT_PLACEHOLDER,
   };
 }

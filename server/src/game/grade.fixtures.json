@@ -1,0 +1,354 @@
+[
+  {
+    "name": "exact",
+    "answer": [
+      60,
+      62,
+      64
+    ],
+    "played": [
+      60,
+      62,
+      64
+    ],
+    "expected": {
+      "accuracy": 100,
+      "results": [
+        {
+          "status": "matched",
+          "targetIndex": 0,
+          "expectedMidi": 60,
+          "detectedMidi": 60
+        },
+        {
+          "status": "matched",
+          "targetIndex": 1,
+          "expectedMidi": 62,
+          "detectedMidi": 62
+        },
+        {
+          "status": "matched",
+          "targetIndex": 2,
+          "expectedMidi": 64,
+          "detectedMidi": 64
+        }
+      ]
+    }
+  },
+  {
+    "name": "one wrong",
+    "answer": [
+      60,
+      62,
+      64
+    ],
+    "played": [
+      60,
+      63,
+      64
+    ],
+    "expected": {
+      "accuracy": 67,
+      "results": [
+        {
+          "status": "matched",
+          "targetIndex": 0,
+          "expectedMidi": 60,
+          "detectedMidi": 60
+        },
+        {
+          "status": "wrong",
+          "targetIndex": 1,
+          "expectedMidi": 62,
+          "detectedMidi": 63
+        },
+        {
+          "status": "matched",
+          "targetIndex": 2,
+          "expectedMidi": 64,
+          "detectedMidi": 64
+        }
+      ]
+    }
+  },
+  {
+    "name": "one missed",
+    "answer": [
+      60,
+      62,
+      64
+    ],
+    "played": [
+      60,
+      64
+    ],
+    "expected": {
+      "accuracy": 67,
+      "results": [
+        {
+          "status": "matched",
+          "targetIndex": 0,
+          "expectedMidi": 60,
+          "detectedMidi": 60
+        },
+        {
+          "status": "missed",
+          "targetIndex": 1,
+          "expectedMidi": 62,
+          "detectedMidi": null
+        },
+        {
+          "status": "matched",
+          "targetIndex": 2,
+          "expectedMidi": 64,
+          "detectedMidi": 64
+        }
+      ]
+    }
+  },
+  {
+    "name": "one extra",
+    "answer": [
+      60,
+      62
+    ],
+    "played": [
+      60,
+      62,
+      64
+    ],
+    "expected": {
+      "accuracy": 100,
+      "results": [
+        {
+          "status": "matched",
+          "targetIndex": 0,
+          "expectedMidi": 60,
+          "detectedMidi": 60
+        },
+        {
+          "status": "matched",
+          "targetIndex": 1,
+          "expectedMidi": 62,
+          "detectedMidi": 62
+        },
+        {
+          "status": "extra",
+          "targetIndex": null,
+          "expectedMidi": null,
+          "detectedMidi": 64
+        }
+      ]
+    }
+  },
+  {
+    "name": "nothing played",
+    "answer": [
+      60,
+      62
+    ],
+    "played": [],
+    "expected": {
+      "accuracy": 0,
+      "results": [
+        {
+          "status": "missed",
+          "targetIndex": 0,
+          "expectedMidi": 60,
+          "detectedMidi": null
+        },
+        {
+          "status": "missed",
+          "targetIndex": 1,
+          "expectedMidi": 62,
+          "detectedMidi": null
+        }
+      ]
+    }
+  },
+  {
+    "name": "octave off",
+    "answer": [
+      60
+    ],
+    "played": [
+      72
+    ],
+    "expected": {
+      "accuracy": 0,
+      "results": [
+        {
+          "status": "wrong",
+          "targetIndex": 0,
+          "expectedMidi": 60,
+          "detectedMidi": 72
+        }
+      ]
+    }
+  },
+  {
+    "name": "all different, longer",
+    "answer": [
+      60,
+      62
+    ],
+    "played": [
+      64,
+      65,
+      66
+    ],
+    "expected": {
+      "accuracy": 0,
+      "results": [
+        {
+          "status": "extra",
+          "targetIndex": null,
+          "expectedMidi": null,
+          "detectedMidi": 64
+        },
+        {
+          "status": "wrong",
+          "targetIndex": 0,
+          "expectedMidi": 60,
+          "detectedMidi": 65
+        },
+        {
+          "status": "wrong",
+          "targetIndex": 1,
+          "expectedMidi": 62,
+          "detectedMidi": 66
+        }
+      ]
+    }
+  },
+  {
+    "name": "repeated notes",
+    "answer": [
+      60,
+      60,
+      62,
+      62
+    ],
+    "played": [
+      60,
+      62,
+      62
+    ],
+    "expected": {
+      "accuracy": 75,
+      "results": [
+        {
+          "status": "missed",
+          "targetIndex": 0,
+          "expectedMidi": 60,
+          "detectedMidi": null
+        },
+        {
+          "status": "matched",
+          "targetIndex": 1,
+          "expectedMidi": 60,
+          "detectedMidi": 60
+        },
+        {
+          "status": "matched",
+          "targetIndex": 2,
+          "expectedMidi": 62,
+          "detectedMidi": 62
+        },
+        {
+          "status": "matched",
+          "targetIndex": 3,
+          "expectedMidi": 62,
+          "detectedMidi": 62
+        }
+      ]
+    }
+  },
+  {
+    "name": "extra in the middle",
+    "answer": [
+      60,
+      62,
+      64
+    ],
+    "played": [
+      60,
+      61,
+      62,
+      64
+    ],
+    "expected": {
+      "accuracy": 100,
+      "results": [
+        {
+          "status": "matched",
+          "targetIndex": 0,
+          "expectedMidi": 60,
+          "detectedMidi": 60
+        },
+        {
+          "status": "extra",
+          "targetIndex": null,
+          "expectedMidi": null,
+          "detectedMidi": 61
+        },
+        {
+          "status": "matched",
+          "targetIndex": 1,
+          "expectedMidi": 62,
+          "detectedMidi": 62
+        },
+        {
+          "status": "matched",
+          "targetIndex": 2,
+          "expectedMidi": 64,
+          "detectedMidi": 64
+        }
+      ]
+    }
+  },
+  {
+    "name": "reversed",
+    "answer": [
+      60,
+      62,
+      64,
+      65
+    ],
+    "played": [
+      65,
+      64,
+      62,
+      60
+    ],
+    "expected": {
+      "accuracy": 0,
+      "results": [
+        {
+          "status": "wrong",
+          "targetIndex": 0,
+          "expectedMidi": 60,
+          "detectedMidi": 65
+        },
+        {
+          "status": "wrong",
+          "targetIndex": 1,
+          "expectedMidi": 62,
+          "detectedMidi": 64
+        },
+        {
+          "status": "wrong",
+          "targetIndex": 2,
+          "expectedMidi": 64,
+          "detectedMidi": 62
+        },
+        {
+          "status": "wrong",
+          "targetIndex": 3,
+          "expectedMidi": 65,
+          "detectedMidi": 60
+        }
+      ]
+    }
+  }
+]

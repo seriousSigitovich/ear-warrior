@@ -186,3 +186,17 @@ a redeploy. Check a preview without exposing it: `npx vercel curl /health --depl
 
 > Both collectors are verified against the live APIs (2026-10-16). If an API changes or a permission
 > is missing, the status chip on the page shows the platform's exact error text.
+
+
+## Rewards, ranks and the melody library (spec 024)
+
+The server grades phrases, pays XP and owns the tunes; the app only displays.
+
+- `POST /api/progress/phrase`, `POST /api/phrase/hint`, `POST /api/phrase/answer`, `GET /api/progress/state` — practice (account or anonymous session). Rules and numbers: `src/game/config.ts`.
+- `GET /api/melodies` — the catalog without answers (rhythm, phrases, audio url + hash). `/admin/tunes` manages tunes and uploads their audio.
+- `POST /api/auth/anonymous` — a device-only identity, merged into the account at sign-in.
+- `POST /admin/recompute` — one-time recompute of XP from stored attempts (`?dry_run=0` writes).
+- Seed and upload: `npx tsx --env-file=.env scripts/upload-tunes.ts [--dry-run]`. The seed data is `src/tunes/library.data.ts`, written by `npm run library` at the repo root.
+- Tests: `npm test` (Postgres suites run when `DATABASE_URL` points at a local database).
+
+See `specs/024-server-authoritative-xp/` (contracts/api.md, rollout.md).

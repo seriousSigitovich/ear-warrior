@@ -74,6 +74,10 @@ export function createMemoryProgressStore(): ProgressStore {
       return { attempts: page, next: page.length ? page[page.length - 1].seq : after, more: all.length > limit };
     },
 
+    async accountsWithAttempts() {
+      return [...attempts.entries()].filter(([, mine]) => mine.size > 0).map(([id]) => id).sort();
+    },
+
     async putMelody(userId, place) {
       const mine = places.get(userId) ?? new Map();
       const had = mine.get(place.tuneId);

@@ -1,5 +1,7 @@
 # Feature Specification: Gamification MVP
 
+> **Amended 2026-11-16 ([spec 024](../024-server-authoritative-xp/spec.md))**: XP, ranks, daily challenges and the streak are computed by the server; the app only displays them. Level mastery is removed — a rank is reached by XP alone. XP per phrase is multiplied by the level, retries and hints pay less, and a daily cap applies.
+
 **Feature Branch**: `013-gamification` (not created — work lands on `master`)
 
 **Created**: 2026-11-11

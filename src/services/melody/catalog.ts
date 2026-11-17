@@ -1,11 +1,11 @@
 // The library as a list to choose from: every tune by name, with what it asks of the learner (level,
 // notes, phrases, tempo) and how they did on it. Pure.
 import { Attempt } from '../../models';
-import { IntervalKind, intervalKind } from '../../lib/insights';
-import { phraseRange, phraseCount } from '../../lib/phrases';
+import { IntervalKind } from '../../lib/insights';
 import { scoreOf } from '../../lib/review';
-import { LIBRARY, curatedMelody, tuneIdOf } from './curated';
-import { MIN_RANK, getLevelByRank } from './levels';
+import { tuneIdOf } from './curated';
+import { MIN_RANK } from './levels';
+import { getLibrary, libraryTune } from '../tunes/library';
 
 export interface CatalogTune {
   id: string;
@@ -38,12 +38,12 @@ export function libraryCatalog(
     best.set(id, Math.max(best.get(id) ?? 0, scoreOf(a.noteResults).pct));
   }
   const levels = new Map<number, CatalogTune[]>();
-  LIBRARY.forEach((t) => {
+  getLibrary().forEach((t) => {
     const tune: CatalogTune = {
       id: t.id,
       name: t.title,
       rank: t.rank,
-      notes: t.notes.trim().split(/\s+/).length,
+      notes: t.beats.length,
       phrases: t.phrases.length,
       tempoBpm: t.tempoBpm,
       played: best.has(t.id),
@@ -84,20 +84,8 @@ export interface TuneIntervals {
 }
 
 export function tuneIntervals(id: string): TuneIntervals | null {
-  const tune = LIBRARY.find((t) => t.id === id);
-  if (!tune) return null;
-  const melody = curatedMelody(getLevelByRank(tune.rank), 0, tune.id);
-  const counts: Partial<Record<IntervalKind, number>> = {};
-  let total = 0;
-  for (let p = 0; p < phraseCount(melody); p++) {
-    const { start, end } = phraseRange(melody, p);
-    for (let i = start + 1; i < end; i++) {
-      const kind = intervalKind(melody.notes[i].midi - melody.notes[i - 1].midi);
-      counts[kind] = (counts[kind] ?? 0) + 1;
-      total += 1;
-    }
-  }
-  return { counts, total };
+  const tune = libraryTune(id);
+  return tune ? { counts: tune.moves.counts, total: tune.moves.total } : null;
 }
 
 /** A tune needs this many moves of a kind to be practice for it. */

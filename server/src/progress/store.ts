@@ -99,6 +99,8 @@ export interface ProgressStore {
   gameRowsAfter(userId: string, after: number, limit: number): Promise<GamePage>;
   /** Up to `limit` of the account's attempts after the cursor, in the order they arrived, with their note results. */
   attemptsAfter(userId: string, after: number, limit: number): Promise<AttemptsPage>;
+  /** Spec 024 (the one-time recompute): every account that has stored an attempt. */
+  accountsWithAttempts(): Promise<string[]>;
   /** Removes a place (the melody was finished) unless a newer write exists. The delete is remembered. */
   deleteMelody(userId: string, tuneId: string, updatedAt: Date): Promise<void>;
 }

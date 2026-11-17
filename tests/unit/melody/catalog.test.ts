@@ -1,5 +1,6 @@
 import { NoteResult } from '../../../src/models';
-import { LIBRARY } from '../../../src/services/melody/curated';
+import { getLibrary } from '../../../src/services/tunes/library';
+import { installTestLibrary } from '../../support/testLibrary';
 import {
   catalogTune,
   libraryCatalog,
@@ -8,6 +9,9 @@ import {
   tunesForInterval,
 } from '../../../src/services/melody/catalog';
 import { MAX_RANK, MIN_RANK } from '../../../src/services/melody/levels';
+
+const LIBRARY = getLibrary;
+beforeAll(installTestLibrary);
 
 const note = (i: number, ok: boolean): NoteResult => ({
   targetIndex: i,
@@ -24,14 +28,18 @@ describe('library catalog', () => {
       Array.from({ length: MAX_RANK - MIN_RANK + 1 }, (_, i) => MIN_RANK + i),
     );
     const ids = levels.flatMap((l) => l.tunes.map((t) => t.id));
-    expect([...ids].sort()).toEqual(LIBRARY.map((t) => t.id).sort());
+    expect([...ids].sort()).toEqual(
+      LIBRARY()
+        .map((t) => t.id)
+        .sort(),
+    );
     for (const l of levels) expect(l.tunes.every((t) => t.rank === l.rank)).toBe(true);
   });
 
   test('says what a tune asks: notes, phrases and tempo', () => {
-    const first = LIBRARY[0];
+    const first = LIBRARY()[0];
     const tune = catalogTune(first.id)!;
-    expect(tune.notes).toBe(first.notes.trim().split(/\s+/).length);
+    expect(tune.notes).toBe(first.beats.length);
     expect(tune.phrases).toBe(first.phrases.length);
     expect(tune.tempoBpm).toBe(first.tempoBpm);
     expect(tuneAsk({ notes: 17, phrases: 2, tempoBpm: 100 })).toBe(
@@ -41,14 +49,14 @@ describe('library catalog', () => {
   });
 
   test('every tune goes by its name, played or not', () => {
-    const tune = catalogTune(LIBRARY[1].id)!;
-    expect(tune).toMatchObject({ played: false, bestPct: null, name: LIBRARY[1].title });
+    const tune = catalogTune(LIBRARY()[1].id)!;
+    expect(tune).toMatchObject({ played: false, bestPct: null, name: LIBRARY()[1].title });
     const names = libraryCatalog([]).flatMap((l) => l.tunes.map((t) => t.name));
     expect(names.every((n) => n.trim().length > 0)).toBe(true);
   });
 
   test('a played tune is named and carries its best score', () => {
-    const t = LIBRARY[0];
+    const t = LIBRARY()[0];
     const attempts = [
       { melodyId: `${t.id}-1`, noteResults: [note(0, true), note(1, false)] },
       { melodyId: `${t.id}-2`, noteResults: [note(0, true), note(1, true)] },

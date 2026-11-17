@@ -6,10 +6,12 @@ import {
 } from '../../../src/services/storage/repositories';
 import { ProgressClient } from '../../../src/services/progress/client';
 import { createAttemptsPull } from '../../../src/services/progress/attemptsPull';
-import { LIBRARY } from '../../../src/services/melody/curated';
+import { getLibrary } from '../../../src/services/tunes/library';
+import { installTestLibrary } from '../../support/testLibrary';
 import { KeyValueStore } from '../../../src/lib/deviceId';
 
-const tune = LIBRARY[0];
+installTestLibrary();
+const tune = getLibrary()[0];
 const attempt = (melodyId: string, over: Partial<Attempt> = {}): Attempt => ({
   id: `s-${melodyId}`,
   sessionId: 's',

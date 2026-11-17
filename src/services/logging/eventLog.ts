@@ -28,7 +28,6 @@ export type AppEventName =
   | 'exercise_completed'
   | 'xp_earned'
   | 'rank_up'
-  | 'mastery_unlocked'
   | 'daily_challenge_started'
   | 'daily_challenge_completed'
   | 'all_daily_challenges_completed'

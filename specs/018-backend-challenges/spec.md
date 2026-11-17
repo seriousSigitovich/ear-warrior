@@ -1,5 +1,7 @@
 # Feature Specification: Daily Challenges From the Backend
 
+> **Amended 2026-11-16 ([spec 024](../024-server-authoritative-xp/spec.md))**: the app no longer evaluates challenges; the server counts progress from accepted phrases, pays the rewards once, and sends the day's challenges with each answer.
+
 **Feature Branch**: `018-backend-challenges` (not created — work lands on `master`)
 
 **Created**: 2026-11-12

@@ -2,11 +2,11 @@
 // marked by a check and the word "Completed", not by colour alone.
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { ChallengeState } from '../../lib/gamification';
+import type { ChallengeView } from '../../services/rewards/types';
 import { Card } from '../common/Card';
 import { colors, font, textAlpha } from '../../theme/nocturne';
 
-export function ChallengeCard({ challenge }: { challenge: ChallengeState }) {
+export function ChallengeCard({ challenge }: { challenge: ChallengeView }) {
   const { title, description, progress, target, rewardXp, completed } = challenge;
   const status = completed ? 'Completed' : `${progress}/${target}`;
   return (

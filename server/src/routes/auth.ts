@@ -35,6 +35,8 @@ export interface AuthDeps {
   google?: () => GoogleConfig | undefined;
   /** Spec 022: the HTTP client used to reach Google's token endpoint. Tests inject a fake. */
   fetch?: typeof fetch;
+  /** Spec 024: runs after a successful sign-in; true when the device's anonymous identity was merged into the account. */
+  afterSignIn?: (deviceId: string, userId: string) => Promise<boolean>;
 }
 
 const DEFAULT_PUBLIC_API_URL = 'https://ear-warrior-api.vercel.app';
@@ -56,6 +58,7 @@ export function authConfigFromEnv(env: Record<string, string | undefined> = proc
 }
 
 const RequestBody = z.object({ email: z.string() });
+const AnonymousBody = z.object({ device_id: z.string().regex(/^dev_[0-9a-f]{32}$/) });
 const VerifyBody = z.object({
   email: z.string(),
   code: z.string().regex(/^[0-9]{6}$/),
@@ -65,6 +68,17 @@ const VerifyBody = z.object({
 /** Equal-length digests make the comparison constant-time whatever the inputs. */
 const sameSecret = (a: string, b: string, key: string): boolean =>
   timingSafeEqual(createHmac('sha256', key).update(a).digest(), createHmac('sha256', key).update(b).digest());
+
+/** Folds the device's anonymous identity into the account; a failure never blocks the sign-in (it is retried at the next one). */
+export async function mergeAfterSignIn(req: FastifyRequest, deps: AuthDeps, deviceId: string, userId: string): Promise<boolean> {
+  if (!deps.afterSignIn) return false;
+  try {
+    return await deps.afterSignIn(deviceId, userId);
+  } catch (err) {
+    req.log.error({ err: (err as Error).message }, 'merge of the anonymous identity failed');
+    return false;
+  }
+}
 
 export function registerAuth(app: FastifyInstance, deps: AuthDeps): void {
   const { store, mailer, now } = deps;
@@ -146,8 +160,24 @@ export function registerAuth(app: FastifyInstance, deps: AuthDeps): void {
     }
 
     const token = generateToken();
-    const { created } = await store.signIn({ email, deviceId, tokenHash: hashToken(token), now: now() });
-    return { ok: true, token, email, created };
+    const { userId, created } = await store.signIn({ email, deviceId, tokenHash: hashToken(token), now: now() });
+    const merged = await mergeAfterSignIn(req, deps, deviceId, userId);
+    return { ok: true, token, email, created, merged };
+  });
+
+  // Spec 024: a device-only identity, so XP can be kept on the server before any sign-in. The token is the same
+  // kind of bearer token; the app keeps it apart from the signed-in session. One identity per device.
+  app.post('/api/auth/anonymous', async (req, reply) => {
+    const parsed = AnonymousBody.safeParse(req.body ?? {});
+    if (!parsed.success) return reply.status(400).send({ ok: false, error: 'invalid_payload' });
+    try {
+      const token = generateToken();
+      await store.anonymousSession({ deviceId: parsed.data.device_id, tokenHash: hashToken(token), now: now() });
+      return { ok: true, token };
+    } catch (err) {
+      req.log.error({ err: (err as Error).message }, 'anonymous session failed');
+      return reply.status(502).send({ ok: false, error: 'store_failed' });
+    }
   });
 
   app.get('/api/auth/me', async (req, reply) => {

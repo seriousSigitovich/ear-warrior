@@ -1,6 +1,6 @@
 // Daily challenges (spec 013): three cards with progress and reward, and the bonus for finishing all
 // three. They are the same for everyone on a given day and reset at local midnight; what counts is
-// melodies completed that day. Opening the screen is the "started" analytics event, once per day.
+// melodies completed that day, as the server counts them. Opening the screen is the "started" analytics event, once per day.
 import React, { useEffect } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ChallengeCard } from '../src/components/gamification/ChallengeCard';
@@ -8,31 +8,33 @@ import { Card } from '../src/components/common/Card';
 import { Kicker } from '../src/components/common/Kicker';
 import { Screen } from '../src/components/common/Screen';
 import { Button } from '../src/components/common/Button';
-import { useGamification } from '../src/features/gamification/useGamification';
+import { useRewards } from '../src/features/rewards/useRewards';
 import { track } from '../src/features/analytics/tracker';
-import { challengeStartedEvents } from '../src/services/gamification/events';
-import { getGamification } from '../src/services/gamification/instance';
+import { keyValueOverRowStore } from '../src/lib/deviceId';
+import { challengeStartedEvents } from '../src/services/rewards/events';
+import { markChallengesStarted } from '../src/services/rewards/started';
+import { KEY_VALUE_TABLE, defaultRowStore } from '../src/services/storage/db';
 import { useRouter } from 'expo-router';
 import { colors, font, textAlpha } from '../src/theme/nocturne';
 
 export default function Challenges() {
   const router = useRouter();
-  const snap = useGamification();
+  const snap = useRewards();
 
-  // The "started" event names the challenges the learner is actually shown: ask the server first (once a day).
+  // The "started" event names the challenges the learner is actually shown, once a day.
+  const shown = snap?.challenges;
+  const day = snap?.today;
   useEffect(() => {
-    const game = getGamification();
-    void (async () => {
-      await game.refreshChallenges().catch(() => false);
-      const shown = await game.snapshot();
-      if (await game.markChallengesStarted()) {
-        for (const e of challengeStartedEvents(shown.challenges)) track(e.name, e.props);
-      }
-    })().catch(() => undefined);
-  }, []);
+    if (!shown || !day || shown.length === 0) return;
+    void markChallengesStarted(keyValueOverRowStore(defaultRowStore(), KEY_VALUE_TABLE), day)
+      .then((first) => {
+        if (first) for (const e of challengeStartedEvents(shown)) track(e.name, e.props);
+      })
+      .catch(() => undefined);
+  }, [shown, day]);
 
   const done = snap?.challenges.filter((c) => c.completed).length ?? 0;
-  const bonus = snap?.allChallengesBonus ?? 0;
+  const bonus = snap?.dailyBonusXp ?? 0;
 
   return (
     <Screen edges={['bottom']}>

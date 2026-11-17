@@ -19,6 +19,7 @@ import { KEY_VALUE_TABLE, defaultRowStore } from '../src/services/storage/db';
 import { keyValueOverRowStore } from '../src/lib/deviceId';
 import { getDifficultyRepository } from '../src/features/difficulty/difficultyRepository';
 import { PracticeLoopDeps, usePracticeLoop } from '../src/features/practice/usePracticeLoop';
+import { localGrader } from '../src/features/practice/grader';
 import { track } from '../src/features/analytics/tracker';
 import { oneStringFingering } from '../src/lib/hints';
 import { MAX_FRET, OPEN_STRING_MIDI } from '../src/lib/fretboard';
@@ -43,7 +44,7 @@ import { colors, font, textAlpha, withAlpha } from '../src/theme/nocturne';
 
 const MELODY = firstMelody();
 const TARGET = MELODY.notes.map((n) => n.midi);
-/** Where the melody is played: one string, all on frets (the library guarantees this tune fits). */
+/** Where the melody is played: one string, all on frets. */
 const LINE = oneStringFingering(TARGET) ?? [];
 const STRING = LINE[0]?.string ?? 2;
 /** The melody as played right, for the chips on the payoff. */
@@ -73,7 +74,8 @@ export default function FirstMelody() {
       loadHistory: async () => ({ mastered: [], recent: [] }),
       playback,
       session: createAudioSession(),
-      gradingCfg: DEFAULT_GRADING_CFG,
+      // The coached warm-up: its four notes are held here and graded here; it pays nothing (spec 024).
+      grader: localGrader(DEFAULT_GRADING_CFG),
       seed: () => 0,
       difficulty: getDifficultyRepository(),
       sessionId: 'first-melody',

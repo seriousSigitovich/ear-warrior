@@ -85,6 +85,33 @@ export function createPgStore(db: PostgresJsDatabase<Record<string, unknown>>): 
       });
     },
 
+    async anonymousSession({ deviceId, tokenHash, now }) {
+      return db.transaction(async (tx) => {
+        // Two first calls from one device must not make two identities.
+        await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`anon:${deviceId}`}))`);
+        const [known] = await tx
+          .select({ id: users.id })
+          .from(users)
+          .innerJoin(authSessions, eq(authSessions.userId, users.id))
+          .where(and(eq(authSessions.deviceId, deviceId), eq(users.anonymous, true)))
+          .limit(1);
+        const created = !known;
+        const userId = known ? known.id : (await tx.insert(users).values({ anonymous: true }).returning({ id: users.id }))[0].id;
+        await tx.insert(authSessions).values({ tokenHash, userId, deviceId, createdAt: now });
+        return { userId, created };
+      });
+    },
+
+    async anonymousUserOf(deviceId, exceptUserId) {
+      const [row] = await db
+        .select({ id: users.id })
+        .from(users)
+        .innerJoin(authSessions, eq(authSessions.userId, users.id))
+        .where(and(eq(authSessions.deviceId, deviceId), eq(users.anonymous, true), ne(users.id, exceptUserId)))
+        .limit(1);
+      return row?.id ?? null;
+    },
+
     async sessionByToken(tokenHash) {
       const [row] = await db
         .select({ userId: users.id, email: users.email, deviceId: authSessions.deviceId })
@@ -113,7 +140,7 @@ export function createPgStore(db: PostgresJsDatabase<Record<string, unknown>>): 
       await db.transaction(async (tx) => {
         const [u] = await tx.select({ email: users.email }).from(users).where(eq(users.id, userId));
         if (!u) return;
-        await tx.delete(loginCodes).where(eq(loginCodes.email, u.email));
+        if (u.email) await tx.delete(loginCodes).where(eq(loginCodes.email, u.email));
         await tx.delete(users).where(eq(users.id, userId)); // sessions and links cascade
       });
     },

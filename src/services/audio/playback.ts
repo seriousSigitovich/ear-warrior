@@ -101,6 +101,14 @@ const FADE_MS = 120;
 const TAKEOVER_FADE_MS = 50;
 const FADE_STEP_MS = 10;
 
+/** The melody has no pitches in the app (its clip is all there is) and the clip is not on the device. */
+export class ClipUnavailableError extends Error {
+  constructor(readonly clipId?: string) {
+    super(`The clip of "${clipId ?? 'this melody'}" is not on the device.`);
+    this.name = 'ClipUnavailableError';
+  }
+}
+
 /** Real adapter: play the bundled files through expo-audio. */
 export function defaultNativePlayer(): NativePlayer {
   /* eslint-disable @typescript-eslint/no-explicit-any -- untyped native module handles */
@@ -111,6 +119,10 @@ export function defaultNativePlayer(): NativePlayer {
   // Lazily required: the registry `require`s the audio files, which only Metro can resolve (not the
   // pure-logic test runner).
   const bundled = (): typeof import('./bundled') => require('./bundled');
+  // The audio cache lives with the tunes service; required lazily so the pure playback logic does not load it.
+  const cachedClip = (id: string): import('../tunes/audioCache').ClipSource | null =>
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    (require('../tunes/instance') as typeof import('../tunes/instance')).getAudioCache().source(id);
 
   // `remove()` only drops the player from expo-audio's registry; the native ExoPlayer and its
   // AudioTrack are freed by `release()`. Without it each play leaks a track until GC, and Android
@@ -180,7 +192,9 @@ export function defaultNativePlayer(): NativePlayer {
       await wait(durationMs);
     },
     startClip(clipId, rate, fromMs) {
-      const source = bundled().MELODY_CLIPS[clipId];
+      // A downloaded clip plays from its file; a tune shipped inside the app, or the first melody's opening, from the bundle.
+      const cached = cachedClip(clipId);
+      const source = cached?.kind === 'file' ? { uri: cached.uri } : bundled().MELODY_CLIPS[clipId];
       if (source === undefined) return null;
       const player = audio().createAudioPlayer(source);
       active.add(player);
@@ -285,6 +299,8 @@ export function createAudioPlayback(native: NativePlayer = defaultNativePlayer()
       const totalMs = totalDurationMs(m) * startRate;
       const offset = Math.min(Math.max(0, offsetMs), totalMs);
       const handle = clipId ? native.startClip(clipId, startRate, (fromMs ?? 0) + offset) : null;
+      // A tune from the catalog has no pitches here, only its clip: without the clip there is nothing to sound.
+      if (!handle && m.notes.some((n) => n.midi <= 0)) throw new ClipUnavailableError(clipId);
       if (handle) {
         const cut = fromMs !== undefined;
         await new Promise<void>((done) => {

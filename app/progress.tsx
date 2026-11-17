@@ -26,14 +26,16 @@ import {
   weakestInterval,
 } from '../src/lib/insights';
 import { weekDays } from '../src/lib/streak';
-import { useGamification } from '../src/features/gamification/useGamification';
+import { useRewards } from '../src/features/rewards/useRewards';
+import { useLibraryVersion } from '../src/features/tunes/useLibrary';
 import { tunesForInterval } from '../src/services/melody/catalog';
 import { colors, font, radius, textAlpha, withAlpha } from '../src/theme/nocturne';
 
 export default function Progress() {
   const router = useRouter();
   const { attempts, melodies, loading } = useHistory();
-  const game = useGamification();
+  const game = useRewards();
+  const library = useLibraryVersion(); // the tunes to practise come from the catalog
 
   const insight = useMemo(() => {
     const map = intervalStats(noteEvents(attempts, melodies));
@@ -43,7 +45,7 @@ export default function Progress() {
       weakest,
       picks: weakest ? tunesForInterval(weakest.kind, attempts) : [],
     };
-  }, [attempts, melodies]);
+  }, [attempts, melodies, library]);
 
   const { mapped, weakest, picks } = insight;
   const challengesDone = game?.challenges.filter((c) => c.completed).length ?? 0;
@@ -78,7 +80,13 @@ export default function Progress() {
           </Card>
         ) : (
           <>
-            {game ? <RankCard rank={game.rank} onPress={() => router.push('/journey')} /> : null}
+            {game ? (
+              <RankCard
+                rank={game.rank}
+                xp={game.totalXp}
+                onPress={() => router.push('/journey')}
+              />
+            ) : null}
 
             <Card style={styles.card}>
               <View style={styles.weekHead}>

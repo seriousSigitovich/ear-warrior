@@ -49,6 +49,7 @@ export async function loadUsageReport(now: Date, run: SqlTag = sql as unknown as
       where user_id is not null
       group by user_id
     ) a on a.user_id = u.id
+    where not u.anonymous
     order by a.last_at desc nulls last, u.created_at desc`;
   const [anonymous] = await run<Row[]>`
     select count(distinct device_id)::int as devices, count(*)::int as attempts,

@@ -1,5 +1,7 @@
 # Feature Specification: Gamification and Practice Progress on the Server
 
+> **Amended 2026-11-16 ([spec 024](../024-server-authoritative-xp/spec.md))**: the app no longer pushes or pulls reward rows (awards, completions, mastery): the server owns XP. Attempts and melody places still sync as described here.
+
 **Feature Branch**: `019-progress-sync` (not created — work lands on `master`)
 
 **Created**: 2026-11-12

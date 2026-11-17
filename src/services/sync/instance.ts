@@ -1,8 +1,7 @@
-// The shared sync of the running app (spec 019): melody places, the reward system's rows and the account's
-// attempts, run by one throttled runner. With no server in the build every step is a no-op.
+// The shared sync of the running app (spec 019, 024): melody places and the account's attempts, run by one throttled
+// runner. Rewards are the server's own (services/rewards) and need no sync. With no server in the build every step is a no-op.
 import { keyValueOverRowStore } from '../../lib/deviceId';
 import { ensureAuthReady, getAuthService } from '../../features/auth/authService';
-import { createGameSync } from '../gamification/sync';
 import { createAttemptsPull } from '../progress/attemptsPull';
 import { createProgressClient } from '../progress/client';
 import { getMelodyProgress } from '../progress/instance';
@@ -23,7 +22,6 @@ function build(): SyncRunner {
     await ensureAuthReady();
     return getAuthService().getToken();
   };
-  const game = createGameSync({ store, client, getToken });
   const attempts = createAttemptsPull({
     attempts: createAttemptRepository(store),
     melodies: createMelodyRepository(store),
@@ -37,7 +35,6 @@ function build(): SyncRunner {
       async () => {
         await places?.sync();
       },
-      () => game.sync(),
       async () => (await attempts.pull()) > 0,
     ],
   });

@@ -6,18 +6,6 @@ import type { Attempt, DifficultySettings } from '../../models';
 import type { PhraseSave, RemotePlace } from '../../lib/melodyProgress';
 import type { TuneHistory } from '../melody/curated';
 
-/** A reward-system row as the server stores it (spec 019): the same row wherever it is made. */
-export interface GameRow {
-  kind: 'award' | 'completion' | 'mastery';
-  id: string;
-  data: Record<string, unknown>;
-}
-
-/** A game row as read back: `seq` is the server's order of arrival, the cursor to continue after. */
-export interface RemoteGameRow extends GameRow {
-  seq: number;
-}
-
 export interface ProgressClient {
   /** True once the server has the attempt (storing it twice is harmless). */
   postAttempt(token: string, attempt: Attempt): Promise<boolean>;
@@ -30,13 +18,6 @@ export interface ProgressClient {
   deleteMelody(token: string, tuneId: string, updatedAt: string): Promise<boolean>;
   /** The account's places, or null when the server cannot be asked. */
   listMelodies(token: string): Promise<RemotePlace[] | null>;
-  /** Send earned rows (spec 019). True once the server has them (sending one twice is harmless). */
-  pushGame(token: string, rows: GameRow[]): Promise<boolean>;
-  /** A page of the account's rows after a cursor, or null when the server cannot be asked. */
-  pullGame(
-    token: string,
-    after: number,
-  ): Promise<{ rows: RemoteGameRow[]; next: number; more: boolean } | null>;
   /** A page of the account's attempts after a cursor, or null when the server cannot be asked. */
   pullAttempts(
     token: string,
@@ -74,18 +55,6 @@ function remotePlace(raw: unknown): RemotePlace | null {
     });
   }
   return { tuneId, phrase: phrase as number, phrases: phrases as number, grades: saves, updatedAt };
-}
-
-const KINDS = ['award', 'completion', 'mastery'] as const;
-
-/** One row of the server's game page, or null when it is not what the app expects (it is then ignored). */
-function gameRow(raw: unknown): RemoteGameRow | null {
-  if (!isObject(raw)) return null;
-  const { kind, id, data, seq } = raw;
-  if (!KINDS.includes(kind as (typeof KINDS)[number]) || typeof id !== 'string' || !isObject(data))
-    return null;
-  if (typeof seq !== 'number' || !Number.isInteger(seq)) return null;
-  return { kind: kind as RemoteGameRow['kind'], id, data, seq };
 }
 
 /** One attempt of the server's page in the app's shape (the detected notes are not kept on the server). */
@@ -212,17 +181,6 @@ export function createProgressClient(
       const json = await call('GET', '/api/progress/melodies', token);
       if (!json || !Array.isArray(json.melodies)) return null;
       return json.melodies.map(remotePlace).filter((p): p is RemotePlace => p !== null);
-    },
-
-    async pushGame(token, rows) {
-      return (await call('POST', '/api/progress/gamification', token, { rows })) !== null;
-    },
-
-    async pullGame(token, after) {
-      const json = await call('GET', `/api/progress/gamification?after=${after}`, token);
-      if (!json || !Array.isArray(json.rows) || typeof json.next !== 'number') return null;
-      const rows = json.rows.map(gameRow).filter((r): r is RemoteGameRow => r !== null);
-      return { rows, next: json.next, more: json.more === true };
     },
 
     async pullAttempts(token, after) {

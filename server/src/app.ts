@@ -14,6 +14,15 @@ import { registerAuth, type AuthDeps } from './routes/auth.js';
 import { registerAuthGoogle } from './routes/authGoogle.js';
 import { registerUsers } from './routes/users.js';
 import { registerFunnel } from './routes/funnel.js';
+import { registerMelodies } from './routes/melodies.js';
+import { registerPhrase } from './routes/phrase.js';
+import { registerAdminRecompute } from './routes/adminRecompute.js';
+import { createPgLedgerStore } from './progress/ledgerPgStore.js';
+import { mergeAnonymous } from './progress/mergeAnonymous.js';
+import type { LedgerStore } from './progress/ledger.js';
+import { blobTuneUploader, registerAdminTunes, type TuneAudioUploader } from './routes/adminTunes.js';
+import { createPgTuneStore } from './tunes/pgStore.js';
+import type { TuneStore } from './tunes/store.js';
 import { defaultAuthDeps } from './auth/defaults.js';
 import { createPgProgressStore } from './progress/pgStore.js';
 import type { ProgressStore } from './progress/store.js';
@@ -33,6 +42,14 @@ export interface BuildOptions {
   challenges?: ChallengesDeps;
   /** Replaces the Postgres store of the owner's manual challenge days (tests pass an in-memory one). */
   challengeStore?: ChallengeStore;
+  /** Replaces the Postgres melody library behind /api/melodies (tests pass an in-memory one). */
+  tunes?: TuneStore;
+  /** Replaces the Postgres XP ledger behind /api/progress/phrase (tests pass an in-memory one). */
+  ledger?: LedgerStore;
+  /** Replaces the Vercel Blob upload of tune audio (tests). */
+  tuneAudio?: TuneAudioUploader;
+  /** Clock of the admin tune calls (tests). */
+  now?: () => Date;
   /** Replaces the Postgres read behind /admin/users (tests). */
   usage?: (now: Date) => Promise<UsageReport>;
   /** Replaces the Postgres read behind /admin/funnel (tests). */
@@ -81,13 +98,28 @@ export function buildApp(opts: BuildOptions = {}): FastifyInstance {
   registerTelemetry(app);
   registerEvents(app);
   registerSocial(app);
-  const auth = opts.auth ?? defaultAuthDeps();
+  const ledger = opts.ledger ?? createPgLedgerStore(db);
+  const baseAuth = opts.auth ?? defaultAuthDeps();
+  // Spec 024: signing in folds the device's anonymous identity (and its XP) into the account.
+  const auth = { ...baseAuth, afterSignIn: baseAuth.afterSignIn ?? ((deviceId: string, userId: string) => mergeAnonymous(baseAuth.store, ledger, deviceId, userId)) };
   registerAuth(app, auth);
   registerAuthGoogle(app, auth);
-  registerProgress(app, { auth: auth.store, progress: opts.progress ?? createPgProgressStore(db) });
+  const progress = opts.progress ?? createPgProgressStore(db);
+  registerProgress(app, { auth: auth.store, progress });
   const challengeStore = opts.challengeStore ?? createPgChallengeStore(db);
   registerChallenges(app, { ...opts.challenges, store: challengeStore });
   registerAdminChallenges(app, challengeStore, opts.challenges?.now);
+  const tuneStore = opts.tunes ?? createPgTuneStore(db);
+  registerMelodies(app, tuneStore);
+  registerPhrase(app, {
+    auth: auth.store,
+    tunes: tuneStore,
+    ledger,
+    challenges: challengeStore,
+    now: opts.now,
+  });
+  registerAdminTunes(app, tuneStore, opts.tuneAudio ?? blobTuneUploader, opts.now);
+  registerAdminRecompute(app, { progress, tunes: tuneStore, ledger, now: opts.now });
   registerUsers(app, opts.usage ?? loadUsageReport);
   registerFunnel(app, opts.funnel ?? loadFunnel);
 

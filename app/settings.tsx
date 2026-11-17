@@ -17,6 +17,7 @@ import { useRouter } from 'expo-router';
 import { DifficultyMode, DifficultySettings } from '../src/models';
 import { MAX_RANK, MIN_RANK } from '../src/services/melody/levels';
 import { levelSummary } from '../src/services/melody/curated';
+import { useLibraryVersion } from '../src/features/tunes/useLibrary';
 import {
   DEFAULT_DIFFICULTY_SETTINGS,
   effectiveRank,
@@ -62,6 +63,7 @@ export default function Settings() {
   );
 
   const rank = effectiveRank(settings);
+  useLibraryVersion(); // the level summary reads the catalog
   const summary = levelSummary(rank);
   const fixed = settings.mode === 'fixed';
 

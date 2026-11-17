@@ -10,7 +10,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseAbc } from '../src/services/melody/abc';
-import { TUNES } from '../src/services/melody/library';
+import { TUNES } from '../server/src/tunes/library.data';
 
 const FILE = join(__dirname, '..', 'src', 'services', 'melody', 'library.abc');
 const PITCH: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
@@ -145,7 +145,7 @@ const out = source
     if (!id || /^%%phrases/m.test(block)) return block;
     const tune = byId.get(id);
     if (!tune)
-      throw new Error(`${id} is in library.abc but not in library.ts: run npm run library first`);
+      throw new Error(`${id} is in library.abc but not in server/src/tunes/library.data.ts: run npm run library first`);
     drafted++;
     const tokens = tune.notes.split(' ');
     const beats = tokens.map((x) => Number(x.split(':')[1]));

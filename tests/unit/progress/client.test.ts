@@ -171,57 +171,7 @@ describe('progress client', () => {
     });
   });
 
-  describe('game rows and attempts (spec 019)', () => {
-    const row = {
-      kind: 'award' as const,
-      id: 'phrase:a-1:0',
-      data: {
-        id: 'phrase:a-1:0',
-        kind: 'phrase',
-        xp: 20,
-        day: '2026-11-12',
-        at: '2026-11-12T10:00:00.000Z',
-      },
-    };
-
-    test('pushGame sends the rows to the gamification endpoint', async () => {
-      const { impl, calls } = fakeFetch({ ok: true });
-      expect(await createProgressClient('https://api.test', impl)!.pushGame('tok', [row])).toBe(
-        true,
-      );
-      expect(calls[0].url).toBe('https://api.test/api/progress/gamification');
-      expect(calls[0].init.method).toBe('POST');
-      expect(JSON.parse(calls[0].init.body as string)).toEqual({ rows: [row] });
-    });
-
-    test('pullGame asks after a cursor and reads the page, dropping rows it cannot trust', async () => {
-      const { impl, calls } = fakeFetch({
-        ok: true,
-        next: 9,
-        more: true,
-        rows: [
-          { ...row, seq: 8 },
-          { kind: 'trophy', id: 'x', data: {}, seq: 9 },
-          { ...row, id: 'y', seq: 'no' },
-          'junk',
-          {
-            kind: 'mastery',
-            id: 'L1',
-            data: { id: 'L1', level: 'L1', achievedAt: '2026-11-12T10:00:00.000Z' },
-            seq: 9,
-          },
-        ],
-      });
-      const page = await createProgressClient('https://api.test', impl)!.pullGame('tok', 7);
-      expect(calls[0].url).toBe('https://api.test/api/progress/gamification?after=7');
-      expect(page?.next).toBe(9);
-      expect(page?.more).toBe(true);
-      expect(page?.rows.map((r) => [r.kind, r.id, r.seq])).toEqual([
-        ['award', 'phrase:a-1:0', 8],
-        ['mastery', 'L1', 9],
-      ]);
-    });
-
+  describe('attempts (spec 019)', () => {
     test('pullAttempts reads attempts in the app’s shape', async () => {
       const { impl, calls } = fakeFetch({
         ok: true,
@@ -266,8 +216,6 @@ describe('progress client', () => {
 
     test('a refusal or no network is false / null', async () => {
       const refused = createProgressClient('https://api.test', fakeFetch({ ok: false }).impl)!;
-      expect(await refused.pushGame('tok', [row])).toBe(false);
-      expect(await refused.pullGame('tok', 0)).toBeNull();
       expect(await refused.pullAttempts('tok', 0)).toBeNull();
     });
   });

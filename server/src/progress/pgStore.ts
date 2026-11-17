@@ -90,6 +90,11 @@ export function createPgProgressStore(db: PostgresJsDatabase<Record<string, unkn
       return { rows: page, next: page.length ? page[page.length - 1].seq : after, more: rows.length > limit };
     },
 
+    async accountsWithAttempts() {
+      const rows = await db.selectDistinct({ id: progressAttempts.userId }).from(progressAttempts).orderBy(asc(progressAttempts.userId));
+      return rows.map((r) => r.id);
+    },
+
     async attemptsAfter(userId, after, limit) {
       const rows = await db
         .select()

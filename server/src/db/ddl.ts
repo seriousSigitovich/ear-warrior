@@ -245,6 +245,80 @@ export async function applyDdl(sql: Sql): Promise<void> {
       updated_at   timestamptz not null default now()
     );
 
+    -- Spec 024: the melody library lives here (answers stay on the server), audio in Blob by url + sha256.
+    create table if not exists tunes (
+      id            text        primary key check (id ~ '^[a-z0-9]{1,60}$'),
+      title         text        not null,
+      level         smallint    not null check (level between 1 and 9),
+      tempo_bpm     real        not null check (tempo_bpm > 0),
+      phrases       int[]       not null,
+      notes         text        not null,
+      scale         text        not null default '',
+      source        text        not null default '',
+      audio_url     text,
+      audio_sha256  text,
+      audio_bytes   int,
+      hidden        boolean     not null default true,
+      updated_at    timestamptz not null default now()
+    );
+
+    -- Spec 024: an account may be anonymous (a device identity, no email) until it signs in and is merged.
+    alter table users alter column email drop not null;
+    alter table users add column if not exists anonymous boolean not null default false;
+
+    -- Spec 024: every phrase check, idempotent by the client's check_id.
+    create table if not exists phrase_checks (
+      user_id      uuid        not null references users (id) on delete cascade,
+      check_id     text        not null,
+      tune_id      text        not null,
+      phrase       smallint    not null,
+      attempt_no   int         not null,
+      played       smallint[]  not null,
+      note_results jsonb       not null,
+      accuracy     smallint    not null,
+      passed       boolean     not null,
+      xp           int         not null default 0,
+      payout       jsonb       not null default '{}',
+      local_day    date        not null,
+      checked_at   timestamptz not null,
+      received_at  timestamptz not null default now(),
+      primary key (user_id, check_id)
+    );
+    create index if not exists phrase_checks_phrase_idx on phrase_checks (user_id, tune_id, phrase);
+    create index if not exists phrase_checks_day_idx on phrase_checks (user_id, local_day);
+
+    -- Spec 024: hints and revealed answers are recorded by the server that revealed them.
+    create table if not exists phrase_events (
+      user_id  uuid        not null references users (id) on delete cascade,
+      tune_id  text        not null,
+      phrase   smallint    not null,
+      kind     text        not null check (kind in ('hint','answer')),
+      at       timestamptz not null default now(),
+      primary key (user_id, tune_id, phrase, kind)
+    );
+
+    -- Spec 024: the XP ledger. Total XP is its sum; a key is paid once per account.
+    create table if not exists xp_ledger (
+      user_id    uuid        not null references users (id) on delete cascade,
+      key        text        not null,
+      kind       text        not null check (kind in ('phrase','challenge','daily-all','legacy')),
+      xp         int         not null check (xp >= 0),
+      breakdown  jsonb       not null default '{}',
+      local_day  date        not null,
+      at         timestamptz not null,
+      seq        bigserial,
+      primary key (user_id, key)
+    );
+    create index if not exists xp_ledger_day_idx on xp_ledger (user_id, local_day);
+
+    -- Spec 024: base XP used toward the daily cap, per account and local day.
+    create table if not exists daily_xp (
+      user_id    uuid not null references users (id) on delete cascade,
+      local_day  date not null,
+      base_xp    real not null default 0,
+      primary key (user_id, local_day)
+    );
+
     -- Owner's view: attempt_log with the account each row belongs to (data-model.md "Attribution rule").
     -- A row before a device's first link belongs to whoever linked first; otherwise to the link that was
     -- open at its time; a gap after sign-out is anonymous (user_id / email are null).

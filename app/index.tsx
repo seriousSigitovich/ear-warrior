@@ -8,13 +8,13 @@ import { keyValueOverRowStore } from '../src/lib/deviceId';
 import { isOnboarded } from '../src/lib/onboarding';
 import { lastResultOf } from '../src/lib/lastResult';
 import { daysLabel } from '../src/lib/streak';
-import { useGamification } from '../src/features/gamification/useGamification';
+import { useRewards } from '../src/features/rewards/useRewards';
+import { useLibraryVersion } from '../src/features/tunes/useLibrary';
 import { useContinueTarget } from '../src/features/progress/useContinueTarget';
 import { catalogTune } from '../src/services/melody/catalog';
 import { AttentionDot } from '../src/components/gamification/AttentionDot';
 import { Flame } from '../src/components/gamification/Flame';
 import { RankIcon } from '../src/components/gamification/RankIcon';
-import { challengesLeft } from '../src/lib/gamification';
 import { HomeNavBar } from '../src/components/home/HomeNavBar';
 import { LastResultBlock } from '../src/components/home/LastResultBlock';
 import { Screen } from '../src/components/common/Screen';
@@ -30,10 +30,11 @@ const SHOW_DAILY_CHALLENGES = false;
 export default function Home() {
   const router = useRouter();
   // The standing (rank, XP, streak, challenges): re-read on focus, so it is fresh after practice.
-  const game = useGamification();
+  const game = useRewards();
+  useLibraryVersion(); // the tune names come from the catalog: redraw when a newer one arrives
   const challengesDone = game?.challenges.filter((c) => c.completed).length ?? 0;
   const challengesTotal = game?.challenges.length ?? 3;
-  const left = game ? challengesLeft(game.challenges) : 0;
+  const left = challengesTotal - challengesDone;
   // Where Continue leads: the melody left half-way, or the one last opened even if nothing was answered in it.
   const resume = useContinueTarget();
   const resumeTune = resume ? catalogTune(resume.tuneId) : null;
@@ -51,11 +52,8 @@ export default function Home() {
     [game, resume],
   );
   const rank = game?.rank;
-  const rankXp = rank
-    ? rank.next
-      ? `${rank.xp} / ${rank.next.requiredXp} XP`
-      : `${rank.xp} XP`
-    : '';
+  const rankXp =
+    rank && game ? (rank.next ? `${game.totalXp} / ${rank.next.xp} XP` : `${game.totalXp} XP`) : '';
 
   // First launch: the first melody, then the sign-in offer (spec 005 FR-003) — each once, never blocking (both
   // have Skip). On focus rather than mount, so the offer follows onboarding when it pops back to Home.

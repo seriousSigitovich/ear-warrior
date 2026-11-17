@@ -15,6 +15,7 @@ import {
 import { tuneIdOf } from '../../services/melody/curated';
 import { useHistory } from './useHistory';
 import { catalogTune } from '../../services/melody/catalog';
+import { useLibraryVersion } from '../tunes/useLibrary';
 import { useMelodyProgress } from './useMelodyProgress';
 
 export function useContinueTarget(): ContinueTarget | null {
@@ -43,8 +44,9 @@ export function useContinueTarget(): ContinueTarget | null {
       };
     }, []),
   );
+  const library = useLibraryVersion(); // a tune's phrases come from the catalog
   return useMemo(
     () => continueTarget(places.values(), opened, (id) => catalogTune(id)?.phrases ?? null, played),
-    [places, opened, played],
+    [places, opened, played, library],
   );
 }

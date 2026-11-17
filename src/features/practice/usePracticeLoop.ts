@@ -15,7 +15,6 @@ import {
   DetectedNote,
   DifficultyLevel,
   DifficultySettings,
-  GradingConfig,
   Melody,
 } from '../../models';
 import { MIN_RANK, getLevel, getLevelByRank } from '../../services/melody/levels';
@@ -36,8 +35,9 @@ import {
   phraseMelody,
   phraseStartBeats,
 } from '../../lib/phrases';
-import { gradeAttempt } from '../../services/grading/grade';
-import { AudioPlayback } from '../../services/audio/playback';
+import { AudioPlayback, ClipUnavailableError } from '../../services/audio/playback';
+import type { PhraseResult } from '../../services/rewards/types';
+import type { GradedOutcome, PhraseGrader } from './grader';
 import { AudioSession } from '../../services/audio/session';
 import {
   FretPosition,
@@ -71,6 +71,8 @@ export interface PhraseCheck {
   /** The play of the melody this phrase belongs to (its served id), and the melody's level id. */
   melodyId: string;
   level: string;
+  /** What the server paid for it (practice only; the first melody is graded on the device and pays nothing). */
+  reward?: PhraseResult;
 }
 
 export interface PracticeLoopDeps {
@@ -91,7 +93,13 @@ export interface PracticeLoopDeps {
   loadHistory: () => Promise<TuneHistory>;
   playback: AudioPlayback;
   session: AudioSession;
-  gradingCfg: GradingConfig;
+  /** Who grades a phrase: the server in practice (spec 024), the device for the first melody. */
+  grader: PhraseGrader;
+  /**
+   * Make the clip of a tune playable (downloading it when it is not on the device yet): false when it cannot be had.
+   * Absent: every clip is already there (the first melody's bundled one).
+   */
+  ensureAudio?: (m: Melody) => Promise<boolean>;
   seed: () => number;
   /** Persisted difficulty state (FR-011b). */
   difficulty: DifficultySettingsRepository;
@@ -224,6 +232,15 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
   const [fails, setFails] = useState(0);
   // Where the phrase's first note lives, once the learner asked for it.
   const [hint, setHint] = useState<FretPosition | null>(null);
+  // The melody's clip is not on the device and could not be fetched: nothing can sound until there is a connection.
+  const [audioUnavailable, setAudioUnavailable] = useState(false);
+  // A check the server has not answered yet (no network): the phrase waits for the answer, which arrives by itself.
+  const [waiting, setWaiting] = useState<{ checkId: string; phraseIndex: number } | null>(null);
+  // A hint or the answer was asked for and could not be had (no network).
+  const [helpUnavailable, setHelpUnavailable] = useState(false);
+  // The server refused the check (the tune changed under the learner): the phrase cannot be graded.
+  const [checkFailed, setCheckFailed] = useState(false);
+  const melodyRef = useRef<Melody | null>(null);
   // Bumped whenever a replay ends early (stop, a tap, check, next): a clip's promise resolves on its
   // own clock, so a replay only clears the flag if nothing has superseded it meanwhile.
   const replayTokenRef = useRef(0);
@@ -344,6 +361,16 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
 
   const speedNow = useCallback(() => deps.speed?.() ?? 1, [deps]);
 
+  /** The clip of `m` is on the device (fetched if need be); `audioUnavailable` says when it cannot be. */
+  const ensureAudio = useCallback(
+    async (m: Melody): Promise<boolean> => {
+      const ok = (await deps.ensureAudio?.(m)) ?? true;
+      setAudioUnavailable(!ok);
+      return ok;
+    },
+    [deps],
+  );
+
   /** Sound `play` over the current screen as a replay: `replaying` is true until it ends, or is superseded. */
   const sound = useCallback(
     async (kind: SoundKind, play: () => Promise<void>) => {
@@ -352,13 +379,18 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
       setPaused(null);
       setReplaying(true);
       try {
+        const m = melodyRef.current;
+        if (m && !(await ensureAudio(m))) return;
         await deps.session.enterPlayback();
         await play();
+      } catch (err) {
+        if (!(err instanceof ClipUnavailableError)) throw err;
+        setAudioUnavailable(true);
       } finally {
         if (replayTokenRef.current === token) setReplaying(false);
       }
     },
-    [deps.session],
+    [deps.session, ensureAudio],
   );
 
   /** End a sounding replay at once. With `silence`, also cut the audio (a tap cuts it by itself). */
@@ -402,6 +434,11 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
       if (scored(m)) recentRef.current.push(tuneIdOf(m.id));
       setFails(0);
       setHint(null);
+      setWaiting(null);
+      setHelpUnavailable(false);
+      setCheckFailed(false);
+      setAudioUnavailable(false);
+      melodyRef.current = m;
       const resume = deps.resumeOf?.(m);
       const saves = resume?.saves ?? [];
       firstGradesRef.current = saves.map(gradeFromSave);
@@ -467,6 +504,9 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
     setAnswer([]);
     setFails(0);
     setHint(null);
+    setWaiting(null);
+    setHelpUnavailable(false);
+    setCheckFailed(false);
     await playPhrase(melody, target);
   }, [melody, savedPhrase, phase, phraseIndex, playPhrase]);
 
@@ -539,6 +579,9 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
     // Clear the board and let the learner answer the same phrase again (FR-008).
     setGrade(null);
     setAnswer([]);
+    setWaiting(null);
+    setHelpUnavailable(false);
+    setCheckFailed(false);
     setPhase('awaitingInput');
   }, [melody, replaying, endReplay]);
 
@@ -552,29 +595,41 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
     [retry],
   );
 
-  /** Retry the phrase with its first note marked on the board. */
-  const retryWithHint = useCallback(() => {
-    if (!phrase) return;
-    setHint(fingering(phrase.notes.map((n) => n.midi))[0] ?? null);
+  /** Retry the phrase with its first note marked on the board (the server says which note, and records the help). */
+  const retryWithHint = useCallback(async () => {
+    if (!melody || !phrase) return;
+    const midi = await deps.grader.firstNote(melody, phraseIndex, phrase);
     retry();
-  }, [phrase, retry]);
+    if (midi === null) {
+      setHelpUnavailable(true);
+      return;
+    }
+    setHint(fingering([midi])[0] ?? null);
+  }, [deps.grader, melody, phrase, phraseIndex, retry]);
 
   /**
    * Put the whole phrase on the board, note by note in a playable line, ready to check: the learner
-   * hears each by tapping and compares with Replay. Only a retry, so it never scores.
+   * hears each by tapping and compares with Replay. Only a retry, so it never scores. The server hands
+   * the notes over and records that it did (the phrase then pays nothing).
    */
   const revealAnswer = useCallback(
-    (line?: readonly FretPosition[]) => {
+    async (line?: readonly FretPosition[]) => {
       if (!melody || !phrase) return;
       if (replaying) endReplay(true);
+      const notes = line ? null : await deps.grader.answer(melody, phraseIndex, phrase);
+      if (!line && notes === null) {
+        setHelpUnavailable(true);
+        return;
+      }
       const at = (deps.now?.() ?? new Date()).getTime();
-      const positions = line ?? fingering(phrase.notes.map((n) => n.midi));
+      const positions = line ?? fingering(notes as number[]);
       setGrade(null);
       setHint(null);
+      setHelpUnavailable(false);
       setAnswer(positions.map((p, i) => makeTap(p, at + i * 300)));
       setPhase('awaitingInput');
     },
-    [deps, melody, phrase, replaying, endReplay],
+    [deps, melody, phrase, phraseIndex, replaying, endReplay],
   );
 
   /** Close the tune: score it on the first tries, name it and play it whole. */
@@ -610,6 +665,9 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
     setAnswer([]);
     setFails(0);
     setHint(null);
+    setWaiting(null);
+    setHelpUnavailable(false);
+    setCheckFailed(false);
     await playPhrase(melody, i);
   }, [melody, phase, phraseIndex, replaying, endReplay, finishTune, playPhrase]);
 
@@ -659,33 +717,76 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
     setCursor(null);
   }, []);
 
+  /**
+   * A phrase was graded: record the first try, move to its result. `detected` is what was answered; `reward` is what
+   * the server paid (practice only).
+   */
+  const applyGrade = useCallback(
+    (m: Melody, index: number, result: AttemptGrade, detected: DetectedNote[], reward?: PhraseResult) => {
+      const first = firstGradesRef.current[index] === undefined;
+      if (first) {
+        firstGradesRef.current[index] = result;
+        firstAnswersRef.current[index] = detected;
+        setPhraseGrades([...firstGradesRef.current]);
+        deps.onProgress?.(m, savesFrom(firstGradesRef.current, firstAnswersRef.current));
+      }
+      if (result.verdict !== 'correct') setFails((n) => n + 1);
+      setWaiting(null);
+      setGrade(result);
+      setPhase('feedback');
+      deps.onPhraseChecked?.({
+        phrase: index,
+        phrases: phraseCount(m),
+        grade: result,
+        first,
+        melodyId: m.id,
+        level: m.difficultyId,
+        reward,
+      });
+    },
+    [deps],
+  );
+
+  // The answer to a check that had to wait for the network arrives by itself: show it if the learner is still there.
+  const waitingRef = useRef(waiting);
+  waitingRef.current = waiting;
+  const answerOfWaiting = useRef<DetectedNote[]>([]);
+  useEffect(() => {
+    const unsubscribe = deps.grader.onAnswered?.((checkId: string, out: GradedOutcome) => {
+      const w = waitingRef.current;
+      const m = melodyRef.current;
+      if (!w || w.checkId !== checkId || !m) return;
+      applyGrade(m, w.phraseIndex, out.grade, answerOfWaiting.current, out.reward);
+    });
+    return unsubscribe;
+  }, [deps.grader, applyGrade]);
+
   /** Grade the phrase as answered ("Check"). Needs at least one note. */
   const submitAnswer = useCallback(async () => {
     const taps = answerRef.current;
     if (phase !== 'awaitingInput' || !melody || !phrase || taps.length === 0) return;
     if (replaying) endReplay(true);
+    const token = tuneTokenRef.current;
+    const index = phraseIndex;
     setPhase('grading');
+    setCheckFailed(false);
     const detected = tapsToDetected(taps);
-    const result = gradeAttempt(phrase, detected, deps.gradingCfg);
-    const first = firstGradesRef.current[phraseIndex] === undefined;
-    if (first) {
-      firstGradesRef.current[phraseIndex] = result;
-      firstAnswersRef.current[phraseIndex] = detected;
-      setPhraseGrades([...firstGradesRef.current]);
-      deps.onProgress?.(melody, savesFrom(firstGradesRef.current, firstAnswersRef.current));
+    const outcome = await deps.grader.check({ melody, phraseIndex: index, phrase, detected });
+    if (tuneTokenRef.current !== token) return; // the learner moved on while the answer was on its way
+    if (outcome.kind === 'queued') {
+      // No network: the check is kept and graded when it can be sent; the answer stays on the board meanwhile.
+      answerOfWaiting.current = detected;
+      setWaiting({ checkId: outcome.checkId, phraseIndex: index });
+      setPhase('awaitingInput');
+      return;
     }
-    if (result.verdict !== 'correct') setFails((n) => n + 1);
-    setGrade(result);
-    setPhase('feedback');
-    deps.onPhraseChecked?.({
-      phrase: phraseIndex,
-      phrases: phraseCount(melody),
-      grade: result,
-      first,
-      melodyId: melody.id,
-      level: melody.difficultyId,
-    });
-  }, [deps, phase, melody, phrase, phraseIndex, replaying, endReplay]);
+    if (outcome.kind === 'rejected') {
+      setCheckFailed(true);
+      setPhase('awaitingInput');
+      return;
+    }
+    applyGrade(melody, index, outcome.grade, detected, outcome.reward);
+  }, [deps.grader, phase, melody, phrase, phraseIndex, replaying, endReplay, applyGrade]);
 
   return useMemo(
     () => ({
@@ -708,6 +809,10 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
       rankChange,
       fails,
       hint,
+      audioUnavailable,
+      waiting,
+      helpUnavailable,
+      checkFailed,
       next,
       easier,
       replay,
@@ -750,6 +855,10 @@ export function usePracticeLoop(deps: PracticeLoopDeps) {
       rankChange,
       fails,
       hint,
+      audioUnavailable,
+      waiting,
+      helpUnavailable,
+      checkFailed,
       pause,
       resume,
       seek,

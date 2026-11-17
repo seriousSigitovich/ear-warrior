@@ -11,14 +11,8 @@ export const DIFFICULTY_SETTINGS_TABLE = 'difficulty_settings';
 /** Small key-value area (anonymous device id, R9) — keeps it out of a separate native store. */
 export const KEY_VALUE_TABLE = 'key_value';
 
-/** Melodies completed at or above the pass mark, for level mastery and the daily challenges (spec 013). */
-export const COMPLETIONS_TABLE = 'completions';
-/** Append-only XP awards with deterministic ids: awarding twice is impossible by construction. */
-export const XP_AWARDS_TABLE = 'xp_awards';
-/** Levels reached Mastered, with the date; a row is never removed. */
-export const MASTERY_TABLE = 'mastery';
-/** Small flags of the reward system (the one-time conversion of past attempts, challenges started). */
-export const GAMIFICATION_META_TABLE = 'gamification_meta';
+// Spec 024: XP, completions and mastery are the server's now, so the device keeps no tables for them. Installs from
+// before it still have the old tables (`completions`, `xp_awards`, `mastery`, `gamification_meta`); nothing reads them.
 
 /** Where the learner stopped in each melody (spec 017), one row per tune, with an unsent flag. */
 export const MELODY_PROGRESS_TABLE = 'melody_progress';
@@ -30,10 +24,6 @@ export const ALL_TABLES = [
   MELODIES_TABLE,
   DIFFICULTY_SETTINGS_TABLE,
   KEY_VALUE_TABLE,
-  COMPLETIONS_TABLE,
-  XP_AWARDS_TABLE,
-  MASTERY_TABLE,
-  GAMIFICATION_META_TABLE,
   MELODY_PROGRESS_TABLE,
 ];
 

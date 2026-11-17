@@ -2,7 +2,7 @@
 import { randomUUID } from 'node:crypto';
 import type { AuthStore, CodeRow, SessionInfo } from './store.js';
 
-interface User { id: string; email: string }
+interface User { id: string; email: string | null; anonymous?: boolean }
 interface Link { deviceId: string; userId: string; linkedAt: Date; unlinkedAt: Date | null }
 interface Session { tokenHash: string; userId: string; deviceId: string; revokedAt: Date | null }
 interface Ticket { ticketHash: string; email: string; challenge: string; createdAt: Date; expiresAt: Date; usedAt: Date | null }
@@ -75,6 +75,20 @@ export function createMemoryStore(): AuthStore {
       }
       sessions.push({ tokenHash, userId: user.id, deviceId, revokedAt: null });
       return { userId: user.id, created };
+    },
+
+    async anonymousSession({ deviceId, tokenHash }) {
+      const known = sessions.map((x) => ({ x, u: users.find((y) => y.id === x.userId) })).find((r) => r.x.deviceId === deviceId && r.u?.anonymous);
+      const created = !known;
+      const user = known?.u ?? { id: randomUUID(), email: null, anonymous: true };
+      if (created) users.push(user);
+      sessions.push({ tokenHash, userId: user.id, deviceId, revokedAt: null });
+      return { userId: user.id, created };
+    },
+
+    async anonymousUserOf(deviceId, exceptUserId) {
+      const hit = sessions.find((x) => x.deviceId === deviceId && x.userId !== exceptUserId && users.find((u) => u.id === x.userId)?.anonymous);
+      return hit?.userId ?? null;
     },
 
     async sessionByToken(tokenHash): Promise<SessionInfo | null> {

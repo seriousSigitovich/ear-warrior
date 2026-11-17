@@ -15,7 +15,8 @@ export interface CodeRow {
 
 export interface SessionInfo {
   userId: string;
-  email: string;
+  /** Null for an anonymous (device-only) account, spec 024. */
+  email: string | null;
   deviceId: string;
 }
 
@@ -35,6 +36,13 @@ export interface AuthStore {
   consumeCode(id: string, now: Date): Promise<boolean>;
   /** One transaction: find-or-create the user, close the device's link to anyone else, open a link, store the session. */
   signIn(input: { email: string; deviceId: string; tokenHash: string; now: Date }): Promise<{ userId: string; created: boolean }>;
+  /**
+   * Spec 024: a device-only identity. Finds the anonymous account that already has a session on this device, or
+   * creates one (no email, no device link: attribution of events stays with real accounts), and stores a session for it.
+   */
+  anonymousSession(input: { deviceId: string; tokenHash: string; now: Date }): Promise<{ userId: string; created: boolean }>;
+  /** The anonymous account that has had a session on this device, other than `exceptUserId`; null when none. */
+  anonymousUserOf(deviceId: string, exceptUserId: string): Promise<string | null>;
   sessionByToken(tokenHash: string): Promise<SessionInfo | null>;
   /** Revokes the session and closes the device's open link to its user. Unknown or revoked tokens are a no-op. */
   signOut(tokenHash: string, now: Date): Promise<void>;
