@@ -20,7 +20,7 @@ test('/admin needs the admin password and links to every owner page', async () =
   assert.equal((await app.inject({ method: 'GET', url: '/admin' })).statusCode, 401);
   const res = await app.inject({ method: 'GET', url: '/admin', headers: AUTH });
   assert.equal(res.statusCode, 200);
-  for (const href of ['/admin/tunes', '/admin/challenges', '/admin/users', '/admin/funnel', '/admin/social']) {
+  for (const href of ['/admin/tunes', '/admin/challenges', '/admin/analytics', '/admin/social']) {
     assert.ok(res.body.includes(`href="${href}"`), href);
   }
   await app.close();
@@ -31,10 +31,9 @@ test('the owner pages that render here carry the same navigation to all the othe
     logger: false,
     tunes: createMemoryTuneStore(),
     challengeStore: createMemoryChallengeStore(),
-    usage: async () => ({ accounts: [], anonymous: { devices: 0, attempts: 0, attempts7d: 0, correct: 0, lastAt: null }, anonymousDevices: [] }),
-    funnel: async () => [],
+    analytics: async () => ({ devices: [], accounts: [], tunes: [] }),
   });
-  const all = ['/admin/tunes', '/admin/challenges', '/admin/users', '/admin/funnel', '/admin/social'];
+  const all = ['/admin/tunes', '/admin/challenges', '/admin/analytics', '/admin/social'];
   for (const url of all.filter((u) => u !== '/admin/social')) {
     const res = await app.inject({ method: 'GET', url, headers: AUTH });
     assert.equal(res.statusCode, 200, url);

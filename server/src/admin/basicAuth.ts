@@ -1,4 +1,4 @@
-// HTTP Basic gate shared by the owner pages (/admin/social, /admin/users). With no ADMIN_PASSWORD
+// HTTP Basic gate shared by the owner pages (/admin/social, /admin/analytics). With no ADMIN_PASSWORD
 // configured the pages answer 404, so a fresh deploy never exposes them by accident.
 import { createHash, timingSafeEqual } from 'node:crypto';
 import type { FastifyReply, FastifyRequest } from 'fastify';

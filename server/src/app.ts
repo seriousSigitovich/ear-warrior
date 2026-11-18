@@ -12,8 +12,7 @@ import type { ChallengeStore } from './challenges/override.js';
 import { registerSocial } from './routes/social.js';
 import { registerAuth, type AuthDeps } from './routes/auth.js';
 import { registerAuthGoogle } from './routes/authGoogle.js';
-import { registerUsers } from './routes/users.js';
-import { registerFunnel } from './routes/funnel.js';
+import { registerAnalytics } from './routes/analytics.js';
 import { registerAdminIndex } from './admin/indexPage.js';
 import { registerMelodies } from './routes/melodies.js';
 import { registerPhrase } from './routes/phrase.js';
@@ -28,10 +27,8 @@ import { defaultAuthDeps } from './auth/defaults.js';
 import { createPgProgressStore } from './progress/pgStore.js';
 import type { ProgressStore } from './progress/store.js';
 import { db } from './db/client.js';
-import { loadUsageReport } from './auth/usage.js';
-import type { UsageReport } from './auth/usagePage.js';
-import { loadFunnel } from './funnel/report.js';
-import type { DeviceRun } from './funnel/page.js';
+import { loadAnalytics } from './analytics/report.js';
+import type { AnalyticsData } from './analytics/model.js';
 import { setupFastifyErrorHandler } from './observability.js';
 
 export interface BuildOptions {
@@ -51,10 +48,8 @@ export interface BuildOptions {
   tuneAudio?: TuneAudioUploader;
   /** Clock of the admin tune calls (tests). */
   now?: () => Date;
-  /** Replaces the Postgres read behind /admin/users (tests). */
-  usage?: (now: Date) => Promise<UsageReport>;
-  /** Replaces the Postgres read behind /admin/funnel (tests). */
-  funnel?: () => Promise<DeviceRun[]>;
+  /** Replaces the Postgres read behind /admin/analytics (tests). */
+  analytics?: () => Promise<AnalyticsData>;
   logger?: FastifyServerOptions['logger'];
 }
 
@@ -121,8 +116,7 @@ export function buildApp(opts: BuildOptions = {}): FastifyInstance {
   });
   registerAdminTunes(app, tuneStore, opts.tuneAudio ?? blobTuneUploader, opts.now);
   registerAdminRecompute(app, { progress, tunes: tuneStore, ledger, now: opts.now });
-  registerUsers(app, opts.usage ?? loadUsageReport);
-  registerFunnel(app, opts.funnel ?? loadFunnel);
+  registerAnalytics(app, opts.analytics ?? loadAnalytics);
   registerAdminIndex(app);
 
   return app;

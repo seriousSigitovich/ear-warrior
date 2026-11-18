@@ -2,8 +2,7 @@
 export const ADMIN_PAGES: ReadonlyArray<readonly [href: string, title: string, what: string]> = [
   ['/admin/tunes', 'Мелодии', 'библиотека: список, загрузка звука, показ и скрытие'],
   ['/admin/challenges', 'Челленджи', 'ежедневные задания и их переопределения'],
-  ['/admin/users', 'Тестеры', 'кто установил и что делает'],
-  ['/admin/funnel', 'Воронка', 'где обрываются первые запуски'],
+  ['/admin/analytics', 'Аналитика', 'каждый пользователь: путь, практика, прогресс, где ушёл'],
   ['/admin/social', 'Соцсети', 'просмотры и подписчики YouTube и Instagram'],
 ];
 
