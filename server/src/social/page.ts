@@ -2,6 +2,7 @@
 // first, details on demand": status strip + one card per platform + top posts at the top, and every
 // post as a row of one sortable table. Everything that came from a platform API (titles,
 // captions, error text) is third-party data, so it is HTML-escaped before it reaches the page.
+import { adminNav } from '../admin/nav.js';
 import { PLATFORMS, type Platform, type PostMetrics } from './types.js';
 import type { Dashboard, PostView, SortKey } from './summary.js';
 import { sortPosts } from './summary.js';
@@ -250,7 +251,8 @@ export function renderPage(m: PageModel): string {
   const body = `
 <header>
   <h1>Соцсети · Ear Warrior</h1>
-  <div class="controls"><a href="/admin/users">Тестеры</a><a href="/admin/challenges">Челленджи</a>${periodLinks(m)}${platformLinks(m)}
+  ${adminNav('/admin/social')}
+  <div class="controls">${periodLinks(m)}${platformLinks(m)}
     <form method="post" action="/admin/social/collect" style="margin:0"><button type="submit">Обновить сейчас</button></form>
   </div>
 </header>

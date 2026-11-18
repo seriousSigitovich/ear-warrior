@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { afterEach, beforeEach, test } from 'node:test';
 import { buildApp } from '../app.js';
+import { createMemoryChallengeStore } from '../challenges/memoryStore.js';
+import { createMemoryTuneStore } from '../tunes/memoryStore.js';
 
 const AUTH = { authorization: `Basic ${Buffer.from('admin:pw').toString('base64')}` };
 let saved: string | undefined;
@@ -20,6 +22,24 @@ test('/admin needs the admin password and links to every owner page', async () =
   assert.equal(res.statusCode, 200);
   for (const href of ['/admin/tunes', '/admin/challenges', '/admin/users', '/admin/funnel', '/admin/social']) {
     assert.ok(res.body.includes(`href="${href}"`), href);
+  }
+  await app.close();
+});
+
+test('the owner pages that render here carry the same navigation to all the others', async () => {
+  const app = buildApp({
+    logger: false,
+    tunes: createMemoryTuneStore(),
+    challengeStore: createMemoryChallengeStore(),
+    usage: async () => ({ accounts: [], anonymous: { devices: 0, attempts: 0, attempts7d: 0, correct: 0, lastAt: null }, anonymousDevices: [] }),
+    funnel: async () => [],
+  });
+  const all = ['/admin/tunes', '/admin/challenges', '/admin/users', '/admin/funnel', '/admin/social'];
+  for (const url of all.filter((u) => u !== '/admin/social')) {
+    const res = await app.inject({ method: 'GET', url, headers: AUTH });
+    assert.equal(res.statusCode, 200, url);
+    assert.ok(res.body.includes('href="/admin"'), `${url}: menu link`);
+    for (const href of all) if (href !== url) assert.ok(res.body.includes(`href="${href}"`), `${url} → ${href}`);
   }
   await app.close();
 });

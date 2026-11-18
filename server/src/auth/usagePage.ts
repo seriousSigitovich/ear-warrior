@@ -1,6 +1,7 @@
 // Server-rendered "who is who" page for the owner: one row per account, a total for attempts that
 // belong to nobody, and one row per such device under it. Emails are typed by strangers, so every value is escaped before it reaches the page.
 import { CSS, ago, esc, sortTh } from '../social/page.js';
+import { adminNav } from '../admin/nav.js';
 
 export interface UsageRow {
   devices: number;
@@ -67,7 +68,7 @@ export function renderUsersPage(report: UsageReport, now: Date, sort: UsersSort 
   const body = `
 <header>
   <h1>Тестеры · Ear Warrior</h1>
-  <div class="controls"><a href="/admin/funnel">Воронка</a><a href="/admin/social">Соцсети</a><a href="/admin/challenges">Челленджи</a></div>
+  ${adminNav('/admin/users')}
 </header>
 ${report.accounts.length ? '' : '<div class="empty">Аккаунтов пока нет.</div>'}
 <h3>Аккаунты · ${report.accounts.length}</h3>

@@ -2,6 +2,7 @@
 // sign-in → first melody → first answers → a second day) and where it was when it left the app.
 // Built from app_events only; pure, so the steps and the page are tested without a database.
 import { CSS, ago, esc, sortTh } from '../social/page.js';
+import { adminNav } from '../admin/nav.js';
 
 /** One device's first run, folded out of its app_events (see report.ts). */
 export interface DeviceRun {
@@ -161,7 +162,7 @@ export function renderFunnelPage(devices: DeviceRun[], now: Date, sort: FunnelSo
   const body = `
 <header>
   <h1>Воронка первого запуска · Ear Warrior</h1>
-  <div class="controls"><a href="/admin/users">Тестеры</a><a href="/admin/social">Соцсети</a><a href="/admin/challenges">Челленджи</a></div>
+  ${adminNav('/admin/funnel')}
 </header>
 ${total ? '' : '<div class="empty">Пока нет устройств с новой аналитикой.</div>'}
 <h3>Докуда доходят · ${total} устр.</h3>

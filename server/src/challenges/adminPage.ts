@@ -1,6 +1,7 @@
 // Server-rendered owner pages for the daily challenges (spec 020): the next days with their source, and one
 // day's form. Plain HTML, no client JS. Every value that reaches the page is escaped.
 import { CSS, esc } from '../social/page.js';
+import { adminNav } from '../admin/nav.js';
 import type { DailyChallenges } from './daily.js';
 
 export interface DayRow {
@@ -46,7 +47,7 @@ export function renderChallengesList(rows: DayRow[], today: string, saved?: stri
   const body = `
 <header>
   <h1>Челленджи дня · Ear Warrior</h1>
-  <div class="controls"><a href="/admin/users">Тестеры</a><a href="/admin/funnel">Воронка</a><a href="/admin/social">Соцсети</a></div>
+  ${adminNav('/admin/challenges')}
 </header>
 ${saved ? `<p class="notice">${esc(saved)}</p>` : ''}
 <p class="muted small">Дни без ручной правки считает генератор. Править можно с завтрашнего дня (UTC): устройство запоминает челленджи дня после первого запроса, поэтому сегодняшние уже не изменить. Для тех, кто восточнее UTC, «завтра» может уже наступить.</p>
@@ -78,7 +79,7 @@ export function renderChallengeForm(date: string, source: 'manual' | 'auto', val
   };
   const body = `
 <header><h1>${esc(date)} <span class="muted">${weekday(date)}</span> <span class="badge ${source}">${source === 'manual' ? 'вручную' : 'авто'}</span></h1>
-<div class="controls"><a href="/admin/challenges">← Все дни</a></div></header>
+${adminNav()}<div class="controls"><a href="/admin/challenges">← Все дни</a></div></header>
 ${errors.length ? `<div class="errors"><b>Не сохранено</b><ul>${errors.map((e) => `<li>${esc(e)}</li>`).join('')}</ul></div>` : ''}
 ${source === 'auto' ? '<p class="notice">Этот день ещё считает генератор: в форме его значения. После сохранения день станет ручным.</p>' : ''}
 <form class="day" method="post" action="/admin/challenges/${esc(date)}">

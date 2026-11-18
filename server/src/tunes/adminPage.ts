@@ -1,6 +1,7 @@
 // Server-rendered owner page for the melody library (spec 024). Plain HTML; a few lines of script send the edit
 // and upload requests with the browser's own Basic auth. Every value that reaches the page is escaped.
 import { CSS, esc } from '../social/page.js';
+import { adminNav } from '../admin/nav.js';
 import { isVisible } from './validate.js';
 import type { Tune } from './store.js';
 
@@ -58,7 +59,7 @@ const row = (t: Tune): string => `<tr>
 export function renderTunesPage(tunes: Tune[]): string {
   const visible = tunes.filter(isVisible).length;
   return `<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Мелодии — Ear Warrior</title><style>${CSS}${EXTRA_CSS}</style></head><body><main>
-<header><h1>Мелодии · Ear Warrior</h1><div class="controls"><a href="/admin">Меню</a><a href="/admin/challenges">Челленджи</a><a href="/admin/users">Тестеры</a></div></header>
+<header><h1>Мелодии · Ear Warrior</h1>${adminNav('/admin/tunes')}</header>
 <p class="muted small">${tunes.length} мелодий, ${visible} видно игрокам. Ответ (ноты) хранится только здесь и никогда не уходит в приложение. Мелодия видна, когда у неё есть звук и она не скрыта.</p>
 <p id="msg" class="msg" role="status"></p>
 <details><summary>Новая мелодия или правка по id</summary>
