@@ -508,6 +508,53 @@ export const TUNES = {
     strum: [48, 52, 55, 60, 64],                                   // C major x32010, home
     bpm: 88, hook: [1, 3], chord: [72, 76, 79],                   // the chord's root C3 · C major
   }),
+  // Brahms, Hungarian Dance No. 5 (1869, public domain), G minor, 2/4, the whole 8-bar main theme (the app's library.abc `hungarian5`, 26 notes, which
+  // the owner checked by ear; the library writes it in doubled values, here they are the true 2/4 ones: D q, G 8. B♭ 16 …). Written an octave above
+  // the sound: D3–G4 on the D, G, B and e strings, frets 0–4 (F♯ on the D string fret 4, E♭ on the B string fret 4). ♩ = 104, so the film is ~14 s.
+  // Opens on a G minor strum (the key's chord); the theme comes home on the D, the dominant, so the last note sounds as a D7 strum.
+  hungarian: story({
+    id: 'hungarian', title: 'Hungarian Dance No. 5', hookText: 'byear', endText: 'follow', ring: 0.5,
+    listenAt: 1.4,
+    gaps: { hold: 0.32, cta: 0.1, sub: 0.25, comment: 0.2, sweep: 0.6, end: 1.7 },
+    ...score({
+      key: 'Gm', time: [2, 4],
+      bars: [
+        'D4:q G4:8. Bb4:16',
+        'A4:8. G4:16 F#4:8 D4:8',
+        'G4:q Bb4:8. D5:16',
+        'C5:8. Bb4:16 A4:8 F4:8',
+        'Bb4:q D5:8. G5:16',
+        'F5:8. Eb5:16 D5:8 Bb4:8',
+        'A4:8 G4:8 F#4:8 Eb4:8',
+        'D4:h',                                     // home: the D sounds as the strum
+      ],
+    }),
+    hookChord: [[2, 5], [3, 3], [4, 3], [5, 3]],                   // G minor xx5333, the opening hit
+    strum: [50, 57, 60, 66],                                       // D7 xx0212, home
+    bpm: 104, hook: [2, 5], chord: [74, 78, 81],                  // the chord's root G3 · D major (the dominant the theme comes home on)
+  }),
+  // Larionov, Kalinka (1860, public domain), A minor, the slow chorus "Kalinka, kalinka, kalinka moya": E G F E D C | G, twice. Notes and rhythm
+  // from the free flutetunes.com MIDI (`tunes/kalinka.mid`: the chorus is bars 68–99 there; units of an eighth). The first cut took the app's
+  // library.abc `kalinka` (written from memory) and it was NOT the tune (the author, 2026-11-17: «это не калинка») — that tune is a garbled
+  // version of the fast verse. Flute pitch is the written guitar pitch, so the sound is an octave down: G3–G4 on the G, B and e strings, frets
+  // 0–3, 14 notes. ♩ = 120. Opens on an A minor strum (the key's chord); the line stops on the G, so home is an Am7 strum with that G in it.
+  kalinka: story({
+    id: 'kalinka', title: 'Kalinka', hookText: 'byear', endText: 'follow', ring: 0.5,
+    listenAt: 1.4,
+    gaps: { hold: 0.8, cta: 0.1, sub: 0.25, comment: 0.2, sweep: 0.6, end: 1.7 },
+    ...score({
+      key: 'Am', time: [4, 4],
+      bars: [
+        'E5:q G5:q F5:q E5:8 D5:8',                 // Ka-lin-ka, ka-
+        'C5:h G4:h',                                // -lin-ka, ka-
+        'E5:q G5:q F5:q E5:8 D5:8',                 // -lin-ka mo-
+        'C5:h G4:h',                                // -ya: the G sounds as the strum
+      ],
+    }),
+    hookChord: [[1, 0], [2, 2], [3, 2], [4, 1], [5, 0]],           // A minor x02210, the opening hit
+    strum: [45, 52, 55, 60, 64],                                   // Am7 x02010, home (the G the line ends on)
+    bpm: 120, hook: [1, 0], chord: [69, 72, 76],                  // the chord's root A2 · A minor
+  }),
   // The same arpeggio as a 10 s looping band cut (src/rising/RisingBand.tsx): the melody from frame 0, ♩ = 144 so the film is exactly eight bars
   // (seven of melody, one bar of E back into the top), the "your turn" gaps tightened.
   risingBand: story({ ...RISING, id: 'risingBand', bpm: 144, listenAt: 0, gaps: { hold: 0.15, cta: 0.15, sub: 0.3, comment: 0.45, sweep: 0.85, end: 1.5 } }),
