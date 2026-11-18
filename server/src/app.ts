@@ -14,6 +14,7 @@ import { registerAuth, type AuthDeps } from './routes/auth.js';
 import { registerAuthGoogle } from './routes/authGoogle.js';
 import { registerUsers } from './routes/users.js';
 import { registerFunnel } from './routes/funnel.js';
+import { registerAdminIndex } from './admin/indexPage.js';
 import { registerMelodies } from './routes/melodies.js';
 import { registerPhrase } from './routes/phrase.js';
 import { registerAdminRecompute } from './routes/adminRecompute.js';
@@ -122,6 +123,7 @@ export function buildApp(opts: BuildOptions = {}): FastifyInstance {
   registerAdminRecompute(app, { progress, tunes: tuneStore, ledger, now: opts.now });
   registerUsers(app, opts.usage ?? loadUsageReport);
   registerFunnel(app, opts.funnel ?? loadFunnel);
+  registerAdminIndex(app);
 
   return app;
 }
