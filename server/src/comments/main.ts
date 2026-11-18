@@ -7,8 +7,8 @@
 //   --skip=<id,id>     leave these comment ids out of --reply (ids are printed by the plan)
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { buildRows, renderInbox, type KeyEntry } from './comments/report.js';
-import { instagramComments, postReply, youtubeAccessToken, youtubeComments, type Comment } from './comments/sources.js';
+import { buildRows, renderInbox, type KeyEntry } from './report.js';
+import { instagramComments, postReply, youtubeAccessToken, youtubeComments, type Comment } from './sources.js';
 
 const repo = join(process.cwd(), '..');
 const args = process.argv.slice(2);

@@ -3,12 +3,12 @@
 // A dry run by default; add --confirm to actually upload/publish. See server/README.md → "Publishing videos".
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { blobHost } from './publish/hosting.js';
-import { jpegBytes, listImages, probeImage } from './publish/images.js';
-import { runPublish } from './publish/run.js';
-import { probeVideo } from './publish/video.js';
+import { blobHost } from './hosting.js';
+import { jpegBytes, listImages, probeImage } from './images.js';
+import { runPublish } from './run.js';
+import { probeVideo } from './video.js';
 
-const repoRoot = fileURLToPath(new URL('../../', import.meta.url));
+const repoRoot = fileURLToPath(new URL('../../../', import.meta.url));
 
 const code = await runPublish(process.argv.slice(2), {
   env: process.env,

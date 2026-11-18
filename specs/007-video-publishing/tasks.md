@@ -19,7 +19,7 @@
 
 ## Phase 3: The command
 
-- [x] T007 [US1] [US4] [US5] CLI `server/src/publish.ts` (`npm run publish`): plan by default, `--confirm`, `--platforms`, `--no-publish`, `--force`; failure isolation; exit status; test that a dry run makes no network call in `server/src/publish/cli.test.ts`
+- [x] T007 [US1] [US4] [US5] CLI `server/src/publish/main.ts` (`npm run publish`): plan by default, `--confirm`, `--platforms`, `--no-publish`, `--force`; failure isolation; exit status; test that a dry run makes no network call in `server/src/publish/cli.test.ts`
 - [x] T008 `.env.example` and `server/README.md` "Publishing videos" (separate credentials, never pushed to Vercel), `docs/published.json` created empty
 
 ## Phase 4: Rights and live verification (owner steps)

@@ -78,6 +78,10 @@ export interface FretboardAnswerProps {
   player?: AnswerPlayer;
 }
 
+// iOS-only: don't hold a touch back while the scroll view decides whether it is a drag, so
+// fretboard taps land at once. Supported natively (RCTScrollView) but missing from RN's typings.
+const IOS_TOUCH_NOW = { delaysContentTouches: false } as object;
+
 export function FretboardAnswer({
   noteCount,
   taps,
@@ -123,7 +127,7 @@ export function FretboardAnswer({
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
-        delaysContentTouches={false}
+        {...IOS_TOUCH_NOW}
       >
         <View style={styles.board}>
           <Fretboard

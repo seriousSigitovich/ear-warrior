@@ -1,11 +1,19 @@
 {
-  "//": "React Native / Expo layer. Requires the Expo toolchain + native deps installed (npm install) and is built/typechecked as part of the app; not run in the pure-logic sandbox. Extends Expo's base tsconfig once installed.",
-  "extends": "expo/tsconfig.base",
+  "//": "React Native / Expo layer. Requires the Expo toolchain + native deps installed (npm install). Expo's tsconfig.base.json is inlined, not extended: it uses `module: preserve` and `${configDir}`, which TypeScript 5.3 (pinned for ts-jest) cannot parse. Drop this once TypeScript is >= 5.5.",
   "compilerOptions": {
-    "strict": true,
-    "jsx": "react-jsx",
+    "allowJs": true,
     "esModuleInterop": true,
+    "jsx": "react-jsx",
+    "lib": ["DOM", "ESNext"],
+    "module": "esnext",
+    "moduleDetection": "force",
+    "moduleResolution": "bundler",
+    "customConditions": ["react-native"],
+    "noEmit": true,
+    "resolveJsonModule": true,
     "skipLibCheck": true,
+    "target": "ESNext",
+    "strict": true,
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"]

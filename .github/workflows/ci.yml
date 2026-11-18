@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  app:
+    name: App (lint, typecheck, jest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run typecheck:app
+      - run: npm test
+
+  server:
+    name: Server (typecheck, tests + Postgres)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ear_warrior
+          POSTGRES_PASSWORD: ear_warrior
+          POSTGRES_DB: ear_warrior
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ear_warrior"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://ear_warrior:ear_warrior@localhost:5432/ear_warrior
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      # No lockfile in server/ yet, so no `npm ci` and no npm cache.
+      - run: npm install
+      - run: npm run typecheck
+      - run: npm test

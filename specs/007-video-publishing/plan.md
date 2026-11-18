@@ -39,7 +39,7 @@ server/src/publish/
 ├── instagram.ts    # container from video_url + poll + publish
 ├── run.ts          # the command's logic (plan, --confirm, ledger, failure isolation)
 ├── *.test.ts
-server/src/publish.ts           # CLI entry: npm run publish
+server/src/publish/main.ts           # CLI entry: npm run publish
 server/src/youtube-auth.ts      # + `--upload`: consent for the upload scope only
 docs/published.json             # the record
 ```
