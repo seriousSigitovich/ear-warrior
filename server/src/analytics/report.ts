@@ -139,7 +139,13 @@ export async function loadAnalytics(): Promise<AnalyticsData> {
     ),
     ids as (select device_id from ev union select device_id from att)
     select i.device_id,
-           (select l.user_id from device_links l where l.device_id = i.device_id order by l.linked_at desc limit 1) as user_id,
+           -- The account in force: an open sign-in link, else the device-only (anonymous) account its session made, else the last closed link.
+           coalesce(
+             (select l.user_id from device_links l where l.device_id = i.device_id and l.unlinked_at is null order by l.linked_at desc limit 1),
+             (select s.user_id from auth_sessions s join users u on u.id = s.user_id and u.anonymous
+              where s.device_id = i.device_id order by s.created_at desc limit 1),
+             (select l.user_id from device_links l where l.device_id = i.device_id order by l.linked_at desc limit 1)
+           ) as user_id,
            ev.app_version, ev.tracked, ev.first_at, ev.last_at, ev.days,
            ev.onboarding_step, ev.onboarding_done, ev.onboarding_skipped, ev.onboarded_at,
            ev.signin_seen, ev.code_requested, ev.signed_in, ev.signed_in_at, ev.signin_errors,

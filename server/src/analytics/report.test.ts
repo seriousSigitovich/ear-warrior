@@ -22,10 +22,10 @@ const event = (device: string, name: string, at: string, props: Record<string, u
 
 before(async () => {
   if (skip) return;
-  await sql.unsafe('truncate users, device_links, attempt_log, app_events, phrase_checks, xp_ledger restart identity cascade');
+  await sql.unsafe('truncate users, auth_sessions, device_links, attempt_log, app_events, phrase_checks, xp_ledger restart identity cascade');
 });
 after(async () => {
-  if (!skip) await sql.unsafe('truncate users, device_links, attempt_log, app_events, phrase_checks, xp_ledger restart identity cascade');
+  if (!skip) await sql.unsafe('truncate users, auth_sessions, device_links, attempt_log, app_events, phrase_checks, xp_ledger restart identity cascade');
   await sql.end({ timeout: 2 });
 });
 
@@ -53,6 +53,12 @@ test('folds events, attempts, the account link and server counts into people', {
                    (${id}, 'c2', 'canon', 1, 1, '{60}', '[]', 40, false, 0, '2026-11-11', '2026-11-11T10:06:00Z')`;
   await sql`insert into xp_ledger (user_id, key, kind, xp, local_day, at) values (${id}, 'k1', 'phrase', 10, '2026-11-11', '2026-11-11T10:05:00Z')`;
 
+  // A guest: only a device-only account (auth_sessions), no device_links, with XP on the server.
+  const [{ id: guestId }] = await sql`insert into users (anonymous) values (true) returning id`;
+  await sql`insert into auth_sessions (token_hash, user_id, device_id) values ('h1', ${guestId}, 'dev_guest')`;
+  await event('dev_guest', 'screen_view', '2026-11-12T10:00:00Z', { screen: 'home' });
+  await sql`insert into xp_ledger (user_id, key, kind, xp, local_day, at) values (${guestId}, 'g1', 'phrase', 25, '2026-11-12', '2026-11-12T10:05:00Z')`;
+
   const data = await loadAnalytics();
   const users = buildUsers(data);
   const anna = users.find((u) => u.email === 'a@x.co')!;
@@ -79,6 +85,10 @@ test('folds events, attempts, the account link and server counts into people', {
   assert.equal(anna.phraseChecks, 2);
   assert.equal(anna.phrasesPassed, 1);
   assert.deepEqual(anna.tunes, [{ tuneId: 'canon', checks: 2, passed: 1 }]);
+  const guest = users.find((u) => u.deviceIds[0] === 'dev_guest')!;
+  assert.equal(guest.email, null);
+  assert.equal(guest.userId, guestId);
+  assert.equal(guest.xp, 25);
   const old = users.find((u) => u.deviceIds[0] === 'dev_old')!;
   assert.equal(old.tracked, false);
   assert.equal(old.attempts, 1);
