@@ -49,9 +49,11 @@ function draw(S: NonNullable<TuneStory['SCORE']>, ink: string, notesOnly: boolea
     stave.setContext(ctx);
     if (!notesOnly) stave.draw();
     const notes = bar.map((n) => {
-      const note = new StaveNote({ keys: [`${n.step.toLowerCase()}${n.acc}/${n.octave}`], duration: DURATION[n.dur], auto_stem: true });
+      const rest = !!(n as ScoreNote & { rest?: boolean }).rest;      // a rest: drawn with the staff (dim layer), never lit
+      const note = new StaveNote({ keys: rest ? ['b/4'] : [`${n.step.toLowerCase()}${n.acc}/${n.octave}`], duration: DURATION[n.dur] + (rest ? 'r' : ''), auto_stem: true });
       if (n.dur.endsWith('.') && !n.dur.endsWith('t')) Dot.buildAndAttach([note], { all: true });
-      note.setStyle({ fillStyle: ink, strokeStyle: ink });
+      const paint = rest && notesOnly ? { fillStyle: 'transparent', strokeStyle: 'transparent' } : { fillStyle: ink, strokeStyle: ink };
+      note.setStyle(paint);
       note.setLedgerLineStyle({ fillStyle: ink, strokeStyle: ink });
       all.push({ note, n });
       return note;
@@ -95,6 +97,7 @@ function draw(S: NonNullable<TuneStory['SCORE']>, ink: string, notesOnly: boolea
   const heads: Head[] = [];
   all.forEach(({ note, n }, i) => {
     if (i > 0 && all[i - 1].n.tie) return;                // a tied-over note is not a new sound
+    if ((n as ScoreNote & { rest?: boolean }).rest) return;   // a rest is not a sound
     heads.push({ order: n.order, x: (note.getNoteHeadBeginX() + note.getNoteHeadEndX()) / 2, y: note.getYs()[0], left: note.getAbsoluteX() - note.getMetrics().modLeftPx - 3 });
   });
   const svg = host.innerHTML;

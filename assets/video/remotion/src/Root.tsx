@@ -4,6 +4,7 @@ import { FPS, DURATION_SEC, resolveTune } from '../tune.mjs';
 import type { Tune } from '../tune.mjs';
 import { TuneVideo } from './TuneVideo';
 import { Cover } from './Cover';
+import { TitleCover } from './rising/TitleCover';
 import { PainVideo, PainCut } from './pain/PainVideo';
 import { CUT_DURATION } from '../pain/cut.mjs';
 import { ByEar } from './byear/ByEar';
@@ -93,6 +94,7 @@ export const Root: React.FC = () => (
   {WOOD_TUNES.filter((id) => id !== 'rising').map((id) => (
     <Composition key={id} id={`Wood-${id}`} component={RisingWood} durationInFrames={Math.round(KING_TUNES[id].DURATION * KING_TUNES[id].FPS)} fps={KING_TUNES[id].FPS} width={1080} height={1920} defaultProps={{ tune: id, board: !BOARDLESS.includes(id) }} />
   ))}
+  <Composition id="TitleCover" component={TitleCover} durationInFrames={1} fps={60} width={1080} height={1920} defaultProps={{ base: 'cover-base.png', kicker: '', title: '' }} />
   {CONTOUR_TUNES.map((id) => (
     <React.Fragment key={id}>
       <Composition id={`Contour-${id}`} component={ContourLine} durationInFrames={Math.round(KING_TUNES[id].DURATION * KING_TUNES[id].FPS)} fps={KING_TUNES[id].FPS} width={1080} height={1920} defaultProps={{ tune: id }} />

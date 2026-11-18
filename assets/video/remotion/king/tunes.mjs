@@ -555,6 +555,29 @@ export const TUNES = {
     strum: [45, 52, 55, 60, 64],                                   // Am7 x02010, home (the G the line ends on)
     bpm: 120, hook: [1, 0], chord: [69, 72, 76],                  // the chord's root A2 · A minor
   }),
+  // Handel, Sarabande from the Keyboard Suite in D minor HWV 437 (1703–06, public domain; Barry Lyndon), the opening of the theme: F F G | E E | A A B♭ |
+  // G G A. Notes and rhythm read off the free flutetunes.com score (`handel-suite-in-d-minor-sarabande.pdf`, 3/2, ♩ = 60 on the half note) and
+  // cross-checked against its MIDI, not from memory. The score's pitch is the written guitar pitch, so the sound is an octave down: E3–A3 on the
+  // D, G and B strings, frets 0–3, 12 notes counting the repeats. Every bar is half, half, quarter rest, quarter pickup: the rest lengthens the second
+  // half note. ♩ = 132 (a touch quicker than the score's 120, so the film stays short). Opens on a D minor strum (the key's chord); the line stops on the
+  // pickup A, so home is a D minor strum with that A in it.
+  sarabande: story({
+    id: 'sarabande', title: 'Handel’s Sarabande', hookText: 'byear', endText: 'follow', ring: 0.5,
+    listenAt: 1.4,
+    gaps: { hold: 0.8, cta: 0.1, sub: 0.25, comment: 0.2, sweep: 0.6, end: 1.7 },
+    ...score({
+      key: 'Dm', time: [3, 2],
+      bars: [
+        'F4:h F4:h r:q G4:q',
+        'E4:h E4:h r:h',
+        'A4:h A4:h r:q Bb4:q',
+        'G4:h G4:h r:q A4:q',                       // the pickup A sounds as the strum
+      ],
+    }),
+    hookChord: [[2, 0], [3, 2], [4, 3], [5, 1]],                   // D minor xx0231, the opening hit
+    strum: [50, 57, 62, 65],                                       // D minor xx0231, home (the A the line ends on)
+    bpm: 132, hook: [2, 0], chord: [74, 77, 81],                  // the chord's root D3 · D minor
+  }),
   // The same arpeggio as a 10 s looping band cut (src/rising/RisingBand.tsx): the melody from frame 0, ♩ = 144 so the film is exactly eight bars
   // (seven of melody, one bar of E back into the top), the "your turn" gaps tightened.
   risingBand: story({ ...RISING, id: 'risingBand', bpm: 144, listenAt: 0, gaps: { hold: 0.15, cta: 0.15, sub: 0.3, comment: 0.45, sweep: 0.85, end: 1.5 } }),

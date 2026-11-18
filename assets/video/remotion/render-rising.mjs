@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // House of the Rising Sun on #60's cut in the warm-wood look:  node render-rising.mjs  →  public/rising-wood.wav + out/rising-wood.mp4 (1080×1920, 60 fps)
 // Timeline = king/tunes.mjs `rising`, picture in src/rising/RisingWood.tsx, soundtrack king/audio.mjs on that timeline.
-//   --tune=<id>  another tune in the same look (WOOD_TUNES in RisingWood.tsx: canon, scarborough, greensleeves, birthday, gladiators (no wood, BOARDLESS), darkeyes, bulerias, cucaracha, hava, polkka, habanera, sailor, silent, hungarian, kalinka, condor (a looping cut: melody from frame 0, "? ? ?" slots, no crane))
+//   --tune=<id>  another tune in the same look (WOOD_TUNES in RisingWood.tsx: canon, scarborough, greensleeves, birthday, gladiators (no wood, BOARDLESS), darkeyes, bulerias, cucaracha, hava, polkka, habanera, sailor, silent, hungarian, kalinka, sarabande, condor (a looping cut: melody from frame 0, "? ? ?" slots, no crane))
 //                → public/wood-<id>.wav + out/wood-<id>.mp4, composition Wood-<id>; check it with  node king/check.mjs --tune=<id> --wav=wood-<id>.wav
 //   --look=<noneck|ghost|embers>  #71 without the neck, same soundtrack → out/rising-<look>.mp4: noneck = the notes still fall, nothing under
 //                them (RisingWood-noneck) · ghost = a string shows only while it rings (RisingWood-ghost) · embers = campfire embers hang
@@ -9,7 +9,7 @@
 //   --cover  a frame of the hook → out/<name>-cover.{png,jpg}
 //   --audio-only        just the soundtrack            --still=<seconds>[,<seconds>…]   PNG frames → out/frames/
 import { execFileSync } from 'node:child_process';
-import { mkdirSync } from 'node:fs';
+import { copyFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { finalizeLoudness } from './ten/audio.mjs';
@@ -43,6 +43,17 @@ if (still) {
 if (process.argv.includes('--cover')) {
   const png = join(here, 'out', `${name}-cover.png`), jpg = png.replace(/png$/, 'jpg');
   execFileSync(remotion, ['still', 'src/index.ts', comp, png, `--frame=${Math.round(COVER_AT * story.FPS)}`, '--log=error'], { cwd: here, stdio: 'inherit' });
+  execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', png, '-q:v', '2', jpg]);
+  console.log(`${name}: → ${jpg}`);
+  process.exit(0);
+}
+const titled = process.argv.find((a) => a.startsWith('--titled='));       // --titled="Handel|Sarabande": the --cover frame + composer / title block → out/<name>-cover-title.{png,jpg}
+if (titled) {
+  const [kicker, title] = titled.slice(9).split('|');
+  const base = join(here, 'out', `${name}-cover.png`);
+  copyFileSync(base, join(here, 'public', `${name}-cover-base.png`));
+  const png = join(here, 'out', `${name}-cover-title.png`), jpg = png.replace(/png$/, 'jpg');
+  execFileSync(remotion, ['still', 'src/index.ts', 'TitleCover', png, '--log=error', `--props=${JSON.stringify({ base: `${name}-cover-base.png`, kicker, title })}`], { cwd: here, stdio: 'inherit' });
   execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', png, '-q:v', '2', jpg]);
   console.log(`${name}: → ${jpg}`);
   process.exit(0);
