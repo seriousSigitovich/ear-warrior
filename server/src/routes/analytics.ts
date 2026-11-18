@@ -9,7 +9,8 @@ export function registerAnalytics(app: FastifyInstance, load: () => Promise<Anal
   app.get('/admin/analytics', async (req, reply) => {
     if (!authorize(req, reply)) return reply;
     const view = parseView(req.query as Record<string, unknown>);
-    const html = renderAnalyticsPage(buildUsers(await load()), new Date(), view);
+    const data = await load();
+    const html = renderAnalyticsPage(buildUsers(data), new Date(), view, data.totals);
     return reply.header('cache-control', 'no-store').type('text/html; charset=utf-8').send(html);
   });
   for (const old of ['/admin/users', '/admin/funnel']) {

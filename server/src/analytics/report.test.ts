@@ -22,10 +22,10 @@ const event = (device: string, name: string, at: string, props: Record<string, u
 
 before(async () => {
   if (skip) return;
-  await sql.unsafe('truncate users, auth_sessions, device_links, attempt_log, app_events, phrase_checks, xp_ledger restart identity cascade');
+  await sql.unsafe('truncate users, auth_sessions, device_links, progress_game_rows, progress_melodies, attempt_log, app_events, phrase_checks, xp_ledger restart identity cascade');
 });
 after(async () => {
-  if (!skip) await sql.unsafe('truncate users, auth_sessions, device_links, attempt_log, app_events, phrase_checks, xp_ledger restart identity cascade');
+  if (!skip) await sql.unsafe('truncate users, auth_sessions, device_links, progress_game_rows, progress_melodies, attempt_log, app_events, phrase_checks, xp_ledger restart identity cascade');
   await sql.end({ timeout: 2 });
 });
 
@@ -51,6 +51,8 @@ test('folds events, attempts, the account link and server counts into people', {
   await sql`insert into phrase_checks (user_id, check_id, tune_id, phrase, attempt_no, played, note_results, accuracy, passed, xp, local_day, checked_at)
             values (${id}, 'c1', 'canon', 0, 1, '{60}', '[]', 90, true, 10, '2026-11-11', '2026-11-11T10:05:00Z'),
                    (${id}, 'c2', 'canon', 1, 1, '{60}', '[]', 40, false, 0, '2026-11-11', '2026-11-11T10:06:00Z')`;
+  await sql`insert into progress_game_rows (user_id, kind, id, data) values (${id}, 'award', 'a1', '{"xp": 30}'), (${id}, 'award', 'a2', '{"xp": 15}')`;
+  await sql`insert into progress_melodies (user_id, tune_id, phrase, phrases, grades, updated_at) values (${id}, 'sailor', 2, 4, '[]', '2026-11-11T10:00:00Z')`;
   await sql`insert into xp_ledger (user_id, key, kind, xp, local_day, at) values (${id}, 'k1', 'phrase', 10, '2026-11-11', '2026-11-11T10:05:00Z')`;
 
   // A guest: only a device-only account (auth_sessions), no device_links, with XP on the server.
@@ -82,6 +84,8 @@ test('folds events, attempts, the account link and server counts into people', {
   assert.equal(anna.leftPhase, 'feedback');
   assert.equal(anna.firstMelodyAt?.toISOString(), '2026-11-10T10:04:00.000Z');
   assert.equal(anna.xp, 10);
+  assert.equal(anna.oldXp, 45);
+  assert.deepEqual(anna.legacyTunes, [{ tuneId: 'sailor', phrase: 2, phrases: 4 }]);
   assert.equal(anna.phraseChecks, 2);
   assert.equal(anna.phrasesPassed, 1);
   assert.deepEqual(anna.tunes, [{ tuneId: 'canon', checks: 2, passed: 1 }]);

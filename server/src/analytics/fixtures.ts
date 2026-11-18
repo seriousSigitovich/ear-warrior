@@ -50,5 +50,7 @@ export const account = (over: Partial<AccountFacts> = {}): AccountFacts => ({
   xp: 0,
   phraseChecks: 0,
   phrasesPassed: 0,
+  oldXp: 0,
+  legacyTunes: [],
   ...over,
 });

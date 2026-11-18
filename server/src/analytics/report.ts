@@ -2,7 +2,7 @@
 // each device belongs to, and the server's own XP and phrase-check counts per account. Counts only — no audio,
 // no attempt content. No query takes a parameter (a Date cannot be one behind the production pooler, DB_PREPARE=false).
 import { sql } from '../db/client.js';
-import type { AccountFacts, AnalyticsData, DeviceFacts, TuneFacts } from './model.js';
+import type { AccountFacts, AnalyticsData, DeviceFacts, ServerTotals, TuneFacts } from './model.js';
 
 /** A timestamp as the driver hands it over: text with drizzle's shared client. */
 type Stamp = Date | string;
@@ -157,9 +157,10 @@ export async function loadAnalytics(): Promise<AnalyticsData> {
     left join ev on ev.device_id = i.device_id
     left join att on att.device_id = i.device_id`;
 
-  const accounts = await sql<{ user_id: string; email: string | null; anonymous: boolean; created_at: Stamp; xp: number; phrase_checks: number; phrases_passed: number }[]>`
+  const accounts = await sql<{ user_id: string; email: string | null; anonymous: boolean; created_at: Stamp; xp: number; old_xp: number; phrase_checks: number; phrases_passed: number }[]>`
     select u.id as user_id, u.email, u.anonymous, u.created_at,
            coalesce((select sum(x.xp) from xp_ledger x where x.user_id = u.id), 0)::int as xp,
+           coalesce((select sum((g.data->>'xp')::numeric) from progress_game_rows g where g.user_id = u.id and g.kind = 'award'), 0)::int as old_xp,
            coalesce((select count(*) from phrase_checks p where p.user_id = u.id), 0)::int as phrase_checks,
            coalesce((select count(*) from (select distinct tune_id, phrase from phrase_checks p where p.user_id = u.id and p.passed) q), 0)::int as phrases_passed
     from users u`;
@@ -169,7 +170,19 @@ export async function loadAnalytics(): Promise<AnalyticsData> {
     from phrase_checks
     group by user_id, tune_id`;
 
+  const legacy = await sql<{ user_id: string; tune_id: string; phrase: number; phrases: number }[]>`
+    select user_id, tune_id, phrase, phrases from progress_melodies where not deleted order by updated_at desc`;
+
+  const [t] = await sql<{ xp_rows: number; phrase_checks: number; accounts: number; guest_accounts: number; guest_sessions: number }[]>`
+    select (select count(*) from xp_ledger)::int as xp_rows,
+           (select count(*) from phrase_checks)::int as phrase_checks,
+           (select count(*) from users)::int as accounts,
+           (select count(*) from users where anonymous)::int as guest_accounts,
+           (select count(*) from auth_sessions s join users u on u.id = s.user_id and u.anonymous)::int as guest_sessions`;
+  const totals: ServerTotals = { xpRows: t.xp_rows, phraseChecks: t.phrase_checks, accounts: t.accounts, guestAccounts: t.guest_accounts, guestSessions: t.guest_sessions };
+
   return {
+    totals,
     devices: devices.map(deviceFacts),
     accounts: accounts.map(
       (r): AccountFacts => ({
@@ -178,6 +191,8 @@ export async function loadAnalytics(): Promise<AnalyticsData> {
         anonymous: r.anonymous,
         createdAt: new Date(r.created_at),
         xp: r.xp,
+        oldXp: r.old_xp,
+        legacyTunes: legacy.filter((l) => l.user_id === r.user_id).map((l) => ({ tuneId: l.tune_id, phrase: l.phrase, phrases: l.phrases })),
         phraseChecks: r.phrase_checks,
         phrasesPassed: r.phrases_passed,
       }),

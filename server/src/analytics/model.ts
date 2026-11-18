@@ -59,6 +59,10 @@ export interface AccountFacts {
   xp: number;
   phraseChecks: number;
   phrasesPassed: number;
+  /** XP by the old rules: the sum of the award rows the app computed and pushed (spec 019). Zero for a guest. */
+  oldXp: number;
+  /** Where the app says the learner stopped in each tune (progress_melodies); phrases answered = `phrase` (0-based resume point). */
+  legacyTunes: { tuneId: string; phrase: number; phrases: number }[];
 }
 
 export interface TuneFacts {
@@ -68,10 +72,20 @@ export interface TuneFacts {
   passed: number;
 }
 
+/** Row counts of the server-side tables, to tell "nobody has any" from "the page does not see them". */
+export interface ServerTotals {
+  xpRows: number;
+  phraseChecks: number;
+  accounts: number;
+  guestAccounts: number;
+  guestSessions: number;
+}
+
 export interface AnalyticsData {
   devices: DeviceFacts[];
   accounts: AccountFacts[];
   tunes: TuneFacts[];
+  totals?: ServerTotals;
 }
 
 export interface AnalyticsUser {
@@ -118,6 +132,8 @@ export interface AnalyticsUser {
   xp: number;
   phraseChecks: number;
   phrasesPassed: number;
+  oldXp: number;
+  legacyTunes: { tuneId: string; phrase: number; phrases: number }[];
   /** Tunes by number of checks, most played first. */
   tunes: { tuneId: string; checks: number; passed: number }[];
 }
@@ -171,6 +187,8 @@ function mergeDevices(key: string, userId: string | null, devices: DeviceFacts[]
     xp: 0,
     phraseChecks: 0,
     phrasesPassed: 0,
+    oldXp: 0,
+    legacyTunes: [],
     tunes: [],
   };
   const errors = new Set<string>();
@@ -230,6 +248,8 @@ export function buildUsers(data: AnalyticsData): AnalyticsUser[] {
     u.xp = a.xp;
     u.phraseChecks = a.phraseChecks;
     u.phrasesPassed = a.phrasesPassed;
+    u.oldXp = a.oldXp;
+    u.legacyTunes = a.legacyTunes;
     u.tunes = data.tunes
       .filter((t) => t.userId === a.userId)
       .map((t) => ({ tuneId: t.tuneId, checks: t.checks, passed: t.passed }))
@@ -358,6 +378,9 @@ export function statusOf(u: AnalyticsUser, now: Date): Status {
 }
 
 export const STATUS_LABEL: Record<Status, string> = { active: 'активен', cooled: 'остыл', left: 'ушёл до практики', none: 'нет событий' };
+
+/** XP to show and sort by: the server's, or, while it has none, the app's own count. */
+export const shownXp = (u: { xp: number; oldXp: number }): number => u.xp || u.oldXp;
 
 export const isGuest = (u: AnalyticsUser): boolean => !u.email;
 

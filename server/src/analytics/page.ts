@@ -11,12 +11,14 @@ import {
   isGuest,
   leaveSpots,
   placeLabel,
+  shownXp,
   ratePct,
   signinLabel,
   statusOf,
   stepChecklist,
   summarize,
   type AnalyticsUser,
+  type ServerTotals,
   type Status,
 } from './model.js';
 
@@ -62,7 +64,7 @@ const BY: Record<SortKey, (a: AnalyticsUser, b: AnalyticsUser) => number> = {
   step: (a, b) => furthestIndex(b) - furthestIndex(a),
   attempts: (a, b) => b.attempts - a.attempts,
   correct: (a, b) => rate(b) - rate(a),
-  xp: (a, b) => b.xp - a.xp,
+  xp: (a, b) => shownXp(b) - shownXp(a),
 };
 
 /** The cohort the totals and the funnel are about. */
@@ -127,7 +129,9 @@ function details(u: AnalyticsUser, now: Date, cols: number): string {
     u.firstMelodyAt && `${dm(u.firstMelodyAt)} · первая мелодия`,
     u.firstAnswerAt && `${dm(u.firstAnswerAt)} · первый ответ`,
   ].filter((x): x is string => !!x);
-  const tunes = u.tunes.slice(0, 3).map((t) => `${esc(t.tuneId)} (${t.checks})`).join(', ');
+  const tunes = u.tunes.length
+    ? u.tunes.slice(0, 3).map((t) => `${esc(t.tuneId)} (${t.checks})`).join(', ')
+    : u.legacyTunes.slice(0, 3).map((t) => `${esc(t.tuneId)} (${t.phrase} из ${t.phrases} фр.)`).join(', ');
   const avgSession = u.sessions && u.sessionSeconds ? minutes(Math.round(u.sessionSeconds / u.sessions)) : dash;
   const keyboard = u.attempts ? ratePct(u.fretboardAttempts, u.attempts) : dash;
   const ids = u.deviceIds.map((d) => esc(d.slice(0, 8))).join(', ');
@@ -140,7 +144,7 @@ function details(u: AnalyticsUser, now: Date, cols: number): string {
 Ввод грифом: ${esc(keyboard)}<br>
 Октавные ошибки: ${num(u.octaveMismatches)}</div>
 <div><h4>Прогресс</h4>
-XP: ${u.xp || dash}<br>
+XP: ${u.xp ? u.xp : u.oldXp ? `${u.oldXp}<span class="muted"> (старые правила, считало приложение)</span>` : dash}<br>
 Фраз пройдено: ${num(u.phrasesPassed)} · проверок ${num(u.phraseChecks)}<br>
 Мелодии: ${tunes ? tunes : dash}<br>
 Серия: ${u.streak ? `${u.streak} дн` : dash} · рангов: ${num(u.rankUps)}<br>
@@ -153,7 +157,7 @@ XP: ${u.xp || dash}<br>
 </div></td></tr>`;
 }
 
-export function renderAnalyticsPage(all: AnalyticsUser[], now: Date, view: View = DEFAULT_VIEW): string {
+export function renderAnalyticsPage(all: AnalyticsUser[], now: Date, view: View = DEFAULT_VIEW, totals?: ServerTotals): string {
   const cohort = all.filter((u) => inCohort(u, now, view));
   const sum = summarize(cohort, now);
   const steps = buildFunnel(cohort);
@@ -180,7 +184,7 @@ export function renderAnalyticsPage(all: AnalyticsUser[], now: Date, view: View 
       const attempts = u.attempts || u.answers;
       const correct = u.attempts ? u.attemptsCorrect : u.correct;
       return `<tr class="u"><td class="pt">${who(u)}<div class="muted small">${esc(u.appVersion ? `v${u.appVersion}` : dash)}${u.deviceIds.length > 1 ? ` · ${u.deviceIds.length} устр.` : ''}</div></td>
-<td class="l"><span class="pill ${STATUS_CLASS[st]}">${esc(STATUS_LABEL[st])}</span></td><td class="d">${esc(dm(u.firstAt ?? u.createdAt))}</td><td>${esc(u.lastAt ? ago(u.lastAt, now) : dash)}</td><td>${num(u.days)}</td><td class="l">${esc(u.tracked ? furthestStep(u) : dash)}</td><td class="l">${esc(signinLabel(u))}</td><td>${num(attempts)}</td><td>${esc(ratePct(correct, attempts))}</td><td>${num(u.xp)}</td></tr>
+<td class="l"><span class="pill ${STATUS_CLASS[st]}">${esc(STATUS_LABEL[st])}</span></td><td class="d">${esc(dm(u.firstAt ?? u.createdAt))}</td><td>${esc(u.lastAt ? ago(u.lastAt, now) : dash)}</td><td>${num(u.days)}</td><td class="l">${esc(u.tracked ? furthestStep(u) : dash)}</td><td class="l">${esc(signinLabel(u))}</td><td>${num(attempts)}</td><td>${esc(ratePct(correct, attempts))}</td><td>${u.xp ? u.xp : u.oldXp ? `${u.oldXp}*` : dash}</td></tr>
 ${details(u, now, COLS)}`;
     })
     .join('');
@@ -238,7 +242,8 @@ ${sum.total ? '' : '<div class="empty">Пока нет данных.</div>'}
 <thead><tr><th class="pt">Кто</th><th class="l">Статус</th>${th('Первый запуск', 'first', 'd')}${th('Был', 'last')}${th('Дней', 'days')}${th('Дошёл до', 'step', 'l')}<th class="l">Вход</th>${th('Попыток', 'attempts')}${th('Верно', 'correct')}${th('XP', 'xp')}</tr></thead>
 <tbody>${rows}</tbody>
 </table></div>
-<p class="muted small" style="margin-top:20px">Человек — это аккаунт со всеми его устройствами или, без входа, одно устройство. Воронка и «где ушли» считают только тех, чья сборка шлёт <code>screen_view</code>. Вход необязателен, поэтому он показан отдельной веткой и в «Отвалилось» не считается. Статус: активен — был за сутки или практиковался и был за 3 дня; остыл — 3+ дня тишины после практики; ушёл — не дошёл до практики. Попытки — из <code>attempt_log</code>, XP и фразы — с сервера.</p>
+<p class="muted small" style="margin-top:20px">Человек — это аккаунт со всеми его устройствами или, без входа, одно устройство. Воронка и «где ушли» считают только тех, чья сборка шлёт <code>screen_view</code>. Вход необязателен, поэтому он показан отдельной веткой и в «Отвалилось» не считается. Статус: активен — был за сутки или практиковался и был за 3 дня; остыл — 3+ дня тишины после практики; ушёл — не дошёл до практики. Попытки — из <code>attempt_log</code>. XP: серверный, а пока его нет — со звёздочкой (*) то, что насчитало приложение по старым правилам; он не сравним с серверным.</p>
+${totals ? `<p class="muted small">На сервере: строк XP — ${totals.xpRows}, проверок фраз — ${totals.phraseChecks}, аккаунтов — ${totals.accounts} (гостевых ${totals.guestAccounts}, сессий гостей ${totals.guestSessions}).</p>` : ''}
 ${SCRIPT}`;
   return `<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Аналитика — Ear Warrior</title><style>${CSS}${EXTRA_CSS}</style></head><body><main>${body}</main></body></html>`;
 }

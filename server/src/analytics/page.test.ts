@@ -61,3 +61,16 @@ test('parseView accepts only known values', () => {
   assert.deepEqual(parseView({ sort: 'drop table', who: 'x', period: 'y', version: 5, q: '  hi ' }), { ...DEFAULT_VIEW, q: 'hi' });
   assert.deepEqual(parseView({ sort: 'xp', who: 'cooled', period: '7d', version: '0.1.0' }), { sort: 'xp', who: 'cooled', period: '7d', version: '0.1.0', q: '' });
 });
+
+test('before the server has any XP, the app’s own count is shown with a star and still sorts', () => {
+  const people = buildUsers({
+    devices: [device({ deviceId: 'dev_old', userId: 'u-2' }), device({ deviceId: 'dev_new', userId: 'u-1' })],
+    accounts: [account({ userId: 'u-1', email: 'new@x.co', xp: 10 }), account({ userId: 'u-2', email: 'old@x.co', oldXp: 300, legacyTunes: [{ tuneId: 'sailor', phrase: 2, phrases: 4 }] })],
+    tunes: [],
+  });
+  const html = renderAnalyticsPage(people, NOW, { ...DEFAULT_VIEW, sort: 'xp' });
+  assert.match(html, /<td>300\*<\/td>/);
+  assert.match(html, /<td>10<\/td>/);
+  assert.match(html, /sailor \(2 из 4 фр\.\)/);
+  assert.ok(html.indexOf('old@x.co') < html.indexOf('new@x.co'));
+});
